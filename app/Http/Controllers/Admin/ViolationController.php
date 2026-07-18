@@ -3,16 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Violation;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+
 use App\Models\User;
 use App\Models\Course;
 use App\Models\Year;
+use App\Models\Violation;
 use App\Models\ViolationType;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\JsonResponse;
-use App\Models\DisciplinarySanction;
 use App\Models\ViolationCategory;
+use App\Models\DisciplinarySanction;
+use App\Models\Notification;
 
 class ViolationController extends Controller
 {
@@ -24,70 +26,56 @@ public function index(Request $request)
         'section',
         'violations.violationType.category'
     ])
+    ->whereHas('role', function ($q) {
+        $q->where('roles_name', 'Student');
+    })
     ->whereHas('violations');
-    $allStudents = User::whereHas('role', function ($q) {
-
-    $q->where('roles_name', 'Student');
-
-})
-->orderBy('last_name')
-->get();
-
-    /*
-    |--------------------------------------------------------------------------
-    | Search
-    |--------------------------------------------------------------------------
-    */
 
     if ($request->filled('search')) {
 
         $search = $request->search;
 
-        $students->where(function ($query) use ($search) {
+        $students->where(function ($q) use ($search) {
 
-            $query->where('student_number', 'like', "%{$search}%")
-                  ->orWhere('first_name', 'like', "%{$search}%")
-                  ->orWhere('middle_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%");
+            $q->where('student_number','like',"%{$search}%")
+              ->orWhere('first_name','like',"%{$search}%")
+              ->orWhere('middle_name','like',"%{$search}%")
+              ->orWhere('last_name','like',"%{$search}%");
 
         });
-    }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Course Filter
-    |--------------------------------------------------------------------------
-    */
+    }
 
     if ($request->filled('course')) {
 
-        $students->where('course_id', $request->course);
+        $students->where('course_id',$request->course);
 
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Year Filter
-    |--------------------------------------------------------------------------
-    */
 
     if ($request->filled('year')) {
 
-        $students->where('year_id', $request->year);
+        $students->where('year_id',$request->year);
 
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Violation Type Filter
-    |--------------------------------------------------------------------------
-    */
+    if ($request->filled('category')) {
+
+        $students->whereHas('violations.violationType', function($q) use ($request){
+
+            $q->where(
+                'violation_category_id',
+                $request->category
+            );
+
+        });
+
+    }
 
     if ($request->filled('violation_type')) {
 
-        $students->whereHas('violations', function ($query) use ($request) {
+        $students->whereHas('violations', function($q) use ($request){
 
-            $query->where(
+            $q->where(
                 'violation_type',
                 $request->violation_type
             );
@@ -100,25 +88,16 @@ public function index(Request $request)
         ->orderBy('last_name')
         ->paginate(15);
 
-    $courses = Course::orderBy('course_name')->get();
-
-    $years = Year::orderBy('year')->get();
-
-    $violationTypes = ViolationType::orderBy('violation_type')->get();
-    $categories = ViolationCategory::orderBy('category_name')->get();
-
     return view(
-    'admin.violations.index',
-    compact(
-    'students',
-    'courses',
-    'years',
-    'violationTypes',
-    'allStudents',
-    'categories'
-)
-);
-    
+        'admin.violations.index',
+        [
+            'students'=>$students,
+            'courses'=>Course::orderBy('course_name')->get(),
+            'years'=>Year::orderBy('year')->get(),
+            'categories'=>ViolationCategory::orderBy('category_name')->get(),
+            'violationTypes'=>ViolationType::orderBy('violation_type')->get()
+        ]
+    );
 }
 public function show($student_number)
 {
@@ -126,15 +105,22 @@ public function show($student_number)
         'course',
         'year',
         'section',
+        'violations' => function ($query) {
+            $query->orderByDesc('violation_date');
+        },
         'violations.violationType.category',
         'violations.recorder'
     ])
     ->where('student_number', $student_number)
     ->firstOrFail();
 
-    $violations = $student->violations
-        ->sortByDesc('violation_date')
-        ->values();
+    $violations = $student->violations;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Build Violation Summary
+    |--------------------------------------------------------------------------
+    */
 
     $summary = $violations
         ->groupBy('violation_type')
@@ -142,17 +128,13 @@ public function show($student_number)
 
             $first = $group->first();
 
+            if (!$first->violationType) {
+                return null;
+            }
+
             $count = $group->count();
 
-            if ($count == 1) {
-                $offenseLevel = '1st Offense';
-            } elseif ($count == 2) {
-                $offenseLevel = '2nd Offense';
-            } elseif ($count == 3) {
-                $offenseLevel = '3rd Offense';
-            } else {
-                $offenseLevel = $count . 'th Offense';
-            }
+            $offenseLevel = $this->getOffenseLevel($count);
 
             $sanction = DisciplinarySanction::where(
                 'violation_type_id',
@@ -174,25 +156,63 @@ public function show($student_number)
 
                 'count' => $count,
 
-                'sanction' => $sanction?->disciplinary_sanction,
+                'sanction' => optional($sanction)->disciplinary_sanction,
 
-                'status' => str_contains(
-                    strtolower($sanction?->disciplinary_sanction ?? ''),
-                    'warning'
-                )
-                    ? 'Warning'
-                    : 'Sanction'
+                'status' => $sanction &&
+                    str_contains(
+                        strtolower($sanction->disciplinary_sanction),
+                        'warning'
+                    )
+                        ? 'Warning'
+                        : 'Sanction'
 
             ];
 
-        });
+        })
+        ->filter()
+        ->values();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Statistics
+    |--------------------------------------------------------------------------
+    */
+
+    $statistics = [
+
+        'total' => $violations->count(),
+
+        'minor' => $violations
+            ->filter(function ($v) {
+
+                return optional($v->violationType->category)
+                    ->category_name == 'Minor';
+
+            })
+            ->count(),
+
+        'major' => $violations
+            ->filter(function ($v) {
+
+                return optional($v->violationType->category)
+                    ->category_name == 'Major';
+
+            })
+            ->count(),
+
+        'latest' => optional(
+            $violations->first()
+        ),
+
+    ];
 
     return view(
         'admin.violations.show',
         compact(
             'student',
             'violations',
-            'summary'
+            'summary',
+            'statistics'
         )
     );
 }
@@ -207,7 +227,7 @@ public function create()
     ->get();
 
     $violationTypes = ViolationType::with('category')
-        ->orderBy('violation_type')
+        ->orderBy('violation_type_id')
         ->get();
 
     return view(
@@ -222,67 +242,55 @@ public function create()
 
 public function store(Request $request)
 {
-    $request->validate([
-        'student_number' => 'required|exists:users_tbl,student_number',
+    $validated = $request->validate([
+        'student_number' => 'required|exists:user_tbl,student_number',
         'violation_type' => 'required|exists:violation_type_tbl,violation_type',
+        'violation_date' => 'required|date',
         'description' => 'nullable|string|max:1000',
     ]);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Save Violation
-    |--------------------------------------------------------------------------
-    */
-
     $violation = Violation::create([
-        'student_number' => $request->student_number,
-        'violation_type' => $request->violation_type,
-        'violation_date' => now(),
-        'description' => $request->description,
+        'student_number' => $validated['student_number'],
+        'violation_type' => $validated['violation_type'],
+        'violation_date' => $validated['violation_date'],
+        'description' => $validated['description'] ?? null,
         'recorder_id' => Auth::id(),
     ]);
 
+    // Load relationship
+    $violation->load('violationType.category');
+
     /*
     |--------------------------------------------------------------------------
-    | Compute Offense Level
+    | Count Previous Offenses
     |--------------------------------------------------------------------------
     */
 
     $offenseCount = Violation::where(
         'student_number',
-        $request->student_number
+        $validated['student_number']
     )
     ->where(
         'violation_type',
-        $request->violation_type
+        $validated['violation_type']
     )
     ->count();
 
-    $offenseLevel = match ($offenseCount) {
-        1 => '1st Offense',
-        2 => '2nd Offense',
-        3 => '3rd Offense',
-        default => $offenseCount . 'th Offense',
-    };
+    $offenseLevel = $this->getOffenseLevel($offenseCount);
 
     /*
     |--------------------------------------------------------------------------
-    | Lookup Sanction
+    | Get Corresponding Sanction
     |--------------------------------------------------------------------------
     */
 
-    $type = ViolationType::where(
-        'violation_type',
-        $request->violation_type
-    )->first();
-
     $sanction = null;
 
-    if ($type) {
+    if ($violation->violationType) {
 
         $sanction = DisciplinarySanction::where(
             'violation_type_id',
-            $type->violation_type_id
+            $violation->violationType->violation_type_id
         )
         ->where(
             'offense_level',
@@ -294,63 +302,119 @@ public function store(Request $request)
 
     /*
     |--------------------------------------------------------------------------
-    | Create Notification
+    | Notify Student
     |--------------------------------------------------------------------------
     */
 
-    \App\Models\Notification::create([
+    Notification::create([
 
-        'student_number' => $request->student_number,
+        'student_number' => $validated['student_number'],
 
-        'message' => $sanction
-            ? "A new violation has been recorded.\n\nViolation: {$request->violation_type}\n{$offenseLevel}\nSanction: {$sanction->disciplinary_sanction}"
-            : "A new violation has been recorded.\n\nViolation: {$request->violation_type}\n{$offenseLevel}",
+        'title' => 'New Violation Recorded',
 
-        'notification_type' => 'Violation',
+        'message' => $this->buildNotificationMessage(
+            $violation,
+            $offenseLevel,
+            $sanction
+        ),
 
-        'recipient_type' => 'student',
-
-        'is_read' => false,
+        'is_read' => 0,
 
     ]);
 
     return redirect()
-        ->route('admin.violations')
-        ->with('success', 'Violation recorded successfully.');
-}
-public function getOffenseLevel(Request $request): JsonResponse
-{
-    $count = Violation::where(
-            'student_number',
-            $request->student_number
+        ->route(
+            'admin.violations.show',
+            $validated['student_number']
         )
-        ->where(
-            'violation_type',
-            $request->violation_type
-        )
-        ->count();
-
-    return response()->json([
-
-        'offense' => $count + 1
-
-    ]);
+        ->with(
+            'success',
+            'Violation recorded successfully.'
+        );
 }
-public function getViolationTypes($categoryId)
+
+private function buildNotificationMessage(
+    Violation $violation,
+    string $offenseLevel,
+    ?DisciplinarySanction $sanction
+): string {
+
+    $message = "A new violation has been recorded.\n\n";
+
+    $message .= "Violation: ";
+
+    $message .= $violation->violation_type;
+
+    $message .= "\n";
+
+    $message .= "Offense Level: ";
+
+    $message .= $offenseLevel;
+
+    if ($sanction) {
+
+        $message .= "\n";
+
+        $message .= "Sanction: ";
+
+        $message .= $sanction->disciplinary_sanction;
+
+    }
+
+    return $message;
+
+}
+private function getOffenseLevel(int $count): string
 {
-    return ViolationType::where(
-        'violation_category_id',
-        $categoryId
-    )
-    ->orderBy('violation_type')
-    ->get();
+    if ($count === 1) {
+        return '1st Offense';
+    }
+
+    if ($count === 2) {
+        return '2nd Offense';
+    }
+
+    if ($count === 3) {
+        return '3rd Offense';
+    }
+
+    $suffix = match (true) {
+
+        $count % 100 >= 11 &&
+        $count % 100 <= 13 => 'th',
+
+        $count % 10 === 1 => 'st',
+
+        $count % 10 === 2 => 'nd',
+
+        $count % 10 === 3 => 'rd',
+
+        default => 'th',
+
+    };
+
+    return "{$count}{$suffix} Offense";
+}
+public function getViolationTypes($categoryId): JsonResponse
+{
+    $violationTypes = ViolationType::where(
+            'violation_category_id',
+            $categoryId
+        )
+        ->orderBy('violation_type_id')
+        ->get([
+            'violation_type_id',
+            'violation_type'
+        ]);
+
+    return response()->json($violationTypes);
 }
 
 public function previewViolation(Request $request): JsonResponse
 {
     $request->validate([
         'student_number' => 'required',
-        'violation_type' => 'required',
+        'violation_type' => 'required'
     ]);
 
     $count = Violation::where(
@@ -363,19 +427,14 @@ public function previewViolation(Request $request): JsonResponse
     )
     ->count();
 
-    $offenseNumber = $count + 1;
-
-    $offenseLevel = match ($offenseNumber) {
-        1 => '1st Offense',
-        2 => '2nd Offense',
-        3 => '3rd Offense',
-        default => $offenseNumber . 'th Offense',
-    };
+    $offenseLevel = $this->getOffenseLevel($count + 1);
 
     $type = ViolationType::where(
         'violation_type',
         $request->violation_type
-    )->first();
+    )
+    ->with('category')
+    ->first();
 
     $sanction = null;
 
@@ -397,34 +456,56 @@ public function previewViolation(Request $request): JsonResponse
 
         'offense_level' => $offenseLevel,
 
-        'sanction' => $sanction?->disciplinary_sanction,
+        'violation' => $type,
+
+        'sanction' => $sanction
 
     ]);
 }
+
 public function searchStudent(Request $request): JsonResponse
 {
-    $search = $request->get('search');
+    $request->validate([
+        'search' => 'required|string'
+    ]);
 
-    $students = User::whereHas('role', function ($query) {
-            $query->where('roles_name', 'Student');
-        })
-        ->where(function ($query) use ($search) {
+    $search = trim($request->search);
 
-            $query->where('student_number', 'like', "%{$search}%")
-                  ->orWhere('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%");
+    $students = User::with([
+        'course',
+        'year',
+        'section'
+    ])
+    ->whereHas('role', function ($query) {
+        $query->where('roles_name', 'Student');
+    })
+    ->where(function ($query) use ($search) {
 
-        })
-        ->orderBy('last_name')
-        ->limit(10)
-        ->get([
-            'student_number',
-            'first_name',
-            'last_name',
-            'course_id',
-            'year_id'
-        ]);
+        $query->where('student_number', 'like', "%{$search}%")
+            ->orWhere('first_name', 'like', "%{$search}%")
+            ->orWhere('middle_name', 'like', "%{$search}%")
+            ->orWhere('last_name', 'like', "%{$search}%");
+
+    })
+    ->limit(15)
+    ->get();
 
     return response()->json($students);
+}
+
+public function studentHistory($studentNumber): JsonResponse
+{
+    $history = Violation::with([
+        'violationType.category',
+        'recorder'
+    ])
+    ->where(
+        'student_number',
+        $studentNumber
+    )
+    ->orderByDesc('violation_date')
+    ->get();
+
+    return response()->json($history);
 }
 }

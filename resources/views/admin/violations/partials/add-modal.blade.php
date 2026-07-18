@@ -1,24 +1,39 @@
 <div class="modal fade"
      id="addViolationModal"
      tabindex="-1"
+     aria-labelledby="addViolationModalLabel"
      aria-hidden="true">
 
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
 
-        <form action="{{ route('admin.violations.store') }}"
-              method="POST">
+        <div class="modal-content border-0 shadow">
 
-            @csrf
+            <form
+                id="violationForm"
+                method="POST"
+                action="{{ route('admin.violations.store') }}">
 
-            <div class="modal-content">
+                @csrf
 
                 <div class="modal-header">
 
-                    <h5 class="modal-title">
+                    <div>
 
-                        Record Student Violation
+                        <h4
+                            class="modal-title fw-bold"
+                            id="addViolationModalLabel">
 
-                    </h5>
+                            Record Student Violation
+
+                        </h4>
+
+                        <small class="text-muted">
+
+                            Search a student and record a disciplinary violation.
+
+                        </small>
+
+                    </div>
 
                     <button
                         type="button"
@@ -30,202 +45,407 @@
 
                 <div class="modal-body">
 
-                    <div class="row">
+                    <!-- Progress -->
 
-                        {{-- Student --}}
-                        <div class="col-md-6 mb-3">
+                    <div class="mb-4">
 
-                            <label class="form-label">
+                        <div class="d-flex justify-content-center align-items-center">
+
+                            <div
+                                class="step-circle active"
+                                id="stepOneIndicator">
+
+                                1
+
+                            </div>
+
+                            <div
+                                class="step-line">
+                            </div>
+
+                            <div
+                                class="step-circle"
+                                id="stepTwoIndicator">
+
+                                2
+
+                            </div>
+
+                        </div>
+
+                        <div
+                            class="d-flex justify-content-between mt-2">
+
+                            <small>
+
                                 Student
-                            </label>
 
-                            <select
-                                id="studentSelect"
-                                name="student_number"
-                                class="form-select"
-                                required>
+                            </small>
 
-                                <option value="">
-                                    Select Student
-                                </option>
+                            <small>
 
-                                @foreach($allStudents as $student)
+                                Violation
 
-                                    <option
-                                        value="{{ $student->student_number }}"
-                                        data-name="{{ $student->first_name }} {{ $student->last_name }}"
-                                        data-course="{{ $student->course?->course_name }}"
-                                        data-year="{{ $student->year?->year }}"
-                                        data-section="{{ $student->section?->section_name }}">
-
-                                        {{ $student->student_number }}
-                                        -
-                                        {{ $student->last_name }},
-                                        {{ $student->first_name }}
-
-                                    </option>
-
-                                @endforeach
-
-                            </select>
+                            </small>
 
                         </div>
 
-                        {{-- Violation --}}
-                        <div class="col-md-6 mb-3">
+                    </div>
 
-                            <label class="form-label">
+                    <!-- STEP 1 -->
 
-                                Violation Type
+                    <div id="stepOne">
+
+                        <div class="mb-4">
+
+                            <label class="form-label fw-semibold">
+
+                                Search Student
 
                             </label>
 
-                            <select
-                                name="violation_type"
-                                class="form-select"
-                                required>
+                            <input
+                                type="text"
+                                id="studentSearch"
+                                class="form-control form-control-lg"
+                                placeholder="Search student number or full name...">
 
-                                <option value="">
-                                    Select Violation
-                                </option>
+                        </div>
 
-                                @foreach($violationTypes as $type)
-
-                                    <option
-                                        value="{{ $type->violation_type }}">
-
-                                        {{ $type->violation_type }}
-
-                                    </option>
-
-                                @endforeach
-
-                            </select>
+                        <div
+                            id="studentResults"
+                            class="list-group">
 
                         </div>
 
                     </div>
 
-                    <div class="row">
+                    <!-- STEP 2 -->
 
-                        <div class="col-md-4">
+                    <div
+                        id="stepTwo"
+                        class="d-none">
 
-                            <label>Name</label>
+                        <div class="row">
 
-                            <input
-                                id="studentName"
-                                class="form-control"
-                                readonly>
+                            <!-- LEFT COLUMN -->
 
-                        </div>
+                            <div class="col-lg-5">
 
-                        <div class="col-md-3">
+                                <div class="card border-0 bg-light">
 
-                            <label>Course</label>
+                                    <div class="card-body">
 
-                            <input
-                                id="studentCourse"
-                                class="form-control"
-                                readonly>
+                                        <h5 class="fw-bold mb-3">
 
-                        </div>
+                                            Student Information
 
-                        <div class="col-md-2">
+                                        </h5>
 
-                            <label>Year</label>
+                                        <input
+                                            type="hidden"
+                                            name="student_number"
+                                            id="selectedStudentNumber">
 
-                            <input
-                                id="studentYear"
-                                class="form-control"
-                                readonly>
+                                        <div class="mb-3">
 
-                        </div>
+                                            <label class="form-label">
 
-                        <div class="col-md-3">
+                                                Student Number
 
-                            <label>Section</label>
+                                            </label>
 
-                            <input
-                                id="studentSection"
-                                class="form-control"
-                                readonly>
+                                            <input
+                                                id="studentNumber"
+                                                class="form-control"
+                                                readonly>
 
-                        </div>
+                                        </div>
 
-                    </div>
+                                        <div class="mb-3">
 
-                    <div class="mt-3">
+                                            <label class="form-label">
 
-                        <label>Description</label>
+                                                Student Name
 
-                        <textarea
-                            name="description"
-                            class="form-control"
-                            rows="4"></textarea>
+                                            </label>
 
-                    </div>
+                                            <input
+                                                id="studentName"
+                                                class="form-control"
+                                                readonly>
 
-                </div>
-<hr>
+                                        </div>
 
-<div class="row">
+                                        <div class="mb-3">
 
-    <div class="col-md-6">
+                                            <label class="form-label">
 
-        <label class="fw-bold">
+                                                Course
 
-            Offense Level
+                                            </label>
 
-        </label>
+                                            <input
+                                                id="studentCourse"
+                                                class="form-control"
+                                                readonly>
 
-        <input
-            id="offenseLevel"
-            class="form-control"
-            readonly>
+                                        </div>
 
-    </div>
+                                        <div class="row">
 
-    <div class="col-md-6">
+                                            <div class="col">
 
-        <label class="fw-bold">
+                                                <label class="form-label">
 
-            Disciplinary Sanction
+                                                    Year
 
-        </label>
+                                                </label>
 
-        <textarea
-            id="disciplinarySanction"
-            class="form-control"
-            rows="2"
-            readonly></textarea>
+                                                <input
+                                                    id="studentYear"
+                                                    class="form-control"
+                                                    readonly>
 
-    </div>
+                                            </div>
+
+                                            <div class="col">
+
+                                                <label class="form-label">
+
+                                                    Section
+
+                                                </label>
+
+                                                <input
+                                                    id="studentSection"
+                                                    class="form-control"
+                                                    readonly>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            <!-- RIGHT COLUMN -->
+
+                            <div class="col-lg-7">
+
+                                <div class="card border-0">
+
+                                    <div class="card-body">
+
+                                        <h5 class="fw-bold mb-3">
+
+                                            Violation Information
+
+                                        </h5>
+                                        {{-- Category --}}
+<div class="mb-3">
+
+    <label
+        for="violationCategory"
+        class="form-label fw-semibold">
+
+        Violation Category
+    </label>
+
+    <select
+        id="violationCategory"
+        class="form-select">
+
+        <option value="">
+
+            Select Category
+
+        </option>
+
+        @foreach($categories as $category)
+
+            <option
+                value="{{ $category->category_id }}">
+
+                {{ $category->category }}
+
+            </option>
+
+        @endforeach
+
+    </select>
 
 </div>
-                <div class="modal-footer">
 
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal">
+{{-- Violation Type --}}
+<div class="mb-3">
 
-                        Cancel
+    <label
+        for="violationType"
+        class="form-label fw-semibold">
 
-                    </button>
+        Violation Type
+    </label>
 
-                    <button
-                        class="btn btn-danger">
+    <select
+        id="violationType"
+        name="violation_type_id"
+        class="form-select"
+        disabled>
 
-                        Record Violation
+        <option value="">
 
-                    </button>
+            Select Category First
+
+        </option>
+
+    </select>
+
+</div>
+
+{{-- Description --}}
+<div class="mb-4">
+
+    <label
+        class="form-label fw-semibold">
+
+        Description
+
+    </label>
+
+    <textarea
+        name="description"
+        id="description"
+        rows="4"
+        class="form-control"
+        placeholder="Enter additional details regarding the incident..."></textarea>
+
+</div>
+
+{{-- Preview Card --}}
+<div
+    class="card border-primary shadow-sm">
+
+    <div class="card-header bg-primary text-white">
+
+        <strong>
+
+            Violation Preview
+
+        </strong>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="row">
+
+            <div class="col-md-6 mb-3">
+
+                <label
+                    class="text-muted small">
+
+                    Offense Level
+
+                </label>
+
+                <div
+                    id="previewOffense"
+                    class="fs-5 fw-bold text-warning">
+
+                    —
 
                 </div>
 
             </div>
 
-        </form>
+            <div class="col-md-6 mb-3">
+
+                <label
+                    class="text-muted small">
+
+                    Disciplinary Sanction
+
+                </label>
+
+                <div
+                    id="previewSanction"
+                    class="fs-6 fw-bold text-danger">
+
+                    —
+
+                </div>
+
+            </div>
+
+        </div>
 
     </div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="modal-footer">
+
+    <button
+        type="button"
+        id="backStep"
+        class="btn btn-outline-secondary d-none">
+
+        <i class="bi bi-arrow-left"></i>
+
+        Back
+
+    </button>
+
+    <button
+        type="button"
+        class="btn btn-secondary"
+        data-bs-dismiss="modal">
+
+        Cancel
+
+    </button>
+
+    <button
+        type="button"
+        id="continueStep"
+        class="btn btn-primary"
+        disabled>
+
+        Continue
+
+        <i class="bi bi-arrow-right"></i>
+
+    </button>
+
+    <button
+        type="submit"
+        id="saveViolation"
+        class="btn btn-danger d-none">
+
+        <i class="bi bi-save"></i>
+
+        Record Violation
+
+    </button>
+
+</div>
+
+</form>
+
+</div>
+
+</div>
 
 </div>

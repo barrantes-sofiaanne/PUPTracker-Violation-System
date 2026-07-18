@@ -48,4 +48,28 @@ public function disciplinarySanctions()
         'violation_type_id'
     );
 }
+private function getOffenseLevel(int $count): string
+{
+    if ($count === 1) {
+        return '1st Offense';
+    }
+
+    if ($count === 2) {
+        return '2nd Offense';
+    }
+
+    if ($count === 3) {
+        return '3rd Offense';
+    }
+
+    $suffix = match (true) {
+        $count % 100 >= 11 && $count % 100 <= 13 => 'th',
+        $count % 10 === 1 => 'st',
+        $count % 10 === 2 => 'nd',
+        $count % 10 === 3 => 'rd',
+        default => 'th',
+    };
+
+    return "{$count}{$suffix} Offense";
+}
 }

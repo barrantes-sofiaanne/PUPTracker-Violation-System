@@ -1,79 +1,65 @@
-@extends('layouts.admin')
+@extends('layouts.app')
+
+@section('title', 'PUPTracker Violation System')
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/landing.css') }}">
+@endpush
 
 @section('content')
 
-<div class="container-fluid">
+<div class="landing-page">
 
-    <div class="card shadow-sm">
 
-        <div class="card-header">
+    <div class="container d-flex justify-content-center align-items-center min-vh-100">
 
-            <h4>Students</h4>
+        <div class="landing-card">
 
-        </div>
+            <img
+                src="{{ asset('assets/IMAGEs/PUP_logo.png') }}"
+                class="logo"
+                alt="PUP Logo">
 
-        <div class="card-body">
+            <h1>PUPTracker</h1>
 
-            <table class="table table-hover">
+            <h5>Violation Management System</h5>
 
-                <thead>
+            <p class="description">
+                Official portal for managing campus violations,
+                disciplinary records, and announcements.
+            </p>
 
-                    <tr>
+            <div class="portal-buttons">
 
-                        <th>Student Number</th>
-                        <th>Name</th>
-                        <th>Course</th>
-                        <th>Year</th>
-                        <th>Section</th>
-                        <th>Status</th>
-                        <th></th>
+                <a href="{{ route('student.login') }}" class="portal-btn">
+    Student Portal
+</a>
 
-                    </tr>
+                <a href="{{ route('security.login') }}" class="portal-btn">
+                    <i class="bi bi-shield-lock-fill"></i>
+                    Security Portal
+                </a>
 
-                </thead>
+                <a href="{{ route('admin.login') }}" class="portal-btn">
+                    <i class="bi bi-person-workspace"></i>
+                    Administrator
+                </a>
 
-                <tbody>
+            </div>
 
-                @foreach($students as $student)
+            <div class="footer-links">
 
-                    <tr>
+                <a href="https://www.pup.edu.ph/privacy/" target="_blank">
+                    Privacy Statement
+                </a>
 
-                        <td>{{ $student->student_number }}</td>
+                <span>•</span>
 
-                        <td>
-                            {{ $student->last_name }},
-                            {{ $student->first_name }}
-                        </td>
+                <a href="https://www.pup.edu.ph/terms/" target="_blank">
+                    Terms of Use
+                </a>
 
-                        <td>{{ $student->course?->course_name }}</td>
-
-                        <td>{{ $student->year?->year }}</td>
-
-                        <td>{{ $student->section?->section_name }}</td>
-
-                        <td>{{ $student->status?->status_name }}</td>
-
-                        <td>
-
-                            <a
-                                href="{{ route('admin.students.show',$student->student_number) }}"
-                                class="btn btn-primary btn-sm">
-
-                                View
-
-                            </a>
-
-                        </td>
-
-                    </tr>
-
-                @endforeach
-
-                </tbody>
-
-            </table>
-
-            {{ $students->links() }}
+            </div>
 
         </div>
 

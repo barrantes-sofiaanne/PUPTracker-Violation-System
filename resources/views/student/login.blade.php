@@ -8,124 +8,116 @@
 
 @section('content')
 
-<div class="login-container {{ $errors->any() ? 'no-anim' : '' }}">
+<div class="login-page">
 
-    <img
-        src="{{ asset('assets/images/PUP_logo.png') }}"
-        alt="PUP Logo"
-        class="logo">
+    <div class="login-card">
 
-    <div class="welcome-panel">
-        <h2>Welcome PUPTians!</h2>
-        <p>Access your records and stay updated.</p>
-    </div>
+        <img
+            src="{{ asset('assets/images/PUP_logo.png') }}"
+            class="logo"
+            alt="PUP Logo">
 
-    <div class="login-form-wrapper">
+        <h2>Student Login</h2>
 
-        <form method="POST" action="{{ route('student.login.post') }}">
+        <p class="subtitle">
+            Sign in using your Student Number.
+        </p>
+
+        @if(session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if($errors->has('login'))
+            <div class="alert alert-danger">
+                {{ $errors->first('login') }}
+            </div>
+        @endif
+
+        <form
+            action="{{ route('student.login.post') }}"
+            method="POST"
+            autocomplete="off">
 
             @csrf
 
-            {{-- Login Error --}}
-            @if ($errors->has('login'))
-                <p class="message error">
-                    {{ $errors->first('login') }}
-                </p>
-            @endif
+            <div class="mb-3">
 
-            {{-- Success Message --}}
-            @if(session('success'))
-                <p class="message success">
-                    {{ session('success') }}
-                </p>
-            @endif
-
-            {{-- Student Number --}}
-            <div class="input-group">
+                <label class="form-label">
+                    Student Number
+                </label>
 
                 <input
-                    id="student_number"
                     type="text"
                     name="student_number"
-                    placeholder="Student Number"
+                    class="form-control @error('student_number') is-invalid @enderror"
                     value="{{ old('student_number') }}"
                     required>
 
                 @error('student_number')
-                    <span class="error-message">
+                    <div class="invalid-feedback">
                         {{ $message }}
-                    </span>
+                    </div>
                 @enderror
 
             </div>
 
-            {{-- Password --}}
-            <div class="input-group">
+            <div class="mb-4">
 
-                <input
-                    id="password"
-                    type="password"
-                    name="password"
-                    placeholder="Password"
-                    required>
+                <label class="form-label">
+                    Password
+                </label>
 
-                <span
-                    class="password-toggle-icon"
-                    onclick="togglePassword()">
+                <div class="password-wrapper">
 
-                    <svg id="eye-icon"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke-width="1.5"
-                        stroke="currentColor"
-                        style="width:20px;height:20px;">
+                    <input
+                        id="password"
+                        type="password"
+                        name="password"
+                        class="form-control @error('password') is-invalid @enderror"
+                        required>
 
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+                    <button
+                        type="button"
+                        class="toggle-password"
+                        id="togglePassword">
 
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <i class="bi bi-eye"></i>
 
-                    </svg>
+                    </button>
 
-                </span>
+                </div>
 
                 @error('password')
-                    <span class="error-message">
+                    <div class="invalid-feedback d-block">
                         {{ $message }}
-                    </span>
+                    </div>
                 @enderror
 
             </div>
 
             <button
                 type="submit"
-                class="login-btn">
-                Log In
+                class="btn btn-success w-100 login-btn">
+
+                Login
+
             </button>
 
-            <div class="form-footer">
-
-                <a
-                    href="{{ route('home') }}"
-                    class="back-link">
-                    Back to Home
-                </a>
-
-                <a
-                    href="#"
-                    class="forgot-password">
-                    Forgot password?
-                </a>
-
-            </div>
-
         </form>
+
+        <div class="footer-links">
+
+            <a href="{{ route('home') }}">
+                ← Back to Home
+            </a>
+
+            <a href="#">
+                Forgot Password?
+            </a>
+
+        </div>
 
     </div>
 

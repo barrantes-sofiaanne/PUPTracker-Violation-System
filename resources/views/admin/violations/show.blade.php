@@ -1,81 +1,163 @@
 @extends('layouts.admin')
 
+@section('title', 'Student Violations')
+
 @section('content')
 
-<div class="container-fluid">
+<div class="container-fluid"><div class="card shadow-sm mb-4">
 
-    <a href="{{ route('admin.violations') }}"
-       class="btn btn-secondary mb-3">
+<div class="card-body">
 
-        ← Back to Violation List
+<div class="row align-items-center">
 
-    </a>
+<div class="col-md-2 text-center">
 
-    <div class="card mb-3">
+@if($student->profile_photo)
 
-        <div class="card-body">
+<img
+src="{{ asset('storage/'.$student->profile_photo) }}"
+class="rounded-circle img-fluid"
+style="width:140px;height:140px;object-fit:cover;">
 
-            <h2>
+@else
 
-                {{ $student->first_name }}
-                {{ $student->middle_name }}
-                {{ $student->last_name }}
+<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
+style="width:140px;height:140px;margin:auto;">
 
-            </h2>
-
-            <p>
-
-                <strong>Student Number:</strong>
-
-                {{ $student->student_number }}
-
-            </p>
-
-            <span class="badge bg-secondary">
-
-                {{ $student->course?->course_name }}
-
-            </span>
-
-            <span class="badge bg-secondary">
-
-                Year {{ $student->year?->year }}
-
-            </span>
-
-            <span class="badge bg-secondary">
-
-                Section {{ $student->section?->section_name }}
-
-            </span>
-
-        </div>
-
-    </div>
-    <div class="card mb-3">
-
-    <div class="card-body">
-
-        <h5>
-
-            Total Violations:
-
-            <span class="text-danger">
-
-                {{ $student->violations->count() }}
-
-            </span>
-
-        </h5>
-
-    </div>
+<i class="bi bi-person-fill fs-1"></i>
 
 </div>
-<div class="card mb-4">
+
+@endif
+
+</div>
+
+<div class="col-md-10">
+
+<h3>
+
+{{ $student->last_name }},
+{{ $student->first_name }}
+
+</h3>
+
+<p class="mb-1">
+
+<strong>Student Number:</strong>
+
+{{ $student->student_number }}
+
+</p>
+
+<p class="mb-1">
+
+<strong>Course:</strong>
+
+{{ optional($student->course)->course_name }}
+
+</p>
+
+<p class="mb-1">
+
+<strong>Year:</strong>
+
+{{ optional($student->year)->year }}
+
+</p>
+
+<p>
+
+<strong>Section:</strong>
+
+{{ optional($student->section)->section_name }}
+
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+</div><div class="row mb-4">
+
+<div class="col-md-3">
+
+<div class="card border-start border-primary border-4">
+
+<div class="card-body">
+
+<h6>Total Violations</h6>
+
+<h2>{{ $statistics['total'] }}</h2>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="col-md-3">
+
+<div class="card border-start border-success border-4">
+
+<div class="card-body">
+
+<h6>Minor</h6>
+
+<h2>{{ $statistics['minor'] }}</h2>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="col-md-3">
+
+<div class="card border-start border-danger border-4">
+
+<div class="card-body">
+
+<h6>Major</h6>
+
+<h2>{{ $statistics['major'] }}</h2>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="col-md-3">
+
+<div class="card border-start border-warning border-4">
+
+<div class="card-body">
+
+<h6>Latest</h6>
+
+<p>
+
+{{ optional($statistics['latest'])->violation_date }}
+
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+</div><div class="card mb-4">
 
 <div class="card-header">
 
-Summary by Violation
+<h5 class="mb-0">
+
+Violation Summary
+
+</h5>
 
 </div>
 
@@ -87,11 +169,15 @@ Summary by Violation
 
 <tr>
 
-<th>Category</th>
-
 <th>Violation</th>
 
-<th>Total</th>
+<th>Category</th>
+
+<th>Occurrences</th>
+
+<th>Offense</th>
+
+<th>Sanction</th>
 
 </tr>
 
@@ -99,33 +185,37 @@ Summary by Violation
 
 <tbody>
 
-@foreach(
-
-$student->violations
-
-->groupBy('violation_type')
-
-as $type => $records
-
-)
+@foreach($summary as $item)
 
 <tr>
 
 <td>
 
-{{ $records->first()->violationType?->category?->category_name }}
+{{ $item['violation_type']->violation_type }}
 
 </td>
 
 <td>
 
-{{ $type }}
+{{ optional($item['category'])->category_name }}
 
 </td>
 
 <td>
 
-{{ $records->count() }}
+{{ $item['count'] }}
+
+</td>
+
+<td>
+
+{{ $item['offense_level'] }}
+
+</td>
+
+<td>
+
+{{ $item['sanction'] ?? 'No sanction found' }}
 
 </td>
 
@@ -139,26 +229,39 @@ as $type => $records
 
 </div>
 
-</div>
-<div class="card">
+</div><div class="card">
 
-<div class="card-header">
+<div class="card-header d-flex justify-content-between">
 
-Individual Violations
+<h5 class="mb-0">
+
+Violation History
+
+</h5>
+
+<a
+href="{{ route('admin.violations.create', $student->student_number) }}"
+class="btn btn-primary">
+
+Add Violation
+
+</a>
 
 </div>
 
 <div class="card-body">
 
-<table class="table table-striped">
+<table class="table table-hover">
 
 <thead>
 
 <tr>
 
+<th>Date</th>
+
 <th>Violation</th>
 
-<th>Date</th>
+<th>Category</th>
 
 <th>Description</th>
 
@@ -170,9 +273,15 @@ Individual Violations
 
 <tbody>
 
-@foreach($student->violations as $violation)
+@foreach($violations as $violation)
 
 <tr>
+
+<td>
+
+{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y') }}
+
+</td>
 
 <td>
 
@@ -182,7 +291,7 @@ Individual Violations
 
 <td>
 
-{{ $violation->violation_date?->format('M d, Y h:i A') }}
+{{ optional($violation->violationType->category)->category_name }}
 
 </td>
 
@@ -194,9 +303,7 @@ Individual Violations
 
 <td>
 
-{{ $violation->recorder?->first_name }}
-
-{{ $violation->recorder?->last_name }}
+{{ optional($violation->recorder)->full_name ?? 'System' }}
 
 </td>
 
@@ -210,8 +317,6 @@ Individual Violations
 
 </div>
 
-</div>
+</div></div>
 
-</div>
-
-@endsection
+@endsection</div>

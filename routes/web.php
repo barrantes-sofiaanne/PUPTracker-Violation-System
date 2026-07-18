@@ -191,7 +191,7 @@ Route::middleware('auth')
         Route::get(
             '/violations',
             [ViolationController::class, 'index']
-        )->name('admin.violations');
+        )->name('admin.violations.index');
 
         /*
         |--------------------------------------------------------------------------
@@ -227,10 +227,7 @@ Route::delete(
     '/students/{student_number}',
     [StudentController::class, 'destroy']
 )->name('admin.students.destroy');
-Route::get(
-    '/violations',
-    [ViolationController::class, 'index']
-)->name('admin.violations');
+
 Route::get(
     '/violations/{student_number}',
     [ViolationController::class, 'show']
@@ -248,10 +245,7 @@ Route::post(
     '/violations/offense-level',
     [ViolationController::class, 'getOffenseLevel']
 )->name('admin.violations.offense');
-Route::get(
-    '/violations/{student_number}',
-    [ViolationController::class, 'show']
-)->name('admin.violations.show');
+
 Route::get(
     '/violation-configuration',
     [ViolationConfigurationController::class, 'index']
@@ -274,10 +268,7 @@ Route::get(
     '/violations/category/{category}',
     [ViolationController::class, 'getViolationTypes']
 )->name('admin.violations.types');
-Route::get(
-    '/violations/category/{category}',
-    [ViolationController::class, 'getViolationTypes']
-)->name('admin.violations.types');
+
 Route::post(
     '/violations/preview',
     [ViolationController::class, 'previewViolation']
@@ -286,4 +277,27 @@ Route::get(
     '/violations/search-student',
     [ViolationController::class, 'searchStudent']
 )->name('admin.violations.searchStudent');
+Route::prefix('admin')
+    ->middleware(['auth'])
+    ->group(function () {
+    });
+    Route::get(
+    '/violations/types',
+    [ViolationController::class, 'getViolationTypes']
+)->name('admin.violations.types');
+
+Route::post(
+    '/violations/preview',
+    [ViolationController::class, 'previewViolation']
+)->name('admin.violations.preview');
+
+Route::get(
+    '/violations/search/student',
+    [ViolationController::class, 'searchStudent']
+)->name('admin.violations.searchStudent');
+
+Route::get(
+    '/violations/history/{student}',
+    [ViolationController::class, 'studentHistory']
+)->name('admin.violations.history');
     });

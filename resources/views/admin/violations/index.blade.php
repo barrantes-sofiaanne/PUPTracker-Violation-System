@@ -1,327 +1,181 @@
 @extends('layouts.admin')
 
+@section('title','Violation Management')
+
 @section('content')
 
 <div class="container-fluid">
 
-    <div class="card">
+<div class="card shadow-sm">
 
-        <div class="card-header">
-            <h3>Student Violation Records</h3>
-        </div>
+<div class="card-header">
 
-        <div class="card-body">
+<h4 class="mb-0">
 
-            <form method="GET">
+Violation Management
 
-                <div class="row mb-3">
+</h4>
 
-                    <div class="col-md-2">
+</div>
 
-                        <select
-                            name="course"
-                            class="form-select">
+<div class="card-body">
+    <form method="GET">
 
-                            <option value="">Course</option>
+<div class="row g-3">
 
-                            @foreach($courses as $course)
+<div class="col-md-4">
 
-                                <option
-                                    value="{{ $course->course_id }}"
-                                    {{ request('course') == $course->course_id ? 'selected' : '' }}>
+<input
+type="text"
+name="search"
+class="form-control"
+placeholder="Student Number or Name"
+value="{{ request('search') }}"
+>
 
-                                    {{ $course->course_name }}
+</div>
 
-                                </option>
+<div class="col-md-2">
 
-                            @endforeach
+<select
+name="course"
+class="form-select">
 
-                        </select>
+<option value="">Course</option>
 
-                    </div>
+@foreach($courses as $course)
 
-                    <div class="col-md-2">
+<option
+value="{{ $course->course_id }}"
+@selected(request('course')==$course->course_id)
+>
 
-                        <select
-                            name="year"
-                            class="form-select">
+{{ $course->course_name }}
 
-                            <option value="">Year</option>
+</option>
 
-                            @foreach($years as $year)
+@endforeach
 
-                                <option
-                                    value="{{ $year->year_id }}"
-                                    {{ request('year') == $year->year_id ? 'selected' : '' }}>
+</select>
 
-                                    {{ $year->year }}
+</div>
+<div class="col-md-2">
 
-                                </option>
+<button
+class="btn btn-primary w-100">
 
-                            @endforeach
-
-                        </select>
-
-                    </div>
-
-                    <div class="col-md-3">
-
-                        <select
-                            name="violation_type"
-                            class="form-select">
-
-                            <option value="">Violation Type</option>
-
-                            @foreach($violationTypes as $type)
-
-                                <option
-                                    value="{{ $type->violation_type }}"
-                                    {{ request('violation_type') == $type->violation_type ? 'selected' : '' }}>
-
-                                    {{ $type->violation_type }}
-
-                                </option>
-
-                            @endforeach
-
-                        </select>
-
-                    </div>
-<div class="d-flex justify-content-between mb-3">
-
-    <h3>Student Violation Records</h3>
-
-   <button
-class="btn btn-danger"
-data-bs-toggle="modal"
-data-bs-target="#addViolationModal">
-
-+ Add Violation
+Search
 
 </button>
 
 </div>
-                    <div class="col-md-3">
 
-                        <input
-                            type="text"
-                            name="search"
-                            class="form-control"
-                            placeholder="Student Number / Name"
-                            value="{{ request('search') }}">
+<div class="col-md-2">
 
-                    </div>
+<a
+href="{{ route('admin.violations.index') }}"
+class="btn btn-secondary w-100">
 
-                    <div class="col-md-2">
+Reset
 
-                        <button class="btn btn-danger w-100">
-
-                            Search
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-            </form>
-
-            <table class="table table-bordered table-hover">
-
-                <thead class="table-danger">
-
-                    <tr>
-
-                        <th>Student Number</th>
-
-                        <th>Name</th>
-
-                        <th>Course</th>
-
-                        <th>Year</th>
-
-                        <th>Section</th>
-
-                        <th>Total Violations</th>
-
-                        <th width="180">Action</th>
-
-                    </tr>
-
-                </thead>
-
-                <tbody>
-
-                    @forelse($students as $student)
-
-                        <tr>
-
-                            <td>
-
-                                {{ $student->student_number }}
-
-                            </td>
-
-                            <td>
-
-                                {{ $student->last_name }},
-                                {{ $student->first_name }}
-
-                            </td>
-
-                            <td>
-
-                                {{ $student->course?->course_name }}
-
-                            </td>
-
-                            <td>
-
-                                {{ $student->year?->year }}
-
-                            </td>
-
-                            <td>
-
-                                {{ $student->section?->section_name }}
-
-                            </td>
-
-                            <td>
-
-                                <span class="badge bg-danger">
-
-                                    {{ $student->violations->count() }}
-
-                                </span>
-
-                            </td>
-
-                            <td>
-
-                                <a
-                                    href="{{ route('admin.violations.show',$student->student_number) }}"
-                                    class="btn btn-primary btn-sm">
-
-                                    More Details
-
-                                </a>
-
-                            </td>
-
-                        </tr>
-
-                    @empty
-
-                        <tr>
-
-                            <td
-                                colspan="7"
-                                class="text-center">
-
-                                No records found.
-
-                            </td>
-
-                        </tr>
-
-                    @endforelse
-
-                </tbody>
-
-            </table>
-
-            {{ $students->withQueryString()->links() }}
-
-        </div>
-
-    </div>
+</a>
 
 </div>
-@include('admin.violations.partials.add-modal')
-<script>
 
-document.addEventListener('DOMContentLoaded', function () {
+</div>
 
-    const student = document.getElementById('studentSelect');
+</form>
+<table class="table table-hover align-middle">
 
-    student.addEventListener('change', function () {
+<thead>
 
-        const option = this.options[this.selectedIndex];
+<tr>
 
-        document.getElementById('studentName').value =
-            option.dataset.name || '';
+<th>Student No.</th>
 
-        document.getElementById('studentCourse').value =
-            option.dataset.course || '';
+<th>Name</th>
 
-        document.getElementById('studentYear').value =
-            option.dataset.year || '';
+<th>Course</th>
 
-        document.getElementById('studentSection').value =
-            option.dataset.section || '';
+<th>Total Violations</th>
 
-    });
+<th></th>
 
-});
-const violationSelect =
-document.querySelector(
-'select[name="violation_type"]'
-);
+</tr>
 
-violationSelect.addEventListener('change', loadOffense);
+</thead>
 
-student.addEventListener('change', loadOffense);
+<tbody>
 
-function loadOffense(){
+@forelse($students as $student)
 
-    if(
-        !student.value ||
-        !violationSelect.value
-    ){
-        return;
-    }
+<tr>
 
-    fetch(
-        "{{ route('admin.violations.offense') }}",
-        {
+<td>
 
-            method:'POST',
+{{ $student->student_number }}
 
-            headers:{
+</td>
 
-                'Content-Type':'application/json',
+<td>
 
-                'X-CSRF-TOKEN':
-                "{{ csrf_token() }}"
+{{ $student->last_name }},
+{{ $student->first_name }}
 
-            },
+</td>
 
-            body:JSON.stringify({
+<td>
 
-                student_number:
-                student.value,
+{{ optional($student->course)->course_name }}
 
-                violation_type:
-                violationSelect.value
+</td>
 
-            })
+<td>
 
-        }
+{{ $student->violations->count() }}
 
-    )
+</td>
 
-    .then(res=>res.json())
+<td>
 
-    .then(data=>{
+<a
+href="{{ route(
+'admin.violations.show',
+$student->student_number
+) }}"
+class="btn btn-sm btn-primary">
 
-        document.getElementById(
-            'offenseLevel'
-        ).value =
-        data.offense + " Offense";
+View
 
-    });
+</a>
 
-}
-</script>
+</td>
+
+</tr>
+
+@empty
+
+<tr>
+
+<td colspan="5">
+
+No records found.
+
+</td>
+
+</tr>
+
+@endforelse
+
+</tbody>
+
+</table>
+{{ $students->links() }}
+</div>
+
+</div>
+
+</div>
+
 @endsection
+</div>
