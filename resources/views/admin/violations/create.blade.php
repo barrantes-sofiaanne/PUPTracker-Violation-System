@@ -16,7 +16,8 @@
 
 <form
 method="POST"
-action="{{ route('admin.violations.store') }}">
+action="{{ route('admin.violations.store') }}"
+enctype="multipart/form-data">
 
 @csrf
 
@@ -92,6 +93,14 @@ Description
 name="description"
 class="form-control"></textarea>
 
+</div>
+
+<div class="mb-3">
+    <label for="evidence" class="form-label">Upload Evidence (Optional)</label>
+    <input type="file" class="form-control @error('evidence') is-invalid @enderror" id="evidence" name="evidence">
+    @error('evidence')
+        <div class="invalid-feedback">{{ $message }}</div>
+    @enderror
 </div>
 
 <button

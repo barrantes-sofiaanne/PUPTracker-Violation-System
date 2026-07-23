@@ -247,7 +247,15 @@ public function store(Request $request)
         'violation_type' => 'required|exists:violation_type_tbl,violation_type',
         'violation_date' => 'required|date',
         'description' => 'nullable|string|max:1000',
+        'evidence' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120', // Max 5MB file
     ]);
+
+    $evidencePath = null;
+    
+    if ($request->hasFile('evidence')) {
+        // Upload the file to the 'evidence_files' folder in R2 bucket
+        $evidencePath = $request->file('evidence')->store('evidence_files', 'r2');
+    }
 
     $violation = Violation::create([
         'student_number' => $validated['student_number'],
@@ -255,6 +263,7 @@ public function store(Request $request)
         'violation_date' => $validated['violation_date'],
         'description' => $validated['description'] ?? null,
         'recorder_id' => Auth::id(),
+        'evidence_path' => $evidencePath,
     ]);
 
     // Load relationship
