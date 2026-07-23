@@ -36,10 +36,9 @@ public function violationCategory(): BelongsTo
         return $this->hasMany(
             Violation::class,
             'violation_type',
-            'violation_type'
+            'violation_type_id'
         );
-    
-}
+    }
 public function disciplinarySanctions()
 {
     return $this->hasMany(

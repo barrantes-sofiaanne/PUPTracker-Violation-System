@@ -18,7 +18,8 @@ class SanctionRequest extends Model
 
   protected $fillable = [
     'student_number',
-    'violation_type_id'
+    'violation_type_id',
+    'is_active'
 ];
 
     protected $casts = [

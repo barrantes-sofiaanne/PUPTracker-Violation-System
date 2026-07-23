@@ -14,10 +14,11 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         $user->load([
-            'course',
-            'year',
-            'section',
+            'studentInfo.program',
+            'studentInfo.year',
+            'studentInfo.section',
             'gender',
+            'status',
         ]);
 
         return view(

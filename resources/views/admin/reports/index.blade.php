@@ -2,6 +2,13 @@
 
 @section('title', 'Violation Reports')
 
+@php
+    $selectedCourse = request('course');
+    $selectedYear = request('year');
+    $selectedCategory = request('category');
+    $selectedViolationType = request('violation_type');
+@endphp
+
 @section('content')
 
 <div class="container-fluid">
@@ -205,7 +212,7 @@
                         </option>
 
                         @foreach($courses as $course)
-                        <option value="{{ $course->id }}">
+                        <option value="{{ $course->program_id ?? $course->id }}" {{ (string) $selectedCourse === (string) ($course->program_id ?? $course->id) ? 'selected' : '' }}>
                             {{ $course->course_name }}
                         </option>
                         @endforeach
@@ -234,7 +241,7 @@
                         </option>
 
                         @foreach($years as $year)
-                        <option value="{{ $year->id }}">
+                        <option value="{{ $year->year_id ?? $year->id }}" {{ (string) $selectedYear === (string) ($year->year_id ?? $year->id) ? 'selected' : '' }}>
                             {{ $year->year }}
                         </option>
                         @endforeach
@@ -263,7 +270,7 @@
                         </option>
 
                         @foreach($categories as $category)
-                        <option value="{{ $category->id }}">
+                        <option value="{{ $category->violation_category_id ?? $category->id }}" {{ (string) $selectedCategory === (string) ($category->violation_category_id ?? $category->id) ? 'selected' : '' }}>
                             {{ $category->category_name }}
                         </option>
                         @endforeach
@@ -292,7 +299,7 @@
                         </option>
 
                         @foreach($violationTypes as $type)
-                        <option value="{{ $type->id }}">
+                        <option value="{{ $type->violation_type_id ?? $type->id }}" {{ (string) $selectedViolationType === (string) ($type->violation_type_id ?? $type->id) ? 'selected' : '' }}>
                             {{ $type->violation_type }}
                         </option>
                         @endforeach
@@ -315,7 +322,8 @@
         <input
             type="date"
             class="form-control"
-            name="start_date">
+            name="start_date"
+            value="{{ request('start_date') }}">
 
     </div>
 
@@ -330,7 +338,8 @@
         <input
             type="date"
             class="form-control"
-            name="end_date">
+            name="end_date"
+            value="{{ request('end_date') }}">
 
     </div>
 
@@ -347,7 +356,8 @@
             class="form-control"
             id="searchStudent"
             name="search_student"
-            placeholder="Student Number or Name">
+            placeholder="Student Number or Name"
+            value="{{ request('search_student') }}">
 
     </div>
 
@@ -533,118 +543,9 @@
 
     </thead>
 
-    <tbody id="reportTable">@forelse($reports as $report)
-
-<tr>
-
-    <td>
-
-        <strong>
-
-            {{ $report->student->student_number }}
-
-        </strong>
-
-        <br>
-
-        <small>
-
-            {{ $report->student->last_name }},
-            {{ $report->student->first_name }}
-
-        </small>
-
-    </td>
-
-    <td>
-
-        {{ optional(optional($report->student->studentInfo)->program)->program_name ?? '-' }}
-
-    </td>
-
-    <td>
-
-        {{ $report->violationType->violation_type }}
-
-    </td>
-
-    <td>
-
-        <span class="badge bg-secondary">
-
-            {{ optional($report->violationType->violationCategory)->category_name ?? '-' }}
-
-        </span>
-
-    </td>
-
-    <td>
-
-        {{ $report->offense_level }}
-
-    </td>
-
-    <td>
-
-        {{ $report->sanction }}
-
-    </td>
-
-    <td>
-
-        {{ \Carbon\Carbon::parse($report->violation_date)->format('M d, Y') }}
-
-    </td>
-
-    <td>
-
-        {{ $report->recorder->first_name }}
-
-    </td>
-
-    <td>
-
-        <a
-            href="{{ route('admin.violations.show',$report->student->student_number) }}"
-            class="btn btn-sm btn-outline-primary">
-
-            View
-
-        </a>
-
-    </td>
-
-</tr>
-
-@empty<tr>
-
-<td
-    colspan="9"
-    class="text-center py-5">
-
-    <i
-        class="bi bi-file-earmark-x display-4 text-muted">
-    </i>
-
-    <h5 class="mt-3">
-
-        No Report Found
-
-    </h5>
-
-    <p class="text-muted">
-
-        Try changing your filter criteria.
-
-    </p>
-
-</td>
-
-</tr>
-
-@endforelse
-
-</tbody>
+    <tbody id="reportTable">
+        @include('admin.reports.partials.table-body')
+    </tbody>
 
 </table>
 <div class="card-footer bg-white">
@@ -656,3 +557,17 @@
 </div>
 
 </div>
+
+@endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+window.ReportRoutes = {
+    filter: "{{ route('admin.reports.filter') }}",
+    excel: "{{ route('admin.reports.export') }}",
+    pdf: "{{ route('admin.reports.print') }}"
+};
+</script>
+<script src="{{ asset('js/admin/reports.js') }}"></script>
+@endpush

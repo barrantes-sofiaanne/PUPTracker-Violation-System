@@ -17,21 +17,22 @@ class StudentRecordController extends Controller
 {
     public function index()
     {
-     /** @var User $user */
-$user = Auth::user();
+        /** @var User $user */
+        $user = Auth::user();
 
-$user->load([
-    'course',
-    'year',
-    'section',
-]);
+       $user->load([
+           'studentInfo.program',
+           'studentInfo.year',
+           'studentInfo.section',
+       ]);
+
        $violations = Violation::with([
-    'violationType.violationCategory',
-    'violationType.disciplinarySanctions'
-])
-->where('student_number', $user->student_number)
-->orderByDesc('violation_date')
-->paginate(10);
+           'violationType.violationCategory',
+           'violationType.disciplinarySanctions',
+       ])
+           ->where('student_number', $user->student_number)
+           ->orderByDesc('violation_date')
+           ->paginate(10);
 /*
 |--------------------------------------------------------------------------
 | Summary by Violation

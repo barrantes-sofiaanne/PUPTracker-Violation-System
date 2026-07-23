@@ -178,4 +178,44 @@ public function studentInfo()
 {
     return $this->hasOne(StudentInfo::class, 'user_id');
 }
+
+public function getProgramAttribute()
+{
+    return $this->studentInfo?->program;
+}
+
+public function getProgramIdAttribute()
+{
+    return $this->studentInfo?->program_id;
+}
+
+public function getYearAttribute()
+{
+    return $this->studentInfo?->year;
+}
+
+public function getYearIdAttribute()
+{
+    return $this->studentInfo?->year_id;
+}
+
+public function getSectionAttribute()
+{
+    return $this->studentInfo?->section;
+}
+
+public function getSectionIdAttribute()
+{
+    return $this->studentInfo?->section_id;
+}
+
+public function getStudentStatusAttribute()
+{
+    return $this->studentInfo?->studentStatus;
+}
+
+public function getStudentStatusIdAttribute()
+{
+    return $this->studentInfo?->student_status_id;
+}
 }

@@ -162,9 +162,12 @@
                             <span class="badge bg-secondary">{{ $category_stat->total }}</span>
                         </div>
                         <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-danger" 
-                                 role="progressbar" 
-                                 style="width: {{ ($category_stat->total / $violationStats['total'] * 100) }}%;">
+                            <div class="progress-bar bg-danger"
+                                 role="progressbar"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100"
+                                 aria-valuenow="0"
+                                 data-progress-width="{{ $violationStats['total'] > 0 ? round(($category_stat->total / $violationStats['total']) * 100, 1) : 0 }}">
                             </div>
                         </div>
                     </div>
@@ -220,5 +223,20 @@
     </div>
 
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-progress-width]').forEach(function (bar) {
+        const width = parseFloat(bar.getAttribute('data-progress-width'));
+        if (!Number.isNaN(width)) {
+            const safeWidth = Math.max(0, Math.min(100, width));
+            bar.style.width = safeWidth + '%';
+            bar.setAttribute('aria-valuenow', safeWidth.toString());
+        }
+    });
+});
+</script>
+@endpush
 
 @endsection

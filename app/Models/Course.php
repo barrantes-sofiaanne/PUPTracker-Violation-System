@@ -17,6 +17,11 @@ class Course extends Model
         'program_name',
     ];
 
+    public function getCourseNameAttribute(): string
+    {
+        return (string) $this->program_name;
+    }
+
     public function users(): HasMany
     {
         return $this->hasMany(User::class, 'program_id', 'program_id');

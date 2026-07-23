@@ -29,7 +29,7 @@ class StudentViolationController extends Controller
     /**
      * Display violations for a specific student
      */
-    public function show($student_number)
+    public function show(string $student_number)
     {
         $student = User::where('student_number', $student_number)
             ->with(['violations' => function ($query) {
@@ -48,7 +48,7 @@ class StudentViolationController extends Controller
      */
     public function search(Request $request)
     {
-        $query = $request->get('q');
+        $query = (string) $request->input('q', '');
 
         if (strlen($query) < 2) {
             return response()->json([]);
@@ -75,7 +75,7 @@ class StudentViolationController extends Controller
     /**
      * Get violation statistics for a student
      */
-    private function getViolationStats($student_number)
+    private function getViolationStats(string $student_number)
     {
         $violations = Violation::where('student_number', $student_number)
             ->with(['violationType.violationCategory']);

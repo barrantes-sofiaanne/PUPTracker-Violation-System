@@ -67,13 +67,13 @@ Student Name
 
 <label class="fw-bold">
 
-Course
+Program
 
 </label>
 
 <p>
 
-{{ optional($student->course)->course_name }}
+{{ optional($student->program)->program_name }}
 
 </p>
 

@@ -20,8 +20,10 @@ use App\Http\Controllers\Admin\ViolationController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ViolationConfigurationController;
 use App\Http\Controllers\Admin\AnnouncementController as AdminAnnouncementController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
+use App\Http\Controllers\Admin\UserManagementHistoryController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\SecurityLoginController;
 use App\Http\Controllers\Admin\ViolationCategoryController;
@@ -313,8 +315,23 @@ Route::prefix('violation-categories')
         Route::get('/reports', [ReportController::class, 'index'])
             ->name('admin.reports');
 
+        Route::post('/reports/filter', [ReportController::class, 'filter'])
+            ->name('admin.reports.filter');
+
+        Route::get('/reports/export', [ReportController::class, 'export'])
+            ->name('admin.reports.export');
+
+        Route::get('/reports/print', [ReportController::class, 'print'])
+            ->name('admin.reports.print');
+
         Route::get('/settings', [AdminSettingsController::class, 'index'])
             ->name('admin.settings');
+
+        Route::get('/audit-logs', [AuditLogController::class, 'index'])
+            ->name('admin.audit-logs');
+
+        Route::get('/user-management-history', [UserManagementHistoryController::class, 'index'])
+            ->name('admin.user-management-history');
     });
 
     Route::middleware('auth:security')
@@ -334,6 +351,21 @@ Route::prefix('violation-categories')
         // Search routes
         Route::get('/search/student', [App\Http\Controllers\Security\StudentViolationController::class, 'search'])
             ->name('security.search.student');
+
+        Route::get('/sanction-requests', [App\Http\Controllers\Security\SanctionRequestController::class, 'index'])
+            ->name('security.sanction-requests');
+
+        Route::post('/sanction-requests/{sanctionRequest}/approve', [App\Http\Controllers\Security\SanctionRequestController::class, 'approve'])
+            ->name('security.sanction-requests.approve');
+
+        Route::post('/sanction-requests/{sanctionRequest}/decline', [App\Http\Controllers\Security\SanctionRequestController::class, 'decline'])
+            ->name('security.sanction-requests.decline');
+
+        Route::get('/announcements', [App\Http\Controllers\Security\AnnouncementController::class, 'index'])
+            ->name('security.announcements');
+
+        Route::get('/notifications', [App\Http\Controllers\Security\NotificationController::class, 'index'])
+            ->name('security.notifications');
 
     });
 

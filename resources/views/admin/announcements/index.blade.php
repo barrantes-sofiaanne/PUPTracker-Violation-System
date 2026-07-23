@@ -24,7 +24,40 @@
     <div class="alert alert-success">{{ session('success') }}</div>
 @endif
 
-<div class="card shadow-sm mb-4">
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-uppercase small text-muted fw-semibold">Posted announcements</div>
+                        <div class="display-6 fw-bold">{{ $announcementStats['total'] }}</div>
+                    </div>
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary">
+                        <i class="bi bi-megaphone-fill fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-uppercase small text-muted fw-semibold">With attachments</div>
+                        <div class="display-6 fw-bold">{{ $announcementStats['with_attachments'] }}</div>
+                    </div>
+                    <div class="rounded-circle bg-success bg-opacity-10 p-3 text-success">
+                        <i class="bi bi-paperclip fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4 border-0">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -40,11 +73,11 @@
                     @forelse($announcements as $announcement)
                         <tr>
                             <td>
-                                <strong>{{ $announcement->title }}</strong>
+                                <div class="fw-semibold">{{ $announcement->title }}</div>
                                 @if($announcement->attachment_path)
-                                    <span class="badge bg-secondary ms-2">Attachment</span>
+                                    <span class="badge bg-secondary mt-2">Attachment</span>
                                 @endif
-                                <div class="text-muted small mt-1">
+                                <div class="text-muted small mt-2">
                                     {{ Str::limit(strip_tags($announcement->content), 80) }}
                                 </div>
                             </td>

@@ -21,7 +21,7 @@
 
         <button
             type="button"
-            class="btn btn-danger"
+            class="btn btn-danger addSanctionBtn"
             data-bs-toggle="modal"
             data-bs-target="#sanctionModal">
 
@@ -92,7 +92,7 @@
                         <td>
 
                             <button
-                                class="btn btn-warning btn-sm edit-sanction"
+                               class="btn btn-warning btn-sm edit-sanction-btn"
                                 data-id="{{ $sanction->disciplinary_sanction_id }}">
 
                                 <i class="bi bi-pencil-square"></i>
@@ -100,7 +100,7 @@
                             </button>
 
                             <button
-                                class="btn btn-danger btn-sm delete-sanction"
+                               class="btn btn-danger btn-sm delete-sanction-btn"
                                 data-id="{{ $sanction->disciplinary_sanction_id }}">
 
                                 <i class="bi bi-trash"></i>

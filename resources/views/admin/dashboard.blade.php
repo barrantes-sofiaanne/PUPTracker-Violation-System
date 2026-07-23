@@ -300,8 +300,11 @@
                                 @if(strtolower($severity) == 'major') bg-danger 
                                 @elseif(strtolower($severity) == 'minor') bg-warning 
                                 @else bg-info @endif" 
-                                 role="progressbar" 
-                                 style="width: {{ ($count / $totalViolations * 100) }}%;">
+                                 role="progressbar"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100"
+                                 aria-valuenow="0"
+                                 data-progress-width="{{ $totalViolations > 0 ? round(($count / $totalViolations) * 100, 1) : 0 }}">
                             </div>
                         </div>
                     </div>
@@ -347,6 +350,18 @@
 </div>
 
 @push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-progress-width]').forEach(function (bar) {
+        const width = parseFloat(bar.getAttribute('data-progress-width'));
+        if (!Number.isNaN(width)) {
+            const safeWidth = Math.max(0, Math.min(100, width));
+            bar.style.width = safeWidth + '%';
+            bar.setAttribute('aria-valuenow', safeWidth.toString());
+        }
+    });
+});
+</script>
 <script src="{{ asset('assets/js/admin.js') }}"></script>
 @endpush
 

@@ -52,7 +52,7 @@ class Violation extends Model
         return $this->belongsTo(
             ViolationType::class,
             'violation_type',
-            'violation_type'
+            'violation_type_id'
         );
     }
 

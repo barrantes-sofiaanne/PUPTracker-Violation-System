@@ -18,10 +18,14 @@ class AnnouncementController extends Controller
             ->paginate(10);
 
         $unreadNotificationCount = AdminNotification::where('is_read', false)->count();
+        $announcementStats = [
+            'total' => Announcement::count(),
+            'with_attachments' => Announcement::whereNotNull('attachment_path')->count(),
+        ];
 
         return view(
             'admin.announcements.index',
-            compact('announcements', 'unreadNotificationCount')
+            compact('announcements', 'unreadNotificationCount', 'announcementStats')
         );
     }
 
@@ -39,10 +43,12 @@ class AnnouncementController extends Controller
         ]);
 
         $announcement = new Announcement();
-        $announcement->admin_id = Auth::guard('admin')->id();
-        $announcement->title = $request->title;
-        $announcement->content = $request->content;
-        $announcement->attachment_path = $this->saveAttachment($request);
+        $announcement->forceFill([
+            'admin_id' => Auth::guard('admin')->id(),
+            'title' => $request->input('title'),
+            'content' => $request->input('content'),
+            'attachment_path' => $this->saveAttachment($request),
+        ]);
         $announcement->save();
 
         return redirect()
@@ -64,19 +70,23 @@ class AnnouncementController extends Controller
             'remove_attachment' => ['nullable', 'boolean'],
         ]);
 
-        $announcement->title = $request->title;
-        $announcement->content = $request->content;
+        $attachmentPath = $announcement->getAttribute('attachment_path');
 
         if ($request->has('remove_attachment') && $request->boolean('remove_attachment')) {
-            $this->deleteAttachment($announcement->attachment_path);
-            $announcement->attachment_path = null;
+            $this->deleteAttachment($attachmentPath);
+            $attachmentPath = null;
         }
 
         if ($request->hasFile('attachment')) {
-            $this->deleteAttachment($announcement->attachment_path);
-            $announcement->attachment_path = $this->saveAttachment($request);
+            $this->deleteAttachment($attachmentPath);
+            $attachmentPath = $this->saveAttachment($request);
         }
 
+        $announcement->forceFill([
+            'title' => $request->input('title'),
+            'content' => $request->input('content'),
+            'attachment_path' => $attachmentPath,
+        ]);
         $announcement->save();
 
         return redirect()
@@ -86,7 +96,7 @@ class AnnouncementController extends Controller
 
     public function destroy(Announcement $announcement)
     {
-        $this->deleteAttachment($announcement->attachment_path);
+        $this->deleteAttachment($announcement->getAttribute('attachment_path'));
         $announcement->delete();
 
         return redirect()

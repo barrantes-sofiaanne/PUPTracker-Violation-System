@@ -80,6 +80,30 @@
 
         <li>
 
+            <a href="{{ route('admin.audit-logs') }}">
+
+                <i class="bi bi-journal-text"></i>
+
+                Audit Logs
+
+            </a>
+
+        </li>
+
+        <li>
+
+            <a href="{{ route('admin.user-management-history') }}">
+
+                <i class="bi bi-person-lines-fill"></i>
+
+                User History
+
+            </a>
+
+        </li>
+
+        <li>
+
             <a href="{{ route('admin.settings') }}">
 
                 <i class="bi bi-gear"></i>

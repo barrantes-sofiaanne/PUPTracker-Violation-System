@@ -8,6 +8,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Admin;
 use App\Models\AdminInfo;
 
+/**
+ * @property int $announcement_id
+ * @property int|null $admin_id
+ * @property string $title
+ * @property string $content
+ * @property string|null $attachment_path
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read Admin|null $admin
+ * @property-read AdminInfo|null $adminInfo
+ */
 class Announcement extends Model
 {
     use HasFactory;

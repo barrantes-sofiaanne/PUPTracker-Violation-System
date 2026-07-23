@@ -15,8 +15,8 @@
     </div>
 </div>
 
-<div class="card shadow-sm">
-    <div class="card-body">
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
         <div class="mb-4">
             <h4 class="fw-bold">{{ $announcement->title }}</h4>
             <div class="text-muted">

@@ -22,7 +22,8 @@ class SettingsController extends Controller
             'new_password' => 'required|min:8|confirmed',
         ]);
 
-        $user = User::find(Auth::id());
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
 
         if (!$user || !Hash::check($request->current_password, $user->password_hash)) {
             return back()->withErrors([

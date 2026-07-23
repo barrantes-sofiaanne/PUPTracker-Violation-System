@@ -22,8 +22,8 @@
     </div>
 @endif
 
-<div class="card shadow-sm">
-    <div class="card-body">
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
         <form action="{{ route('admin.announcements.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
 

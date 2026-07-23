@@ -233,7 +233,7 @@
                                     </span>
                                 </div>
                                 <span class="badge bg-secondary">
-                                    {{ optional($violation->violationType->violationCategory)->category_name ?? 'N/A' }}
+                                    {{ optional(optional($violation->violationType)->violationCategory)->category_name ?? 'N/A' }}
                                 </span>
                             </div>
                         </div>

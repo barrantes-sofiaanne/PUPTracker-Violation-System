@@ -44,7 +44,7 @@ class ViolationConfigurationController extends Controller
     return back()->with('success', 'Category added successfully.');
 }
 
-public function updateCategory(Request $request, $id)
+public function updateCategory(Request $request, int $id)
 {
     $request->validate([
         'category_name' => 'required|string|max:255',
@@ -59,7 +59,7 @@ public function updateCategory(Request $request, $id)
     return back()->with('success', 'Category updated successfully.');
 }
 
-public function destroyCategory($id)
+public function destroyCategory(int $id)
 {
     $category = ViolationCategory::findOrFail($id);
 
@@ -96,7 +96,7 @@ public function storeViolationType(Request $request)
     return back()->with('success', 'Violation type added successfully.');
 }
 
-public function updateViolationType(Request $request, $id)
+public function updateViolationType(Request $request, int $id)
 {
     $request->validate([
         'violation_category_id' => 'required|exists:violation_category_tbl,violation_category_id',
@@ -119,7 +119,7 @@ public function updateViolationType(Request $request, $id)
     return back()->with('success', 'Violation type updated successfully.');
 }
 
-public function destroyViolationType($id)
+public function destroyViolationType(int $id)
 {
     $type = ViolationType::findOrFail($id);
 
@@ -151,7 +151,7 @@ public function storeSanction(Request $request)
     return back()->with('success', 'Sanction added successfully.');
 }
 
-public function updateSanction(Request $request, $id)
+public function updateSanction(Request $request, int $id)
 {
     $request->validate([
         'offense_level' => 'required|string|max:50',
@@ -168,7 +168,7 @@ public function updateSanction(Request $request, $id)
     return back()->with('success', 'Sanction updated successfully.');
 }
 
-public function destroySanction($id)
+public function destroySanction(int $id)
 {
     DisciplinarySanction::findOrFail($id)->delete();
 

@@ -28,56 +28,40 @@
 
                     </h2>
 
-                    <div class="row">
-
-                        <div class="col-md-6">
-
-                            <h4 class="mb-3">
-
+                    <div class="row align-items-center">
+                        <div class="col-md-7">
+                            <h4 class="mb-3 fw-bold">
                                 {{ $user->first_name }}
                                 {{ $user->middle_name }}
                                 {{ $user->last_name }}
-
                             </h4>
-
-                            <p>
-
+                            <p class="mb-2">
                                 <strong>Student Number:</strong>
-
                                 {{ $user->student_number }}
-
                             </p>
-
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <span class="badge bg-primary-subtle text-primary-emphasis px-3 py-2">
+                                    Program: {{ optional(optional($user->studentInfo)->program)->program_name ?? 'N/A' }}
+                                </span>
+                                <span class="badge bg-info-subtle text-info-emphasis px-3 py-2">
+                                    Year: {{ optional(optional($user->studentInfo)->year)->year ?? 'N/A' }}
+                                </span>
+                                <span class="badge bg-success-subtle text-success-emphasis px-3 py-2">
+                                    Section: {{ optional(optional($user->studentInfo)->section)->section_name ?? 'N/A' }}
+                                </span>
+                            </div>
                         </div>
 
-                        <div class="col-md-6">
-
-                            <p>
-
-                                <strong>Course:</strong>
-
-                                {{ optional(optional($user->studentInfo)->program)->program_name }}
-
-                            </p>
-
-                            <p>
-
-                                <strong>Year:</strong>
-
-                                {{ optional(optional($user->studentInfo)->year)->year }}
-
-                            </p>
-
-                            <p>
-
-                                <strong>Section:</strong>
-
-                                {{ optional(optional($user->studentInfo)->section)->section_name }}
-
-                            </p>
-
+                        <div class="col-md-5">
+                            <div class="border rounded-3 p-3 bg-light">
+                                <p class="mb-2">
+                                    <strong>Violation Summary</strong>
+                                </p>
+                                <p class="mb-0 text-muted">
+                                    Track your disciplinary history and request sanction review when needed.
+                                </p>
+                            </div>
                         </div>
-
                     </div>
 
                 </div>
@@ -90,39 +74,33 @@
                 id="recordTabs"
                 role="tablist">
 
-                <li class="nav-item">
-
+               <li class="nav-item">
                    <button
-    class="nav-link active"
-    id="violation-tab"
-    data-bs-toggle="tab"
-    data-bs-target="#violationRecord"
-    type="button"
-    role="tab"
-    aria-controls="violationRecord"
-    aria-selected="true">
+                       class="nav-link active"
+                       id="violation-tab"
+                       data-bs-toggle="tab"
+                       data-bs-target="#violationRecord"
+                       type="button"
+                       role="tab"
+                       aria-controls="violationRecord"
+                       aria-selected="true">
+                       Violation Record
+                   </button>
+               </li>
 
-    Violation Record
-
-</button>
-                </li>
-
-                <li class="nav-item">
-
-                    <button
-    class="nav-link"
-    id="sanction-tab"
-    data-bs-toggle="tab"
-    data-bs-target="#sanctionRecord"
-    type="button"
-    role="tab"
-    aria-controls="sanctionRecord"
-    aria-selected="false">
-
-    Sanction Record
-
-</button>
-                </li>
+               <li class="nav-item">
+                   <button
+                       class="nav-link"
+                       id="sanction-tab"
+                       data-bs-toggle="tab"
+                       data-bs-target="#sanctionRecord"
+                       type="button"
+                       role="tab"
+                       aria-controls="sanctionRecord"
+                       aria-selected="false">
+                       Sanction Record
+                   </button>
+               </li>
 
             </ul>
 
@@ -133,9 +111,10 @@
                 {{-- =============================== --}}
 
               <div
-    class="tab-pane fade"
+    class="tab-pane fade show active"
     id="violationRecord"
-    role="tabpanel">
+    role="tabpanel"
+    aria-labelledby="violation-tab">
 
                     <div class="card shadow-sm border-0 mb-4">
 
@@ -393,7 +372,7 @@
 
                         <td>
 
-                            {{ $violation->violationType->violation_type ?? '-' }}
+                            {{ optional($violation->violationType)->violation_type ?? '-' }}
 
                         </td>
 
@@ -405,7 +384,7 @@
 
                         <td>
 
-                            {{ optional($violation->violationType->violationCategory)->category_name }}
+                            {{ optional(optional($violation->violationType)->violationCategory)->category_name ?? '-' }}
 
                         </td>
 
@@ -453,9 +432,10 @@
 {{-- ================================================= --}}
 
 <div
-    class="tab-pane fade show active"
+    class="tab-pane fade"
     id="sanctionRecord"
-    role="tabpanel">
+    role="tabpanel"
+    aria-labelledby="sanction-tab">
 
     <div class="card shadow-sm border-0">
 
