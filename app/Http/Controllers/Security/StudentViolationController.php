@@ -16,7 +16,7 @@ class StudentViolationController extends Controller
     public function index()
     {
         $students = User::whereHas('violations')
-            ->with(['violations' => function($query) {
+            ->with(['violations' => function ($query) {
                 $query->latest('violation_date')->take(5);
             }])
             ->withCount('violations')
@@ -32,9 +32,9 @@ class StudentViolationController extends Controller
     public function show($student_number)
     {
         $student = User::where('student_number', $student_number)
-            ->with(['violations' => function($query) {
+            ->with(['violations' => function ($query) {
                 $query->latest('violation_date');
-            }, 'violations.violationType.category'])
+            }, 'violations.violationType.violationCategory'])
             ->firstOrFail();
 
         $violations = $student->violations;
@@ -49,7 +49,7 @@ class StudentViolationController extends Controller
     public function search(Request $request)
     {
         $query = $request->get('q');
-        
+
         if (strlen($query) < 2) {
             return response()->json([]);
         }
@@ -57,17 +57,17 @@ class StudentViolationController extends Controller
         $students = User::where('student_number', 'like', "%{$query}%")
             ->orWhere('first_name', 'like', "%{$query}%")
             ->orWhere('last_name', 'like', "%{$query}%")
-            ->with('violations', 'course')
+            ->with('violations')
             ->withCount('violations')
             ->limit(10)
             ->get();
 
-        return response()->json($students->map(function($student) {
+        return response()->json($students->map(function ($student) {
             return [
                 'id' => $student->student_number,
                 'text' => "{$student->student_number} - {$student->last_name}, {$student->first_name}",
                 'violations_count' => $student->violations_count,
-                'course' => optional($student->course)->course_name,
+                'course' => optional($student->studentInfo)->program->program_name,
             ];
         }));
     }
@@ -77,17 +77,25 @@ class StudentViolationController extends Controller
      */
     private function getViolationStats($student_number)
     {
-        $violations = Violation::where('student_number', $student_number);
+        $violations = Violation::where('student_number', $student_number)
+            ->with(['violationType.violationCategory']);
+
+        $byCategory = (clone $violations)
+            ->get()
+            ->groupBy(fn ($violation) => optional($violation->violationType->violationCategory)->category_name ?? 'Unknown')
+            ->map(function ($items, $categoryName) {
+                return (object) [
+                    'category_name' => $categoryName,
+                    'total' => $items->count(),
+                ];
+            })
+            ->values();
 
         return [
             'total' => $violations->count(),
             'major' => (clone $violations)->where('offense_level', 'Major')->count(),
             'minor' => (clone $violations)->where('offense_level', 'Minor')->count(),
-            'by_category' => (clone $violations)
-                ->select('violation_category_id', DB::raw('COUNT(*) as total'))
-                ->groupBy('violation_category_id')
-                ->with('category')
-                ->get()
+            'by_category' => $byCategory,
         ];
     }
 }

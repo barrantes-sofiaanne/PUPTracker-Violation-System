@@ -135,7 +135,7 @@
                     <i class="bi bi-book"></i> Course
                 </div>
                 <div class="info-value">
-                    {{ optional($user->course)->course_name ?? 'N/A' }}
+                    {{ optional(optional($user->studentInfo)->program)->program_name ?? 'N/A' }}
                 </div>
             </div>
 
@@ -145,7 +145,7 @@
                     <i class="bi bi-calendar-event"></i> Year Level
                 </div>
                 <div class="info-value">
-                    {{ $user->year->year ?? 'N/A' }}
+                    {{ optional(optional($user->studentInfo)->year)->year ?? 'N/A' }}
                 </div>
             </div>
 
@@ -155,7 +155,7 @@
                     <i class="bi bi-diagram-3"></i> Section
                 </div>
                 <div class="info-value">
-                    {{ optional($user->section)->section_name ?? 'N/A' }}
+                    {{ optional(optional($user->studentInfo)->section)->section_name ?? 'N/A' }}
                 </div>
             </div>
 

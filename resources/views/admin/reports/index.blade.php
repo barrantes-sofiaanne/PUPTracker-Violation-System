@@ -558,7 +558,7 @@
 
     <td>
 
-        {{ $report->student->course->course_name }}
+        {{ optional(optional($report->student->studentInfo)->program)->program_name ?? '-' }}
 
     </td>
 
@@ -572,7 +572,7 @@
 
         <span class="badge bg-secondary">
 
-            {{ $report->violationType->category->category_name }}
+            {{ optional($report->violationType->violationCategory)->category_name ?? '-' }}
 
         </span>
 

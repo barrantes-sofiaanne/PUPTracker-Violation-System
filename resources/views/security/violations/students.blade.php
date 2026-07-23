@@ -105,9 +105,9 @@
                             {{ $student->student_number }} - {{ $student->last_name }}, {{ $student->first_name }}
                         </div>
                         <div class="student-meta">
-                            <i class="bi bi-building"></i> {{ optional($student->course)->course_name ?? 'N/A' }}
-                            @if($student->year)
-                            | <i class="bi bi-calendar"></i> Year {{ $student->year->year }}
+                            <i class="bi bi-building"></i> {{ optional(optional($student->studentInfo)->program)->program_name ?? 'N/A' }}
+                            @if(optional($student->studentInfo)->year)
+                            | <i class="bi bi-calendar"></i> Year {{ optional(optional($student->studentInfo)->year)->year }}
                             @endif
                         </div>
                     </div>

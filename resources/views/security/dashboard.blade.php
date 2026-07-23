@@ -341,14 +341,14 @@
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-2">
                             <span class="fw-500 text-truncate">
-                                {{ $category->category->category_name ?? 'Unknown' }}
+                                {{ $category->category_name ?? 'Unknown' }}
                             </span>
                             <span class="badge bg-secondary">{{ $category->count }}</span>
                         </div>
                         <div class="progress" style="height: 6px;">
                             <div class="progress-bar bg-primary" 
                                  role="progressbar" 
-                                 style="width: {{ ($category->count / $recentViolations->count() * 100) ?? 0 }}%;">
+                                 style="width: {{ $recentViolations->count() > 0 ? ($category->count / $recentViolations->count() * 100) : 0 }}%;">
                             </div>
                         </div>
                     </div>

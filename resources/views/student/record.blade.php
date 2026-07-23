@@ -56,7 +56,7 @@
 
                                 <strong>Course:</strong>
 
-                                {{ optional($user->course)->course_name }}
+                                {{ optional(optional($user->studentInfo)->program)->program_name }}
 
                             </p>
 
@@ -64,7 +64,7 @@
 
                                 <strong>Year:</strong>
 
-                                {{ optional($user->year)->year }}
+                                {{ optional(optional($user->studentInfo)->year)->year }}
 
                             </p>
 
@@ -72,7 +72,7 @@
 
                                 <strong>Section:</strong>
 
-                                {{ optional($user->section)->section_name }}
+                                {{ optional(optional($user->studentInfo)->section)->section_name }}
 
                             </p>
 

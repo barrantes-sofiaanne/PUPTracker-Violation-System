@@ -136,13 +136,13 @@
                             <strong>Email:</strong> {{ $student->email }}
                         </div>
                         <div class="col-12">
-                            <strong>Course:</strong> {{ optional($student->course)->course_name ?? 'N/A' }}
+                            <strong>Course:</strong> {{ optional(optional($student->studentInfo)->program)->program_name ?? 'N/A' }}
                         </div>
                         <div class="col-12">
-                            <strong>Year:</strong> {{ optional($student->year)->year ?? 'N/A' }}
+                            <strong>Year:</strong> {{ optional(optional($student->studentInfo)->year)->year ?? 'N/A' }}
                         </div>
                         <div class="col-12">
-                            <strong>Section:</strong> {{ optional($student->section)->section_name ?? 'N/A' }}
+                            <strong>Section:</strong> {{ optional(optional($student->studentInfo)->section)->section_name ?? 'N/A' }}
                         </div>
                     </div>
                 </div>
@@ -158,7 +158,7 @@
                     @forelse($violationStats['by_category'] as $category_stat)
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-2">
-                            <span class="fw-500">{{ $category_stat->category->category_name ?? 'Unknown' }}</span>
+                            <span class="fw-500">{{ $category_stat->category_name ?? 'Unknown' }}</span>
                             <span class="badge bg-secondary">{{ $category_stat->total }}</span>
                         </div>
                         <div class="progress" style="height: 6px;">
@@ -204,7 +204,7 @@
                             {{ $violation->offense_level }} Offense
                         </span>
                         <span class="badge bg-light text-dark">
-                            {{ $violation->violationType->category->category_name ?? 'N/A' }}
+                            {{ optional($violation->violationType->violationCategory)->category_name ?? 'N/A' }}
                         </span>
                     </div>
                 </div>

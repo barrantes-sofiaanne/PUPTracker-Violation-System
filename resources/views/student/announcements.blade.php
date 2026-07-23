@@ -71,7 +71,7 @@
 
                         <p style="white-space: pre-line">
 
-                            {{!! $announcement->content !!}
+                            {!! $announcement->content !!}
 
                         </p>
 
