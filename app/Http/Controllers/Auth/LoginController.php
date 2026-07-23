@@ -39,7 +39,7 @@ if ($user->status_id != 1) {
         ->withInput();
 }
 
-Auth::login($user);
+Auth::guard('student')->login($user);
 
 $request->session()->regenerate();
 
@@ -48,8 +48,7 @@ return redirect()->route('student.dashboard');
 
 public function logout(Request $request)
 {
-    Auth::logout();
-
+Auth::guard('student')->logout();
     $request->session()->invalidate();
 
     $request->session()->regenerateToken();

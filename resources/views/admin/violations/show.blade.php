@@ -1,322 +1,219 @@
 @extends('layouts.admin')
 
-@section('title', 'Student Violations')
+@section('title', 'Student Violation Record')
 
 @section('content')
 
-<div class="container-fluid"><div class="card shadow-sm mb-4">
+<div class="container-fluid">
 
-<div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-4">
 
-<div class="row align-items-center">
+        <div>
+            <h3 class="mb-0">Student Violation Record</h3>
+            <small class="text-muted">
+                View student's violation history and summary
+            </small>
+        </div>
 
-<div class="col-md-2 text-center">
+        <a href="{{ route('admin.violations.index') }}"
+           class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i>
+            Back
+        </a>
 
-@if($student->profile_photo)
+    </div>
 
-<img
-src="{{ asset('storage/'.$student->profile_photo) }}"
-class="rounded-circle img-fluid"
-style="width:140px;height:140px;object-fit:cover;">
+    {{-- Student Information --}}
+    <div class="card shadow-sm mb-4">
 
-@else
+        <div class="card-header">
+            <h5 class="mb-0">Student Information</h5>
+        </div>
 
-<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
-style="width:140px;height:140px;margin:auto;">
+        <div class="card-body">
 
-<i class="bi bi-person-fill fs-1"></i>
+            <div class="row">
+
+                <div class="col-md-6">
+
+                    <table class="table table-borderless">
+
+                        <tr>
+                            <th width="180">Student Number</th>
+                            <td>{{ $student->student_number }}</td>
+                        </tr>
+
+                        <tr>
+                            <th>Name</th>
+                            <td>
+                                {{ $student->last_name }},
+                                {{ $student->first_name }}
+                                {{ $student->middle_name }}
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <th>Program</th>
+                            <td>{{ $student->studentInfo?->program?->program_name ?? '-' }}</td>
+                        </tr>
+
+                        <tr>
+                            <th>Year</th>
+                            <td>{{ $student->studentInfo?->year?->year ?? '-' }}</td>
+                        </tr>
+
+                        <tr>
+                            <th>Section</th>
+                            <td>{{ $student->studentInfo?->section?->section_name ?? '-' }}</td>
+                        </tr>
+
+                        <tr>
+                            <th>Status</th>
+                            <td>{{ $student->studentInfo?->studentStatus?->status_name ?? '-' }}</td>
+                        </tr>
+
+                    </table>
+
+                </div>
+
+                <div class="col-md-6 text-center">
+
+                    <h1 class="display-3 text-danger">
+                        {{ $violations->count() }}
+                    </h1>
+
+                    <h5>Total Violations</h5>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+<div class="card shadow-sm mb-4">
+
+    <div class="card-header">
+        <h5 class="mb-0">Violation Summary</h5>
+    </div>
+
+    <div class="card-body">
+
+        <table class="table table-bordered align-middle">
+
+            <thead class="table-light">
+
+                <tr>
+                    <th>Category</th>
+                    <th>Violation Type</th>
+                    <th>Times Committed</th>
+                    <th>Current Offense</th>
+                    <th>Current Sanction</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+            @forelse($summary as $item)
+
+                <tr>
+
+                    <td>{{ $item['category'] ?? '-' }}</td>
+
+                    <td>{{ $item['violation_type'] }}</td>
+
+                    <td>
+                        <span class="badge bg-primary">
+                            {{ $item['total'] }}
+                        </span>
+                    </td>
+
+                    <td>
+                        <span class="badge bg-warning text-dark">
+                            {{ $item['offense_level'] }}
+                        </span>
+                    </td>
+
+                    <td>{{ $item['sanction'] }}</td>
+
+                </tr>
+
+            @empty
+
+                <tr>
+                    <td colspan="5" class="text-center">
+                        No violations found.
+                    </td>
+                </tr>
+
+            @endforelse
+
+            </tbody>
+
+        </table>
+
+    </div>
 
 </div>
+<div class="card shadow-sm">
 
-@endif
+    <div class="card-header">
+        <h5 class="mb-0">Violation History</h5>
+    </div>
 
-</div>
+    <div class="card-body">
 
-<div class="col-md-10">
+        <table class="table table-hover">
 
-<h3>
+            <thead>
 
-{{ $student->last_name }},
-{{ $student->first_name }}
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Violation</th>
+                    <th>Description</th>
+                    <th>Recorded By</th>
+                </tr>
 
-</h3>
+            </thead>
 
-<p class="mb-1">
+            <tbody>
 
-<strong>Student Number:</strong>
+            @foreach($violations as $violation)
 
-{{ $student->student_number }}
+                <tr>
 
-</p>
+                    <td>
+                        {{ $violation->violation_date->format('M d, Y') }}
+                    </td>
 
-<p class="mb-1">
+                    <td>
+                        {{ optional($violation->violationType?->violationCategory)->category_name ?? '-' }}
+                    </td>
 
-<strong>Course:</strong>
+                    <td>{{ $violation->violation_type }}</td>
 
-{{ optional($student->course)->course_name }}
+                    <td>{{ $violation->description }}</td>
 
-</p>
+                    <td>
+                        {{ trim(
+    ($violation->recorder?->adminInfo?->firstname ?? '') . ' ' .
+    ($violation->recorder?->adminInfo?->middlename ?? '') . ' ' .
+    ($violation->recorder?->adminInfo?->lastname ?? '')
+) ?: '-' }}
+                    </td>
 
-<p class="mb-1">
+                </tr>
 
-<strong>Year:</strong>
+            @endforeach
 
-{{ optional($student->year)->year }}
+            </tbody>
 
-</p>
+        </table>
 
-<p>
-
-<strong>Section:</strong>
-
-{{ optional($student->section)->section_name }}
-
-</p>
-
-</div>
-
-</div>
-
-</div>
-
-</div><div class="row mb-4">
-
-<div class="col-md-3">
-
-<div class="card border-start border-primary border-4">
-
-<div class="card-body">
-
-<h6>Total Violations</h6>
-
-<h2>{{ $statistics['total'] }}</h2>
+    </div>
 
 </div>
-
-</div>
-
-</div>
-
-<div class="col-md-3">
-
-<div class="card border-start border-success border-4">
-
-<div class="card-body">
-
-<h6>Minor</h6>
-
-<h2>{{ $statistics['minor'] }}</h2>
-
-</div>
-
-</div>
-
-</div>
-
-<div class="col-md-3">
-
-<div class="card border-start border-danger border-4">
-
-<div class="card-body">
-
-<h6>Major</h6>
-
-<h2>{{ $statistics['major'] }}</h2>
-
-</div>
-
-</div>
-
-</div>
-
-<div class="col-md-3">
-
-<div class="card border-start border-warning border-4">
-
-<div class="card-body">
-
-<h6>Latest</h6>
-
-<p>
-
-{{ optional($statistics['latest'])->violation_date }}
-
-</p>
-
-</div>
-
-</div>
-
-</div>
-
-</div><div class="card mb-4">
-
-<div class="card-header">
-
-<h5 class="mb-0">
-
-Violation Summary
-
-</h5>
-
-</div>
-
-<div class="card-body">
-
-<table class="table table-bordered">
-
-<thead>
-
-<tr>
-
-<th>Violation</th>
-
-<th>Category</th>
-
-<th>Occurrences</th>
-
-<th>Offense</th>
-
-<th>Sanction</th>
-
-</tr>
-
-</thead>
-
-<tbody>
-
-@foreach($summary as $item)
-
-<tr>
-
-<td>
-
-{{ $item['violation_type']->violation_type }}
-
-</td>
-
-<td>
-
-{{ optional($item['category'])->category_name }}
-
-</td>
-
-<td>
-
-{{ $item['count'] }}
-
-</td>
-
-<td>
-
-{{ $item['offense_level'] }}
-
-</td>
-
-<td>
-
-{{ $item['sanction'] ?? 'No sanction found' }}
-
-</td>
-
-</tr>
-
-@endforeach
-
-</tbody>
-
-</table>
-
-</div>
-
-</div><div class="card">
-
-<div class="card-header d-flex justify-content-between">
-
-<h5 class="mb-0">
-
-Violation History
-
-</h5>
-
-<a
-href="{{ route('admin.violations.create', $student->student_number) }}"
-class="btn btn-primary">
-
-Add Violation
-
-</a>
-
-</div>
-
-<div class="card-body">
-
-<table class="table table-hover">
-
-<thead>
-
-<tr>
-
-<th>Date</th>
-
-<th>Violation</th>
-
-<th>Category</th>
-
-<th>Description</th>
-
-<th>Recorded By</th>
-
-</tr>
-
-</thead>
-
-<tbody>
-
-@foreach($violations as $violation)
-
-<tr>
-
-<td>
-
-{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y') }}
-
-</td>
-
-<td>
-
-{{ $violation->violation_type }}
-
-</td>
-
-<td>
-
-{{ optional($violation->violationType->category)->category_name }}
-
-</td>
-
-<td>
-
-{{ $violation->description }}
-
-</td>
-
-<td>
-
-{{ optional($violation->recorder)->full_name ?? 'System' }}
-
-</td>
-
-</tr>
-
-@endforeach
-
-</tbody>
-
-</table>
-
-</div>
-
-</div></div>
-
-@endsection</div>
+@endsection

@@ -1,0 +1,316 @@
+/* ==========================================================
+   Violation Configuration
+   ========================================================== */
+
+:root {
+    --pup-maroon: #7b1e24;
+    --pup-maroon-dark: #65171c;
+    --pup-light: #f8f9fa;
+    --border-color: #dee2e6;
+}
+
+/* ==========================================================
+   Card
+   ========================================================== */
+
+.configuration-card {
+    border: none;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.configuration-card .card-header {
+    background: #fff;
+    border-bottom: 1px solid var(--border-color);
+    padding: 20px 24px;
+}
+
+.configuration-card .card-header h5 {
+    font-weight: 600;
+}
+
+.configuration-card .card-header small {
+    color: #6c757d;
+}
+
+/* ==========================================================
+   Add Category Button
+   ========================================================== */
+
+.btn-add-category {
+    background: var(--pup-maroon);
+    border-color: var(--pup-maroon);
+    color: #fff;
+    font-weight: 500;
+    padding: 10px 18px;
+}
+
+.btn-add-category:hover {
+    background: var(--pup-maroon-dark);
+    border-color: var(--pup-maroon-dark);
+    color: #fff;
+}
+
+/* ==========================================================
+   Accordion
+   ========================================================== */
+
+#violationAccordion .accordion-item {
+    border: none;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 15px;
+    box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.08);
+}
+
+#violationAccordion .accordion-button {
+    background: var(--pup-maroon);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 18px 22px;
+    box-shadow: none;
+}
+
+#violationAccordion .accordion-button:not(.collapsed) {
+    background: var(--pup-maroon);
+    color: #fff;
+}
+
+#violationAccordion .accordion-button:hover {
+    background: var(--pup-maroon-dark);
+}
+
+#violationAccordion .accordion-button:focus {
+    box-shadow: none;
+}
+
+#violationAccordion .accordion-button::after {
+    filter: brightness(0) invert(1);
+}
+
+/* ==========================================================
+   Accordion Body
+   ========================================================== */
+
+#violationAccordion .accordion-body {
+    background: #fff;
+    padding: 25px;
+}
+
+/* ==========================================================
+   Add Type Button
+   ========================================================== */
+
+.addTypeBtn {
+    min-width: 150px;
+    font-weight: 500;
+}
+
+.addTypeBtn i {
+    margin-right: 6px;
+}
+
+/* ==========================================================
+   Table
+   ========================================================== */
+
+#violationAccordion table {
+    margin-bottom: 0;
+}
+
+#violationAccordion thead {
+    background: var(--pup-light);
+}
+
+#violationAccordion thead th {
+    font-size: 14px;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+}
+
+#violationAccordion tbody td {
+    vertical-align: middle;
+}
+
+#violationAccordion tbody tr:hover {
+    background: rgba(123, 30, 36, 0.04);
+}
+
+/* ==========================================================
+   Resolution Badge
+   ========================================================== */
+
+.resolution-badge {
+    background: #6c757d;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+}
+
+/* ==========================================================
+   Action Buttons
+   ========================================================== */
+
+.action-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.action-buttons .btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* ==========================================================
+   Empty State
+   ========================================================== */
+
+.empty-types {
+    text-align: center;
+    padding: 40px 0;
+    color: #6c757d;
+}
+
+.empty-types i {
+    font-size: 36px;
+    margin-bottom: 12px;
+}
+
+/* ==========================================================
+   Responsive
+   ========================================================== */
+
+@media (max-width: 768px) {
+    #violationAccordion .accordion-button {
+        font-size: 15px;
+        padding: 16px;
+    }
+
+    #violationAccordion .accordion-body {
+        padding: 15px;
+    }
+
+    .btn-add-category {
+        width: 100%;
+        margin-top: 15px;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
+}
+/* Accordion Header Actions */
+
+.accordion-actions {
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    background: #7b1e24;
+
+    padding-right: 15px;
+}
+
+.accordion-actions .btn {
+    width: 34px;
+
+    height: 34px;
+
+    padding: 0;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+}
+/* ==========================================================
+   Category Header Layout
+========================================================== */
+
+.category-header-wrapper {
+    display: flex;
+
+    align-items: center;
+
+    width: 100%;
+
+    background: #7b1e24;
+}
+
+.category-header {
+    flex: 1;
+
+    border: none !important;
+}
+
+.category-actions {
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    padding-right: 15px;
+
+    background: #7b1e24;
+}
+
+.category-actions .btn {
+    width: 34px;
+
+    height: 34px;
+
+    padding: 0;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+}
+
+.category-actions .btn i {
+    font-size: 14px;
+}
+.violation-types-table {
+    max-height: 380px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+}
+
+.violation-types-table table {
+    margin-bottom: 0;
+}
+
+.violation-types-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #fff;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.violation-types-table::-webkit-scrollbar {
+    width: 8px;
+}
+
+.violation-types-table::-webkit-scrollbar-thumb {
+    background: #b8b8b8;
+    border-radius: 10px;
+}
+
+.violation-types-table::-webkit-scrollbar-thumb:hover {
+    background: #8f8f8f;
+}

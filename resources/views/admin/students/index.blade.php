@@ -43,7 +43,7 @@
 
                         <th>Student Number</th>
                         <th>Name</th>
-                        <th>Course</th>
+                        <th>Program</th>
                         <th>Year</th>
                         <th>Section</th>
                         <th>Status</th>
@@ -67,46 +67,34 @@
                             {{ $student->middle_name }}
                         </td>
 
-                        <td>{{ $student->course?->course_name }}</td>
+                        <td>{{ $student->program?->program_name }}</td>
 
                         <td>{{ $student->year?->year }}</td>
 
                         <td>{{ $student->section?->section_name }}</td>
 
-                        <td>{{ $student->status?->status_name }}</td>
-
                         <td>
-
-<td>
-
-    <button
-    class="btn btn-primary btn-sm editStudentBtn"
-    data-id="{{ $student->student_number }}"
-    data-first="{{ $student->first_name }}"
-    data-middle="{{ $student->middle_name }}"
-    data-last="{{ $student->last_name }}"
-    data-email="{{ $student->email }}"
-    data-course="{{ $student->course_id }}"
-    data-year="{{ $student->year_id }}"
-    data-section="{{ $student->section_id }}"
-    data-gender="{{ $student->gender_id }}"
-    data-status="{{ $student->status_id }}">
-    Edit
-</button>
-
-    <button
-    class="btn btn-danger btn-sm deleteStudentBtn"
-    data-id="{{ $student->student_number }}"
-    data-name="{{ $student->first_name }} {{ $student->last_name }}">
-
-    Delete
-
-</button>
-
-</td>
-
+                            <button
+                                class="btn btn-primary btn-sm editStudentBtn"
+                                data-id="{{ $student->student_number }}"
+                                data-first="{{ $student->first_name }}"
+                                data-middle="{{ $student->middle_name }}"
+                                data-last="{{ $student->last_name }}"
+                                data-email="{{ $student->email }}"
+                                data-program="{{ $student->program_id }}"
+                                data-year="{{ $student->year_id }}"
+                                data-section="{{ $student->section_id }}"
+                                data-gender="{{ $student->gender_id }}"
+                                data-status="{{ $student->status_id }}">
+                                Edit
+                            </button>
+                            <button
+                                class="btn btn-danger btn-sm deleteStudentBtn"
+                                data-id="{{ $student->student_number }}"
+                                data-name="{{ $student->first_name }} {{ $student->last_name }}">
+                                Delete
+                            </button>
                         </td>
-
                     </tr>
 
                 @empty
@@ -231,19 +219,19 @@
 
                 </div>
 <div class="mb-3">
-    <label>Course</label>
+    <label>Program</label>
 
     <select
-        name="course_id"
-        id="course_id"
+        name="program_id"
+        id="program_id"
         class="form-select">
 
-        @foreach($courses as $course)
+        @foreach($programs as $program)
 
             <option
-                value="{{ $course->course_id }}">
+                value="{{ $program->program_id }}">
 
-                {{ $course->course_name }}
+                {{ $program->program_name }}
 
             </option>
 
@@ -440,8 +428,8 @@ document.querySelectorAll('.editStudentBtn')
 
         document.getElementById('email').value =
             this.dataset.email;
-            document.getElementById('course_id').value =
-    this.dataset.course;
+            document.getElementById('program_id').value =
+    this.dataset.program;
 
 document.getElementById('year_id').value =
     this.dataset.year;

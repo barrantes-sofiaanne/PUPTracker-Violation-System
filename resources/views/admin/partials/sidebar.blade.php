@@ -20,7 +20,7 @@
 
         <li>
 
-            <a href="#">
+            <a href="{{ route('admin.dashboard') }}">
 
                 <i class="bi bi-speedometer2"></i>
 
@@ -32,7 +32,7 @@
 
         <li>
 
-            <a href="#">
+            <a href="{{ route('admin.students') }}">
 
                 <i class="bi bi-people"></i>
 
@@ -44,7 +44,7 @@
 
         <li>
 
-            <a href="#">
+            <a href="{{ route('admin.violations.index') }}">
 
                 <i class="bi bi-exclamation-octagon"></i>
 
@@ -56,7 +56,7 @@
 
         <li>
 
-            <a href="#">
+            <a href="{{ route('admin.announcements') }}">
 
                 <i class="bi bi-megaphone"></i>
 
@@ -68,7 +68,7 @@
 
         <li>
 
-            <a href="#">
+            <a href="{{ route('admin.reports') }}">
 
                 <i class="bi bi-file-earmark-text"></i>
 
@@ -80,7 +80,7 @@
 
         <li>
 
-            <a href="#">
+            <a href="{{ route('admin.settings') }}">
 
                 <i class="bi bi-gear"></i>
 

@@ -26,23 +26,20 @@ class User extends Authenticatable
     /**
      * Mass Assignable Attributes
      */
-    protected $fillable = [
-        'student_number',
-        'first_name',
-        'middle_name',
-        'last_name',
-        'email',
-        'course_id',
-        'year_id',
-        'section_id',
-        'gender_id',
-        'status_id',
-        'roles_id',
-        'password_hash',
-        'reset_token_hash',
-        'reset_token_expires_at',
-        'new_until',
-    ];
+protected $fillable = [
+    'student_number',
+    'first_name',
+    'middle_name',
+    'last_name',
+    'email',
+    'gender_id',
+    'status_id',
+    'roles_id',
+    'password_hash',
+    'reset_token_hash',
+    'reset_token_expires_at',
+    'new_until',
+];
 
     /**
      * Hidden Attributes
@@ -91,38 +88,16 @@ class User extends Authenticatable
     /**
      * Course
      */
-    public function course(): BelongsTo
-    {
-        return $this->belongsTo(
-            Course::class,
-            'course_id',
-            'course_id'
-        );
-    }
+ 
 
     /**
      * Year
      */
-    public function year(): BelongsTo
-    {
-        return $this->belongsTo(
-            Year::class,
-            'year_id',
-            'year_id'
-        );
-    }
+
 
     /**
      * Section
      */
-    public function section(): BelongsTo
-    {
-        return $this->belongsTo(
-            Section::class,
-            'section_id',
-            'section_id'
-        );
-    }
 
     /**
      * Gender
@@ -197,4 +172,10 @@ class User extends Authenticatable
      * if announcements_tbl has no user_id column.
      */
  
+
+
+public function studentInfo()
+{
+    return $this->hasOne(StudentInfo::class, 'user_id');
+}
 }

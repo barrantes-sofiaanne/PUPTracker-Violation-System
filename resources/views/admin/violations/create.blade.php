@@ -1,74 +1,153 @@
 @extends('layouts.admin')
 
+@section('title', 'Record Violation')
+
 @section('content')
 
 <div class="container-fluid">
 
-<div class="card">
+<div class="card shadow-sm">
 
 <div class="card-header">
 
-<h3>Record Student Violation</h3>
+<h4 class="mb-0">
+
+Record New Violation
+
+</h4>
+
+</div>
+
+<div class="card-body"><div class="card mb-4">
+
+<div class="card-header">
+
+Student Information
 
 </div>
 
 <div class="card-body">
 
-<form
-method="POST"
-action="{{ route('admin.violations.store') }}">
+<div class="row">
 
-@csrf
+<div class="col-md-6">
 
-<div class="mb-3">
+<label class="fw-bold">
 
-<label>
-
-Student
+Student Number
 
 </label>
 
-<select
-name="student_number"
-class="form-select">
-
-@foreach($students as $student)
-
-<option
-value="{{ $student->student_number }}">
+<p>
 
 {{ $student->student_number }}
 
--
-
-{{ $student->last_name }},
-
-{{ $student->first_name }}
-
-</option>
-
-@endforeach
-
-</select>
+</p>
 
 </div>
 
-<div class="mb-3">
+<div class="col-md-6">
 
-<label>
+<label class="fw-bold">
 
-Violation
+Student Name
+
+</label>
+
+<p>
+
+{{ $student->last_name }},
+{{ $student->first_name }}
+
+</p>
+
+</div>
+
+<div class="col-md-4">
+
+<label class="fw-bold">
+
+Course
+
+</label>
+
+<p>
+
+{{ optional($student->course)->course_name }}
+
+</p>
+
+</div>
+
+<div class="col-md-4">
+
+<label class="fw-bold">
+
+Year
+
+</label>
+
+<p>
+
+{{ optional($student->year)->year }}
+
+</p>
+
+</div>
+
+<div class="col-md-4">
+
+<label class="fw-bold">
+
+Section
+
+</label>
+
+<p>
+
+{{ optional($student->section)->section_name }}
+
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+</div><form
+method="POST"
+action="{{ route('admin.violations.store') }}"
+id="violationForm">
+
+@csrf
+
+<input
+type="hidden"
+name="student_number"
+value="{{ $student->student_number }}"><div class="mb-3">
+
+<label class="form-label">
+
+Violation Type
 
 </label>
 
 <select
 name="violation_type"
-class="form-select">
+id="violation_type"
+class="form-select"
+required>
+
+<option value="">
+
+Select Violation
+
+</option>
 
 @foreach($violationTypes as $type)
 
-<option
-value="{{ $type->violation_type }}">
+<option value="{{ $type->violation_type }}">
 
 {{ $type->violation_type }}
 
@@ -78,11 +157,24 @@ value="{{ $type->violation_type }}">
 
 </select>
 
-</div>
+</div><div class="mb-3">
 
-<div class="mb-3">
+<label class="form-label">
 
-<label>
+Violation Date
+
+</label>
+
+<input
+type="date"
+name="violation_date"
+class="form-control"
+value="{{ now()->format('Y-m-d') }}"
+required>
+
+</div><div class="mb-4">
+
+<label class="form-label">
 
 Description
 
@@ -90,23 +182,103 @@ Description
 
 <textarea
 name="description"
+rows="4"
 class="form-control"></textarea>
+
+</div><div class="card mb-4">
+
+<div class="card-header">
+
+Violation Preview
 
 </div>
 
+<div class="card-body">
+
+<div class="row">
+
+<div class="col-md-4">
+
+<label class="fw-bold">
+
+Category
+
+</label>
+
+<p id="previewCategory">
+
+-
+
+</p>
+
+</div>
+
+<div class="col-md-4">
+
+<label class="fw-bold">
+
+Offense Level
+
+</label>
+
+<p id="previewOffense">
+
+-
+
+</p>
+
+</div>
+
+<div class="col-md-4">
+
+<label class="fw-bold">
+
+Sanction
+
+</label>
+
+<p id="previewSanction">
+
+-
+
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+</div><div class="d-flex justify-content-end gap-2">
+
+<a
+href="{{ route('admin.violations.show',$student->student_number) }}"
+class="btn btn-secondary">
+
+Cancel
+
+</a>
+
 <button
-class="btn btn-danger">
+type="submit"
+class="btn btn-primary">
 
 Save Violation
 
 </button>
 
-</form>
-
 </div>
+
+</form></div>
 
 </div>
 
 </div>
 
 @endsection
+
+@push('scripts')
+
+<script src="{{ asset('js/admin/violations.js') }}"></script>
+
+@endpush

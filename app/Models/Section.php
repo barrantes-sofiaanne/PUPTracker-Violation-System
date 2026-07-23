@@ -17,8 +17,12 @@ class Section extends Model
         'section_name',
     ];
 
-    public function users(): HasMany
+    public function students(): HasMany
     {
-        return $this->hasMany(User::class, 'section_id', 'section_id');
+        return $this->hasMany(
+            StudentInfo::class,
+            'section_id',
+            'section_id'
+        );
     }
 }

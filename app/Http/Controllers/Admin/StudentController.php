@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use App\Models\Course;
+use App\Models\Program;
 use App\Models\Year;
 use App\Models\Status;
 use App\Models\Section;
@@ -31,7 +31,7 @@ public function index(Request $request)
     $students = $students
         ->orderBy('last_name')
         ->paginate(15);
-$courses = Course::orderBy('course_name')->get();
+$programs = Program::orderBy('program_name')->get();
 
 $years = Year::orderBy('year')->get();
 
@@ -42,7 +42,7 @@ $genders = Gender::orderBy('gender_name')->get();
 $statuses = Status::orderBy('status_name')->get();
     return view('admin.students.index', compact(
         'students',
-        'courses',
+        'programs',
         'years',
         'sections',
         'genders',
@@ -52,7 +52,7 @@ $statuses = Status::orderBy('status_name')->get();
 public function show($student_number)
 {
     $student = User::with([
-        'course',
+        'program',
         'year',
         'section',
         'gender',
@@ -74,7 +74,7 @@ public function edit($student_number)
         $student_number
     )->firstOrFail();
 
-    $courses = Course::orderBy('course_name')->get();
+    $programs = Program::orderBy('program_name')->get();
 
     $years = Year::orderBy('year')->get();
 
@@ -88,7 +88,7 @@ public function edit($student_number)
         'admin.students.edit',
         compact(
             'student',
-            'courses',
+            'programs',
             'years',
             'sections',
             'genders',
@@ -111,7 +111,7 @@ public function update(Request $request, $student_number)
 
         'email' => 'required|email',
 
-        'course_id' => 'required',
+        'program_id' => 'required',
         'year_id' => 'required',
         'section_id' => 'required',
         'gender_id' => 'required',
@@ -127,7 +127,7 @@ public function update(Request $request, $student_number)
 
         'email' => $request->email,
 
-        'course_id' => $request->course_id,
+        'program_id' => $request->program_id,
         'year_id' => $request->year_id,
         'section_id' => $request->section_id,
         'gender_id' => $request->gender_id,

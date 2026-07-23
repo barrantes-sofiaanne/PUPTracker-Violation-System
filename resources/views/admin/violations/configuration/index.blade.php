@@ -1,785 +1,136 @@
-@extends('layouts.admin')
+<div class="card shadow-sm border-0">
 
-@section('title', 'Student Violations')
-
-@section('content')
-
-<div class="container-fluid py-4">
-
-    {{-- Flash Messages --}}
-
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">
-
-            {{ session('success') }}
-
-            <button
-                class="btn-close"
-                data-bs-dismiss="alert">
-            </button>
-
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show">
-
-            {{ session('error') }}
-
-            <button
-                class="btn-close"
-                data-bs-dismiss="alert">
-            </button>
-
-        </div>
-    @endif
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
 
         <div>
-
-            <h2 class="fw-bold">
-
-                Student Violations
-
-            </h2>
+            <h5 class="mb-0">
+                Violation Categories
+            </h5>
 
             <small class="text-muted">
-
-                View and manage student violations.
-
+                Manage violation categories used throughout the system.
             </small>
-
         </div>
 
         <button
-
-            class="btn btn-primary"
-
+            class="btn btn-primary add-category"
             data-bs-toggle="modal"
+            data-bs-target="#addCategoryModal">
 
-            data-bs-target="#addViolationModal">
+            <i class="bi bi-plus-circle me-2"></i>
 
-            <i class="fas fa-plus me-1"></i>
-
-            Add Violation
+            Add Category
 
         </button>
 
     </div>
-    <div class="card shadow-sm mb-4">
 
     <div class="card-body">
 
-        <form
-            method="GET">
+<div class="card shadow-sm border-0">
 
-            <div class="row">
+    <div class="card-header bg-white">
 
-                <div class="col-md-4">
+        <h5 class="mb-1">
+            Violation Configuration
+        </h5>
 
-                    <label>
+        <small class="text-muted">
+            Manage categories, violation types, and disciplinary sanctions.
+        </small>
 
-                        Search Student
+    </div>
 
-                    </label>
+    <div class="card-body">
 
-                    <input
-                        type="text"
-                        class="form-control"
-                        name="search"
-                        value="{{ request('search') }}"
-                        placeholder="Student Number / Name">
+        <ul class="nav nav-tabs mb-4" id="configurationTabs">
 
-                </div>
+            <li class="nav-item">
 
-                <div class="col-md-2">
+                <button
+                    class="nav-link active"
+                    data-bs-toggle="tab"
+                    data-bs-target="#categoriesTab">
 
-                    <label>
+                    Categories
 
-                        Course
+                </button>
 
-                    </label>
+            </li>
 
-                    <select
-                        class="form-select"
-                        name="course">
+            <li class="nav-item">
 
-                        <option value="">
+                <button
+                    class="nav-link"
+                    data-bs-toggle="tab"
+                    data-bs-target="#typesTab">
 
-                            All
+                    Violation Types
 
-                        </option>
+                </button>
 
-                        @foreach($courses as $course)
+            </li>
 
-                            <option
+            <li class="nav-item">
 
-                                value="{{ $course->course_id }}"
+                <button
+                    class="nav-link"
+                    data-bs-toggle="tab"
+                    data-bs-target="#sanctionsTab">
 
-                                @selected(request('course')==$course->course_id)>
+                    Sanctions
 
-                                {{ $course->course }}
+                </button>
 
-                            </option>
+            </li>
 
-                        @endforeach
+        </ul>
 
-                    </select>
+        <div class="tab-content">
 
-                </div>
+            <div
+                class="tab-pane fade show active"
+                id="categoriesTab">
 
-                <div class="col-md-2">
+                @include('admin.violations.configuration.category-accordion')
 
-                    <label>
+            </div>
 
-                        Year
+            <div
+                class="tab-pane fade"
+                id="typesTab">
 
-                    </label>
+                @include('admin.violations.configuration.types')
 
-                    <select
-                        class="form-select"
-                        name="year">
+            </div>
 
-                        <option value="">
+            <div
+                class="tab-pane fade"
+                id="sanctionsTab">
 
-                            All
+                <div id="sanctionContainer">
 
-                        </option>
-
-                        @foreach($years as $year)
-
-                            <option
-
-                                value="{{ $year->year_id }}"
-
-                                @selected(request('year')==$year->year_id)>
-
-                                {{ $year->year }}
-
-                            </option>
-
-                        @endforeach
-
-                    </select>
-
-                </div>
-
-                <div class="col-md-3">
-
-                    <label>
-
-                        Violation Category
-
-                    </label>
-
-                    <select
-                        class="form-select"
-                        name="category">
-
-                        <option value="">
-
-                            All
-
-                        </option>
-
-                        @foreach($categories as $category)
-
-                            <option
-
-                                value="{{ $category->violation_category_id }}"
-
-                                @selected(request('category')==$category->violation_category_id)>
-
-                                {{ $category->category_name }}
-
-                            </option>
-
-                        @endforeach
-
-                    </select>
-
-                </div>
-
-                <div class="col-md-1 d-grid">
-
-                    <label>&nbsp;</label>
-
-                    <button
-                        class="btn btn-primary">
-
-                        Search
-
-                    </button>
+                    @include('admin.violations.configuration.sanction-list')
 
                 </div>
 
             </div>
 
-        </form>
+        </div>
 
     </div>
 
 </div>
-<div class="card shadow-sm">
 
-    <div class="table-responsive">
-
-        <table class="table table-hover mb-0">
-
-            <thead class="table-light">
-
-            <tr>
-
-                <th width="5%"></th>
-
-                <th>
-
-                    Student Number
-
-                </th>
-
-                <th>
-
-                    Student Name
-
-                </th>
-
-                <th>
-
-                    Course
-
-                </th>
-
-                <th>
-
-                    Year
-
-                </th>
-
-                <th>
-
-                    Total Violations
-
-                </th>
-
-                <th>
-
-                    Action
-
-                </th>
-
-            </tr>
-
-            </thead>
-
-            <tbody>
-                @foreach($students as $student)
-
-<tr>
-
-    <td>
-
-        <button
-
-            class="btn btn-sm btn-outline-secondary"
-
-            data-bs-toggle="collapse"
-
-            data-bs-target="#student{{ $student->student_id }}">
-
-            <i class="fas fa-chevron-down"></i>
-
-        </button>
-
-    </td>
-
-    <td>
-
-        {{ $student->student_number }}
-
-    </td>
-
-    <td>
-
-        {{ $student->last_name }},
-        {{ $student->first_name }}
-
-    </td>
-
-    <td>
-
-        {{ $student->course->course }}
-
-    </td>
-
-    <td>
-
-        {{ $student->year->year }}
-
-    </td>
-
-    <td>
-
-        {{ $student->violations->count() }}
-
-    </td>
-
-    <td>
-
-        <a
-
-            href="{{ route('admin.violation.show',$student->student_id) }}"
-
-            class="btn btn-primary btn-sm">
-
-            More Details
-
-        </a>
-
-    </td>
-
-</tr>
-            </tbody>
-            @foreach($students as $student)
-
-<tr>
-
-    <td>
-
-        <button
-
-            class="btn btn-sm btn-outline-secondary"
-
-            data-bs-toggle="collapse"
-
-            data-bs-target="#student{{ $student->student_id }}">
-
-            <i class="fas fa-chevron-down"></i>
-
-        </button>
-
-    </td>
-
-    <td>
-
-        {{ $student->student_number }}
-
-    </td>
-
-    <td>
-
-        {{ $student->last_name }},
-        {{ $student->first_name }}
-
-    </td>
-
-    <td>
-
-        {{ $student->course->course }}
-
-    </td>
-
-    <td>
-
-        {{ $student->year->year }}
-
-    </td>
-
-    <td>
-
-        {{ $student->violations->count() }}
-
-    </td>
-
-    <td>
-
-        <a
-
-            href="{{ route('admin.violations.show',$student->student_id) }}"
-
-            class="btn btn-primary btn-sm">
-
-            More Details
-
-        </a>
-
-    </td>
-
-</tr>
-</tbody>
-
-</table>
-
-</div>
-
-</div>
-
-</div>
-<!-- Add Violation Modal -->
-<div class="modal fade"
-     id="addViolationModal"
-     tabindex="-1">
-
-    <div class="modal-dialog">
-
-        <form
-            method="POST"
-            action="{{ route('admin.violations.store') }}">
-
-            @csrf
-
-            <div class="modal-content">
-
-                <div class="modal-header">
-
-                    <h5 class="modal-title">
-
-                        Add Violation
-
-                    </h5>
-
-                    <button
-                        type="button"
-                        class="btn-close"
-                        data-bs-dismiss="modal">
-                    </button>
-
-                </div>
-
-                <div class="modal-body">
-
-                    {{-- Student --}}
-
-                    <div class="mb-3">
-
-                        <label class="form-label">
-
-                            Student
-
-                        </label>
-
-                       <div class="mb-3">
-
-    <label class="form-label">
-
-        Search Student
-
-    </label>
-
-    <input
-        type="text"
-        id="studentSearch"
-        class="form-control"
-        placeholder="Student Number or Name">
-
-</div>
-
-<input
-    type="hidden"
-    id="studentNumber"
-    name="student_number">
-
-<div
-    id="studentResults"
-    class="list-group mt-2">
-</div>
-
-                    </div>
-
-                    {{-- Category --}}
-
-                    <div class="mb-3">
-
-                        <label class="form-label">
-
-                            Violation Category
-
-                        </label>
-
-                        <select
-                            class="form-select"
-                            id="categorySelect"
-                            required>
-
-                            <option value="">
-
-                                Select Category
-
-                            </option>
-
-                            @foreach($categories as $category)
-
-                                <option
-                                    value="{{ $category->violation_category_id }}">
-
-                                    {{ $category->category_name }}
-
-                                </option>
-
-                            @endforeach
-
-                        </select>
-
-                    </div>
-
-                    {{-- Violation Type --}}
-
-                    <div class="mb-3">
-
-                        <label class="form-label">
-
-                            Violation Type
-
-                        </label>
-
-                        <select
-                            class="form-select"
-                            id="violationTypeSelect"
-                            name="violation_type"
-                            required>
-
-                            <option value="">
-
-                                Select Violation Type
-
-                            </option>
-
-                        </select>
-
-                    </div>
-                    <div class="alert alert-info d-none" id="previewBox">
-
-    <strong>Offense Level:</strong>
-
-    <span id="offenseLevel"></span>
-
-    <br>
-
-    <strong>Sanction:</strong>
-
-    <span id="sanctionText"></span>
-
-</div>
-
-                    {{-- Description --}}
-
-                    <div class="mb-3">
-
-                        <label class="form-label">
-
-                            Remarks
-
-                        </label>
-
-                        <textarea
-                            class="form-control"
-                            rows="4"
-                            name="description"></textarea>
-
-                    </div>
-
-                </div>
-
-                <div class="modal-footer">
-
-                    <button
-                        class="btn btn-secondary"
-                        type="button"
-                        data-bs-dismiss="modal">
-
-                        Cancel
-
-                    </button>
-
-                    <button
-                        class="btn btn-primary"
-                        type="submit">
-
-                        Save
-
-                    </button>
-
-                </div>
-
-            </div>
-
-        </form>
-
+@include('admin.violations.partials.category-modal')
+@include('admin.violations.partials.violation-type-modal')
+@include('admin.violations.partials.sanction-modal')
+
+@push('scripts')
+<script src="{{ asset('js/admin/violation-categories.js') }}"></script>
+<script src="{{ asset('js/admin/violation-types.js') }}"></script>
+<script src="{{ asset('js/admin/sanction.js') }}"></script>
+@endpush
     </div>
 
 </div>
-<script>
-
-document.getElementById('categorySelect').addEventListener('change', function () {
-
-    let categoryId = this.value;
-
-    let typeSelect = document.getElementById('violationTypeSelect');
-
-    typeSelect.innerHTML =
-        '<option value="">Loading...</option>';
-
-    fetch('/admin/violations/category/' + categoryId)
-
-        .then(response => response.json())
-
-        .then(data => {
-
-            typeSelect.innerHTML =
-                '<option value="">Select Violation Type</option>';
-
-            data.forEach(function(type){
-
-                typeSelect.innerHTML +=
-                    `<option value="${type.violation_type}">
-                        ${type.violation_type}
-                    </option>`;
-
-            });
-
-        });
-
-});
-
-function loadPreview() {
-
-    let student =
-        document.querySelector('[name="student_number"]').value;
-
-    let violation =
-        document.querySelector('[name="violation_type"]').value;
-
-    if(student === '' || violation === '')
-        return;
-
-    fetch('/admin/violations/preview', {
-
-        method: 'POST',
-
-        headers: {
-
-            'Content-Type': 'application/json',
-
-            'X-CSRF-TOKEN':
-                document.querySelector('meta[name="csrf-token"]').content
-
-        },
-
-        body: JSON.stringify({
-
-            student_number: student,
-
-            violation_type: violation
-
-        })
-
-    })
-
-    .then(r => r.json())
-
-    .then(data => {
-
-        document
-            .getElementById('previewBox')
-            .classList
-            .remove('d-none');
-
-        document
-            .getElementById('offenseLevel')
-            .innerHTML =
-            data.offense_level;
-
-        document
-            .getElementById('sanctionText')
-            .innerHTML =
-            data.sanction ?? 'No sanction found';
-
-    });
-
-}
-
-document
-.querySelector('[name="student_number"]')
-.addEventListener('change', loadPreview);
-
-document
-.querySelector('[name="violation_type"]')
-.addEventListener('change', loadPreview);s
-
-const searchInput =
-    document.getElementById('studentSearch');
-
-const resultBox =
-    document.getElementById('studentResults');
-
-searchInput.addEventListener('keyup', function () {
-
-    let value = this.value;
-
-    if(value.length < 2){
-
-        resultBox.innerHTML='';
-
-        return;
-
-    }
-
-    fetch('/admin/violations/search-student?search=' + value)
-
-    .then(response=>response.json())
-
-    .then(data=>{
-
-        resultBox.innerHTML='';
-
-        data.forEach(function(student){
-
-            resultBox.innerHTML +=
-
-            `<button
-                type="button"
-                class="list-group-item list-group-item-action"
-
-                data-number="${student.student_number}"
-
-                data-name="${student.last_name}, ${student.first_name}">
-
-                ${student.student_number}
-
-                <br>
-
-                <small>
-
-                    ${student.last_name}, ${student.first_name}
-
-                </small>
-
-            </button>`;
-
-        });
-
-    });
-
-});
-
-resultBox.addEventListener('click', function(e){
-
-    let button = e.target.closest('.list-group-item');
-
-    if(!button)
-        return;
-
-    document.getElementById('studentNumber').value =
-        button.dataset.number;
-
-    document.getElementById('studentSearch').value =
-        button.dataset.name;
-
-    resultBox.innerHTML='';
-
-    loadPreview();
-
-});
-</script>
-@endsection

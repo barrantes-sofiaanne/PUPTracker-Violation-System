@@ -18,9 +18,17 @@ class ViolationConfigurationController extends Controller
         }
     ])->orderBy('category_name')->get();
 
+    $violationTypes = ViolationType::with('violationCategory')
+        ->orderBy('violation_type')
+        ->get();
+
+    $sanctions = DisciplinarySanction::with('violationType.violationCategory')
+        ->orderBy('offense_level')
+        ->get();
+
     return view(
-        'admin.violation.configuration.index',
-        compact('categories')
+        'admin.violations.configuration.index',
+        compact('categories', 'violationTypes', 'sanctions')
     );
 }
     public function storeCategory(Request $request)

@@ -7,18 +7,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Course extends Model
 {
-    protected $table = 'course_tbl';
+    protected $table = 'program_tbl';
 
-    protected $primaryKey = 'course_id';
+    protected $primaryKey = 'program_id';
 
     public $timestamps = false;
 
     protected $fillable = [
-        'course_name',
+        'program_name',
     ];
 
     public function users(): HasMany
     {
-        return $this->hasMany(User::class, 'course_id', 'course_id');
+        return $this->hasMany(User::class, 'program_id', 'program_id');
     }
 }

@@ -17,13 +17,13 @@ class ViolationCategory extends Model
         'category_name',
     ];
 
-    public function violationTypes(): HasMany
-    {
-        return $this->hasMany(
-            ViolationType::class,
-            'violation_category_id',
-            'violation_category_id'
-        );
-    }
+public function violationTypes()
+{
+    return $this->hasMany(
+        ViolationType::class,
+        'violation_category_id',
+        'violation_category_id'
+    );
+}
     
 }

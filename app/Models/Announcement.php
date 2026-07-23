@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Admin;
+use App\Models\AdminInfo;
 
 class Announcement extends Model
 {
@@ -24,5 +26,10 @@ class Announcement extends Model
     public function admin(): BelongsTo
     {
         return $this->belongsTo(Admin::class, 'admin_id');
+    }
+
+    public function adminInfo(): BelongsTo
+    {
+        return $this->belongsTo(AdminInfo::class, 'admin_id');
     }
 }

@@ -252,9 +252,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    [courseFilter, yearFilter, periodFilter].forEach((filter) => {
+[courseFilter, yearFilter, periodFilter].forEach((filter) => {
+    if (filter) {
         filter.addEventListener("change", updateDashboard);
-    });
-
+    }
+});
+if (
+    !courseFilter ||
+    !yearFilter ||
+    !periodFilter ||
+    !loadingOverlay
+) {
+    return;
+}
     populateFilters().then(updateDashboard);
 });

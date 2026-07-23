@@ -413,6 +413,19 @@ main {
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
+
+.modal-content > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.modal-content > form > .modal-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    min-height: 0;
+}
 @keyframes spin {
     0% {
         transform: rotate(0deg);

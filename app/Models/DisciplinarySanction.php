@@ -21,10 +21,6 @@ class DisciplinarySanction extends Model
 
     public function violationType(): BelongsTo
     {
-        return $this->belongsTo(
-            ViolationType::class,
-            'violation_type_id',
-            'violation_type_id'
-        );
+        return $this->belongsTo(ViolationType::class, 'violation_type_id', 'violation_type_id');
     }
 }

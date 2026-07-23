@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Admin;
 
 class Violation extends Model
 {
@@ -61,12 +62,12 @@ class Violation extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function recorder(): BelongsTo
-    {
-        return $this->belongsTo(
-            User::class,
-            'recorder_id',
-            'user_id'
-        );
-    }
+public function recorder(): BelongsTo
+{
+    return $this->belongsTo(
+        Admin::class,
+        'recorder_id',
+        'id'
+    );
+}
 }
