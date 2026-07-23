@@ -452,16 +452,22 @@ document.addEventListener("DOMContentLoaded", function () {
                 ).value;
 
                 if (newPassword !== confirmPassword) {
-                    alert("Your new passwords do not match! Please try again.");
+                    Swal.fire({
+                        icon: "error",
+                        title: "Passwords do not match",
+                        text: "Your new passwords do not match. Please try again.",
+                    });
                     return;
                 }
 
                 const strongRegex =
                     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_])[A-Za-z\d\W_]{8,}$/;
                 if (!strongRegex.test(newPassword)) {
-                    alert(
-                        "Your password is too weak!\n\nIt must contain:\n- At least 8 characters\n- One uppercase letter\n- One lowercase letter\n- One number\n- One special character (!@#$%^&*)",
-                    );
+                    Swal.fire({
+                        icon: "error",
+                        title: "Weak password",
+                        html: "Your password must include:<br>- At least 8 characters<br>- One uppercase letter<br>- One lowercase letter<br>- One number<br>- One special character (!@#$%^&*)",
+                    });
                     return;
                 }
 

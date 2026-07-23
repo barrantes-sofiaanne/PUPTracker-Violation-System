@@ -6,6 +6,15 @@
 
 <div class="container-fluid">
 
+    <div class="page-header-modern mb-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h3 class="mb-1">Violation Management</h3>
+                <p class="mb-0">Track student cases, configure rules, and review violation history.</p>
+            </div>
+        </div>
+    </div>
+
     <div class="card shadow-sm">
 
         {{-- Card Header --}}

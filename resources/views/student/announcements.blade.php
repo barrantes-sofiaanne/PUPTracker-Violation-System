@@ -1,33 +1,24 @@
-@extends('layouts.app')
+@extends('layouts.student')
 
 @section('title', 'Announcements')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/student.css') }}">
 @endpush
 
 @section('content')
 
-<div class="dashboard-wrapper">
-
-
-    <main class="main-content">
-
-
-        <div class="container-fluid py-4">
+<div class="container-fluid py-1">
 
             {{-- Page Header --}}
-            <div class="card shadow-sm border-0 mb-4">
+            <div class="portal-hero mb-4">
 
-                <div class="card-body">
-
-                    <h2 class="fw-bold mb-1">
+                <h2 class="fw-bold mb-1">
 
                         Student Announcements
 
-                    </h2>
+                </h2>
 
-                    <p class="text-muted mb-0">
+                <p class="mb-0">
 
                         Stay updated with the latest announcements from the administration.
 
@@ -39,11 +30,11 @@
 
             @forelse($announcements as $announcement)
 
-                <div class="card shadow-sm border-0 mb-4">
+                <div class="card portal-card mb-4">
 
                     <div class="card-body">
 
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
 
                             <div>
 
@@ -63,13 +54,13 @@
 
                             </div>
 
-                            <i class="bi bi-megaphone-fill text-primary fs-2"></i>
+                            <i class="bi bi-megaphone-fill fs-2" style="color: var(--portal-goldenrod);"></i>
 
                         </div>
 
-                        <hr>
+                        <hr class="border-secondary-subtle">
 
-                        <p style="white-space: pre-line">
+                        <p style="white-space: pre-line" class="mb-0 text-dark">
 
                             {!! $announcement->content !!}
 
@@ -98,11 +89,11 @@
 
             @empty
 
-                <div class="card shadow-sm">
+                <div class="card portal-card">
 
                     <div class="card-body text-center py-5">
 
-                        <i class="bi bi-megaphone fs-1 text-muted"></i>
+                        <i class="bi bi-megaphone fs-1" style="color: var(--portal-goldenrod);"></i>
 
                         <h4 class="mt-3">
 
@@ -127,9 +118,5 @@
             @endif
 
         </div>
-
-    </main>
-
-</div>
 
 @endsection

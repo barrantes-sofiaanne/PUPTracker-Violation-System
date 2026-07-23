@@ -1,14 +1,14 @@
-@extends('layouts.app')
+@extends('layouts.security')
 
 @section('title', "Violations - {$student->student_number}")
 
 @push('styles')
 <style>
     .student-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(120deg, rgba(128, 0, 0, 0.96) 0%, rgba(95, 0, 0, 0.96) 70%, rgba(218, 165, 32, 0.94) 175%);
         color: white;
         padding: 2rem;
-        border-radius: 15px;
+        border-radius: 1rem;
         margin-bottom: 2rem;
     }
     
@@ -42,9 +42,9 @@
         position: relative;
         padding: 1.5rem;
         margin-bottom: 1rem;
-        background: #f8f9fa;
-        border-radius: 10px;
-        border-left: 4px solid #dc3545;
+        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
+        border-radius: 0.95rem;
+        border-left: 4px solid #800000;
     }
     
     .violation-item::before {
@@ -55,25 +55,25 @@
         width: 20px;
         height: 20px;
         border-radius: 50%;
-        background: #dc3545;
+        background: #800000;
         border: 3px solid white;
-        box-shadow: 0 0 0 2px #dc3545;
+        box-shadow: 0 0 0 2px #800000;
     }
     
     .violation-title {
         font-weight: 700;
-        color: #212529;
+        color: #5f0000;
         margin-bottom: 0.5rem;
     }
     
     .violation-meta {
         font-size: 0.85rem;
-        color: #6c757d;
+        color: #67585c;
         margin-bottom: 0.75rem;
     }
     
     .violation-description {
-        color: #495057;
+        color: #3c3134;
         margin-bottom: 0.75rem;
     }
     
@@ -92,9 +92,14 @@
 <div class="container-fluid py-4">
 
     {{-- Back Button --}}
-    <a href="{{ route('security.violations.students') }}" class="btn btn-outline-secondary mb-3">
-        <i class="bi bi-arrow-left me-2"></i>Back to Students
-    </a>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <a href="{{ route('security.violations.students') }}" class="btn portal-btn-outline">
+            <i class="bi bi-arrow-left me-2"></i>Back to Students
+        </a>
+        <a href="{{ route('security.violations.report') }}" target="_blank" class="btn portal-btn">
+            <i class="bi bi-file-earmark-pdf me-2"></i>Generate Report
+        </a>
+    </div>
 
     {{-- Student Header --}}
     <div class="student-header">
@@ -126,8 +131,8 @@
     {{-- Student Info --}}
     <div class="row g-3 mb-4">
         <div class="col-md-6">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-light">
+            <div class="card portal-card">
+                <div class="card-header">
                     <h5 class="fw-bold mb-0">Student Information</h5>
                 </div>
                 <div class="card-body">
@@ -150,8 +155,8 @@
         </div>
 
         <div class="col-md-6">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-light">
+            <div class="card portal-card">
+                <div class="card-header">
                     <h5 class="fw-bold mb-0">Violation Statistics</h5>
                 </div>
                 <div class="card-body">
@@ -159,10 +164,11 @@
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-2">
                             <span class="fw-500">{{ $category_stat->category_name ?? 'Unknown' }}</span>
-                            <span class="badge bg-secondary">{{ $category_stat->total }}</span>
+                               <span class="portal-badge muted">{{ $category_stat->total }}</span>
                         </div>
                         <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-danger"
+                               <div class="progress-bar"
+                                   style="background-color: var(--portal-maroon);"
                                  role="progressbar"
                                  aria-valuemin="0"
                                  aria-valuemax="100"
@@ -180,8 +186,8 @@
     </div>
 
     {{-- Violations List --}}
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-light">
+    <div class="card portal-card">
+        <div class="card-header">
             <h5 class="fw-bold mb-0">Violation Records</h5>
         </div>
         <div class="card-body">
@@ -190,7 +196,7 @@
                 @foreach($violations as $violation)
                 <div class="violation-item">
                     <div class="violation-title">
-                        {{ $violation->violationType->violation_type ?? 'Unknown Violation' }}
+                        {{ $violation->violationType?->violation_type ?? 'Unknown Violation' }}
                     </div>
                     <div class="violation-meta">
                         <i class="bi bi-calendar"></i>
@@ -200,14 +206,11 @@
                         {{ $violation->description ?? 'No description provided' }}
                     </div>
                     <div>
-                        <span class="badge-severity 
-                            @if(strtolower($violation->offense_level) == 'major') bg-danger text-white
-                            @elseif(strtolower($violation->offense_level) == 'minor') bg-warning text-dark
-                            @else bg-info text-white @endif">
+                        <span class="badge-severity portal-badge danger">
                             {{ $violation->offense_level }} Offense
                         </span>
-                        <span class="badge bg-light text-dark">
-                            {{ optional($violation->violationType->violationCategory)->category_name ?? 'N/A' }}
+                        <span class="portal-badge muted">
+                            {{ optional($violation->violationType?->violationCategory)->category_name ?? 'N/A' }}
                         </span>
                     </div>
                 </div>
@@ -215,8 +218,8 @@
             </div>
             @else
             <div class="text-center py-5">
-                <i class="bi bi-check-circle display-4 text-success"></i>
-                <p class="text-muted mt-3">No violation records found.</p>
+                <i class="bi bi-check-circle display-4" style="color: var(--portal-goldenrod);"></i>
+                <p class="mt-3" style="color: #67585c;">No violation records found.</p>
             </div>
             @endif
         </div>

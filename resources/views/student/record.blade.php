@@ -1,24 +1,21 @@
-@extends('layouts.app')
+@extends('layouts.student')
 
 @section('title', 'Student Record')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/student.css') }}">
+<link rel="stylesheet" href="{{ asset('css/student.css') }}"> 
 @endpush
 
 @section('content')
 
-<div class="dashboard-wrapper">
-
- 
-
-    <main class="main-content">
-
-
-        <div class="container-fluid py-4">
+<div class="container-fluid py-1">
 
             {{-- Student Information --}}
-            <div class="card shadow-sm border-0 mb-4">
+            <div class="portal-hero mb-4">
+                <h2 class="fw-bold mb-2">Student Record</h2>
+                <p class="mb-0">Review violation and sanction history with clear offense tracking.</p>
+            </div>
+            <div class="card portal-card mb-4">
 
                 <div class="card-body">
 
@@ -40,24 +37,24 @@
                                 {{ $user->student_number }}
                             </p>
                             <div class="d-flex flex-wrap gap-2 mt-3">
-                                <span class="badge bg-primary-subtle text-primary-emphasis px-3 py-2">
+                                <span class="portal-badge maroon px-3 py-2">
                                     Program: {{ optional(optional($user->studentInfo)->program)->program_name ?? 'N/A' }}
                                 </span>
-                                <span class="badge bg-info-subtle text-info-emphasis px-3 py-2">
+                                <span class="portal-badge goldenrod px-3 py-2">
                                     Year: {{ optional(optional($user->studentInfo)->year)->year ?? 'N/A' }}
                                 </span>
-                                <span class="badge bg-success-subtle text-success-emphasis px-3 py-2">
+                                <span class="portal-badge muted px-3 py-2">
                                     Section: {{ optional(optional($user->studentInfo)->section)->section_name ?? 'N/A' }}
                                 </span>
                             </div>
                         </div>
 
                         <div class="col-md-5">
-                            <div class="border rounded-3 p-3 bg-light">
+                            <div class="portal-muted-box">
                                 <p class="mb-2">
                                     <strong>Violation Summary</strong>
                                 </p>
-                                <p class="mb-0 text-muted">
+                                <p class="mb-0 portal-subtitle">
                                     Track your disciplinary history and request sanction review when needed.
                                 </p>
                             </div>
@@ -130,8 +127,7 @@
 
                         <div class="card-body p-0">
 
-                            <table
-                                class="table table-hover align-middle mb-0">
+                                <table class="table table-hover align-middle mb-0 portal-table">
 
                                 <thead>
 
@@ -218,7 +214,7 @@
 
         @else
 
-            <span class="badge bg-warning text-dark">
+            <span class="portal-badge warning">
 
                 Warning
 
@@ -269,7 +265,7 @@
         @else
 
             <button
-                class="btn btn-primary btn-sm request-sanction-btn"
+                class="btn portal-btn btn-sm request-sanction-btn"
                 data-violation-type-id="{{ $summary['violation_type_id'] }}"
 
                 @if($summary['violation_status'] !== 'Sanction')
@@ -330,7 +326,7 @@
 
     <div class="card-body p-0">
 
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle mb-0 portal-table">
 
             <thead>
 
@@ -509,7 +505,7 @@
 
                                     @case('pending')
 
-                                        <span class="badge bg-warning text-dark">
+                                        <span class="portal-badge warning">
 
                                             Pending
 
@@ -519,7 +515,7 @@
 
                                     @case('completed')
 
-                                        <span class="badge bg-success">
+                                        <span class="portal-badge success">
 
                                             Completed
 
@@ -529,7 +525,7 @@
 
                                     @default
 
-                                        <span class="badge bg-secondary">
+                                        <span class="portal-badge muted">
 
                                             {{ $record->status }}
 
@@ -587,11 +583,7 @@
 
 </div>
 
-</div>
-
-</main>
-
-</div>
+        </div>
 @endsection
 
 @push('scripts')

@@ -1,130 +1,8 @@
-@extends('layouts.app')
+@extends('layouts.student')
 
 @section('title', 'Student Dashboard')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/student.css') }}">
-<style>
-    .student-stat-card {
-        border: none;
-        border-radius: 12px;
-        transition: all 0.3s ease;
-        overflow: hidden;
-    }
-    
-    .student-stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
-    }
-    
-    .student-stat-card.primary-light {
-        background: linear-gradient(135deg, rgba(13, 110, 253, 0.1) 0%, rgba(13, 110, 253, 0.05) 100%);
-        border-left: 4px solid #0d6efd;
-    }
-    
-    .student-stat-card.danger-light {
-        background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(220, 53, 69, 0.05) 100%);
-        border-left: 4px solid #dc3545;
-    }
-    
-    .student-stat-card.info-light {
-        background: linear-gradient(135deg, rgba(23, 162, 184, 0.1) 0%, rgba(23, 162, 184, 0.05) 100%);
-        border-left: 4px solid #17a2b8;
-    }
-    
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        line-height: 1;
-    }
-    
-    .stat-label {
-        font-size: 0.875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .icon-badge {
-        width: 45px;
-        height: 45px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.3rem;
-    }
-    
-    .icon-badge.primary {
-        background: rgba(13, 110, 253, 0.2);
-        color: #0d6efd;
-    }
-    
-    .icon-badge.danger {
-        background: rgba(220, 53, 69, 0.2);
-        color: #dc3545;
-    }
-    
-    .icon-badge.info {
-        background: rgba(23, 162, 184, 0.2);
-        color: #17a2b8;
-    }
-    
-    .card-header-custom {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-bottom: 2px solid #dee2e6;
-    }
-    
-    .page-header {
-        margin-bottom: 2rem;
-    }
-    
-    .welcome-section {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 15px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
-    }
-    
-    .welcome-section h2 {
-        font-size: 2rem;
-        font-weight: 700;
-    }
-    
-    .welcome-section p {
-        font-size: 1rem;
-        opacity: 0.9;
-    }
-    
-    .notification-item {
-        padding: 1rem;
-        border-bottom: 1px solid #e9ecef;
-        transition: all 0.2s ease;
-    }
-    
-    .notification-item:hover {
-        background-color: #f8f9fa;
-        border-left: 3px solid #0d6efd;
-        padding-left: calc(1rem - 3px);
-    }
-    
-    .notification-item.unread {
-        background-color: #e7f3ff;
-    }
-    
-    .violation-item:hover {
-        background-color: #f8f9fa;
-    }
-    
-    .severity-badge {
-        font-weight: 600;
-        padding: 0.35rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-    }
-</style>
 @endpush
 
 @section('content')
@@ -132,8 +10,8 @@
 <div class="container-fluid py-4">
     
     {{-- Welcome Section --}}
-    <div class="welcome-section">
-        <h2 class="mb-1">
+    <div class="portal-hero">
+        <h2 class="mb-1 fw-bold">
             <i class="bi bi-person-circle me-2"></i>Welcome, {{ $user->first_name }}!
         </h2>
         <p class="mb-0">
@@ -145,14 +23,14 @@
     <div class="row mb-4 g-3">
         
         <div class="col-lg-3 col-md-6">
-            <div class="card student-stat-card shadow-sm primary-light">
+            <div class="card portal-stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="stat-label text-muted mb-1">Unread Notifications</p>
-                            <h2 class="stat-value text-primary mb-0">{{ $notificationCount }}</h2>
+                            <p class="portal-stat-label mb-1">Unread Notifications</p>
+                            <h2 class="portal-stat-value mb-0">{{ $notificationCount }}</h2>
                         </div>
-                        <div class="icon-badge primary">
+                        <div class="portal-icon-badge">
                             <i class="bi bi-bell-fill"></i>
                         </div>
                     </div>
@@ -161,14 +39,14 @@
         </div>
 
         <div class="col-lg-3 col-md-6">
-            <div class="card student-stat-card shadow-sm danger-light">
+            <div class="card portal-stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="stat-label text-muted mb-1">Total Violations</p>
-                            <h2 class="stat-value text-danger mb-0">{{ $totalViolations }}</h2>
+                            <p class="portal-stat-label mb-1">Total Violations</p>
+                            <h2 class="portal-stat-value mb-0">{{ $totalViolations }}</h2>
                         </div>
-                        <div class="icon-badge danger">
+                        <div class="portal-icon-badge">
                             <i class="bi bi-exclamation-octagon-fill"></i>
                         </div>
                     </div>
@@ -177,14 +55,14 @@
         </div>
 
         <div class="col-lg-3 col-md-6">
-            <div class="card student-stat-card shadow-sm info-light">
+            <div class="card portal-stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="stat-label text-muted mb-1">Quick Links</p>
-                            <h2 class="stat-value text-info mb-0">4</h2>
+                            <p class="portal-stat-label mb-1">Quick Links</p>
+                            <h2 class="portal-stat-value mb-0">4</h2>
                         </div>
-                        <div class="icon-badge info">
+                        <div class="portal-icon-badge">
                             <i class="bi bi-link-45deg"></i>
                         </div>
                     </div>
@@ -199,7 +77,7 @@
         
         {{-- Recent Violations --}}
         <div class="col-lg-8">
-            <div class="card shadow-sm border-0">
+            <div class="card portal-card">
                 <div class="card-header card-header-custom">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="fw-bold mb-0">Your Violation Records</h5>
@@ -210,7 +88,7 @@
                 </div>
                 <div class="card-body p-0">
                     @forelse($recentViolations as $violation)
-                    <div class="violation-item border-bottom">
+                    <div class="portal-list-item">
                         <div class="row align-items-center">
                             <div class="col">
                                 <div class="mb-2">
@@ -228,11 +106,11 @@
                             </div>
                             <div class="col-auto">
                                 <div class="mb-2">
-                                    <span class="severity-badge bg-warning text-dark">
+                                    <span class="portal-badge gold">
                                         {{ $violation->offense_level ?? 'Unknown' }}
                                     </span>
                                 </div>
-                                <span class="badge bg-secondary">
+                                <span class="portal-badge muted">
                                     {{ optional(optional($violation->violationType)->violationCategory)->category_name ?? 'N/A' }}
                                 </span>
                             </div>
@@ -240,7 +118,7 @@
                     </div>
                     @empty
                     <div class="text-center py-5">
-                        <i class="bi bi-check-circle display-4 text-success"></i>
+                        <i class="bi bi-check-circle display-4" style="color: var(--portal-goldenrod);"></i>
                         <p class="text-muted mt-3">Good news! No violations on record.</p>
                     </div>
                     @endforelse
@@ -250,7 +128,7 @@
 
         {{-- Sidebar: Notifications --}}
         <div class="col-lg-4">
-            <div class="card shadow-sm border-0">
+            <div class="card portal-card">
                 <div class="card-header card-header-custom">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="fw-bold mb-0">Latest Notifications</h5>
@@ -261,7 +139,7 @@
                 </div>
                 <div class="card-body p-0">
                     @forelse($notifications as $notification)
-                    <div class="notification-item {{ !$notification->is_read ? 'unread' : '' }}">
+                    <div class="portal-list-item {{ !$notification->is_read ? 'bg-light' : '' }}">
                         <div class="fw-500 mb-1">
                             {{ $notification->message }}
                         </div>
@@ -285,7 +163,7 @@
     {{-- Quick Actions --}}
     <div class="row g-3 mb-4">
         <div class="col-12">
-            <div class="card shadow-sm border-0">
+            <div class="card portal-card">
                 <div class="card-header card-header-custom">
                     <h5 class="fw-bold mb-0">Quick Access</h5>
                 </div>
@@ -318,7 +196,7 @@
     </div>
 
     {{-- Student Handbook --}}
-    <div class="card shadow-sm border-0">
+    <div class="card portal-card">
         <div class="card-header card-header-custom">
             <h5 class="fw-bold mb-0">
                 <i class="bi bi-book me-2"></i>Violation Code & Sanctions Guide
@@ -335,7 +213,7 @@
                             data-bs-toggle="collapse"
                             data-bs-target="#category{{ $category->violation_category_id }}"
                             aria-expanded="false">
-                            <span class="badge bg-primary me-2">{{ $category->violationTypes->count() }}</span>
+                            <span class="portal-badge maroon me-2">{{ $category->violationTypes->count() }}</span>
                             {{ $category->category_name }}
                         </button>
                     </h2>
@@ -346,13 +224,14 @@
                         <div class="accordion-body pt-0">
                             @forelse($category->violationTypes as $type)
                             <div class="mb-4 pb-3 border-bottom">
-                                <h6 class="fw-bold text-primary mb-2">
+                                <h6 class="fw-bold portal-section-title mb-2">
                                     {{ $type->violation_type }}
                                 </h6>
                                 <p class="text-muted small mb-3">
                                     {{ $type->violation_description }}
                                 </p>
-                                <table class="table table-sm table-bordered">
+                                <div class="portal-table-wrap">
+                                <table class="table table-sm table-bordered portal-table">
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width: 40%;">Offense Level</th>
@@ -363,10 +242,7 @@
                                         @forelse($type->disciplinarySanctions as $sanction)
                                         <tr>
                                             <td class="text-center">
-                                                <span class="badge 
-                                                    @if(strtolower($sanction->offense_level) == 'major') bg-danger 
-                                                    @elseif(strtolower($sanction->offense_level) == 'minor') bg-warning 
-                                                    @else bg-info @endif">
+                                                <span class="portal-badge gold">
                                                     {{ $sanction->offense_level }}
                                                 </span>
                                             </td>
@@ -379,6 +255,7 @@
                                         @endforelse
                                     </tbody>
                                 </table>
+                                </div>
                             </div>
                             @empty
                             <p class="text-muted">No violation types in this category.</p>

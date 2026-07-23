@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Security;
+use App\Support\MfaService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
@@ -15,7 +17,7 @@ class SecurityLoginController extends Controller
         return view('auth.security-login');
     }
 
-    public function login(Request $request)
+    public function login(Request $request, MfaService $mfaService)
     {
         $request->validate([
             'email' => 'required|email',
@@ -32,11 +34,45 @@ class SecurityLoginController extends Controller
                 ->withInput();
         }
 
-        Auth::guard('security')->login($security);
+        if ($mfaService->hasValidTrustedDevice($request, 'security', (string) $security->getKey())) {
+            Auth::guard('security')->login($security);
+            $request->session()->regenerate();
 
-        $request->session()->regenerate();
+            return redirect()->route('security.dashboard');
+        }
 
-        return redirect()->route('security.dashboard');
+        if (empty($security->email)) {
+            return back()
+                ->withErrors([
+                    'login' => 'Your account has no email address configured. Please contact an administrator.'
+                ])
+                ->withInput();
+        }
+
+        try {
+            $mfaService->beginChallenge(
+                $request,
+                'security',
+                (string) $security->getKey(),
+                (string) $security->email,
+                $security->mfa_totp_secret,
+                (bool) $security->mfa_totp_enabled
+            );
+        } catch (\Throwable $exception) {
+            Log::error('Security MFA challenge initialization failed.', [
+                'security_id' => $security->getKey(),
+                'error' => $exception->getMessage(),
+            ]);
+
+            return back()
+                ->withErrors([
+                    'login' => 'Unable to send verification code right now. Please try again later.'
+                ])
+                ->withInput();
+        }
+
+        return redirect()->route('mfa.verify.show')
+            ->with('success', 'A verification code has been sent to your email.');
     }
 
     public function logout(Request $request)

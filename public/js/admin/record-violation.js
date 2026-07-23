@@ -235,7 +235,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 if (!response.ok) {
                     console.error(data);
-                    alert(data.message || "Unable to save violation.");
+                    Swal.fire({
+                        icon: "error",
+                        title: "Unable to save violation",
+                        text: data.message || "Unable to save violation.",
+                    });
                     return;
                 }
                 const modal = bootstrap.Modal.getInstance(

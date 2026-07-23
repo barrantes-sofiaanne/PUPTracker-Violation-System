@@ -1,28 +1,28 @@
-@extends('layouts.app')
+@extends('layouts.security')
 
 @section('title', 'Students with Violations')
 
 @push('styles')
 <style>
     .student-card {
-        border: none;
-        border-radius: 12px;
-        transition: all 0.3s ease;
+        border: 1px solid rgba(128, 0, 0, 0.12);
+        border-radius: 0.95rem;
+        transition: all 0.2s ease;
         overflow: hidden;
         display: flex;
         align-items: center;
         gap: 1rem;
-        padding: 1.5rem;
+        padding: 1.15rem 1.25rem;
         margin-bottom: 1rem;
-        background: #f8f9fa;
+        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
+        box-shadow: 0 8px 20px rgba(128, 0, 0, 0.08);
     }
-    
+
     .student-card:hover {
-        background: #e9ecef;
-        transform: translateX(5px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(128, 0, 0, 0.12);
     }
-    
+
     .violation-badge {
         display: flex;
         align-items: center;
@@ -30,33 +30,29 @@
         width: 50px;
         height: 50px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        background: linear-gradient(135deg, #800000 0%, #5f0000 100%);
         color: white;
         font-weight: 700;
         font-size: 1.3rem;
     }
-    
-    .student-info {
-        flex: 1;
-    }
-    
+
     .student-name {
-        font-weight: 700;
-        color: #212529;
+        font-weight: 800;
+        color: #5f0000;
         margin-bottom: 0.25rem;
     }
-    
+
     .student-meta {
         font-size: 0.85rem;
-        color: #6c757d;
+        color: #67585c;
     }
-    
+
     .page-header {
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
-    
+
     .search-container {
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
 </style>
 @endpush
@@ -66,25 +62,37 @@
 <div class="container-fluid py-4">
 
     {{-- Page Header --}}
-    <div class="page-header">
-        <div>
-            <h1 class="fw-bold mb-1">Students with Violations</h1>
-            <p class="text-muted mb-0">View detailed violation records for students.</p>
+    <div class="portal-hero page-header-modern">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <h1 class="fw-bold mb-1">Students with Violations</h1>
+                <p class="mb-0">View detailed violation records for students.</p>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn portal-btn" type="button" data-bs-toggle="modal" data-bs-target="#recordViolationModal">
+                    <i class="bi bi-plus-circle me-2"></i>Record Violation
+                </button>
+
+                <a href="{{ route('security.violations.report') }}" target="_blank" class="btn portal-btn-outline">
+                    <i class="bi bi-file-earmark-pdf me-2"></i>Generate Report
+                </a>
+            </div>
         </div>
     </div>
 
     {{-- Search Bar --}}
     <div class="search-container">
-        <div class="card shadow-sm border-0">
+        <div class="card portal-card">
             <div class="card-body">
                 <div class="input-group">
                     <span class="input-group-text bg-light border-0">
                         <i class="bi bi-search"></i>
                     </span>
-                    <input 
-                        type="text" 
-                        class="form-control border-0 bg-light" 
-                        id="studentSearch"
+                    <input
+                        type="text"
+                        class="form-control border-0 bg-light"
+                        id="securityStudentSearch"
                         placeholder="Search by student number or name...">
                 </div>
             </div>
@@ -92,7 +100,7 @@
     </div>
 
     {{-- Students List --}}
-    <div class="card shadow-sm border-0">
+    <div class="card portal-card">
         <div class="card-body p-0">
             @forelse($students as $student)
             <a href="{{ route('security.violations.show', $student->student_number) }}" class="text-decoration-none text-dark">
@@ -112,10 +120,10 @@
                         </div>
                     </div>
                     <div class="text-end">
-                        <span class="badge bg-danger">
+                        <span class="portal-badge danger">
                             {{ $student->violations_count }} violation{{ $student->violations_count !== 1 ? 's' : '' }}
                         </span>
-                        <div style="font-size: 0.8rem; color: #6c757d; margin-top: 0.5rem;">
+                        <div style="font-size: 0.8rem; color: #67585c; margin-top: 0.5rem;">
                             Latest: {{ $student->violations->first()?->violation_date?->format('M d, Y') ?? 'N/A' }}
                         </div>
                     </div>
@@ -123,8 +131,8 @@
             </a>
             @empty
             <div class="text-center py-5">
-                <i class="bi bi-inbox display-4 text-muted"></i>
-                <p class="text-muted mt-3">No students with violations found.</p>
+                <i class="bi bi-inbox display-4" style="color: var(--portal-goldenrod);"></i>
+                <p class="mt-3" style="color: #67585c;">No students with violations found.</p>
             </div>
             @endforelse
         </div>
@@ -139,15 +147,18 @@
 
 </div>
 
+@include('security.violations.partials.record-violation')
+
 @push('scripts')
 <script>
-    document.getElementById('studentSearch').addEventListener('input', function(e) {
-        const query = e.target.value;
-        if (query.length < 2) return;
-        
-        // Could implement AJAX search here
-    });
+window.ViolationRoutes = {
+    searchStudent: "{{ route('security.search.student') }}",
+    violationTypes: "{{ route('security.violations.types') }}",
+    previewViolation: "{{ route('security.violations.preview') }}",
+    store: "{{ route('security.violations.store') }}",
+};
 </script>
+<script src="{{ asset('js/security/record-violation.js') }}"></script>
 @endpush
 
 @endsection

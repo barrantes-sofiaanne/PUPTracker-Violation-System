@@ -2,19 +2,15 @@
 
 @section('content')
 <div class="container-fluid">
-   <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+   <div class="page-header-modern d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
        <div>
            <h3 class="mb-1">Student Management</h3>
-           <p class="text-muted mb-0">Browse, search, and update student profiles while preserving their academic record.</p>
+           <p class="mb-0">Browse, search, and update student profiles while preserving their academic record.</p>
        </div>
-       <div class="text-muted small">
+       <div class="small">
            Showing {{ $students->firstItem() ?? 0 }}-{{ $students->lastItem() ?? 0 }} of {{ $students->total() }} students
        </div>
    </div>
-
-   @if(session('success'))
-       <div class="alert alert-success">{{ session('success') }}</div>
-   @endif
 
    <div class="card shadow-sm border-0">
        <div class="card-body">

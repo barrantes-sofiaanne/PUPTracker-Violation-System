@@ -1,27 +1,40 @@
-@extends('layouts.app')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
-@push('styles')
-<link rel="stylesheet" href="{{ asset('assets/css/student.css') }}">
-@endpush
+    <title>@yield('title', 'Student Portal')</title>
 
-@section('content')
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/portal.css') }}">
 
-<div class="dashboard-wrapper">
+    @stack('styles')
+</head>
+<body>
+    <div class="portal-wrapper">
+        @include('student.partials.sidebar')
 
-    @include('student.partials.sidebar')
+        <main class="portal-main">
+            @include('student.partials.navbar')
 
-    <div class="main-content">
-
-        @include('student.partials.navbar')
-
-        @yield('student-content')
-
+            <div class="container-fluid py-4">
+                @yield('content')
+            </div>
+        </main>
     </div>
 
-</div>
+    <div id="portalSidebarBackdrop" aria-hidden="true"></div>
 
-@endsection
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ asset('js/portal.js') }}"></script>
 
-@push('scripts')
-<script src="{{ asset('assets/js/student.js') }}"></script>
-@endpush
+    @include('partials.sweetalert')
+
+    @stack('scripts')
+</body>
+</html>

@@ -13,10 +13,17 @@ class Security extends Authenticatable
     protected $fillable = [
         'email',
         'password',
+        'mfa_totp_secret',
+        'mfa_totp_enabled',
     ];
 
     protected $hidden = [
         'password',
+        'mfa_totp_secret',
+    ];
+
+    protected $casts = [
+        'mfa_totp_enabled' => 'boolean',
     ];
 
     public function getAuthPassword()

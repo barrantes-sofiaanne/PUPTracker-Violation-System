@@ -33,7 +33,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
 
                 .then(function (data) {
-                    alert(data.message);
+                    Swal.fire({
+                        icon: data.success ? "success" : "error",
+                        title: data.success ? "Success" : "Error",
+                        text: data.message,
+                    });
 
                     if (data.success) {
                         location.reload();
@@ -41,7 +45,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
 
                 .catch(function () {
-                    alert("An unexpected error occurred.");
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "An unexpected error occurred.",
+                    });
                 });
         });
     });

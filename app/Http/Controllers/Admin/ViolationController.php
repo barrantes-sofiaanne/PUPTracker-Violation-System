@@ -24,6 +24,11 @@ use App\Models\SanctionRequest;
 
 class ViolationController extends Controller
 {
+public function create()
+{
+    return redirect()->route('admin.violations.index');
+}
+
 public function index()
 {
     /*

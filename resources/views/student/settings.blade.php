@@ -1,43 +1,23 @@
-@extends('layouts.app')
+@extends('layouts.student')
 
 @section('title', 'Settings')
 
-@push('styles')
-<link rel="stylesheet" href="{{ asset('css/student.css') }}">
-@endpush
-
 @section('content')
 
-<div class="dashboard-wrapper">
-    <main class="main-content">
-        <div class="container-fluid py-4">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body">
-                    <h2 class="fw-bold mb-1">Account Settings</h2>
-                    <p class="text-muted mb-0">Manage your account security.</p>
+<div class="container-fluid py-1">
+            <div class="portal-hero mb-4">
+                <h2 class="fw-bold mb-1">Account Settings</h2>
+                <p class="mb-0">Manage your account security.</p>
                 </div>
             </div>
 
             <div class="row g-4">
                 <div class="col-lg-8">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-header bg-white">
+                    <div class="card portal-card">
+                        <div class="card-header">
                             <h5 class="mb-0">Change Password</h5>
                         </div>
                         <div class="card-body">
-                            @if(session('success'))
-                                <div class="alert alert-success">{{ session('success') }}</div>
-                            @endif
-                            @if($errors->any())
-                                <div class="alert alert-danger">
-                                    <ul class="mb-0">
-                                        @foreach($errors->all() as $error)
-                                            <li>{{ $error }}</li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            @endif
-
                             <form action="{{ route('student.change-password') }}" method="POST">
                                 @csrf
                                 <div class="mb-3">
@@ -67,8 +47,8 @@
                 </div>
 
                 <div class="col-lg-4">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-header bg-white">
+                    <div class="card portal-card">
+                        <div class="card-header">
                             <h5 class="mb-0">Security Tips</h5>
                         </div>
                         <div class="card-body">
@@ -84,7 +64,6 @@
                 </div>
             </div>
         </div>
-    </main>
 </div>
 
 @endsection

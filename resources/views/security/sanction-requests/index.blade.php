@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.security')
 
 @section('title', 'Sanction Requests')
 
@@ -11,10 +11,6 @@
         </div>
         <a href="{{ route('security.dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
     </div>
-
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
 
     <div class="card shadow-sm border-0">
         <div class="card-body p-0">

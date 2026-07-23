@@ -1,114 +1,5 @@
 @extends('layouts.admin')
 
-@push('styles')
-<link rel="stylesheet" href="{{ asset('assets/css/admin.css') }}">
-<style>
-    .stat-card {
-        border: none;
-        border-radius: 12px;
-        transition: all 0.3s ease;
-        overflow: hidden;
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
-    }
-    
-    .stat-card.bg-primary-light {
-        background: linear-gradient(135deg, rgba(13, 110, 253, 0.1) 0%, rgba(13, 110, 253, 0.05) 100%);
-        border-left: 4px solid #0d6efd;
-    }
-    
-    .stat-card.bg-danger-light {
-        background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(220, 53, 69, 0.05) 100%);
-        border-left: 4px solid #dc3545;
-    }
-    
-    .stat-card.bg-success-light {
-        background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%);
-        border-left: 4px solid #28a745;
-    }
-    
-    .stat-card.bg-warning-light {
-        background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%);
-        border-left: 4px solid #ffc107;
-    }
-    
-    .stat-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        line-height: 1;
-    }
-    
-    .stat-label {
-        font-size: 0.875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .icon-badge {
-        width: 50px;
-        height: 50px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-    }
-    
-    .icon-badge.primary {
-        background: rgba(13, 110, 253, 0.2);
-        color: #0d6efd;
-    }
-    
-    .icon-badge.danger {
-        background: rgba(220, 53, 69, 0.2);
-        color: #dc3545;
-    }
-    
-    .icon-badge.success {
-        background: rgba(40, 167, 69, 0.2);
-        color: #28a745;
-    }
-    
-    .icon-badge.warning {
-        background: rgba(255, 193, 7, 0.2);
-        color: #ffc107;
-    }
-    
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-    
-    .quick-actions {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-    
-    .quick-actions .btn {
-        padding: 0.5rem 1rem;
-        font-size: 0.875rem;
-    }
-    
-    .card-header-custom {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-bottom: 2px solid #dee2e6;
-    }
-    
-    .recent-violation-item:hover {
-        background-color: #f8f9fa;
-    }
-</style>
-@endpush
-
 @section('title', 'Admin Dashboard')
 
 @section('content')
@@ -116,13 +7,13 @@
 <div class="container-fluid">
     
     {{-- Page Header --}}
-    <div class="page-header">
+    <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
             <h1 class="fw-bold mb-1">Dashboard</h1>
             <p class="text-muted mb-0">Welcome back! Here's your system overview.</p>
         </div>
         <div class="quick-actions">
-            <a href="{{ route('admin.violations.create') }}" class="btn btn-primary">
+            <a href="{{ route('admin.violations.index') }}" class="btn btn-primary">
                 <i class="bi bi-plus-circle me-2"></i>Record Violation
             </a>
             <a href="{{ route('admin.announcements.create') }}" class="btn btn-outline-primary">

@@ -27,9 +27,9 @@ class StudentRecordController extends Controller
        ]);
 
        $violations = Violation::with([
-           'violationType.violationCategory',
-           'violationType.disciplinarySanctions',
-       ])
+    'violationType.violationCategory',
+    'violationType.disciplinarySanctions',
+])
            ->where('student_number', $user->student_number)
            ->orderByDesc('violation_date')
            ->paginate(10);
@@ -59,8 +59,8 @@ $pendingSanctions = StudentSanctionRecord::where(
 
 $groupedViolations = Violation::with([
         'violationType.violationCategory',
-        'violationType.disciplinarySanctions'
-    ])
+    'violationType.disciplinarySanctions'
+])
     ->where('student_number', $user->student_number)
     ->get()
     ->groupBy('violation_type');
@@ -68,92 +68,55 @@ $groupedViolations = Violation::with([
 foreach ($groupedViolations as $records) {
 
     $first = $records->first();
-
     $count = $records->count();
 
     $offenseLevel = match ($count) {
-
         1 => '1st Offense',
         2 => '2nd Offense',
         3 => '3rd Offense',
         default => $count . 'th Offense'
-
     };
 
+    // Safely look up sanction without throwing errors on null relationships
     $sanction = $first
         ->violationType
-        ->disciplinarySanctions
-        ->firstWhere(
-            'offense_level',
-            $offenseLevel
-        );
+        ?->disciplinarySanction
+        ?->firstWhere('offense_level', $offenseLevel);
 
-    $disciplinarySanction =
-        $sanction->disciplinary_sanction
-        ?? 'N/A';
+    $disciplinarySanction = $sanction->disciplinary_sanction ?? 'N/A';
 
-    $status = str_contains(
-        strtolower($disciplinarySanction),
-        'warning'
-    )
+    $status = str_contains(strtolower($disciplinarySanction), 'warning')
         ? 'Warning'
         : 'Sanction';
 
-    if (in_array(
-        $first->violation_type,
-        $activeRequests
-    )) {
-
+    if (in_array($first->violation_type, $activeRequests)) {
         $workflowStatus = 'Requested';
-
-    } elseif (
-        in_array(
-            $first->violation_id,
-            $pendingSanctions
-        )
-    ) {
-
+    } elseif (in_array($first->violation_id, $pendingSanctions)) {
         $workflowStatus = 'Pending';
-
     } else {
-
         $workflowStatus = 'Actionable';
-
     }
 
     $violationSummary[] = [
+        // Using ?-> prevents the "reading property on null" error
+        'category' => $first->violationType?->violationCategory?->category_name ?? 'N/A',
 
-        'category' => optional(
-            $first->violationType
-            ->violationCategory
-        )->category_name,
+        'type' => $first->violationType?->violation_type ?? 'Unknown',
 
-        'type' =>
-            $first->violationType
-            ->violation_type,
+        'violation_type_id' => $first->violation_type,
 
-        'violation_type_id' =>
-            $first->violation_type,
+        'offense_level' => $offenseLevel,
 
-        'offense_level' =>
-            $offenseLevel,
+        'remarks' => $count > 1
+            ? '(Multiple instances - see log)'
+            : ($first->description ?: 'No remarks'),
 
-        'remarks' =>
-            $records->count() > 1
-                ? '(Multiple instances - see log)'
-                : ($first->description ?: 'No remarks'),
+        'disciplinary_sanction' => $disciplinarySanction,
 
-        'disciplinary_sanction' =>
-            $disciplinarySanction,
+        'violation_status' => $status,
 
-        'violation_status' =>
-            $status,
-
-        'workflow_status' =>
-            $workflowStatus
-
+        'workflow_status' => $workflowStatus
     ];
-
 }
 
 $sanctionRecords = StudentSanctionRecord::with([

@@ -35,7 +35,7 @@ class SecurityDashboardController extends Controller
         $violationsByCategory = Violation::with(['violationType.violationCategory'])
             ->where('violation_date', '>=', now()->subDays(7))
             ->get()
-            ->groupBy(fn($violation) => optional($violation->violationType->violationCategory)->category_name ?? 'Unknown')
+            ->groupBy(fn($violation) => optional($violation->violationType?->violationCategory)->category_name ?? 'Unknown')
             ->map(function ($items, $categoryName) {
                 return (object) [
                     'category_name' => $categoryName,
@@ -45,13 +45,28 @@ class SecurityDashboardController extends Controller
             ->sortByDesc('count')
             ->values();
 
-        // Get major violations in the system
-        $majorViolations = Violation::where('offense_level', 'Major')
-            ->count();
+        // Get violations by severity from violation_type_tbl.
+        // Some rows may still have legacy or unmapped violation types, so keep them as Unmapped.
+        $violationsBySeverity = Violation::leftJoin(
+                'violation_type_tbl',
+                'violation_tbl.violation_type',
+                '=',
+                'violation_type_tbl.violation_type_id'
+            )
+            ->selectRaw('COALESCE(violation_type_tbl.severity_level, 0) as severity_level, COUNT(*) as count')
+            ->groupBy('severity_level')
+            ->orderByDesc('count')
+            ->get()
+            ->mapWithKeys(function ($row) {
+                $label = (int) $row->severity_level === 0
+                    ? 'Unmapped'
+                    : 'Level ' . (int) $row->severity_level;
 
-        // Get minor violations in the system
-        $minorViolations = Violation::where('offense_level', 'Minor')
-            ->count();
+                return [$label => (int) $row->count];
+            });
+
+        $majorViolations = (int) ($violationsBySeverity['Level 1'] ?? 0);
+        $minorViolations = (int) ($violationsBySeverity['Level 2'] ?? 0);
 
         return view('security.dashboard', compact(
             'activeStudents',
@@ -59,6 +74,7 @@ class SecurityDashboardController extends Controller
             'recentViolations',
             'activeOffenders',
             'violationsByCategory',
+            'violationsBySeverity',
             'majorViolations',
             'minorViolations'
         ));

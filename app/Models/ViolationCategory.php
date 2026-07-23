@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class ViolationCategory extends Model
 {
@@ -23,6 +24,18 @@ public function violationTypes()
         ViolationType::class,
         'violation_category_id',
         'violation_category_id'
+    );
+}
+
+public function violations(): HasManyThrough
+{
+    return $this->hasManyThrough(
+        Violation::class,
+        ViolationType::class,
+        'violation_category_id',
+        'violation_type',
+        'violation_category_id',
+        'violation_type_id'
     );
 }
     

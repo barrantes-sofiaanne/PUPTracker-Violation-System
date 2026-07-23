@@ -39,6 +39,8 @@ protected $fillable = [
     'reset_token_hash',
     'reset_token_expires_at',
     'new_until',
+    'mfa_totp_secret',
+    'mfa_totp_enabled',
 ];
 
     /**
@@ -47,6 +49,7 @@ protected $fillable = [
     protected $hidden = [
         'password_hash',
         'reset_token_hash',
+        'mfa_totp_secret',
     ];
 
     /**
@@ -59,6 +62,7 @@ protected $fillable = [
             'updated_at'               => 'datetime',
             'reset_token_expires_at'   => 'datetime',
             'new_until'                => 'datetime',
+            'mfa_totp_enabled'         => 'boolean',
         ];
     }
 

@@ -13,9 +13,11 @@
     <div class="login-card">
 
         <img
-            src="{{ asset('assets/images/PUP_logo.png') }}"
+            src="{{ asset('assets/images/Tracker-logo.png') }}"
             class="logo"
-            alt="PUP Logo">
+            alt="PUPTracker Logo">
+
+        <p class="module-chip">Administrator Module</p>
 
         <h2>Administrator Login</h2>
 
@@ -23,24 +25,18 @@
             Sign in using your Email.
         </p>
 
-        @if(session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
-
-        @if($errors->has('login'))
-            <div class="alert alert-danger">
-                {{ $errors->first('login') }}
-            </div>
-        @endif
-
         <form
             action="{{ route('admin.login.post') }}"
             method="POST"
             autocomplete="off">
 
             @csrf
+
+            @if($errors->has('login'))
+                <div class="login-error">
+                    {{ $errors->first('login') }}
+                </div>
+            @endif
 
             <div class="mb-3">
 

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PUPT Student Violation Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @page {
+            size: A4;
+            margin: 12mm;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #222;
+            background: #fff;
+            font-size: 11px;
+        }
+
+        .report-header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .report-header img {
+            width: 42px;
+            height: 42px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto 6px;
+        }
+
+        .report-title {
+            font-size: 20px;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .meta-line {
+            margin-bottom: 8px;
+            font-size: 11px;
+        }
+
+        .student-block {
+            margin-bottom: 12px;
+            page-break-inside: avoid;
+        }
+
+        .student-line {
+            background: #e9e9e9;
+            border: 1px solid #777;
+            font-weight: 700;
+            padding: 6px 8px;
+        }
+
+        table.report-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table.report-table th,
+        table.report-table td {
+            border: 1px solid #333;
+            padding: 4px 6px;
+            vertical-align: top;
+        }
+
+        table.report-table thead th {
+            background: #8b0000;
+            color: #fff;
+            text-align: center;
+            font-size: 10px;
+        }
+
+        .column-violation { width: 46%; }
+        .column-offense { width: 14%; text-align: center; }
+        .column-date { width: 20%; text-align: center; }
+        .column-status { width: 14%; text-align: center; }
+
+        .remarks {
+            margin-top: 2px;
+            font-style: italic;
+        }
+
+        .footer-note {
+            text-align: center;
+            font-style: italic;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid px-0">
+    <div class="report-header">
+        <img src="{{ asset('assets/images/Tracker-logo.png') }}" alt="Tracker logo">
+        <h1 class="report-title">PUPT Student Violation Report</h1>
+    </div>
+
+    <div class="meta-line">
+        <div><strong>Report Generated On:</strong> {{ $generatedAt->format('F j, Y, h:i a') }}</div>
+        <div><strong>Filters Applied:</strong> {{ $filtersApplied ?: 'None' }}</div>
+    </div>
+
+    @forelse($reportStudents as $studentGroup)
+        @php($student = $studentGroup->student)
+        <div class="student-block">
+            <div class="student-line">
+                Student: {{ trim(($student?->last_name ?? 'Unknown') . ', ' . ($student?->first_name ?? '')) }}
+                | Number: {{ $student?->student_number ?? 'N/A' }}
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th class="column-violation">VIOLATION TYPE &amp; REMARKS</th>
+                        <th class="column-offense">OFFENSE LEVEL</th>
+                        <th class="column-date">DATE RECORDED</th>
+                        <th class="column-status">STATUS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($studentGroup->records as $record)
+                        <tr>
+                            <td class="column-violation">
+                                <div>{{ $record->type }}</div>
+                                @if($record->remarks && $record->remarks !== 'No remarks')
+                                    <div class="remarks">Remarks: {{ $record->remarks }}</div>
+                                @endif
+                            </td>
+                            <td class="column-offense">{{ $record->offense_level }}</td>
+                            <td class="column-date">
+                                {{ $record->date_recorded ? \Carbon\Carbon::parse($record->date_recorded)->format('M j, Y, g:i a') : '-' }}
+                            </td>
+                            <td class="column-status">{{ $record->status }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @empty
+        <div class="text-center py-5">No violations available.</div>
+    @endforelse
+
+    <div class="footer-note">Page 1/1</div>
+</div>
+
+<script>window.print();</script>
+</body>
+</html>

@@ -1,15 +1,14 @@
-@extends('layouts.app')
+@extends('layouts.student')
 
 @section('title', 'Student Profile')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('assets/css/student.css') }}">
 <style>
     .profile-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(120deg, rgba(128, 0, 0, 0.96) 0%, rgba(95, 0, 0, 0.96) 70%, rgba(218, 165, 32, 0.94) 175%);
         color: white;
         padding: 2rem;
-        border-radius: 15px 15px 0 0;
+        border-radius: 1rem 1rem 0 0;
         text-align: center;
     }
     
@@ -34,7 +33,7 @@
         background: #f8f9fa;
         padding: 1rem;
         border-radius: 10px;
-        border-left: 4px solid #667eea;
+        border-left: 4px solid #800000;
     }
     
     .info-label {
@@ -61,13 +60,13 @@
     }
     
     .status-active {
-        background: #d4edda;
-        color: #155724;
+        background: rgba(218, 165, 32, 0.18);
+        color: #5f4a00;
     }
     
     .status-inactive {
-        background: #f8d7da;
-        color: #721c24;
+        background: rgba(128, 0, 0, 0.12);
+        color: #5f0000;
     }
 </style>
 @endpush
@@ -76,7 +75,7 @@
 
 <div class="container-fluid py-4">
 
-    <div class="card shadow-sm border-0">
+    <div class="card portal-card">
 
         {{-- Profile Header --}}
         <div class="profile-header">
@@ -190,12 +189,12 @@
         </div>
 
         {{-- Action Buttons --}}
-        <div style="padding: 2rem; border-top: 1px solid #dee2e6;">
+        <div style="padding: 2rem; border-top: 1px solid rgba(128, 0, 0, 0.12);">
             <div class="d-flex gap-2 flex-wrap">
-                <a href="{{ route('student.settings') }}" class="btn btn-primary">
+                <a href="{{ route('student.settings') }}" class="btn portal-btn">
                     <i class="bi bi-pencil me-2"></i>Edit Profile
                 </a>
-                <a href="{{ route('student.dashboard') }}" class="btn btn-outline-secondary">
+                <a href="{{ route('student.dashboard') }}" class="btn portal-btn-outline">
                     <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
                 </a>
             </div>

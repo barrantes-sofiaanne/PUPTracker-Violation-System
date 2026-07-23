@@ -13,16 +13,6 @@
         <a href="{{ route('admin.students') }}" class="btn btn-outline-secondary">Back to Students</a>
     </div>
 
-    @if($errors->any())
-        <div class="alert alert-danger">
-            <ul class="mb-0">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
     <div class="card shadow-sm">
         <div class="card-body">
             <form method="POST" action="{{ route('admin.students.update', $student->student_number) }}">

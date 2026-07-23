@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\UserManagementHistoryController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\SecurityLoginController;
+use App\Http\Controllers\Auth\MfaController;
 use App\Http\Controllers\Admin\ViolationCategoryController;
 use App\Http\Controllers\Admin\ViolationTypeController;
 
@@ -77,6 +78,18 @@ Route::post('/security/login', [SecurityLoginController::class, 'login'])
 Route::post('/security/logout', [SecurityLoginController::class, 'logout'])
     ->middleware('auth:security')
     ->name('security.logout');
+
+Route::get('/mfa/verify', [MfaController::class, 'show'])
+    ->name('mfa.verify.show');
+
+Route::post('/mfa/verify', [MfaController::class, 'verify'])
+    ->name('mfa.verify.submit');
+
+Route::post('/mfa/resend', [MfaController::class, 'resend'])
+    ->name('mfa.verify.resend');
+
+Route::post('/mfa/cancel', [MfaController::class, 'cancel'])
+    ->name('mfa.verify.cancel');
 
    
 
@@ -345,8 +358,20 @@ Route::prefix('violation-categories')
         Route::get('/violations/students', [App\Http\Controllers\Security\StudentViolationController::class, 'index'])
             ->name('security.violations.students');
 
+        Route::get('/violations/report', [App\Http\Controllers\Security\StudentViolationController::class, 'report'])
+            ->name('security.violations.report');
+
         Route::get('/violations/student/{student_number}', [App\Http\Controllers\Security\StudentViolationController::class, 'show'])
             ->name('security.violations.show');
+
+        Route::post('/violations/store', [App\Http\Controllers\Security\StudentViolationController::class, 'store'])
+            ->name('security.violations.store');
+
+        Route::get('/violations/types', [App\Http\Controllers\Security\StudentViolationController::class, 'getViolationTypes'])
+            ->name('security.violations.types');
+
+        Route::post('/violations/preview', [App\Http\Controllers\Security\StudentViolationController::class, 'previewViolation'])
+            ->name('security.violations.preview');
 
         // Search routes
         Route::get('/search/student', [App\Http\Controllers\Security\StudentViolationController::class, 'search'])

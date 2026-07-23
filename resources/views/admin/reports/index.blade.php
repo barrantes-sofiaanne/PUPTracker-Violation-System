@@ -14,7 +14,7 @@
 <div class="container-fluid">
 
     {{-- Page Header --}}
-    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+    <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap mb-4">
 
         <div>
 
@@ -24,7 +24,7 @@
 
             </h2>
 
-            <p class="text-muted mb-0">
+            <p class="mb-0">
 
                 Generate, analyze, and export student disciplinary reports.
 

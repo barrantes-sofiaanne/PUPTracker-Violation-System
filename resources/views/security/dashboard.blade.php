@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.security')
 
 @push('styles')
 <style>
@@ -106,13 +106,13 @@
 <div class="container-fluid py-4">
     
     {{-- Page Header --}}
-    <div class="page-header">
+    <div class="portal-hero page-header-modern">
         <div>
             <h1 class="fw-bold mb-1">Security Officer Dashboard</h1>
-            <p class="text-muted mb-0">Monitor student violations and manage campus security.</p>
+            <p class="mb-0">Monitor student violations and manage campus security.</p>
         </div>
         <div>
-            <span class="text-muted">
+            <span>
                 <i class="bi bi-calendar"></i>
                 {{ now()->format('M d, Y - H:i') }}
             </span>
@@ -123,14 +123,14 @@
     <div class="row mb-4 g-3">
         
         <div class="col-lg-3 col-md-6">
-            <div class="card security-stat-card shadow-sm primary-light">
+            <div class="card portal-stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="stat-label text-muted mb-2">Active Students</p>
-                            <h2 class="stat-value text-primary mb-0">{{ $activeStudents }}</h2>
+                            <p class="portal-stat-label mb-2">Active Students</p>
+                            <h2 class="portal-stat-value mb-0">{{ $activeStudents }}</h2>
                         </div>
-                        <div class="icon-badge primary">
+                        <div class="portal-icon-badge">
                             <i class="bi bi-people-fill"></i>
                         </div>
                     </div>
@@ -139,14 +139,14 @@
         </div>
 
         <div class="col-lg-3 col-md-6">
-            <div class="card security-stat-card shadow-sm danger-light">
+            <div class="card portal-stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="stat-label text-muted mb-2">Major Violations</p>
-                            <h2 class="stat-value text-danger mb-0">{{ $majorViolations }}</h2>
+                            <p class="portal-stat-label mb-2">Major Violations</p>
+                            <h2 class="portal-stat-value mb-0">{{ $majorViolations }}</h2>
                         </div>
-                        <div class="icon-badge danger">
+                        <div class="portal-icon-badge">
                             <i class="bi bi-exclamation-octagon-fill"></i>
                         </div>
                     </div>
@@ -155,14 +155,14 @@
         </div>
 
         <div class="col-lg-3 col-md-6">
-            <div class="card security-stat-card shadow-sm warning-light">
+            <div class="card portal-stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="stat-label text-muted mb-2">Minor Violations</p>
-                            <h2 class="stat-value text-warning mb-0">{{ $minorViolations }}</h2>
+                            <p class="portal-stat-label mb-2">Minor Violations</p>
+                            <h2 class="portal-stat-value mb-0">{{ $minorViolations }}</h2>
                         </div>
-                        <div class="icon-badge warning">
+                        <div class="portal-icon-badge">
                             <i class="bi bi-info-circle-fill"></i>
                         </div>
                     </div>
@@ -171,14 +171,14 @@
         </div>
 
         <div class="col-lg-3 col-md-6">
-            <div class="card security-stat-card shadow-sm" style="background: linear-gradient(135deg, rgba(108, 117, 125, 0.1) 0%, rgba(108, 117, 125, 0.05) 100%); border-left: 4px solid #6c757d;">
+            <div class="card portal-stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="stat-label text-muted mb-2">Total Violations</p>
-                            <h2 class="stat-value text-secondary mb-0">{{ $totalViolations }}</h2>
+                            <p class="portal-stat-label mb-2">Total Violations</p>
+                            <h2 class="portal-stat-value mb-0">{{ $totalViolations }}</h2>
                         </div>
-                        <div class="icon-badge" style="background: rgba(108, 117, 125, 0.2); color: #6c757d;">
+                        <div class="portal-icon-badge">
                             <i class="bi bi-file-text-fill"></i>
                         </div>
                     </div>
@@ -190,14 +190,14 @@
 
     {{-- Quick Actions --}}
     <div class="mb-4">
-        <div class="card shadow-sm border-0">
+        <div class="card portal-card">
             <div class="card-body">
                 <h5 class="fw-bold mb-3">Quick Actions</h5>
                 <div class="d-flex gap-2 flex-wrap">
-                    <a href="{{ route('security.violations.students') }}" class="btn btn-primary">
+                    <a href="{{ route('security.violations.students') }}" class="btn portal-btn">
                         <i class="bi bi-people-fill me-2"></i>View Student Violations
                     </a>
-                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#searchModal">
+                    <button class="btn portal-btn-outline" data-bs-toggle="modal" data-bs-target="#searchModal">
                         <i class="bi bi-search me-2"></i>Search Student
                     </button>
                 </div>
@@ -207,7 +207,7 @@
 
     {{-- Search Bar --}}
     <div class="search-bar-container">
-        <div class="card shadow-sm border-0">
+        <div class="card portal-card">
             <div class="card-body">
                 <form method="GET" action="" class="row g-2">
                     <div class="col-md-8">
@@ -215,16 +215,16 @@
                             <span class="input-group-text bg-light border-0">
                                 <i class="bi bi-search"></i>
                             </span>
-                            <input 
-                                type="text" 
-                                class="form-control border-0 bg-light" 
-                                name="search" 
+                            <input
+                                type="text"
+                                class="form-control border-0 bg-light"
+                                name="search"
                                 placeholder="Search by student number or name..."
                                 value="{{ request('search', '') }}">
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary w-100">
+                        <button type="submit" class="btn portal-btn w-100">
                             <i class="bi bi-search me-2"></i>Search Student
                         </button>
                     </div>
@@ -238,17 +238,17 @@
         
         {{-- Recent Violations --}}
         <div class="col-lg-8">
-            <div class="card shadow-sm border-0">
+            <div class="card portal-card">
                 <div class="card-header card-header-custom">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="fw-bold mb-0">Recent Violations (Last 7 Days)</h5>
-                        <span class="badge bg-secondary">{{ $recentViolations->count() }} records</span>
+                        <span class="portal-badge muted">{{ $recentViolations->count() }} records</span>
                     </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table mb-0">
-                            <thead class="table-light">
+                        <table class="table mb-0 portal-table">
+                            <thead>
                                 <tr>
                                     <th>Student</th>
                                     <th>Violation Type</th>
@@ -269,15 +269,12 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <span class="badge bg-light text-dark">
-                                            {{ $violation->violationType->violation_type ?? '-' }}
+                                        <span class="portal-badge muted">
+                                            {{ $violation->violationType?->violation_type ?? '-' }}
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="badge 
-                                            @if(strtolower($violation->offense_level) == 'major') bg-danger 
-                                            @elseif(strtolower($violation->offense_level) == 'minor') bg-warning 
-                                            @else bg-info @endif">
+                                        <span class="portal-badge danger">
                                             {{ $violation->offense_level }}
                                         </span>
                                     </td>
@@ -287,7 +284,7 @@
                                         </small>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#violationDetailModal" data-violation="{{ json_encode($violation) }}">
+                                        <button class="btn btn-sm portal-btn-outline" data-bs-toggle="modal" data-bs-target="#violationDetailModal" data-violation="{{ json_encode($violation) }}">
                                             View
                                         </button>
                                     </td>
@@ -321,7 +318,7 @@
                         <div>
                             <strong>{{ $offender->student_number }}</strong>
                         </div>
-                        <span class="offender-badge bg-danger text-white">
+                        <span class="portal-badge danger">
                             {{ $offender->violation_count }} violations
                         </span>
                     </div>
@@ -343,10 +340,11 @@
                             <span class="fw-500 text-truncate">
                                 {{ $category->category_name ?? 'Unknown' }}
                             </span>
-                            <span class="badge bg-secondary">{{ $category->count }}</span>
+                            <span class="portal-badge muted">{{ $category->count }}</span>
                         </div>
                         <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-primary"
+                            <div class="progress-bar"
+                                 style="background-color: var(--portal-maroon);"
                                  role="progressbar"
                                  aria-valuemin="0"
                                  aria-valuemax="100"
