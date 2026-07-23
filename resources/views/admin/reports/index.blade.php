@@ -181,7 +181,7 @@
 
     <div class="card-body">
 
-        <form id="reportFilterForm">
+        <form method="GET" action="{{ route('admin.reports') }}" id="reportFilterForm">
 
             <div class="row">
 
@@ -203,6 +203,12 @@
                             All Courses
 
                         </option>
+
+                        @foreach($courses as $course)
+                        <option value="{{ $course->id }}">
+                            {{ $course->course_name }}
+                        </option>
+                        @endforeach
 
                     </select>
 
@@ -227,6 +233,12 @@
 
                         </option>
 
+                        @foreach($years as $year)
+                        <option value="{{ $year->id }}">
+                            {{ $year->year }}
+                        </option>
+                        @endforeach
+
                     </select>
 
                 </div>
@@ -250,6 +262,12 @@
 
                         </option>
 
+                        @foreach($categories as $category)
+                        <option value="{{ $category->id }}">
+                            {{ $category->category_name }}
+                        </option>
+                        @endforeach
+
                     </select>
 
                 </div>
@@ -272,6 +290,12 @@
                             All Violations
 
                         </option>
+
+                        @foreach($violationTypes as $type)
+                        <option value="{{ $type->id }}">
+                            {{ $type->violation_type }}
+                        </option>
+                        @endforeach
 
                     </select>
 
@@ -322,6 +346,7 @@
             type="text"
             class="form-control"
             id="searchStudent"
+            name="search_student"
             placeholder="Student Number or Name">
 
     </div>

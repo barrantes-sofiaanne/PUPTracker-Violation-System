@@ -8,254 +8,116 @@ use App\Models\Violation;
 use App\Models\Course;
 use App\Models\Year;
 use App\Models\ViolationCategory;
+use App\Models\ViolationType;
 use Carbon\Carbon;
 
 class ReportController extends Controller
 {
-    public function index()
-{
-    $statistics = $this->getStatistics();
+    public function index(Request $request)
+    {
+        $statistics = $this->getStatistics($request);
 
-    $reports = $this->buildQuery()
-        ->latest('violation_date')
-        ->paginate(15);
+        $reports = $this->buildQuery($request)
+            ->latest('violation_date')
+            ->paginate(15);
 
-    $courses = Course::orderBy('course_name')->get();
+        $courses = Course::orderBy('course_name')->get();
+        $years = Year::orderBy('year')->get();
+        $categories = ViolationCategory::orderBy('category_name')->get();
+        $violationTypes = ViolationType::orderBy('violation_type')->get();
 
-    $years = Year::orderBy('year')->get();
-
-    $categories = ViolationCategory::orderBy('category_name')->get();
-
-    return view(
-        'admin.reports.index',
-        compact(
-            'reports',
-            'statistics',
-            'courses',
-            'years',
-            'categories'
-        )
-    );
-}
-private function buildQuery(Request $request = null)
-{
-    return Violation::query()
-
-        ->with([
-
-            'student.course',
-
-            'student.year',
-
-            'student.section',
-
-            'violationType.category',
-
-            'recorder'
-
-        ])
-
-        ->when(
-            $request?->course,
-            function ($query, $course) {
-
-                $query->whereHas(
-                    'student',
-                    fn($q) =>
-                        $q->where(
-                            'course_id',
-                            $course
-                        )
-                );
-
-            }
-        )
-
-        ->when(
-            $request?->year,
-            function ($query, $year) {
-
-                $query->whereHas(
-                    'student',
-                    fn($q)=>
-                        $q->where(
-                            'year_id',
-                            $year
-                        )
-                );
-
-            }
-        )
-
-        ->when(
-            $request?->category,
-            function ($query,$category){
-
-                $query->whereHas(
-
-                    'violationType',
-
-                    fn($q)=>
-
-                        $q->where(
-
-                            'category_id',
-
-                            $category
-
-                        )
-
-                );
-
-            }
-
-        );
-}
-
-private function getStatistics(
-    Request $request = null
-)
-{
-    $query = $this
-        ->buildQuery($request);
-
-    return [
-
-        'total'=>
-
-            $query->count(),
-
-        'minor'=>
-
-            (clone $query)
-
-            ->whereHas(
-
-                'violationType.category',
-
-                fn($q)=>
-
-                    $q->where(
-
-                        'category_name',
-
-                        'Minor'
-
-                    )
-
-            )->count(),
-
-        'major'=>
-
-            (clone $query)
-
-            ->whereHas(
-
-                'violationType.category',
-
-                fn($q)=>
-
-                    $q->where(
-
-                        'category_name',
-
-                        'Major'
-
-                    )
-
-            )->count(),
-
-        'repeat_offenders'=>
-
-            (clone $query)
-
-            ->select('student_number')
-
-            ->groupBy('student_number')
-
-            ->havingRaw(
-
-                'COUNT(*) > 1'
-
+        return view(
+            'admin.reports.index',
+            compact(
+                'reports',
+                'statistics',
+                'courses',
+                'years',
+                'categories',
+                'violationTypes'
             )
+        );
+    }
 
-            ->count()
+    private function buildQuery(Request $request = null)
+    {
+        $query = Violation::query()
+            ->with([
+                'student.course',
+                'student.year',
+                'student.section',
+                'violationType.category',
+                'recorder'
+            ]);
 
-    ];
-}
-public function filter(Request $request)
-{
-    $reports = $this
-        ->buildQuery($request)
-        ->latest('violation_date')
-        ->paginate(15);
+        if ($request) {
+            if ($request->filled('course')) {
+                $query->whereHas('student', fn($q) => $q->where('course_id', $request->course));
+            }
 
-    return response()->json([
+            if ($request->filled('year')) {
+                $query->whereHas('student', fn($q) => $q->where('year_id', $request->year));
+            }
 
-        'statistics'=>$this->getStatistics($request),
+            if ($request->filled('category')) {
+                $query->whereHas('violationType', fn($q) => $q->where('violation_category_id', $request->category));
+            }
 
-        'charts'=>$this->chartData($request),
+            if ($request->filled('violation_type')) {
+                $query->where('violation_type_id', $request->violation_type);
+            }
 
-        'records'=>$reports
+            if ($request->filled('start_date')) {
+                $query->whereDate('violation_date', '>=', $request->start_date);
+            }
 
-    ]);
-}
+            if ($request->filled('end_date')) {
+                $query->whereDate('violation_date', '<=', $request->end_date);
+            }
 
-private function chartData(
-    Request $request = null
-)
-{
-    return [
+            if ($request->filled('search_student')) {
+                $query->where('student_number', 'like', '%' . $request->search_student . '%');
+            }
+        }
 
-        'monthly'=>
+        return $query;
+    }
 
-            $this->monthlyTrend($request),
+    private function getStatistics(Request $request = null)
+    {
+        $query = $this->buildQuery($request);
 
-        'categories'=>
+        return [
+            'total' => $query->count(),
+            'minor' => (clone $query)
+                ->whereHas('violationType.category', fn($q) => $q->where('category_name', 'Minor'))
+                ->count(),
+            'major' => (clone $query)
+                ->whereHas('violationType.category', fn($q) => $q->where('category_name', 'Major'))
+                ->count(),
+            'repeat_offenders' => (clone $query)
+                ->select('student_number')
+                ->groupBy('student_number')
+                ->havingRaw('COUNT(*) > 1')
+                ->count()
+        ];
+    }
 
-            $this->categoryDistribution($request),
+    public function filter(Request $request)
+    {
+        $reports = $this->buildQuery($request)
+            ->latest('violation_date')
+            ->paginate(15);
 
-        'topViolations'=>
+        $statistics = $this->getStatistics($request);
 
-            $this->topViolations($request)
-
-    ];
-}
-
-private function monthlyTrend(Request $request = null)
-{
-    $query = $this->buildQuery($request);
-
-    return $query
-        ->selectRaw('MONTH(violation_date) as month, YEAR(violation_date) as year, COUNT(*) as total')
-        ->groupBy('year', 'month')
-        ->orderBy('year')
-        ->orderBy('month')
-        ->get();
-}
-
-private function categoryDistribution(Request $request = null)
-{
-    $query = $this->buildQuery($request);
-
-    return $query
-        ->selectRaw('violation_categories.category_name, COUNT(*) as total')
-        ->join('violation_types', 'violations.violation_type_id', '=', 'violation_types.id')
-        ->join('violation_categories', 'violation_types.category_id', '=', 'violation_categories.id')
-        ->groupBy('violation_categories.category_name')
-        ->get();
-}
-
-private function topViolations(Request $request = null)
-{
-    $query = $this->buildQuery($request);
-
-    return $query
-        ->selectRaw('violation_types.violation_name, COUNT(*) as total')
-        ->join('violation_types', 'violations.violation_type_id', '=', 'violation_types.id')
-        ->groupBy('violation_types.violation_name')
-        ->orderByDesc('total')
-        ->limit(10)
-        ->get();
-}
+        return view('admin.reports.index', [
+            'reports' => $reports,
+            'statistics' => $statistics,
+            'courses' => Course::orderBy('course_name')->get(),
+            'years' => Year::orderBy('year')->get(),
+            'categories' => ViolationCategory::orderBy('category_name')->get(),
+            'violationTypes' => ViolationType::orderBy('violation_type')->get()
+        ]);
+    }
 }
