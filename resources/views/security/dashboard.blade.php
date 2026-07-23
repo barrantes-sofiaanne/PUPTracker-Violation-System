@@ -188,6 +188,23 @@
 
     </div>
 
+    {{-- Quick Actions --}}
+    <div class="mb-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3">Quick Actions</h5>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ route('security.violations.students') }}" class="btn btn-primary">
+                        <i class="bi bi-people-fill me-2"></i>View Student Violations
+                    </a>
+                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#searchModal">
+                        <i class="bi bi-search me-2"></i>Search Student
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Search Bar --}}
     <div class="search-bar-container">
         <div class="card shadow-sm border-0">

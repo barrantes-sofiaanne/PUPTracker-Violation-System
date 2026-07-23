@@ -324,7 +324,16 @@ Route::prefix('violation-categories')
         Route::get('/dashboard', [SecurityDashboardController::class, 'index'])
             ->name('security.dashboard');
 
-        // Other security routes go here...
+        // Student violations routes
+        Route::get('/violations/students', [App\Http\Controllers\Security\StudentViolationController::class, 'index'])
+            ->name('security.violations.students');
+
+        Route::get('/violations/student/{student_number}', [App\Http\Controllers\Security\StudentViolationController::class, 'show'])
+            ->name('security.violations.show');
+
+        // Search routes
+        Route::get('/search/student', [App\Http\Controllers\Security\StudentViolationController::class, 'search'])
+            ->name('security.search.student');
 
     });
 
