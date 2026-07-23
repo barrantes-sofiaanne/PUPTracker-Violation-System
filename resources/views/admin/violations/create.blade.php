@@ -28,7 +28,10 @@ Student Information
 
 <div class="card-body">
 
-<div class="row">
+<form
+method="POST"
+action="{{ route('admin.violations.store') }}"
+enctype="multipart/form-data">
 
 <div class="col-md-6">
 
@@ -249,15 +252,13 @@ Sanction
 
 </div>
 
-</div><div class="d-flex justify-content-end gap-2">
-
-<a
-href="{{ route('admin.violations.show',$student->student_number) }}"
-class="btn btn-secondary">
-
-Cancel
-
-</a>
+<div class="mb-3">
+    <label for="evidence" class="form-label">Upload Evidence (Optional)</label>
+    <input type="file" class="form-control @error('evidence') is-invalid @enderror" id="evidence" name="evidence">
+    @error('evidence')
+        <div class="invalid-feedback">{{ $message }}</div>
+    @enderror
+</div>
 
 <button
 type="submit"

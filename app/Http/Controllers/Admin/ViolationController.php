@@ -313,71 +313,48 @@ public function searchStudents(Request $request)
     ->limit(10)
     ->get();
 
-    return response()->json(
+    $violationTypes = ViolationType::with('category')
+        ->orderBy('violation_type_id')
+        ->get();
 
-        $students->map(function ($student) {
-
-            return [
-
-                'student_number' => $student->student_number,
-
-                'first_name' => $student->first_name,
-
-                'middle_name' => $student->middle_name,
-
-                'last_name' => $student->last_name,
-
-                'program' => [
-                    'program_name' => optional($student->studentInfo?->program)->program_name,
-                ],
-
-                'year' => [
-                    'year_name' => optional($student->studentInfo?->year)->year,
-                ],
-
-                'section' => [
-                    'section_name' => optional($student->studentInfo?->section)->section_name,
-                ],
-
-                'student_status' => [
-                    'status_name' => optional($student->studentInfo?->studentStatus)->status_name,
-                ],
-
-            ];
-
-        })
-
+    return view(
+        'admin.violations.create',
+        compact(
+            'students',
+            'violationTypes'
+        )
     );
 }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Load Violation Types
-    |--------------------------------------------------------------------------
-    */
 
-  public function getViolationTypes(Request $request): JsonResponse
+public function store(Request $request)
 {
-    $categoryId = $request->get('category_id');
+    $validated = $request->validate([
+        'student_number' => 'required|exists:user_tbl,student_number',
+        'violation_type' => 'required|exists:violation_type_tbl,violation_type',
+        'violation_date' => 'required|date',
+        'description' => 'nullable|string|max:1000',
+        'evidence' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120', // Max 5MB file
+    ]);
 
-    if (!$categoryId) {
-        return response()->json([]);
+    $evidencePath = null;
+    
+    if ($request->hasFile('evidence')) {
+        // Upload the file to the 'evidence_files' folder in R2 bucket
+        $evidencePath = $request->file('evidence')->store('evidence_files', 'r2');
     }
 
-    $types = ViolationType::where(
-            'violation_category_id',
-            $categoryId
-        )
-        ->orderBy('violation_type')
-        ->get([
-            'violation_type_id',
-            'violation_type',
-            'violation_description',
-            'resolution_number',
-        ]);
+    $violation = Violation::create([
+        'student_number' => $validated['student_number'],
+        'violation_type' => $validated['violation_type'],
+        'violation_date' => $validated['violation_date'],
+        'description' => $validated['description'] ?? null,
+        'recorder_id' => Auth::id(),
+        'evidence_path' => $evidencePath,
+    ]);
 
-    return response()->json($types);
-}
+    // Load relationship
+    $violation->load('violationType.category');
 
     /*
     |--------------------------------------------------------------------------
