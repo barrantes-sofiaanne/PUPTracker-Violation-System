@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     zip \
     unzip \
+    netcat-openbsd \
     libpq-dev \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
@@ -24,7 +25,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     pdo \
     pdo_mysql \
     zip \
-    opcache
+    opcache \
+    bcmath
 
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
@@ -37,6 +39,10 @@ RUN composer install --optimize-autoloader --no-scripts --no-interaction
 
 # Copy application files
 COPY . .
+
+# Copy entrypoint script
+COPY docker/entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Copy .env file if it exists, otherwise create from example
 RUN if [ -f .env.example ]; then cp .env.example .env; fi
@@ -52,5 +58,5 @@ RUN chown -R www-data:www-data /var/www/html \
 # Expose port
 EXPOSE 9000
 
-# Start PHP-FPM
-CMD ["php-fpm"]
+# Run entrypoint script
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

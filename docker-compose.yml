@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: puptracker_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-pup_trackersys}
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-PUPTRACKER2027}
+      - APP_DEBUG=true
+      - APP_ENV=local
+    depends_on:
+      - db
+    networks:
+      - puptracker_network
+
+  db:
+    image: mysql:8.0
+    container_name: puptracker_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-pup_trackersys}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-PUPTRACKER2027}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-PUPTRACKER2027}
+      MYSQL_USER: ${DB_USERNAME:-root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - puptracker_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: puptracker_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - app
+    networks:
+      - puptracker_network
+
+volumes:
+  dbdata:
+    driver: local
+
+networks:
+  puptracker_network:
+    driver: bridge
