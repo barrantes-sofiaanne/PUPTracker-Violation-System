@@ -16,7 +16,7 @@
             <a href="{{ route('admin.violations.index') }}" class="btn btn-primary">
                 <i class="bi bi-plus-circle me-2"></i>Record Violation
             </a>
-            <a href="{{ route('admin.announcements.create') }}" class="btn btn-outline-primary">
+            <a href="{{ route('admin.announcements.create') }}" class="btn announcements-new-btn">
                 <i class="bi bi-megaphone me-2"></i>New Announcement
             </a>
         </div>

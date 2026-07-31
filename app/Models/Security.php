@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Security extends Authenticatable
 {
@@ -24,10 +25,16 @@ class Security extends Authenticatable
 
     protected $casts = [
         'mfa_totp_enabled' => 'boolean',
+        'reset_token_expires_at' => 'datetime',
     ];
 
     public function getAuthPassword()
     {
         return $this->password;
+    }
+
+    public function securityInfo(): HasOne
+    {
+        return $this->hasOne(SecurityInfo::class, 'security_id', 'id');
     }
 }

@@ -23,6 +23,50 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    document.addEventListener("click", async function (e) {
+        const btn = e.target.closest(".edit-category");
+
+        if (!btn) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+            const response = await fetch(
+                window.ViolationRoutes.categoryShow.replace(
+                    ":id",
+                    btn.dataset.id,
+                ),
+                {
+                    headers: {
+                        Accept: "application/json",
+                        "X-Requested-With": "XMLHttpRequest",
+                    },
+                },
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw data;
+            }
+
+            form.reset();
+            categoryId.value = data.violation_category_id;
+            document.getElementById("category_name").value = data.category_name;
+            modalTitle.textContent = "Edit Category";
+            modal.show();
+        } catch (error) {
+            Swal.fire({
+                icon: "error",
+                title: "Unable to load category",
+                text:
+                    error.message ||
+                    "The selected category could not be loaded.",
+            });
+        }
+    });
+
     /*
     |--------------------------------------------------------------------------
     | Save
@@ -131,6 +175,9 @@ document.addEventListener("click", function (e) {
 
     if (!btn) return;
 
+    e.preventDefault();
+    e.stopPropagation();
+
     Swal.fire({
         title: "Delete Category?",
 
@@ -187,27 +234,15 @@ document.addEventListener("click", function (e) {
             });
         }
     });
-
-    $(document).on("click", ".addTypeBtn", function () {
-        const categoryId = $(this).data("id");
-
-        const categoryName = $(this).data("name");
-
-        $("#violationTypeForm")[0].reset();
-
-        $("#violation_type_id").val("");
-
-        $("#violation_category_id").val(categoryId);
-
-        $("#category_name_display").val(categoryName);
-
-        $("#violationTypeModalLabel").text("Add Violation Type");
-
-        $("#violationTypeModal").modal("show");
-    });
 });
 async function loadCategories() {
     try {
+        const container = document.getElementById("categoryAccordionContainer");
+
+        if (!container) {
+            return;
+        }
+
         const response = await fetch(window.ViolationRoutes.categoryIndex, {
             headers: {
                 "X-Requested-With": "XMLHttpRequest",
@@ -220,7 +255,7 @@ async function loadCategories() {
 
         const html = await response.text();
 
-        document.getElementById("categoryAccordionContainer").innerHTML = html;
+        container.innerHTML = html;
     } catch (error) {
         console.error(error);
 

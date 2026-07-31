@@ -50,6 +50,7 @@
 <script src="{{ asset('js/admin.js') }}"></script>
 
 @include('partials.sweetalert')
+@include('partials.login-announcement-modal')
 
 @stack('scripts')
 

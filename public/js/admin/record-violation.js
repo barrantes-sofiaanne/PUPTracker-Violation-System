@@ -10,6 +10,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const violationIndicator = document.getElementById(
         "violationStepIndicator",
     );
+    const wizardProgress = document.getElementById("violationWizardProgress");
+    const descriptionField = document.getElementById("description");
+    const descriptionCounter = document.getElementById("descriptionCounter");
 
     continueBtn.addEventListener("click", function () {
         studentStep.classList.add("d-none");
@@ -25,6 +28,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         violationIndicator.classList.remove("bg-secondary");
         violationIndicator.classList.add("bg-danger");
+
+        if (wizardProgress) {
+            wizardProgress.style.width = "100%";
+            wizardProgress.setAttribute("aria-valuenow", "100");
+        }
     });
 
     backBtn.addEventListener("click", function () {
@@ -41,7 +49,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
         violationIndicator.classList.remove("bg-danger");
         violationIndicator.classList.add("bg-secondary");
+
+        if (wizardProgress) {
+            wizardProgress.style.width = "50%";
+            wizardProgress.setAttribute("aria-valuenow", "50");
+        }
     });
+
+    if (descriptionField && descriptionCounter) {
+        const updateDescriptionCounter = function () {
+            descriptionCounter.textContent = `${descriptionField.value.length}/1000`;
+        };
+
+        descriptionField.addEventListener("input", updateDescriptionCounter);
+        updateDescriptionCounter();
+    }
 
     const searchBox = document.getElementById("studentSearch");
     const resultBox = document.getElementById("studentResults");
@@ -104,9 +126,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         document.getElementById("studentSection").value =
             student.section?.section_name ?? "-";
-
-        document.getElementById("studentStatus").value =
-            student.student_status?.status_name ?? "-";
 
         document.getElementById("noStudentSelected").classList.add("d-none");
         document
@@ -208,6 +227,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 console.error(error);
             });
     });
+
     saveBtn.addEventListener("click", function () {
         fetch(window.ViolationRoutes.store, {
             method: "POST",
@@ -243,7 +263,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
                 const modal = bootstrap.Modal.getInstance(
-                    document.getElementById("recordViolationModal"),
+                    document.getElementById("addViolationModal"),
                 );
 
                 modal.hide();

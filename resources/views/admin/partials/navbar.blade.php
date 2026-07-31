@@ -8,7 +8,7 @@
                 <img src="{{ asset('assets/images/Tracker-logo.png') }}" alt="Tracker logo">
                 <div class="topbar-brand-text">
                     <p class="title">PUPTracker</p>
-                    <p class="subtitle">Admin Module</p>
+                    <p class="subtitle">{{ request()->routeIs('admin.super-admin.*') ? 'Super Admin Module' : 'Admin Module' }}</p>
                 </div>
             </div>
         </div>

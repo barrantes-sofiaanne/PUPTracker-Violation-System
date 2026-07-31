@@ -5,32 +5,183 @@
 @push('styles')
 <style>
     .student-header {
+        position: relative;
+        overflow: hidden;
         background: linear-gradient(120deg, rgba(128, 0, 0, 0.96) 0%, rgba(95, 0, 0, 0.96) 70%, rgba(218, 165, 32, 0.94) 175%);
         color: white;
         padding: 2rem;
-        border-radius: 1rem;
+        border-radius: 1.15rem;
         margin-bottom: 2rem;
+        box-shadow: 0 18px 34px rgba(95, 0, 0, 0.28);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .student-header::before {
+        content: '';
+        position: absolute;
+        width: 320px;
+        height: 320px;
+        right: -90px;
+        top: -170px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 72%);
+        pointer-events: none;
+    }
+
+    .student-header::after {
+        content: '';
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        left: -100px;
+        bottom: -180px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 220, 150, 0.18) 0%, rgba(255, 220, 150, 0) 74%);
+        pointer-events: none;
+    }
+
+    .student-header h2 {
+        color: #fff !important;
+    }
+
+    .student-name-line {
+        color: #fff;
+    }
+
+    .student-header-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .student-header-label {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        opacity: 0.9;
+        margin-bottom: 0.35rem;
+    }
+
+    .student-name-line {
+        margin: 0;
+        line-height: 1.2;
+        text-wrap: balance;
+    }
+
+    .student-number {
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        margin-bottom: 0.2rem;
+    }
+
+    .student-stats-grid {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(120px, 1fr));
+        gap: 0.8rem;
+        max-width: 460px;
     }
     
     .stat-mini {
         display: flex;
         align-items: center;
-        gap: 1rem;
         padding: 1rem;
-        background: rgba(255,255,255,0.1);
-        border-radius: 10px;
-        margin-right: 1rem;
-        margin-bottom: 1rem;
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08));
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 12px;
+        min-height: 88px;
+        backdrop-filter: blur(2px);
     }
     
     .stat-mini-value {
         font-size: 1.5rem;
         font-weight: 700;
+        line-height: 1;
     }
     
     .stat-mini-label {
         font-size: 0.85rem;
-        opacity: 0.9;
+        opacity: 0.92;
+        margin-top: 0.35rem;
+    }
+
+    .profile-panel {
+        border: 1px solid rgba(122, 19, 19, 0.14);
+        border-radius: 1.1rem;
+        box-shadow: 0 10px 24px rgba(122, 19, 19, 0.08);
+        overflow: hidden;
+    }
+
+    .profile-panel .card-header {
+        background: linear-gradient(180deg, #fffef8 0%, #fff8e8 100%);
+        border-bottom: 1px solid rgba(122, 19, 19, 0.12);
+        padding: 0.95rem 1.1rem;
+    }
+
+    .profile-panel .card-header h5 {
+        color: #7f0000;
+        letter-spacing: 0.01em;
+    }
+
+    .student-info-grid {
+        display: grid;
+        gap: 0.6rem;
+    }
+
+    .student-info-item {
+        display: flex;
+        align-items: baseline;
+        gap: 0.4rem;
+        font-size: 1.05rem;
+    }
+
+    .student-info-item .label {
+        font-weight: 700;
+        color: #2f2f2f;
+    }
+
+    .student-info-item .value {
+        color: #1d2740;
+        font-weight: 600;
+    }
+
+    .stat-category-row {
+        margin-bottom: 1rem;
+    }
+
+    .stat-category-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .category-name {
+        font-weight: 600;
+        color: #202540;
+        text-transform: uppercase;
+        letter-spacing: 0.01em;
+    }
+
+    .category-count {
+        border-radius: 999px;
+        font-weight: 700;
+        padding: 0.28rem 0.7rem;
+    }
+
+    .category-progress {
+        height: 7px;
+        border-radius: 999px;
+        background: #e7ebf1;
+        overflow: hidden;
+    }
+
+    .category-progress .progress-bar {
+        border-radius: 999px;
+        background: linear-gradient(90deg, #840707 0%, #a10d0d 100%);
     }
     
     .violation-timeline {
@@ -84,6 +235,21 @@
         font-size: 0.8rem;
         font-weight: 600;
     }
+
+    @media (max-width: 767.98px) {
+        .student-header {
+            padding: 1.25rem;
+        }
+
+        .student-name-line {
+            font-size: 1.6rem;
+        }
+
+        .student-stats-grid {
+            grid-template-columns: repeat(2, minmax(120px, 1fr));
+            max-width: 100%;
+        }
+    }
 </style>
 @endpush
 
@@ -96,17 +262,19 @@
         <a href="{{ route('security.violations.students') }}" class="btn portal-btn-outline">
             <i class="bi bi-arrow-left me-2"></i>Back to Students
         </a>
-        <a href="{{ route('security.violations.report') }}" target="_blank" class="btn portal-btn">
-            <i class="bi bi-file-earmark-pdf me-2"></i>Generate Report
-        </a>
     </div>
 
     {{-- Student Header --}}
     <div class="student-header">
-        <h2 class="fw-bold mb-3">
-            {{ $student->student_number }} - {{ $student->last_name }}, {{ $student->first_name }}
-        </h2>
-        <div class="d-flex flex-wrap">
+        <div class="student-header-content">
+            <div class="student-identity">
+                <div class="student-header-label">Student Record</div>
+                <div class="student-number fs-3">{{ $student->student_number }}</div>
+                <h2 class="fw-bold student-name-line mb-0">{{ $student->last_name }}, {{ $student->first_name }}</h2>
+            </div>
+        </div>
+
+        <div class="student-stats-grid">
             <div class="stat-mini">
                 <div>
                     <div class="stat-mini-value">{{ $violationStats['total'] }}</div>
@@ -131,23 +299,23 @@
     {{-- Student Info --}}
     <div class="row g-3 mb-4">
         <div class="col-md-6">
-            <div class="card portal-card">
+            <div class="card profile-panel">
                 <div class="card-header">
                     <h5 class="fw-bold mb-0">Student Information</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row g-2">
-                        <div class="col-12">
-                            <strong>Email:</strong> {{ $student->email }}
+                    <div class="student-info-grid">
+                        <div class="student-info-item">
+                            <span class="label">Course:</span>
+                            <span class="value">{{ optional(optional($student->studentInfo)->program)->program_name ?? 'N/A' }}</span>
                         </div>
-                        <div class="col-12">
-                            <strong>Course:</strong> {{ optional(optional($student->studentInfo)->program)->program_name ?? 'N/A' }}
+                        <div class="student-info-item">
+                            <span class="label">Year:</span>
+                            <span class="value">{{ optional(optional($student->studentInfo)->year)->year ?? 'N/A' }}</span>
                         </div>
-                        <div class="col-12">
-                            <strong>Year:</strong> {{ optional(optional($student->studentInfo)->year)->year ?? 'N/A' }}
-                        </div>
-                        <div class="col-12">
-                            <strong>Section:</strong> {{ optional(optional($student->studentInfo)->section)->section_name ?? 'N/A' }}
+                        <div class="student-info-item">
+                            <span class="label">Section:</span>
+                            <span class="value">{{ optional(optional($student->studentInfo)->section)->section_name ?? 'N/A' }}</span>
                         </div>
                     </div>
                 </div>
@@ -155,20 +323,19 @@
         </div>
 
         <div class="col-md-6">
-            <div class="card portal-card">
+            <div class="card profile-panel">
                 <div class="card-header">
                     <h5 class="fw-bold mb-0">Violation Statistics</h5>
                 </div>
                 <div class="card-body">
                     @forelse($violationStats['by_category'] as $category_stat)
-                    <div class="mb-3">
+                    <div class="stat-category-row">
                         <div class="d-flex justify-content-between mb-2">
-                            <span class="fw-500">{{ $category_stat->category_name ?? 'Unknown' }}</span>
-                               <span class="portal-badge muted">{{ $category_stat->total }}</span>
+                            <span class="category-name">{{ $category_stat->category_name ?? 'Unknown' }}</span>
+                               <span class="portal-badge muted category-count">{{ $category_stat->total }}</span>
                         </div>
-                        <div class="progress" style="height: 6px;">
+                        <div class="progress category-progress">
                                <div class="progress-bar"
-                                   style="background-color: var(--portal-maroon);"
                                  role="progressbar"
                                  aria-valuemin="0"
                                  aria-valuemax="100"
@@ -196,7 +363,7 @@
                 @foreach($violations as $violation)
                 <div class="violation-item">
                     <div class="violation-title">
-                        {{ $violation->violationType?->violation_type ?? 'Unknown Violation' }}
+                        {{ $violation->violation_type_display }}
                     </div>
                     <div class="violation-meta">
                         <i class="bi bi-calendar"></i>
@@ -207,10 +374,10 @@
                     </div>
                     <div>
                         <span class="badge-severity portal-badge danger">
-                            {{ $violation->offense_level }} Offense
+                            {{ $violation->offense_level ?: '1st Offense' }}
                         </span>
                         <span class="portal-badge muted">
-                            {{ optional($violation->violationType?->violationCategory)->category_name ?? 'N/A' }}
+                            {{ $violation->violation_category_display }}
                         </span>
                     </div>
                 </div>

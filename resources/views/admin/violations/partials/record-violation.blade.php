@@ -10,13 +10,13 @@
 
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
 
-        <div class="modal-content shadow-lg border-0">
+        <div class="modal-content shadow-lg border-0 rounded-4 overflow-hidden">
 
             <!-- =============================================== -->
             <!-- Header -->
             <!-- =============================================== -->
 
-            <div class="modal-header bg-danger text-white">
+            <div class="modal-header bg-danger text-white py-3">
 
                 <div>
 
@@ -30,7 +30,7 @@
 
                     </h4>
 
-                    <small class="opacity-75">
+                    <small class="opacity-75 d-block mt-1">
 
                         Create a new violation record for a student.
 
@@ -65,14 +65,14 @@
                     <!-- Wizard -->
                     <!-- =========================================== -->
 
-                    <div class="row text-center mb-5">
+                    <div class="row text-center mb-4 g-2">
 
                         <div class="col">
 
                             <div
                                 id="studentStepIndicator"
                                 class="rounded-circle bg-danger text-white mx-auto d-flex align-items-center justify-content-center fw-bold"
-                                style="width:50px;height:50px;">
+                                style="width:46px;height:46px;">
 
                                 1
 
@@ -91,7 +91,7 @@
                             <div
                                 id="violationStepIndicator"
                                 class="rounded-circle bg-secondary text-white mx-auto d-flex align-items-center justify-content-center fw-bold"
-                                style="width:50px;height:50px;">
+                                style="width:46px;height:46px;">
 
                                 2
 
@@ -105,6 +105,18 @@
 
                         </div>
 
+                    </div>
+
+                    <div class="progress mb-4" style="height: 7px;">
+                        <div
+                            id="violationWizardProgress"
+                            class="progress-bar bg-danger"
+                            role="progressbar"
+                            style="width: 50%;"
+                            aria-valuenow="50"
+                            aria-valuemin="0"
+                            aria-valuemax="100">
+                        </div>
                     </div>
 
                     <!-- =========================================== -->
@@ -265,20 +277,6 @@
                                                 readonly>
 
                                         </div>
-                                        <div class="col-md-4">
-
-    <label class="form-label">
-
-        Student Status
-
-    </label>
-
-    <input
-        id="studentStatus"
-        class="form-control"
-        readonly>
-
-</div>
 
                                     </div>
 
@@ -455,7 +453,6 @@
                     </small>
 
                 </div>
-
             </div>
 
         </div>
@@ -614,7 +611,7 @@
                         </button>
 
                         <button
-                            type="submit"
+                            type="button"
                             id="saveViolation"
                             class="btn btn-success d-none">
 

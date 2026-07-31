@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Schema;
 
 class Admin extends Authenticatable
 {
@@ -28,6 +29,7 @@ class Admin extends Authenticatable
 
     protected $casts = [
         'mfa_totp_enabled' => 'boolean',
+        'reset_token_expires_at' => 'datetime',
     ];
 
     public function getAuthPassword()
@@ -51,4 +53,29 @@ class Admin extends Authenticatable
         'id'
     );
 }
+
+    public function isItAdministrator(): bool
+    {
+        if (!Schema::hasTable('admin_info_tbl')) {
+            return false;
+        }
+
+        $adminInfo = $this->adminInfo;
+
+        $candidates = [
+            $adminInfo?->position,
+            $adminInfo?->Position,
+            $adminInfo?->designation,
+            $adminInfo?->role,
+            $adminInfo?->title,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && strcasecmp(trim($candidate), 'IT Administrator') === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

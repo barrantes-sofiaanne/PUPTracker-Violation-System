@@ -92,7 +92,7 @@
 
                     <th>Violation Type</th>
 
-                    <th>Sanction</th>
+                    <th>Remarks</th>
 
                     <th>Recorded By</th>
 
@@ -123,11 +123,8 @@
                         </td>
 
                         <td>
-
-{{ trim(
-    ($history->recorder?->adminInfo?->first_name ?? '') . ' ' .
-    ($history->recorder?->adminInfo?->last_name ?? '')
-) ?: '-' }}
+                            {{ $history->student?->last_name ?? $history->student_number }},
+                            {{ $history->student?->first_name ?? '' }}
 
                         </td>
 
@@ -137,14 +134,14 @@
                         </td>
 
                         <td>
-
-                            {{ $history->sanction->sanction ?? '-' }}
+                            {{ $history->description ?: '-' }}
 
                         </td>
 
                         <td>
 
-{{ optional(optional($history->recorder)->adminInfo)->first_name ?? '-' }}                        </td>
+                            {{ $history->recorded_by_display }}
+                        </td>
 
                         <td>
 
@@ -188,7 +185,7 @@
 
     <div class="mt-3">
 
-        {{ $violationHistory->links() }}
+        {{ $violationHistory->appends(request()->except('history_page'))->links() }}
 
     </div>
 

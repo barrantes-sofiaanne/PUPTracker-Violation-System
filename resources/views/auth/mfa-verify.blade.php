@@ -81,9 +81,23 @@
                     id="rememberDevice"
                     name="remember_device"
                     {{ old('remember_device') ? 'checked' : '' }}>
+                <input
+                    type="hidden"
+                    id="rememberDeviceCheckedAt"
+                    name="remember_device_checked_at"
+                    value="{{ old('remember_device_checked_at') }}">
                 <label class="form-check-label" for="rememberDevice">
-                    Remember this device until {{ $rememberUntil ?? 'the 1st day of next month' }}
+                    Remember this device until {{ $rememberUntil ?? 'one month from today' }}
                 </label>
+                <button
+                    type="button"
+                    class="btn btn-link p-0 ms-1 align-baseline"
+                    data-bs-toggle="tooltip"
+                    data-bs-trigger="hover focus click"
+                    data-bs-title="For security, trusted-device access is limited to 1 month. The 1-month timer starts when you select this option."
+                    aria-label="Why remember me lasts only one month?">
+                    ?
+                </button>
             </div>
 
             <button
@@ -108,5 +122,30 @@
     </div>
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const rememberCheckbox = document.getElementById('rememberDevice');
+    const checkedAtInput = document.getElementById('rememberDeviceCheckedAt');
+
+    if (rememberCheckbox && checkedAtInput && rememberCheckbox.checked && !checkedAtInput.value) {
+        checkedAtInput.value = Math.floor(Date.now() / 1000);
+    }
+
+    if (rememberCheckbox && checkedAtInput) {
+        rememberCheckbox.addEventListener('change', function () {
+            if (rememberCheckbox.checked) {
+                checkedAtInput.value = Math.floor(Date.now() / 1000);
+            } else {
+                checkedAtInput.value = '';
+            }
+        });
+    }
+
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
+        new bootstrap.Tooltip(element);
+    });
+});
+</script>
 
 @endsection

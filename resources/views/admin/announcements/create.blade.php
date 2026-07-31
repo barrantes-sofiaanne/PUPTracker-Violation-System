@@ -33,6 +33,21 @@
                 <div class="form-text">Supported formats: JPG, PNG, GIF, PDF. Maximum size 5MB.</div>
             </div>
 
+            @if(Auth::guard('admin')->user()?->isItAdministrator())
+                <div class="mb-4 form-check">
+                    <input
+                        class="form-check-input"
+                        type="checkbox"
+                        value="1"
+                        id="show_on_login"
+                        name="show_on_login"
+                        @checked(old('show_on_login'))>
+                    <label class="form-check-label" for="show_on_login">
+                        Show this announcement as a login modal across modules
+                    </label>
+                </div>
+            @endif
+
             <button type="submit" class="btn btn-primary">Publish Announcement</button>
         </form>
     </div>

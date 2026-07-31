@@ -31,6 +31,7 @@ class MfaController extends Controller
             'code' => ['required', 'digits:6'],
             'method' => ['nullable', 'in:email,totp'],
             'remember_device' => ['nullable', 'boolean'],
+            'remember_device_checked_at' => ['nullable', 'integer'],
         ]);
 
         $result = $mfaService->verifyCode($request, $validated['code'], $validated['method'] ?? 'email');
@@ -57,10 +58,18 @@ class MfaController extends Controller
         $request->session()->regenerate();
         $mfaService->clear($request);
 
-        $redirect = redirect()->route($this->redirectRouteForGuard($guard));
+        $redirect = redirect()
+            ->route($this->redirectRouteForGuard($guard, $user))
+            ->with('show_login_announcement_modal', true);
 
         if (!empty($validated['remember_device'])) {
-            $redirect->withCookie($mfaService->makeTrustedDeviceCookie($guard, $identifier));
+            $rememberDeviceCheckedAt = isset($validated['remember_device_checked_at'])
+                ? (int) $validated['remember_device_checked_at']
+                : null;
+
+            $redirect->withCookie(
+                $mfaService->makeTrustedDeviceCookie($guard, $identifier, $rememberDeviceCheckedAt)
+            );
         }
 
         return $redirect;
@@ -98,10 +107,12 @@ class MfaController extends Controller
         };
     }
 
-    private function redirectRouteForGuard(string $guard): string
+    private function redirectRouteForGuard(string $guard, Admin|Security|User $user): string
     {
         return match ($guard) {
-            'admin' => 'admin.dashboard',
+            'admin' => $user instanceof Admin && $user->isItAdministrator()
+                ? 'admin.super-admin.dashboard'
+                : 'admin.dashboard',
             'security' => 'security.dashboard',
             default => 'student.dashboard',
         };

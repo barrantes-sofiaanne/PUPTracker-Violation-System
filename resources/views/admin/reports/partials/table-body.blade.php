@@ -15,7 +15,7 @@
         <td>{{ optional($report->violationType)->severity_level ?? '-' }}</td>
         <td>{{ optional($report->sanction)->disciplinary_sanction ?? '-' }}</td>
         <td>{{ $report->violation_date ? \Carbon\Carbon::parse($report->violation_date)->format('M d, Y') : '-' }}</td>
-        <td>{{ optional($report->recorder)->first_name ?? '-' }}</td>
+        <td>{{ $report->recorded_by_display }}</td>
         <td>
             <a href="{{ route('admin.violations.show', $report->student?->student_number) }}" class="btn btn-sm btn-outline-primary">View</a>
         </td>

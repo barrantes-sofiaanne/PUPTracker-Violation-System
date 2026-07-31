@@ -69,10 +69,13 @@ body {
     font-family: "Cinzel", serif;
     font-weight: 700;
     letter-spacing: 0.04em;
+    color: #fff !important;
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
 }
 
 .portal-logo-wrap small {
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.95) !important;
+    font-weight: 600;
 }
 
 .portal-nav-list {
@@ -223,6 +226,9 @@ body {
 .page-header-modern h1,
 .page-header-modern h2,
 .page-header-modern h3,
+.page-header-modern h4,
+.page-header-modern h5,
+.page-header-modern h6,
 .page-header-modern p,
 .page-header-modern .text-muted {
     color: var(--portal-white) !important;
@@ -246,6 +252,8 @@ body {
 .portal-hero h2,
 .portal-hero h3,
 .portal-hero h4,
+.portal-hero h5,
+.portal-hero h6,
 .portal-hero p,
 .portal-hero .text-muted,
 .portal-hero small {

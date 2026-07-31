@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Security;
 
 use App\Http\Controllers\Controller;
 use App\Models\DisciplinarySanction;
+use App\Models\Program;
 use App\Models\ViolationCategory;
 use App\Models\ViolationType;
+use App\Models\Year;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,17 +25,52 @@ class StudentViolationController extends Controller
      */
     public function index()
     {
-        $students = User::whereHas('violations')
+        $search = trim((string) request('search', ''));
+        $programId = request('program_id');
+        $yearId = request('year_id');
+
+        $students = User::whereHas('violations', function ($query) {
+                $this->applyRecorderScope($query);
+            })
+            ->when($search !== '', function (Builder $query) use ($search) {
+                $query->where(function (Builder $inner) use ($search) {
+                    $inner->where('student_number', 'like', "%{$search}%")
+                        ->orWhere('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%");
+                });
+            })
+            ->when(!empty($programId), function (Builder $query) use ($programId) {
+                $query->whereHas('studentInfo', function (Builder $infoQuery) use ($programId) {
+                    $infoQuery->where('program_id', $programId);
+                });
+            })
+            ->when(!empty($yearId), function (Builder $query) use ($yearId) {
+                $query->whereHas('studentInfo', function (Builder $infoQuery) use ($yearId) {
+                    $infoQuery->where('year_id', $yearId);
+                });
+            })
             ->with(['violations' => function ($query) {
+                $this->applyRecorderScope($query);
                 $query->latest('violation_date')->take(5);
             }])
-            ->withCount('violations')
+            ->with([
+                'studentInfo.program',
+                'studentInfo.year',
+            ])
+            ->withCount([
+                'violations as violations_count' => function ($query) {
+                    $this->applyRecorderScope($query);
+                },
+            ])
             ->orderByDesc('violations_count')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         $categories = ViolationCategory::orderBy('category_name')->get();
+        $programs = Program::orderBy('program_name')->get(['program_id', 'program_name']);
+        $years = Year::orderBy('year')->get(['year_id', 'year']);
 
-        return view('security.violations.students', compact('students', 'categories'));
+        return view('security.violations.students', compact('students', 'categories', 'programs', 'years', 'search', 'programId', 'yearId'));
     }
 
     /**
@@ -42,6 +80,7 @@ class StudentViolationController extends Controller
     {
         $student = User::where('student_number', $student_number)
             ->with(['violations' => function ($query) {
+                $this->applyRecorderScope($query);
                 $query->latest('violation_date');
             }, 'violations.violationType.violationCategory'])
             ->firstOrFail();
@@ -139,7 +178,10 @@ class StudentViolationController extends Controller
         }
 
         $previousCount = Violation::where('student_number', $validated['student_number'])
-            ->where('violation_type', $violationType->violation_type)
+            ->where(function ($query) use ($violationType) {
+                $query->where('violation_type', (string) $violationType->violation_type_id)
+                    ->orWhere('violation_type', $violationType->violation_type);
+            })
             ->count();
 
         $currentOffenseNumber = $previousCount + 1;
@@ -173,7 +215,10 @@ class StudentViolationController extends Controller
 
         try {
             $exists = Violation::where('student_number', $validated['student_number'])
-                ->where('violation_type', $violationType->violation_type)
+                ->where(function ($query) use ($violationType) {
+                    $query->where('violation_type', (string) $violationType->violation_type_id)
+                        ->orWhere('violation_type', $violationType->violation_type);
+                })
                 ->whereDate('violation_date', Carbon::parse($validated['violation_date'])->toDateString())
                 ->exists();
 
@@ -185,12 +230,18 @@ class StudentViolationController extends Controller
                 ], 422);
             }
 
+            $security = Auth::guard('security')->user();
+            $securityLabel = $this->buildSecurityRecorderLabel($security?->id, $security?->email);
+
             $violation = Violation::create([
                 'student_number' => $validated['student_number'],
-                'violation_type' => $violationType->violation_type,
+                'violation_type' => $violationType->violation_type_id,
                 'violation_date' => $validated['violation_date'],
                 'description' => trim($validated['description']),
-                'recorder_id' => Auth::guard('security')->id(),
+                // recorder_id references admins.id; security accounts are in a different table.
+                'recorder_id' => null,
+                'recorder_type' => 'security',
+                'recorder_name' => $securityLabel,
             ]);
 
             DB::commit();
@@ -213,12 +264,30 @@ class StudentViolationController extends Controller
 
     public function report(Request $request)
     {
-        $reportStudents = $this->buildReportStudents();
+        $period = (string) $request->input('period', 'last7');
+        $period = in_array($period, ['last7', 'last30', 'all', 'custom'], true) ? $period : 'last7';
+
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+
+        $reportStudents = $this->buildReportStudents($period, $dateFrom, $dateTo);
+
+        $security = Auth::guard('security')->user();
+        $generatedBy = $this->buildSecurityRecorderLabel($security?->id, $security?->email);
+
+        $filtersApplied = match ($period) {
+            'last7' => 'Last 7 Days',
+            'last30' => 'Last 30 Days',
+            'all' => 'All My Recorded Violations',
+            'custom' => $this->formatCustomDateFilter($dateFrom, $dateTo),
+            default => 'Last 7 Days',
+        };
 
         return view('security.violations.report', [
             'reportStudents' => $reportStudents,
             'generatedAt' => now(),
-            'filtersApplied' => 'None',
+            'filtersApplied' => $filtersApplied,
+            'generatedBy' => $generatedBy,
         ]);
     }
 
@@ -228,11 +297,14 @@ class StudentViolationController extends Controller
     private function getViolationStats(string $student_number)
     {
         $violations = Violation::where('student_number', $student_number)
+            ->where(function ($query) {
+                $this->applyRecorderScope($query);
+            })
             ->with(['violationType.violationCategory']);
 
         $byCategory = (clone $violations)
             ->get()
-            ->groupBy(fn ($violation) => optional($violation->violationType?->violationCategory)->category_name ?? 'Unknown')
+            ->groupBy(fn ($violation) => $violation->violation_category_display)
             ->map(function ($items, $categoryName) {
                 return (object) [
                     'category_name' => $categoryName,
@@ -260,15 +332,37 @@ class StudentViolationController extends Controller
         ];
     }
 
-    private function buildReportStudents(): Collection
+    private function buildReportStudents(string $period = 'last7', ?string $dateFrom = null, ?string $dateTo = null): Collection
     {
-        $violations = Violation::with([
+        $violationsQuery = Violation::with([
                 'student.studentInfo.program',
                 'student.studentInfo.year',
                 'student.studentInfo.section',
                 'violationType.violationCategory',
                 'violationType.disciplinarySanctions',
             ])
+            ->where(function ($query) {
+                $this->applyRecorderScope($query);
+            });
+
+        if ($period === 'last7') {
+            $violationsQuery->where('violation_date', '>=', now()->subDays(7));
+        } elseif ($period === 'last30') {
+            $violationsQuery->where('violation_date', '>=', now()->subDays(30));
+        } elseif ($period === 'custom') {
+            $from = $this->normalizeDateBoundary($dateFrom, false);
+            $to = $this->normalizeDateBoundary($dateTo, true);
+
+            if ($from !== null && $to !== null) {
+                $violationsQuery->whereBetween('violation_date', [$from, $to]);
+            } elseif ($from !== null) {
+                $violationsQuery->where('violation_date', '>=', $from);
+            } elseif ($to !== null) {
+                $violationsQuery->where('violation_date', '<=', $to);
+            }
+        }
+
+        $violations = $violationsQuery
             ->latest('violation_date')
             ->get();
 
@@ -278,36 +372,53 @@ class StudentViolationController extends Controller
                 $firstViolation = $studentViolations->first();
                 $student = $firstViolation?->student;
 
-                $summaries = $studentViolations
-                    ->groupBy('violation_type')
-                    ->map(function ($records) {
-                        $first = $records->first();
-                        $count = $records->count();
-                        $offenseLevel = $this->formatOffenseLevel($count);
+                $detailedRecords = $studentViolations
+                    ->sortByDesc('violation_date')
+                    ->values()
+                    ->map(function ($record) {
+                        $offenseLevel = $record->offense_level ?: 'N/A';
+                        $resolvedViolationType = $record->resolvedViolationType();
 
-                        $disciplinarySanction = DisciplinarySanction::where(
-                                'violation_type_id',
-                                optional($first->violationType)->violation_type_id
-                            )
-                            ->where('offense_level', $offenseLevel)
-                            ->first();
+                        $sanctionText = 'N/A';
+                        if (!empty($resolvedViolationType?->violation_type_id)) {
+                            $disciplinarySanction = DisciplinarySanction::where(
+                                    'violation_type_id',
+                                    $resolvedViolationType->violation_type_id
+                                )
+                                ->whereRaw('LOWER(TRIM(offense_level)) = ?', [strtolower(trim($offenseLevel))])
+                                ->first();
 
-                        $sanctionText = $disciplinarySanction?->disciplinary_sanction ?? 'N/A';
+                            if (!$disciplinarySanction) {
+                                $disciplinarySanction = DisciplinarySanction::where(
+                                        'violation_type_id',
+                                        $resolvedViolationType->violation_type_id
+                                    )
+                                    ->first();
+                            }
+
+                            $sanctionText = $disciplinarySanction?->disciplinary_sanction ?? 'N/A';
+                        }
+
+                        $status = 'N/A';
+                        if ($sanctionText !== 'N/A') {
+                            $status = str_contains(strtolower($sanctionText), 'warning') ? 'Warning' : 'Sanction';
+                        }
 
                         return (object) [
-                            'category' => $first->violationType?->violationCategory?->category_name ?? 'N/A',
-                            'type' => $first->violationType?->violation_type ?? 'Unknown',
+                            'category' => $record->violation_category_display,
+                            'type' => $record->violation_type_display,
                             'offense_level' => $offenseLevel,
-                            'remarks' => $count > 1 ? '(Multiple instances - see log)' : ($first->description ?: 'No remarks'),
-                            'date_recorded' => $first->violation_date,
-                            'status' => str_contains(strtolower($sanctionText), 'warning') ? 'Warning' : 'Sanction',
+                            'remarks' => $record->description ?: 'No remarks',
+                            'date_recorded' => $record->violation_date,
+                            'status' => $status,
+                            'sanction' => $sanctionText,
+                            'recorded_by' => $record->recorded_by_display,
                         ];
-                    })
-                    ->values();
+                    });
 
                 return (object) [
                     'student' => $student,
-                    'records' => $summaries,
+                    'records' => $detailedRecords,
                 ];
             })
             ->values()
@@ -315,6 +426,40 @@ class StudentViolationController extends Controller
                 return trim(($entry->student?->last_name ?? '') . ', ' . ($entry->student?->first_name ?? ''));
             })
             ->values();
+    }
+
+    private function normalizeDateBoundary(?string $date, bool $endOfDay): ?Carbon
+    {
+        if (empty($date)) {
+            return null;
+        }
+
+        try {
+            $parsed = Carbon::parse($date);
+            return $endOfDay ? $parsed->endOfDay() : $parsed->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function formatCustomDateFilter(?string $dateFrom, ?string $dateTo): string
+    {
+        $from = $this->normalizeDateBoundary($dateFrom, false);
+        $to = $this->normalizeDateBoundary($dateTo, true);
+
+        if ($from && $to) {
+            return 'Custom Date Range: ' . $from->format('M d, Y') . ' to ' . $to->format('M d, Y');
+        }
+
+        if ($from) {
+            return 'Custom Date Range: From ' . $from->format('M d, Y');
+        }
+
+        if ($to) {
+            return 'Custom Date Range: Until ' . $to->format('M d, Y');
+        }
+
+        return 'Custom Date Range: No valid dates provided';
     }
 
     private function formatOffenseLevel(int $count): string
@@ -340,5 +485,27 @@ class StudentViolationController extends Controller
         };
 
         return "{$count}{$suffix} Offense";
+    }
+
+    private function applyRecorderScope($query): void
+    {
+        $security = Auth::guard('security')->user();
+        $securityLabel = $this->buildSecurityRecorderLabel($security?->id, $security?->email);
+        $legacySecurityIdLabel = 'Security #' . ($security?->id ?? 'Unknown');
+
+        $query->where('recorder_type', 'security')
+            ->where(function ($innerQuery) use ($securityLabel, $legacySecurityIdLabel) {
+                $innerQuery->where('recorder_name', $securityLabel)
+                    ->orWhere('recorder_name', $legacySecurityIdLabel);
+            });
+    }
+
+    private function buildSecurityRecorderLabel($securityId, ?string $email): string
+    {
+        if (!empty($email)) {
+            return 'Security: ' . $email;
+        }
+
+        return 'Security #' . ($securityId ?? 'Unknown');
     }
 }

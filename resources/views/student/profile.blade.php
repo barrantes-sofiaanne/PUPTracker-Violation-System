@@ -11,6 +11,17 @@
         border-radius: 1rem 1rem 0 0;
         text-align: center;
     }
+
+    .profile-header h1,
+    .profile-header h2,
+    .profile-header h3,
+    .profile-header h4,
+    .profile-header h5,
+    .profile-header h6,
+    .profile-header p,
+    .profile-header small {
+        color: #fff !important;
+    }
     
     .profile-image {
         width: 150px;

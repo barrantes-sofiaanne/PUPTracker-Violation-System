@@ -27,6 +27,11 @@ document.addEventListener("DOMContentLoaded", function () {
             event.preventDefault();
             event.stopPropagation();
             resetForm();
+            const violationTypeId = addButton.dataset.violationTypeId;
+            if (violationTypeId) {
+                document.getElementById("violation_type_id").value =
+                    violationTypeId;
+            }
             sanctionModal.show();
             return;
         }
@@ -195,4 +200,19 @@ document.addEventListener("DOMContentLoaded", function () {
             container.innerHTML = html;
         }
     }
+
+    document.addEventListener("input", function (event) {
+        if (event.target.id !== "sanctionSearchInput") {
+            return;
+        }
+
+        const keyword = event.target.value.trim().toLowerCase();
+        const groups = document.querySelectorAll(".sanction-accordion-item");
+
+        groups.forEach((group) => {
+            const label = (group.dataset.violationTypeName || "").toLowerCase();
+            const matched = keyword === "" || label.includes(keyword);
+            group.classList.toggle("d-none", !matched);
+        });
+    });
 });

@@ -61,6 +61,7 @@ class SanctionRequestController extends Controller
                         'student_number' => $student->student_number,
                         'violation_id' => $latestViolation->violation_id,
                         'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
+                        'assigned_by_admin_id' => 1,
                         'status' => 'Pending',
                         'date_assigned' => now(),
                     ]);

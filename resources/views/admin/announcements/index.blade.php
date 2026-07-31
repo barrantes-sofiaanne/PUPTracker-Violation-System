@@ -16,7 +16,7 @@
                 <span class="badge bg-danger ms-2">{{ $unreadNotificationCount }}</span>
             @endif
         </a>
-        <a href="{{ route('admin.announcements.create') }}" class="btn btn-primary">Add Announcement</a>
+        <a href="{{ route('admin.announcements.create') }}" class="btn announcements-new-btn">New Announcement</a>
     </div>
 </div>
 
@@ -56,8 +56,8 @@
 <div class="card shadow-sm mb-4 border-0">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+            <table class="table table-hover align-middle mb-0 announcements-table">
+                <thead>
                     <tr>
                         <th>Title</th>
                         <th>Author</th>
@@ -72,6 +72,9 @@
                                 <div class="fw-semibold">{{ $announcement->title }}</div>
                                 @if($announcement->attachment_path)
                                     <span class="badge bg-secondary mt-2">Attachment</span>
+                                @endif
+                                @if($announcement->show_on_login)
+                                    <span class="badge bg-warning text-dark mt-2">Login Modal</span>
                                 @endif
                                 <div class="text-muted small mt-2">
                                     {{ Str::limit(strip_tags($announcement->content), 80) }}

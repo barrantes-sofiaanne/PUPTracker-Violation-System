@@ -20,14 +20,17 @@ class StudentSanctionRecord extends Model
         'student_number',
         'violation_id',
         'assigned_sanction_id',
+        'assigned_by_admin_id',
         'status',
+        'deadline_date',
         'date_assigned',
-        'completed_at'
+        'date_completed'
     ];
 
     protected $casts = [
+        'deadline_date' => 'datetime',
         'date_assigned' => 'datetime',
-        'completed_at' => 'datetime',
+        'date_completed' => 'datetime',
     ];
 
     /*

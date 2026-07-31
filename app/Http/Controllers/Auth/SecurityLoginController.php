@@ -38,7 +38,8 @@ class SecurityLoginController extends Controller
             Auth::guard('security')->login($security);
             $request->session()->regenerate();
 
-            return redirect()->route('security.dashboard');
+            return redirect()->route('security.dashboard')
+                ->with('show_login_announcement_modal', true);
         }
 
         if (empty($security->email)) {

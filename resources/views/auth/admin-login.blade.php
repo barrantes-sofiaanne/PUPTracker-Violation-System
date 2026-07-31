@@ -109,7 +109,7 @@
                 ← Back to Home
             </a>
 
-            <a href="#">
+            <a href="{{ route('password.request', ['guard' => 'admin']) }}">
                 Forgot Password?
             </a>
 

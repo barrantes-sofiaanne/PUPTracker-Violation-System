@@ -3,28 +3,30 @@
     id="studentHistoryModal"
     tabindex="-1">
 
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
 
-        <div class="modal-content">
+        <div class="modal-content violation-history-modal-content">
 
-            <div class="modal-header bg-danger text-white">
+            <div class="modal-header violation-history-modal-header">
 
-                <h5 class="modal-title">
+                <h5 class="modal-title violation-history-modal-title">
+
+                    <i class="bi bi-journal-text me-2"></i>
 
                     Student Violation Record
 
                 </h5>
 
                 <button
-                    class="btn-close btn-close-white"
+                    class="btn-close"
                     data-bs-dismiss="modal">
                 </button>
 
             </div>
 
-            <div class="modal-body">
+            <div class="modal-body violation-history-modal-body">
 
-                <div id="studentHistoryContent">
+                <div id="studentHistoryContent" class="violation-history-modal-panel">
 
                     <div class="text-center py-5">
 

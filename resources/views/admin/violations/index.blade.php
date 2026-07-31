@@ -136,6 +136,7 @@
                     @include('admin.violations.tabs.history')
 
                 </div>
+
             </div>
 
         </div>
@@ -153,10 +154,6 @@
 @include('admin.violations.partials.category-modal')
 
 @include('admin.violations.partials.violation-type-modal')
-
-@include('admin.violations.partials.sanction-modal')
-
-@include('admin.violations.partials.category-modal')
 
 @endsection
 
@@ -239,6 +236,4 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <script src="{{ asset('js/admin/record-violation.js') }}"></script>
 <script src="{{ asset('js/admin/violation-types.js') }}"></script>
-<script src="{{ asset('js/admin/sanctions.js') }}"></script>
-
 @endpush

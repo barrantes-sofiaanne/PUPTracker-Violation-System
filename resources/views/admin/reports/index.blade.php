@@ -174,6 +174,47 @@
     </div>
 
 </div>  
+
+<div class="card border-0 shadow-sm mb-4">
+
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0">AI Report Assistant</h5>
+        <small class="text-muted">Generate a summary report from your request and current filters</small>
+    </div>
+
+    <div class="card-body">
+        <div class="input-group mb-3">
+            <input
+                type="text"
+                id="aiReportPrompt"
+                class="form-control"
+                placeholder="Example: Generate trend report for major violations this month">
+            <button type="button" id="generateAiReport" class="btn btn-primary">
+                <i class="bi bi-stars me-1"></i>
+                Generate
+            </button>
+        </div>
+
+        <div id="aiReportResult" class="alert alert-light border d-none mb-0">
+            <h6 id="aiReportTitle" class="mb-1"></h6>
+            <div id="aiReportMeta" class="small text-muted mb-2"></div>
+            <p id="aiReportSummary" class="mb-2"></p>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="small text-muted mb-1">Highlights</div>
+                    <ul id="aiReportHighlights" class="mb-0"></ul>
+                </div>
+                <div class="col-md-6">
+                    <div class="small text-muted mb-1">Recommended Actions</div>
+                    <ul id="aiReportActions" class="mb-0"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
 <div class="card border-0 shadow-sm mb-4">
 
     <div class="card-header bg-white">
@@ -565,8 +606,9 @@
 <script>
 window.ReportRoutes = {
     filter: "{{ route('admin.reports.filter') }}",
+    assistant: "{{ route('admin.reports.assistant') }}",
     excel: "{{ route('admin.reports.export') }}",
-    pdf: "{{ route('admin.reports.print') }}"
+    pdf: "{{ route('admin.reports.export-pdf') }}"
 };
 </script>
 <script src="{{ asset('js/admin/reports.js') }}"></script>

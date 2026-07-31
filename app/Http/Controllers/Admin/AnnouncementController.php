@@ -40,14 +40,21 @@ class AnnouncementController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string'],
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,pdf', 'max:5120'],
+            'show_on_login' => ['nullable', 'boolean'],
         ]);
+
+        $admin = Auth::guard('admin')->user();
+        $canPublishLoginModal = $admin?->isItAdministrator() ?? false;
 
         $announcement = new Announcement();
         $announcement->forceFill([
-            'admin_id' => Auth::guard('admin')->id(),
+            'admin_id' => $admin?->getKey(),
             'title' => $request->input('title'),
             'content' => $request->input('content'),
             'attachment_path' => $this->saveAttachment($request),
+            'show_on_login' => $canPublishLoginModal
+                ? $request->boolean('show_on_login')
+                : false,
         ]);
         $announcement->save();
 
@@ -68,7 +75,11 @@ class AnnouncementController extends Controller
             'content' => ['required', 'string'],
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,pdf', 'max:5120'],
             'remove_attachment' => ['nullable', 'boolean'],
+            'show_on_login' => ['nullable', 'boolean'],
         ]);
+
+        $admin = Auth::guard('admin')->user();
+        $canPublishLoginModal = $admin?->isItAdministrator() ?? false;
 
         $attachmentPath = $announcement->getAttribute('attachment_path');
 
@@ -86,6 +97,9 @@ class AnnouncementController extends Controller
             'title' => $request->input('title'),
             'content' => $request->input('content'),
             'attachment_path' => $attachmentPath,
+            'show_on_login' => $canPublishLoginModal
+                ? $request->boolean('show_on_login')
+                : false,
         ]);
         $announcement->save();
 

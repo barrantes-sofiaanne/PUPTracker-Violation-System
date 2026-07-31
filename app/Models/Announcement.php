@@ -32,6 +32,11 @@ class Announcement extends Model
         'title',
         'content',
         'attachment_path',
+        'show_on_login',
+    ];
+
+    protected $casts = [
+        'show_on_login' => 'boolean',
     ];
 
     public function admin(): BelongsTo

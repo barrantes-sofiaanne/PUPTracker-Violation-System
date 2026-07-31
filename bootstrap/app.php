@@ -11,10 +11,18 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
- ->withMiddleware(function ($middleware) {
+ ->withMiddleware(function (Middleware $middleware) {
+    $middleware->append([
+        \App\Http\Middleware\SecurityHeadersMiddleware::class,
+    ]);
+
     $middleware->redirectGuestsTo(function (Request $request) {
         return route('student.login');
     });
+
+    $middleware->alias([
+        'super.admin' => \App\Http\Middleware\SuperAdminMiddleware::class,
+    ]);
 })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

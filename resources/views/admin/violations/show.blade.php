@@ -198,11 +198,7 @@
                     <td>{{ $violation->description }}</td>
 
                     <td>
-                        {{ trim(
-    ($violation->recorder?->adminInfo?->firstname ?? '') . ' ' .
-    ($violation->recorder?->adminInfo?->middlename ?? '') . ' ' .
-    ($violation->recorder?->adminInfo?->lastname ?? '')
-) ?: '-' }}
+                        {{ $violation->recorded_by_display }}
                     </td>
 
                 </tr>

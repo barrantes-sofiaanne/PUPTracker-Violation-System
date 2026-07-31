@@ -23,15 +23,19 @@ use App\Http\Controllers\Admin\AnnouncementController as AdminAnnouncementContro
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
+use App\Http\Controllers\Admin\SanctionController;
+use App\Http\Controllers\Admin\SuperAdminController;
 use App\Http\Controllers\Admin\UserManagementHistoryController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\SecurityLoginController;
 use App\Http\Controllers\Auth\MfaController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Admin\ViolationCategoryController;
 use App\Http\Controllers\Admin\ViolationTypeController;
 
 // Security Controllers
 use App\Http\Controllers\Security\SecurityDashboardController;
+use App\Http\Controllers\SecurityContactController;
 /*
 |--------------------------------------------------------------------------
 | Landing Page
@@ -44,6 +48,19 @@ Route::get('/', function () {
 
 /*
 |--------------------------------------------------------------------------
+| Security Contact & Incident Reporting
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/security/report', [SecurityContactController::class, 'show'])
+    ->name('security.report');
+
+Route::post('/security/report', [SecurityContactController::class, 'submit'])
+    ->middleware('throttle:5,60')
+    ->name('security.report.submit');
+
+/*
+|--------------------------------------------------------------------------
 | Authentication
 |--------------------------------------------------------------------------
 */
@@ -52,6 +69,7 @@ Route::get('/student/login', [LoginController::class, 'showLogin'])
     ->name('student.login');
 
 Route::post('/student/login', [LoginController::class, 'login'])
+    ->middleware('throttle:5,1')
     ->name('student.login.post');
 
 Route::post('/logout', [LoginController::class, 'logout'])
@@ -61,6 +79,7 @@ Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])
     ->name('admin.login');
 
 Route::post('/admin/login', [AdminLoginController::class, 'login'])
+    ->middleware('throttle:5,1')
     ->name('admin.login.post');
 
 Route::post('/admin/logout', [AdminLoginController::class, 'logout'])
@@ -73,6 +92,7 @@ Route::get('/security/login', [SecurityLoginController::class, 'showLoginForm'])
 
 Route::post('/security/login', [SecurityLoginController::class, 'login'])
     ->middleware('guest:security')
+    ->middleware('throttle:5,1')
     ->name('security.login.post');
 
 Route::post('/security/logout', [SecurityLoginController::class, 'logout'])
@@ -83,13 +103,33 @@ Route::get('/mfa/verify', [MfaController::class, 'show'])
     ->name('mfa.verify.show');
 
 Route::post('/mfa/verify', [MfaController::class, 'verify'])
+    ->middleware('throttle:6,1')
     ->name('mfa.verify.submit');
 
 Route::post('/mfa/resend', [MfaController::class, 'resend'])
+    ->middleware('throttle:3,1')
     ->name('mfa.verify.resend');
 
 Route::post('/mfa/cancel', [MfaController::class, 'cancel'])
     ->name('mfa.verify.cancel');
+
+Route::get('/password/forgot/{guard}', [ForgotPasswordController::class, 'showForgotForm'])
+    ->whereIn('guard', ['student', 'admin', 'security'])
+    ->name('password.request');
+
+Route::post('/password/forgot/{guard}', [ForgotPasswordController::class, 'sendResetLink'])
+    ->whereIn('guard', ['student', 'admin', 'security'])
+    ->middleware('throttle:3,1')
+    ->name('password.email');
+
+Route::get('/password/reset/{guard}/{token}', [ForgotPasswordController::class, 'showResetForm'])
+    ->whereIn('guard', ['student', 'admin', 'security'])
+    ->name('password.reset.form');
+
+Route::post('/password/reset/{guard}', [ForgotPasswordController::class, 'reset'])
+    ->whereIn('guard', ['student', 'admin', 'security'])
+    ->middleware('throttle:5,1')
+    ->name('password.update');
 
    
 
@@ -114,6 +154,9 @@ Route::middleware('auth:student')
 
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->name('student.notifications');
+
+        Route::post('/notifications/status', [NotificationController::class, 'updateStatus'])
+            ->name('student.notifications.status');
 
         Route::get('/announcements', [AnnouncementController::class, 'index'])
             ->name('student.announcements');
@@ -192,6 +235,9 @@ Route::resource(
         Route::get('/students', [StudentController::class, 'index'])
             ->name('admin.students');
 
+        Route::post('/students', [StudentController::class, 'store'])
+            ->name('admin.students.store');
+
         Route::get('/students/{student_number}/edit', [StudentController::class, 'edit'])
             ->name('admin.students.edit');
 
@@ -203,6 +249,30 @@ Route::resource(
 
         Route::get('/students/{student_number}', [StudentController::class, 'show'])
             ->name('admin.students.show');
+
+        Route::post('/users/admins', [StudentController::class, 'storeAdmin'])
+            ->name('admin.users.admins.store');
+
+        Route::put('/users/admins/{admin}', [StudentController::class, 'updateAdmin'])
+            ->name('admin.users.admins.update');
+
+        Route::delete('/users/admins/{admin}', [StudentController::class, 'destroyAdmin'])
+            ->name('admin.users.admins.destroy');
+
+        Route::post('/users/security', [StudentController::class, 'storeSecurity'])
+            ->name('admin.users.security.store');
+
+        Route::put('/users/security/{security}', [StudentController::class, 'updateSecurity'])
+            ->name('admin.users.security.update');
+
+        Route::delete('/users/security/{security}', [StudentController::class, 'destroySecurity'])
+            ->name('admin.users.security.destroy');
+
+        Route::post('/users/import', [StudentController::class, 'importAccounts'])
+            ->name('admin.users.import');
+
+        Route::get('/users/import/template', [StudentController::class, 'downloadImportTemplate'])
+            ->name('admin.users.import.template');
 
         /*
         |--------------------------------------------------------------------------
@@ -230,6 +300,21 @@ Route::resource(
 
         Route::post('/violations/offense-level', [ViolationController::class, 'getOffenseLevel'])
             ->name('admin.violations.offense');
+
+        Route::get('/sanctions', [SanctionController::class, 'index'])
+            ->name('admin.sanctions.index');
+
+        Route::post('/sanctions/requests/{sanctionRequest}/approve', [SanctionController::class, 'approveRequest'])
+            ->name('admin.sanctions.requests.approve');
+
+        Route::post('/sanctions/requests/{sanctionRequest}/decline', [SanctionController::class, 'declineRequest'])
+            ->name('admin.sanctions.requests.decline');
+
+        Route::post('/sanctions/records/{studentSanctionRecord}/complete', [SanctionController::class, 'markRecordCompleted'])
+            ->name('admin.sanctions.records.complete');
+
+        Route::post('/sanctions/records/{studentSanctionRecord}/revert', [SanctionController::class, 'revertRecordToPending'])
+            ->name('admin.sanctions.records.revert');
 
         /*
         |--------------------------------------------------------------------------
@@ -331,8 +416,14 @@ Route::prefix('violation-categories')
         Route::post('/reports/filter', [ReportController::class, 'filter'])
             ->name('admin.reports.filter');
 
+        Route::post('/reports/assistant', [ReportController::class, 'assistant'])
+            ->name('admin.reports.assistant');
+
         Route::get('/reports/export', [ReportController::class, 'export'])
             ->name('admin.reports.export');
+
+        Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf'])
+            ->name('admin.reports.export-pdf');
 
         Route::get('/reports/print', [ReportController::class, 'print'])
             ->name('admin.reports.print');
@@ -345,6 +436,23 @@ Route::prefix('violation-categories')
 
         Route::get('/user-management-history', [UserManagementHistoryController::class, 'index'])
             ->name('admin.user-management-history');
+
+        Route::prefix('super-admin')
+            ->name('admin.super-admin.')
+            ->middleware('super.admin')
+            ->group(function () {
+                Route::get('/', [SuperAdminController::class, 'dashboard'])
+                    ->name('dashboard');
+
+                Route::get('/audit-trail', [SuperAdminController::class, 'auditTrail'])
+                    ->name('audit-trail');
+
+                Route::get('/maintenance-configuration', [SuperAdminController::class, 'maintenanceConfiguration'])
+                    ->name('maintenance');
+
+                Route::post('/maintenance-configuration', [SuperAdminController::class, 'updateMaintenanceConfiguration'])
+                    ->name('maintenance.update');
+            });
     });
 
     Route::middleware('auth:security')

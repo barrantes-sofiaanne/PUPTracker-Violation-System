@@ -5,10 +5,10 @@
 
 <h2 class="accordion-header">
 
-    <div class="category-header-wrapper">
+    <div class="d-flex align-items-center w-100">
 
         <button
-            class="accordion-button collapsed category-header"
+            class="accordion-button collapsed flex-grow-1"
             type="button"
             data-bs-toggle="collapse"
             data-bs-target="#category{{ $category->violation_category_id }}"
@@ -19,17 +19,18 @@
 
         </button>
 
-        <div class="category-actions">
+        <div class="d-flex align-items-center gap-2 ms-2 pe-2 flex-nowrap">
 
             <button
                 type="button"
                 class="btn btn-warning btn-sm edit-category"
                 data-id="{{ $category->violation_category_id }}"
                 data-name="{{ $category->category_name }}"
-                title="Edit Category"
-                onclick="event.stopPropagation();">
+                title="Edit Category">
 
-                <i class="fas fa-edit"></i>
+                <i class="bi bi-pencil-square me-1"></i>
+
+                Edit
 
             </button>
 
@@ -38,10 +39,11 @@
                 class="btn btn-danger btn-sm delete-category"
                 data-id="{{ $category->violation_category_id }}"
                 data-name="{{ $category->category_name }}"
-                title="Delete Category"
-                onclick="event.stopPropagation();">
+                title="Delete Category">
 
-                <i class="fas fa-trash"></i>
+                <i class="bi bi-trash me-1"></i>
+
+                Delete
 
             </button>
 
@@ -81,7 +83,7 @@
         data-id="{{ $category->violation_category_id }}"
         data-name="{{ $category->category_name }}">
 
-        <i class="fas fa-plus me-2"></i>
+        <i class="bi bi-plus-circle me-2"></i>
 
         Add Type
 
@@ -113,7 +115,7 @@
                             Date Published
                         </th>
 
-                        <th width="130">
+                        <th width="220">
                             Actions
                         </th>
 
@@ -147,11 +149,15 @@
 
                             <td>
 
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
+
                                 <button
                                     class="btn btn-warning btn-sm editTypeBtn"
                                     data-id="{{ $type->violation_type_id }}">
 
-                                    <i class="fas fa-edit"></i>
+                                    <i class="bi bi-pencil-square me-1"></i>
+
+                                    Edit
 
                                 </button>
 
@@ -159,9 +165,13 @@
                                     class="btn btn-danger btn-sm deleteTypeBtn"
                                     data-id="{{ $type->violation_type_id }}">
 
-                                    <i class="fas fa-trash"></i>
+                                    <i class="bi bi-trash me-1"></i>
+
+                                    Delete
 
                                 </button>
+
+                                </div>
 
                             </td>
 
@@ -208,3 +218,5 @@ No violation types found.
 </div>
 
 @endforelse
+
+</div>

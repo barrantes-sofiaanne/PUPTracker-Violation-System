@@ -262,6 +262,18 @@
 
             </button>
 
+        @elseif($summary['workflow_status'] === 'Approved')
+
+            <button
+                class="btn btn-success btn-sm"
+                disabled>
+
+                <i class="bi bi-check-circle"></i>
+
+                Approved
+
+            </button>
+
         @else
 
             <button

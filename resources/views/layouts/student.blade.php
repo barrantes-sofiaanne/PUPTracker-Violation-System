@@ -34,6 +34,7 @@
     <script src="{{ asset('js/portal.js') }}"></script>
 
     @include('partials.sweetalert')
+    @include('partials.login-announcement-modal')
 
     @stack('scripts')
 </body>

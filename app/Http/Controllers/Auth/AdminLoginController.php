@@ -38,7 +38,11 @@ class AdminLoginController extends Controller
             Auth::guard('admin')->login($admin);
             $request->session()->regenerate();
 
-            return redirect()->route('admin.dashboard');
+            return redirect()->route(
+                $admin->isItAdministrator()
+                    ? 'admin.super-admin.dashboard'
+                    : 'admin.dashboard'
+            )->with('show_login_announcement_modal', true);
         }
 
         if (empty($admin->email)) {

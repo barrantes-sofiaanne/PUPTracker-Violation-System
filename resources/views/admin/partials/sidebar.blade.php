@@ -20,6 +20,10 @@
 
     </div>
 
+    @php
+        $isItAdministrator = auth('admin')->check() && auth('admin')->user()->isItAdministrator();
+    @endphp
+
     <ul>
 
         <li>
@@ -40,7 +44,7 @@
 
                 <i class="bi bi-people"></i>
 
-                Students
+                User Management
 
             </a>
 
@@ -53,6 +57,18 @@
                 <i class="bi bi-exclamation-octagon"></i>
 
                 Violations
+
+            </a>
+
+        </li>
+
+        <li>
+
+            <a href="{{ route('admin.sanctions.index') }}" class="{{ request()->routeIs('admin.sanctions*') || request()->routeIs('admin.disciplinary-sanctions*') ? 'active' : '' }}">
+
+                <i class="bi bi-shield-check"></i>
+
+                Sanctions
 
             </a>
 
@@ -117,6 +133,31 @@
             </a>
 
         </li>
+
+        @if($isItAdministrator)
+            <li class="mt-2 px-2 text-uppercase text-muted small">Super Admin</li>
+
+            <li>
+                <a href="{{ route('admin.super-admin.dashboard') }}" class="{{ request()->routeIs('admin.super-admin.dashboard') ? 'active' : '' }}">
+                    <i class="bi bi-shield-lock"></i>
+                    Dashboard
+                </a>
+            </li>
+
+            <li>
+                <a href="{{ route('admin.super-admin.audit-trail') }}" class="{{ request()->routeIs('admin.super-admin.audit-trail') ? 'active' : '' }}">
+                    <i class="bi bi-clipboard-data"></i>
+                    Audit Trail
+                </a>
+            </li>
+
+            <li>
+                <a href="{{ route('admin.super-admin.maintenance') }}" class="{{ request()->routeIs('admin.super-admin.maintenance*') ? 'active' : '' }}">
+                    <i class="bi bi-tools"></i>
+                    Maintenance Config
+                </a>
+            </li>
+        @endif
 
     </ul>
 

@@ -36,15 +36,9 @@
         <div class="row gy-4">
 
             <div class="col-12">
-                @include('admin.violations.configuration.category-accordion')
-            </div>
-
-            <div class="col-12">
-                @include('admin.violations.configuration.types')
-            </div>
-
-            <div class="col-12">
-                @include('admin.violations.configuration.sanction-list')
+                <div id="categoryAccordionContainer">
+                    @include('admin.violations.configuration.category-accordion')
+                </div>
             </div>
 
         </div>

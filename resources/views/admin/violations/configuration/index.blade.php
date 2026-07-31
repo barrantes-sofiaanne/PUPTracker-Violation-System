@@ -92,7 +92,9 @@
                 class="tab-pane fade show active"
                 id="categoriesTab">
 
-                @include('admin.violations.configuration.category-accordion')
+                <div id="categoryAccordionContainer">
+                    @include('admin.violations.configuration.category-accordion')
+                </div>
 
             </div>
 
@@ -110,7 +112,7 @@
 
                 <div id="sanctionContainer">
 
-                    @include('admin.violations.configuration.sanction-list')
+                    @include('admin.violations.configuration.sanctions')
 
                 </div>
 

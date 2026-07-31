@@ -47,15 +47,74 @@ $activeRequests = SanctionRequest::where(
 )
 ->where('is_active', 1)
 ->pluck('violation_type_id')
+->map(fn ($value) => (string) $value)
 ->toArray();
 
-$pendingSanctions = StudentSanctionRecord::where(
+$approvedRequests = SanctionRequest::where(
     'student_number',
     $user->student_number
 )
-->where('status', 'Pending')
-->pluck('violation_id')
+->where('is_active', 0)
+->where('status', 'Approved')
+->pluck('violation_type_id')
+->map(fn ($value) => (string) $value)
 ->toArray();
+
+$pendingSanctionTypeKeys = StudentSanctionRecord::with('violation')
+    ->where('student_number', $user->student_number)
+    ->where('status', 'Pending')
+    ->whereHas('violation.violationType')
+    ->get()
+    ->flatMap(function ($record) {
+        $raw = (string) ($record->violation?->violation_type ?? '');
+
+        return array_filter([
+            $raw,
+            strtolower($raw),
+        ]);
+    })
+    ->unique()
+    ->values()
+    ->toArray();
+
+$approvedSanctionTypeKeys = StudentSanctionRecord::with('violation')
+    ->where('student_number', $user->student_number)
+    ->whereIn('status', ['Pending', 'Completed'])
+    ->whereHas('violation.violationType')
+    ->get()
+    ->flatMap(function ($record) {
+        $raw = (string) ($record->violation?->violation_type ?? '');
+
+        return array_filter([
+            $raw,
+            strtolower($raw),
+        ]);
+    })
+    ->unique()
+    ->values()
+    ->toArray();
+
+$matchesViolationType = function ($violationRecord, array $pool): bool {
+    $rawType = (string) ($violationRecord->violation_type ?? '');
+    $relationTypeId = (string) ($violationRecord->violationType?->violation_type_id ?? '');
+    $relationTypeName = (string) ($violationRecord->violationType?->violation_type ?? '');
+
+    $candidates = array_filter([
+        $rawType,
+        strtolower($rawType),
+        $relationTypeId,
+        $relationTypeName,
+        strtolower($relationTypeName),
+    ]);
+
+    foreach ($candidates as $candidate) {
+        if (in_array($candidate, $pool, true)) {
+            return true;
+        }
+    }
+
+    return false;
+};
 
 $groupedViolations = Violation::with([
         'violationType.violationCategory',
@@ -77,11 +136,11 @@ foreach ($groupedViolations as $records) {
         default => $count . 'th Offense'
     };
 
-    // Safely look up sanction without throwing errors on null relationships
-    $sanction = $first
-        ->violationType
-        ?->disciplinarySanction
-        ?->firstWhere('offense_level', $offenseLevel);
+    // Resolve sanction for this row using offense level, then fallback to any configured sanction.
+    $sanctions = $first->violationType?->disciplinarySanctions;
+
+    $sanction = $sanctions?->firstWhere('offense_level', $offenseLevel)
+        ?? $sanctions?->first();
 
     $disciplinarySanction = $sanction->disciplinary_sanction ?? 'N/A';
 
@@ -89,10 +148,15 @@ foreach ($groupedViolations as $records) {
         ? 'Warning'
         : 'Sanction';
 
-    if (in_array($first->violation_type, $activeRequests)) {
+    if ($matchesViolationType($first, $activeRequests)) {
         $workflowStatus = 'Requested';
-    } elseif (in_array($first->violation_id, $pendingSanctions)) {
+    } elseif ($matchesViolationType($first, $pendingSanctionTypeKeys)) {
         $workflowStatus = 'Pending';
+    } elseif (
+        $matchesViolationType($first, $approvedRequests)
+        || $matchesViolationType($first, $approvedSanctionTypeKeys)
+    ) {
+        $workflowStatus = 'Approved';
     } else {
         $workflowStatus = 'Actionable';
     }
@@ -127,6 +191,7 @@ $sanctionRecords = StudentSanctionRecord::with([
     'student_number',
     $user->student_number
 )
+->whereHas('violation.violationType')
 ->orderByDesc('date_assigned')
 ->get();
 

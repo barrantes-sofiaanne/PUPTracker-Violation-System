@@ -201,7 +201,7 @@
             </td>
 
             <td>
-                {{ optional($violation->recorder)->full_name ?? '-' }}
+                {{ $violation->recorded_by_display }}
             </td>
 
             <td>

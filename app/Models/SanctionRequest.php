@@ -19,11 +19,17 @@ class SanctionRequest extends Model
   protected $fillable = [
     'student_number',
     'violation_type_id',
-    'is_active'
+    'request_date',
+    'is_active',
+    'status',
+    'approved_by_admin_id',
+    'approved_at',
 ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'request_date' => 'datetime',
+        'approved_at' => 'datetime',
     ];
 
     /*

@@ -47,7 +47,7 @@
                                 <td>{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y') : '-' }}</td>
                                 <td>{{ $violation->student->last_name ?? $violation->student_number }}, {{ $violation->student->first_name ?? '' }}</td>
                                 <td>{{ optional($violation->violationType)->violation_type ?? $violation->violation_type }}</td>
-                                <td>{{ optional($violation->recorder->adminInfo)->firstname ?? 'Admin #' . optional($violation->recorder)->id }}</td>
+                                <td>{{ $violation->recorded_by_display }}</td>
                                 <td>
                                     <a href="{{ route('admin.violations.show', $violation->student_number) }}" class="btn btn-sm btn-outline-primary">View</a>
                                 </td>
@@ -66,7 +66,7 @@
     </div>
 
     <div class="mt-4 d-flex justify-content-center">
-        {{ $violations->links() }}
+        {{ $violations->appends(request()->query())->links() }}
     </div>
 </div>
 

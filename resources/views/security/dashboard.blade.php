@@ -96,6 +96,61 @@
     .violation-item:hover {
         background-color: #f8f9fa;
     }
+
+    .dashboard-hero-grid {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .dashboard-hero-title {
+        margin-bottom: 0.35rem;
+        line-height: 1.12;
+    }
+
+    .dashboard-hero-subtitle {
+        margin-bottom: 0;
+        opacity: 0.95;
+    }
+
+    .dashboard-time-wrap {
+        text-align: right;
+        min-width: 240px;
+    }
+
+    .dashboard-time-label {
+        font-size: 0.76rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        opacity: 0.8;
+        margin-bottom: 0.2rem;
+    }
+
+    .dashboard-time-value {
+        font-size: 1.18rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 999px;
+        padding: 0.45rem 0.85rem;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 767.98px) {
+        .dashboard-time-wrap {
+            text-align: left;
+            min-width: unset;
+        }
+
+        .dashboard-time-value {
+            font-size: 1rem;
+        }
+    }
 </style>
 @endpush
 
@@ -107,15 +162,19 @@
     
     {{-- Page Header --}}
     <div class="portal-hero page-header-modern">
-        <div>
-            <h1 class="fw-bold mb-1">Security Officer Dashboard</h1>
-            <p class="mb-0">Monitor student violations and manage campus security.</p>
-        </div>
-        <div>
-            <span>
-                <i class="bi bi-calendar"></i>
-                {{ now()->format('M d, Y - H:i') }}
-            </span>
+        <div class="dashboard-hero-grid">
+            <div>
+                <h1 class="fw-bold dashboard-hero-title">Security Officer Dashboard</h1>
+                <p class="dashboard-hero-subtitle">Monitor student violations and manage campus security.</p>
+            </div>
+
+            <div class="dashboard-time-wrap">
+                <div class="dashboard-time-label">Philippine Standard Time</div>
+                <div id="phTimeDisplay" class="dashboard-time-value">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Loading...</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -270,7 +329,7 @@
                                     </td>
                                     <td>
                                         <span class="portal-badge muted">
-                                            {{ $violation->violationType?->violation_type ?? '-' }}
+                                            {{ $violation->violation_type_display }}
                                         </span>
                                     </td>
                                     <td>
@@ -284,7 +343,19 @@
                                         </small>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm portal-btn-outline" data-bs-toggle="modal" data-bs-target="#violationDetailModal" data-violation="{{ json_encode($violation) }}">
+                                        <button
+                                            class="btn btn-sm portal-btn-outline"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#violationDetailModal"
+                                            data-violation="{{ json_encode($violation) }}"
+                                            data-student-number="{{ $violation->student_number }}"
+                                            data-student-name="{{ $violation->student ? $violation->student->last_name . ', ' . $violation->student->first_name : '-' }}"
+                                            data-violation-type="{{ $violation->violation_type_display ?: 'N/A' }}"
+                                            data-violation-category="{{ $violation->violation_category_display ?: 'N/A' }}"
+                                            data-offense="{{ $violation->offense_level ?: 'N/A' }}"
+                                            data-violation-date="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->setTimezone('Asia/Manila')->format('M d, Y, H:i') : 'N/A' }}"
+                                            data-description="{{ $violation->description ?: 'No description provided.' }}"
+                                            data-student-url="{{ route('security.violations.show', $violation->student_number) }}">
                                             View
                                         </button>
                                     </td>
@@ -365,9 +436,155 @@
 
 </div>
 
+{{-- Violation Detail Modal --}}
+<div class="modal fade" id="violationDetailModal" tabindex="-1" aria-labelledby="violationDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header" style="background: linear-gradient(135deg, #800000 0%, #5f0000 100%); color: #fff;">
+                <h5 class="modal-title fw-bold" id="violationDetailModalLabel">
+                    <i class="bi bi-file-earmark-text me-2"></i>Violation Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Student Number</small>
+                        <strong id="detailStudentNumber">-</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Student Name</small>
+                        <strong id="detailStudentName">-</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Violation Type</small>
+                        <strong id="detailViolationType">-</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Category</small>
+                        <strong id="detailViolationCategory">-</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Offense</small>
+                        <strong id="detailSeverity">-</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Date & Time</small>
+                        <strong id="detailViolationDate">-</strong>
+                    </div>
+                    <div class="col-12">
+                        <small class="text-muted d-block">Description</small>
+                        <div id="detailDescription" class="border rounded p-2" style="background:#fffdf7;">-</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="detailStudentLink" href="#" class="btn portal-btn">
+                    <i class="bi bi-person-lines-fill me-1"></i>Open Student Record
+                </a>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const phTimeDisplay = document.getElementById('phTimeDisplay');
+
+    const updatePhilippineTime = function () {
+        if (!phTimeDisplay) {
+            return;
+        }
+
+        const now = new Date();
+        const formatted = new Intl.DateTimeFormat('en-PH', {
+            timeZone: 'Asia/Manila',
+            month: 'short',
+            day: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        }).format(now);
+
+        phTimeDisplay.querySelector('span').textContent = formatted + ' PHT';
+    };
+
+    updatePhilippineTime();
+    setInterval(updatePhilippineTime, 1000);
+
+    const detailModal = document.getElementById('violationDetailModal');
+    if (detailModal) {
+        detailModal.addEventListener('show.bs.modal', function (event) {
+            const trigger = event.relatedTarget;
+            const rawPayload = trigger ? trigger.getAttribute('data-violation') : null;
+
+            const attrStudentNumber = trigger ? (trigger.getAttribute('data-student-number') || '') : '';
+            const attrStudentName = trigger ? (trigger.getAttribute('data-student-name') || '') : '';
+            const attrViolationType = trigger ? (trigger.getAttribute('data-violation-type') || '') : '';
+            const attrViolationCategory = trigger ? (trigger.getAttribute('data-violation-category') || '') : '';
+            const attrOffense = trigger ? (trigger.getAttribute('data-offense') || '') : '';
+            const attrViolationDate = trigger ? (trigger.getAttribute('data-violation-date') || '') : '';
+            const attrDescription = trigger ? (trigger.getAttribute('data-description') || '') : '';
+            const attrStudentUrl = trigger ? (trigger.getAttribute('data-student-url') || '') : '';
+
+            let violation = null;
+            if (rawPayload) {
+                try {
+                    violation = JSON.parse(rawPayload);
+                } catch (error) {
+                    violation = null;
+                }
+            }
+
+            const studentName = attrStudentName || (violation && violation.student
+                ? [violation.student.last_name, violation.student.first_name].filter(Boolean).join(', ')
+                : 'N/A');
+
+            const violationType = attrViolationType
+                || violation?.violation_type_display
+                || violation?.violationType?.violation_type
+                || 'N/A';
+
+            const category = attrViolationCategory
+                || violation?.violationType?.violationCategory?.category_name
+                || violation?.violation_category_display
+                || 'N/A';
+
+            const severity = attrOffense || violation?.offense_level || 'N/A';
+
+            const dateText = attrViolationDate || (violation && violation.violation_date
+                ? new Date(violation.violation_date).toLocaleString('en-PH', {
+                    timeZone: 'Asia/Manila',
+                    year: 'numeric',
+                    month: 'short',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                })
+                : 'N/A');
+
+            document.getElementById('detailStudentNumber').textContent = attrStudentNumber || violation?.student_number || 'N/A';
+            document.getElementById('detailStudentName').textContent = studentName;
+            document.getElementById('detailViolationType').textContent = violationType;
+            document.getElementById('detailViolationCategory').textContent = category;
+            document.getElementById('detailSeverity').textContent = severity;
+            document.getElementById('detailViolationDate').textContent = dateText;
+            document.getElementById('detailDescription').textContent = attrDescription || violation?.description || 'No description provided.';
+
+            const studentLink = document.getElementById('detailStudentLink');
+            if (studentLink) {
+                const studentNumber = encodeURIComponent(attrStudentNumber || violation?.student_number || '');
+                studentLink.href = attrStudentUrl || `/security/violations/student/${studentNumber}`;
+                studentLink.classList.toggle('disabled', !(attrStudentNumber || violation?.student_number));
+            }
+        });
+    }
+
     document.querySelectorAll('[data-progress-width]').forEach(function (bar) {
         const width = parseFloat(bar.getAttribute('data-progress-width'));
         if (!Number.isNaN(width)) {

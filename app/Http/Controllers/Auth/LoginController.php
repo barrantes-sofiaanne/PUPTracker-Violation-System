@@ -45,7 +45,8 @@ if ($mfaService->hasValidTrustedDevice($request, 'student', (string) $user->stud
     Auth::guard('student')->login($user);
     $request->session()->regenerate();
 
-    return redirect()->route('student.dashboard');
+    return redirect()->route('student.dashboard')
+        ->with('show_login_announcement_modal', true);
 }
 
 if (empty($user->email)) {

@@ -19,7 +19,7 @@ public function index()
     if (request()->ajax()) {
 
         return view(
-            'admin.violations.configuration.sanction-list',
+            'admin.violations.configuration.sanctions',
             compact('sanctions')
         );
 

@@ -55,7 +55,7 @@ $students = User::with([
     $query->where('roles_name', 'Student');
 })
 ->orderBy('last_name')
-->paginate(10);
+->paginate(10, ['*'], 'students_page');
 
     /*
     |--------------------------------------------------------------------------
@@ -103,7 +103,7 @@ $students = User::with([
         'recorder.adminInfo'
     ])
     ->latest('violation_date')
-    ->paginate(15);
+    ->paginate(15, ['*'], 'history_page');
 
     return view(
         'admin.violations.index',
@@ -116,9 +116,7 @@ $students = User::with([
             'categories',
             'violationTypes',
             'sanctions',
-            'violationHistory',
-             'categories',
-        'violationTypes'
+            'violationHistory'
         )
     );
 }
@@ -313,55 +311,11 @@ public function searchStudents(Request $request)
     ->limit(10)
     ->get();
 
-    $violationTypes = ViolationType::with('category')
-        ->orderBy('violation_type_id')
-        ->get();
-
-    return view(
-        'admin.violations.create',
-        compact(
-            'students',
-            'violationTypes'
-        )
-    );
+    return response()->json($students);
 }
 
 
-public function store(Request $request)
-{
-    $validated = $request->validate([
-        'student_number' => 'required|exists:user_tbl,student_number',
-        'violation_type' => 'required|exists:violation_type_tbl,violation_type',
-        'violation_date' => 'required|date',
-        'description' => 'nullable|string|max:1000',
-        'evidence' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120', // Max 5MB file
-    ]);
-
-    $evidencePath = null;
-    
-    if ($request->hasFile('evidence')) {
-        // Upload the file to the 'evidence_files' folder in R2 bucket
-        $evidencePath = $request->file('evidence')->store('evidence_files', 'r2');
-    }
-
-    $violation = Violation::create([
-        'student_number' => $validated['student_number'],
-        'violation_type' => $validated['violation_type'],
-        'violation_date' => $validated['violation_date'],
-        'description' => $validated['description'] ?? null,
-        'recorder_id' => Auth::id(),
-        'evidence_path' => $evidencePath,
-    ]);
-
-    // Load relationship
-    $violation->load('violationType.category');
-
     /*
-    |--------------------------------------------------------------------------
-    | CONTINUES IN PART 2
-    |--------------------------------------------------------------------------
-    */
-        /*
     |--------------------------------------------------------------------------
     | Preview Violation
     |--------------------------------------------------------------------------
@@ -394,10 +348,10 @@ $previousCount = Violation::where(
         'student_number',
         $request->student_number
     )
-    ->where(
-        'violation_type',
-        $violationType->violation_type
-    )
+    ->where(function ($query) use ($violationType) {
+        $query->where('violation_type', (string) $violationType->violation_type_id)
+            ->orWhere('violation_type', $violationType->violation_type);
+    })
     ->count();
 
         /*
@@ -543,10 +497,10 @@ public function store(Request $request): JsonResponse
                     'student_number',
                     $validated['student_number']
                 )
-                ->where(
-    'violation_type',
-    $violationType->violation_type
-)
+                ->where(function ($query) use ($violationType) {
+                    $query->where('violation_type', (string) $violationType->violation_type_id)
+                        ->orWhere('violation_type', $violationType->violation_type);
+                })
                 ->whereDate(
                     'violation_date',
                     date(
@@ -575,11 +529,18 @@ public function store(Request $request): JsonResponse
             |--------------------------------------------------------------------------
             */
 
+            $admin = Auth::guard('admin')->user();
+            $adminName = trim(
+                (string) ($admin?->adminInfo?->firstname ?? '') . ' ' .
+                (string) ($admin?->adminInfo?->middlename ?? '') . ' ' .
+                (string) ($admin?->adminInfo?->lastname ?? '')
+            );
+
             $violation = Violation::create([
 
                 'student_number' => $validated['student_number'],
 
-                'violation_type' => $violationType->violation_type,
+                'violation_type' => $violationType->violation_type_id,
 
                 'violation_date' => $validated['violation_date'],
 
@@ -588,6 +549,10 @@ public function store(Request $request): JsonResponse
                 ),
 
 'recorder_id' => Auth::guard('admin')->id(),
+                'recorder_type' => 'admin',
+                'recorder_name' => $adminName !== ''
+                    ? $adminName
+                    : ($admin?->email ? 'Admin: ' . $admin->email : 'Admin #' . Auth::guard('admin')->id()),
             ]);
 
             DB::commit();
@@ -630,14 +595,12 @@ public function store(Request $request): JsonResponse
         });
     })
     ->latest('violation_date')
-    ->paginate(15);
+    ->paginate(15, ['*'], 'history_page');
 
     return view(
         'admin.violations.history',
         compact('violations')
     );
 }
-
-
 
 }

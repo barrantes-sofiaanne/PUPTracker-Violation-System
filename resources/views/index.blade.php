@@ -70,6 +70,12 @@
                     Terms of Use
                 </a>
 
+                <span>•</span>
+
+                <a href="{{ route('security.report') }}" title="Report security vulnerabilities or incidents">
+                    <i class="bi bi-exclamation-triangle"></i> Security Contact
+                </a>
+
             </div>
 
         </div>

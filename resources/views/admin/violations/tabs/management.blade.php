@@ -291,21 +291,16 @@
                     </td>
 
                     <td>
+                        <button
+                            type="button"
+                            class="btn btn-primary btn-sm viewStudent"
+                            data-student="{{ $student->student_number }}">
 
-                    <button class="btn btn-sm btn-outline-primary viewStudent"
-    data-student="{{ $student->student_number }}">
-    <i class="bi bi-eye"></i>
-                        <a
-                            href="{{ route('admin.violations.show', $student->student_number) }}"
-                            class="btn btn-primary btn-sm">
-
-                            <i class="bi bi-eye"></i>
+                            <i class="bi bi-eye me-1"></i>
 
                             View
 
-                        </a>
                         </button>
-
                     </td>
 
                 </tr>
@@ -334,7 +329,7 @@
 
 <div class="mt-3">
 
-    {{ $students->links() }}
+    {{ $students->appends(request()->except('students_page'))->links() }}
 
 </div>
 </div>

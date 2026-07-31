@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Mail;
 class MfaService
 {
     private const SESSION_KEY = 'mfa.pending';
-    private const REMEMBER_COOKIE_KEY = 'mfa.trusted';
+    private const REMEMBER_COOKIE_KEY = 'mfa_trusted';
+    private const LEGACY_REMEMBER_COOKIE_KEY = 'mfa.trusted';
 
     public function beginChallenge(
         Request $request,
@@ -250,10 +251,11 @@ class MfaService
         return true;
     }
 
-    public function makeTrustedDeviceCookie(string $guard, string $identifier): Cookie
+    public function makeTrustedDeviceCookie(string $guard, string $identifier, ?int $checkedAtTimestamp = null): Cookie
     {
-        $expiresAt = $this->nextMonthStartTimestamp();
-        $minutes = max(1, (int) now()->diffInMinutes(now()->createFromTimestamp($expiresAt), false));
+        $checkedAt = $this->resolveRememberCheckedAt($checkedAtTimestamp);
+        $expiresAt = $checkedAt->copy()->addMonthNoOverflow()->timestamp;
+        $minutes = max(1, (int) now()->diffInMinutes($checkedAt->copy()->addMonthNoOverflow(), false));
 
         $payload = base64_encode((string) json_encode([
             'guard' => $guard,
@@ -266,7 +268,7 @@ class MfaService
             $identifier,
             'mfa.trusted_device.created',
             'Authentication',
-            'Trusted device cookie issued until next month.'
+            'Trusted device cookie issued for one month starting from checkbox selection time.'
         );
 
         return cookie()->make(
@@ -284,7 +286,7 @@ class MfaService
 
     public function rememberUntilLabel(): string
     {
-        return now()->startOfMonth()->addMonth()->format('F 1, Y');
+        return now()->addMonthNoOverflow()->format('F j, Y');
     }
 
     private function generateCode(): string
@@ -416,6 +418,11 @@ class MfaService
         $raw = $request->cookie(self::REMEMBER_COOKIE_KEY);
 
         if (!is_string($raw) || $raw === '') {
+            // Legacy compatibility for older cookie name.
+            $raw = $request->cookie(self::LEGACY_REMEMBER_COOKIE_KEY);
+        }
+
+        if (!is_string($raw) || $raw === '') {
             return null;
         }
 
@@ -430,9 +437,21 @@ class MfaService
         return is_array($payload) ? $payload : null;
     }
 
-    private function nextMonthStartTimestamp(): int
+    private function resolveRememberCheckedAt(?int $checkedAtTimestamp)
     {
-        return now()->startOfMonth()->addMonth()->timestamp;
+        if ($checkedAtTimestamp === null) {
+            return now();
+        }
+
+        $checkedAt = now()->createFromTimestamp($checkedAtTimestamp);
+        $minAllowed = now()->subDay();
+        $maxAllowed = now()->addMinutes(5);
+
+        if ($checkedAt->lt($minAllowed) || $checkedAt->gt($maxAllowed)) {
+            return now();
+        }
+
+        return $checkedAt;
     }
 
     private function audit(string $guard, ?string $identifier, string $action, string $module, string $description): void

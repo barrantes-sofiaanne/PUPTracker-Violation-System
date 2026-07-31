@@ -6,6 +6,7 @@
     initializeFilters();
     initializeCharts();
     initializeExportButtons();
+    initializeAiAssistant();
     loadReports();
 });
 
@@ -48,7 +49,8 @@ function loadReports(page = 1) {
     fetch(window.ReportRoutes.filter, {
         method: "POST",
         headers: {
-            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
+            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')
+                .content,
             "X-Requested-With": "XMLHttpRequest",
         },
         body: formData,
@@ -60,7 +62,8 @@ function loadReports(page = 1) {
             updateSummaryCards(data.statistics);
             updateTable(data.records);
             updateCharts(data.charts);
-            document.getElementById("recordCount").textContent = data.total + " Record(s)";
+            document.getElementById("recordCount").textContent =
+                data.total + " Record(s)";
         })
         .catch(function () {
             showError();
@@ -71,7 +74,8 @@ function updateSummaryCards(stats) {
     document.getElementById("totalViolations").textContent = stats.total;
     document.getElementById("minorViolations").textContent = stats.minor;
     document.getElementById("majorViolations").textContent = stats.major;
-    document.getElementById("repeatOffenders").textContent = stats.repeat_offenders;
+    document.getElementById("repeatOffenders").textContent =
+        stats.repeat_offenders;
 }
 
 function updateTable(html) {
@@ -93,7 +97,15 @@ function initializeCharts() {
         type: "line",
         data: {
             labels: [],
-            datasets: [{ label: "Violations", data: [], borderWidth: 2, tension: 0.3, fill: false }],
+            datasets: [
+                {
+                    label: "Violations",
+                    data: [],
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: false,
+                },
+            ],
         },
         options: { responsive: true, maintainAspectRatio: false },
     });
@@ -170,16 +182,113 @@ function initializeExportButtons() {
     if (excelButton) {
         excelButton.addEventListener("click", function () {
             const params = new URLSearchParams(new FormData(filterForm));
-            window.location = window.ReportRoutes.excel + "?" + params.toString();
+            window.location =
+                window.ReportRoutes.excel + "?" + params.toString();
         });
     }
 
     if (pdfButton) {
         pdfButton.addEventListener("click", function () {
             const params = new URLSearchParams(new FormData(filterForm));
-            window.open(window.ReportRoutes.pdf + "?" + params.toString(), "_blank");
+            window.open(
+                window.ReportRoutes.pdf + "?" + params.toString(),
+                "_blank",
+            );
         });
     }
+}
+
+function initializeAiAssistant() {
+    const promptInput = document.getElementById("aiReportPrompt");
+    const generateButton = document.getElementById("generateAiReport");
+    const resultBox = document.getElementById("aiReportResult");
+
+    if (!promptInput || !generateButton || !resultBox) {
+        return;
+    }
+
+    const title = document.getElementById("aiReportTitle");
+    const meta = document.getElementById("aiReportMeta");
+    const summary = document.getElementById("aiReportSummary");
+    const highlights = document.getElementById("aiReportHighlights");
+    const actions = document.getElementById("aiReportActions");
+
+    const fillList = function (container, items) {
+        container.innerHTML = "";
+
+        if (!items || items.length === 0) {
+            const li = document.createElement("li");
+            li.textContent = "-";
+            container.appendChild(li);
+            return;
+        }
+
+        items.forEach(function (item) {
+            const li = document.createElement("li");
+            li.textContent = item;
+            container.appendChild(li);
+        });
+    };
+
+    generateButton.addEventListener("click", function () {
+        const prompt = promptInput.value.trim();
+
+        if (prompt.length < 6) {
+            Swal.fire({
+                icon: "info",
+                title: "Please add a request",
+                text: "Describe what kind of report you want to generate.",
+            });
+            return;
+        }
+
+        const payload = new FormData(filterForm);
+        payload.append("prompt", prompt);
+
+        generateButton.disabled = true;
+        generateButton.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
+
+        fetch(window.ReportRoutes.assistant, {
+            method: "POST",
+            headers: {
+                "X-CSRF-TOKEN": document.querySelector(
+                    'meta[name="csrf-token"]',
+                ).content,
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            body: payload,
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                resultBox.classList.remove("d-none");
+
+                title.textContent = data.title || "AI Report Summary";
+                meta.textContent =
+                    "Focus: " +
+                    (data.focus || "General") +
+                    " | Generated: " +
+                    (data.generated_at || "-");
+                summary.textContent = data.summary || "-";
+
+                fillList(highlights, data.highlights || []);
+                fillList(actions, data.recommended_actions || []);
+            })
+            .catch(function () {
+                Swal.fire({
+                    icon: "error",
+                    title: "Unable to generate report",
+                    text: "Please try again in a moment.",
+                });
+            })
+            .finally(function () {
+                generateButton.disabled = false;
+                generateButton.innerHTML =
+                    '<i class="bi bi-stars me-1"></i>Generate';
+            });
+    });
 }
 
 document.addEventListener("click", function (e) {

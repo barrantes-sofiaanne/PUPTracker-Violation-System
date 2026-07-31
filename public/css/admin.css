@@ -381,6 +381,56 @@ h6 {
     border-color: rgba(128, 0, 0, 0.18) !important;
 }
 
+.main-content .pagination {
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.pagination {
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.main-content .pagination .page-link {
+    border-radius: 0.6rem;
+    border-color: rgba(128, 0, 0, 0.2);
+    color: var(--color-maroon);
+    min-width: 2.25rem;
+    text-align: center;
+}
+
+.pagination .page-link {
+    border-radius: 0.6rem;
+    border-color: rgba(128, 0, 0, 0.2);
+    color: var(--color-maroon);
+    min-width: 2.25rem;
+    text-align: center;
+}
+
+.main-content .pagination .page-item.active .page-link {
+    background-color: var(--color-maroon);
+    border-color: var(--color-maroon);
+    color: #fff;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--color-maroon);
+    border-color: var(--color-maroon);
+    color: #fff;
+}
+
+.main-content .pagination .page-item.disabled .page-link {
+    color: #9b8f93;
+    border-color: rgba(128, 0, 0, 0.12);
+    background-color: #fff;
+}
+
+.pagination .page-item.disabled .page-link {
+    color: #9b8f93;
+    border-color: rgba(128, 0, 0, 0.12);
+    background-color: #fff;
+}
+
 .page-header-modern {
     background: linear-gradient(
         120deg,
@@ -397,6 +447,7 @@ h6 {
 
 .page-header-modern h2,
 .page-header-modern h3,
+.page-header-modern h1,
 .page-header-modern p,
 .page-header-modern .text-muted {
     color: var(--color-white) !important;
@@ -537,5 +588,422 @@ h6 {
 
     .main-content .page-header-modern p {
         font-size: 0.86rem;
+    }
+}
+
+.sanction-accordion-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.sanction-accordion-item .accordion-button {
+    background-color: #fff;
+    color: #111827;
+    font-size: 1.15rem;
+    box-shadow: none;
+}
+
+.sanction-accordion-item .accordion-button:not(.collapsed) {
+    background-color: #fff7f7;
+    color: #7f1d1d;
+    border-left: 4px solid #991b1b;
+}
+
+.user-management-table thead th {
+    background: #fff7de !important;
+    color: #5f0000 !important;
+    border-bottom-color: rgba(128, 0, 0, 0.15) !important;
+    font-weight: 700;
+    font-size: 0.84rem;
+    letter-spacing: 0.02em;
+    padding: 0.9rem 0.7rem;
+}
+
+.user-management-table tbody tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+.user-management-shell {
+    background: #fff;
+}
+
+.user-management-title {
+    letter-spacing: 0.01em;
+    color: var(--color-maroon) !important;
+}
+
+.user-management-content {
+    border-top: 1px solid rgba(128, 0, 0, 0.12);
+    padding-top: 0.4rem;
+}
+
+.user-management-tabs {
+    border-bottom: 0;
+    gap: 0.3rem;
+}
+
+.user-management-tabs .nav-link {
+    color: #6b5d61 !important;
+    border-radius: 0.6rem;
+    border: 1px solid transparent;
+    font-weight: 700;
+    padding: 0.56rem 0.9rem;
+    background: transparent !important;
+}
+
+.user-management-tabs .nav-link.active {
+    color: var(--color-maroon) !important;
+    background-color: rgba(255, 223, 0, 0.33) !important;
+    border-color: rgba(128, 0, 0, 0.18) !important;
+    box-shadow: none;
+}
+
+.user-management-toolbar {
+    border: 1px solid rgba(128, 0, 0, 0.12);
+    border-radius: 0.8rem;
+    background: #fffefa;
+    padding: 0.8rem;
+}
+
+.user-management-search .input-group-text {
+    border-right: 0;
+    color: #6b7280;
+}
+
+.user-management-search .form-control {
+    border-left: 0;
+    padding-left: 0.35rem;
+}
+
+.user-management-search .form-control::placeholder {
+    color: #97a0ad;
+}
+
+.user-management-actions .btn {
+    min-height: 40px;
+}
+
+.user-management-table {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.9rem;
+    overflow: hidden;
+    background: #fff;
+}
+
+.user-management-table .table {
+    margin-bottom: 0;
+}
+
+.user-management-table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+.user-management-table tbody tr:hover {
+    background-color: rgba(218, 165, 32, 0.12);
+}
+
+.user-management-table td {
+    padding: 0.85rem 0.65rem;
+}
+
+.user-action-btn {
+    min-width: 88px;
+}
+
+.user-action-cell {
+    white-space: nowrap;
+}
+
+.user-action-group {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.45rem;
+}
+
+.user-action-group .user-action-btn {
+    justify-content: center;
+}
+
+.user-status-badge {
+    border-radius: 999px;
+    padding: 0.42rem 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.student-filter-panel {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.85rem;
+    padding: 0.9rem;
+    background: #fff;
+}
+
+.import-modal-content {
+    border-radius: 12px !important;
+    border: none !important;
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.18) !important;
+}
+
+.import-modal-header {
+    justify-content: center;
+    position: relative;
+    border-bottom: 0 !important;
+    padding: 1.6rem 1.6rem 0.8rem;
+}
+
+.import-modal-header .btn-close {
+    position: absolute;
+    top: 0.95rem;
+    right: 1rem;
+    opacity: 0.45;
+}
+
+.import-modal-body {
+    padding: 0.2rem 1.6rem 1rem;
+}
+
+.import-modal-subtitle {
+    text-align: center;
+    color: #525a66;
+    font-size: 1.03rem;
+    margin-bottom: 0.95rem;
+}
+
+.import-action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+/* Student history modal theme */
+.violation-history-modal-content {
+    border: 1px solid rgba(128, 0, 0, 0.15) !important;
+    border-radius: 1rem !important;
+    overflow: hidden;
+    box-shadow: 0 16px 38px rgba(31, 22, 32, 0.2) !important;
+}
+
+.violation-history-modal-header {
+    background: linear-gradient(
+        120deg,
+        rgba(128, 0, 0, 0.95) 0%,
+        rgba(92, 0, 0, 0.95) 62%,
+        rgba(218, 165, 32, 0.95) 180%
+    ) !important;
+    color: #fff !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.violation-history-modal-title {
+    color: #fff !important;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+}
+
+.violation-history-modal-header .btn-close {
+    filter: invert(1) grayscale(1) brightness(200%);
+    opacity: 0.85;
+}
+
+.violation-history-modal-body {
+    background: #fffaf2;
+    padding: 1rem;
+}
+
+.violation-history-modal-panel {
+    background: #fff;
+    border: 1px solid rgba(128, 0, 0, 0.12);
+    border-radius: 0.85rem;
+    padding: 0.85rem;
+}
+
+.violation-history-modal-panel .table {
+    margin-bottom: 0.75rem;
+}
+
+.violation-history-modal-panel .table thead th {
+    background: #fff7de !important;
+    color: #5f0000 !important;
+}
+
+.violation-history-modal-panel .badge.bg-primary {
+    background-color: var(--color-maroon) !important;
+}
+
+.import-action-card {
+    border: 2px solid #d1d5db;
+    border-radius: 12px;
+    background: #fff;
+    padding: 1rem 1rem 0.9rem;
+    text-align: center;
+    color: #1f2937;
+    transition: all 0.2s ease;
+}
+
+.import-action-card:hover {
+    border-color: #9ca3af;
+}
+
+.import-action-card.active {
+    border-color: #c81e1e;
+    background: #fff8f8;
+    box-shadow: inset 0 0 0 1px rgba(200, 30, 30, 0.15);
+}
+
+.import-action-icon {
+    font-size: 2.9rem;
+    color: #8f8f8f;
+    display: inline-block;
+    margin-bottom: 0.55rem;
+}
+
+.import-action-title {
+    font-size: 2rem;
+    color: #2d3440;
+    font-weight: 800;
+}
+
+.import-action-text {
+    color: #5d6572;
+    font-size: 0.98rem;
+}
+
+.import-template-btn {
+    border: 1px solid #e5e7eb !important;
+    color: #707784 !important;
+    background: #fff !important;
+    min-width: 156px;
+    border-radius: 8px !important;
+}
+
+.import-template-btn:hover {
+    border-color: #cbd5e1 !important;
+    color: #374151 !important;
+}
+
+.import-dropzone {
+    width: 100%;
+    border: 2px dashed #d1d5db;
+    border-radius: 12px;
+    background: #fff;
+    min-height: 175px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition:
+        border-color 0.2s ease,
+        background-color 0.2s ease;
+}
+
+.import-dropzone:hover {
+    border-color: #9ca3af;
+    background: #fcfcfc;
+}
+
+.import-dropzone-icon {
+    font-size: 3rem;
+    color: #a3a3a3;
+    line-height: 1;
+    margin-bottom: 0.45rem;
+}
+
+.import-dropzone-text {
+    font-size: 1.04rem;
+    color: #3f4652;
+}
+
+.import-help-block {
+    border-top: 1px solid #eceff3;
+    padding-top: 0.55rem;
+}
+
+.import-required-columns {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.7rem;
+}
+
+.import-required-columns li {
+    font-size: 0.88rem;
+    line-height: 1.3;
+    display: flex;
+    align-items: center;
+}
+
+.import-modal-footer {
+    border-top: 0 !important;
+    padding: 0 1.6rem 1.5rem;
+}
+
+.import-modal-footer .btn-primary {
+    background: #d1d5db !important;
+    border-color: #d1d5db !important;
+    color: #ffffff !important;
+}
+
+.import-modal-footer .btn-primary:not(:disabled) {
+    background: #8b0000 !important;
+    border-color: #8b0000 !important;
+}
+
+.announcements-new-btn {
+    background-color: var(--color-maroon) !important;
+    border-color: var(--color-maroon) !important;
+    color: #fff !important;
+    font-weight: 700;
+}
+
+.announcements-new-btn:hover,
+.announcements-new-btn:focus,
+.announcements-new-btn:active {
+    background-color: #5f0000 !important;
+    border-color: #5f0000 !important;
+    color: #fff !important;
+}
+
+.announcements-table thead th {
+    background-color: var(--color-maroon) !important;
+    color: #fff !important;
+    border-bottom-color: var(--color-maroon) !important;
+}
+
+@media (max-width: 767.98px) {
+    .user-management-toolbar {
+        padding: 0.7rem;
+    }
+
+    .user-management-tabs .nav-link {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .user-management-table td {
+        padding: 0.7rem 0.5rem;
+    }
+
+    .user-action-group {
+        width: 100%;
+    }
+
+    .import-action-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .import-modal-body {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .import-modal-footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
     }
 }
