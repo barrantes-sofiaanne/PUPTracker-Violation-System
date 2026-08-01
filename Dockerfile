@@ -35,30 +35,32 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 
 WORKDIR /app
 
-# Copy Composer files first (better Docker layer caching)
-COPY composer.json composer.lock ./
+# Copy the entire Laravel application first
+COPY . .
 
+# Install PHP dependencies
 RUN composer install \
     --no-dev \
     --optimize-autoloader \
     --no-interaction
 
-# Copy the rest of the application
-COPY . .
-
-# Build frontend assets if package.json exists
+# Build frontend assets
 RUN if [ -f package.json ]; then \
     npm install && \
     npm run build; \
     fi
 
-# Laravel permissions
-RUN mkdir -p storage/framework/cache \
+# Laravel cache directories
+RUN mkdir -p \
+    storage/framework/cache \
     storage/framework/sessions \
     storage/framework/views \
     storage/logs \
-    bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
+    bootstrap/cache
+
+# Set permissions
+RUN chmod -R 775 storage bootstrap/cache
+
 
 EXPOSE 8080
 
