@@ -61,11 +61,6 @@ RUN mkdir -p \
 # Set permissions
 RUN chmod -R 775 storage bootstrap/cache
 
-# Optimize Laravel
-RUN php artisan config:clear && \
-    php artisan cache:clear && \
-    php artisan route:clear && \
-    php artisan view:clear
 
 EXPOSE 8080
 
