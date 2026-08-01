@@ -72,6 +72,17 @@ Route::post('/student/login', [LoginController::class, 'login'])
     ->middleware('throttle:5,1')
     ->name('student.login.post');
 
+// IDP login temporarily disabled due to missing database columns
+// Route::post('/student/idp/start', 'App\\Http\\Controllers\\Auth\\StudentIdpLoginController@start')
+//     ->middleware('throttle:5,1')
+//     ->name('student.idp.start');
+
+// Route::get('/student/idp/login', 'App\\Http\\Controllers\\Auth\\StudentIdpLoginController@redirect')
+//     ->name('student.idp.login');
+
+// Route::get('/student/idp/callback', 'App\\Http\\Controllers\\Auth\\StudentIdpLoginController@callback')
+//     ->name('student.idp.callback');
+
 Route::post('/logout', [LoginController::class, 'logout'])
     ->name('logout');
 
@@ -449,6 +460,9 @@ Route::prefix('violation-categories')
 
                 Route::get('/maintenance-configuration', [SuperAdminController::class, 'maintenanceConfiguration'])
                     ->name('maintenance');
+
+                Route::get('/audit-control-plan', [SuperAdminController::class, 'auditControlPlan'])
+                    ->name('audit-control-plan');
 
                 Route::post('/maintenance-configuration', [SuperAdminController::class, 'updateMaintenanceConfiguration'])
                     ->name('maintenance.update');
