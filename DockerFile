@@ -1,5 +1,65 @@
-FROM alpine:3.21
+FROM php:8.2-cli
 
-RUN echo "THIS IS MY DOCKERFILE"
+# Install system packages and PHP extensions
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    unzip \
+    zip \
+    libzip-dev \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
+    libicu-dev \
+    libonig-dev \
+    libxml2-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install \
+        gd \
+        intl \
+        zip \
+        pdo_mysql \
+        mbstring \
+        exif \
+        pcntl \
+        bcmath \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-CMD ["sh", "-c", "echo Hello && sleep 3600"]
+# Install Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs
+
+WORKDIR /app
+
+# Copy Composer files first (better Docker layer caching)
+COPY composer.json composer.lock ./
+
+RUN composer install \
+    --no-dev \
+    --optimize-autoloader \
+    --no-interaction
+
+# Copy the rest of the application
+COPY . .
+
+# Build frontend assets if package.json exists
+RUN if [ -f package.json ]; then \
+    npm install && \
+    npm run build; \
+    fi
+
+# Laravel permissions
+RUN mkdir -p storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
+EXPOSE 8080
+
+CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
