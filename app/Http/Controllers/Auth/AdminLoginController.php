@@ -19,64 +19,78 @@ class AdminLoginController extends Controller
 
     public function login(Request $request, MfaService $mfaService)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
-
-        $admin = Admin::where('email', $request->email)->first();
-
-        if (!$admin || !Hash::check($request->password, $admin->password)) {
-            return back()
-                ->withErrors([
-                    'login' => 'Invalid email or password.'
-                ])
-                ->withInput();
-        }
-
-        if ($mfaService->hasValidTrustedDevice($request, 'admin', (string) $admin->getKey())) {
-            Auth::guard('admin')->login($admin);
-            $request->session()->regenerate();
-
-            return redirect()->route(
-                $admin->isItAdministrator()
-                    ? 'admin.super-admin.dashboard'
-                    : 'admin.dashboard'
-            )->with('show_login_announcement_modal', true);
-        }
-
-        if (empty($admin->email)) {
-            return back()
-                ->withErrors([
-                    'login' => 'Your account has no email address configured. Please contact an administrator.'
-                ])
-                ->withInput();
-        }
-
         try {
-            $mfaService->beginChallenge(
-                $request,
-                'admin',
-                (string) $admin->getKey(),
-                (string) $admin->email,
-                $admin->mfa_totp_secret,
-                (bool) $admin->mfa_totp_enabled
-            );
+            $request->validate([
+                'email' => 'required|email',
+                'password' => 'required',
+            ]);
+
+            $admin = Admin::where('email', $request->email)->first();
+
+            if (!$admin || !Hash::check($request->password, $admin->password)) {
+                return back()
+                    ->withErrors([
+                        'login' => 'Invalid email or password.'
+                    ])
+                    ->withInput();
+            }
+
+            if ($mfaService->hasValidTrustedDevice($request, 'admin', (string) $admin->getKey())) {
+                Auth::guard('admin')->login($admin);
+                $request->session()->regenerate();
+
+                return redirect()->route(
+                    $admin->isItAdministrator()
+                        ? 'admin.super-admin.dashboard'
+                        : 'admin.dashboard'
+                )->with('show_login_announcement_modal', true);
+            }
+
+            if (empty($admin->email)) {
+                return back()
+                    ->withErrors([
+                        'login' => 'Your account has no email address configured. Please contact an administrator.'
+                    ])
+                    ->withInput();
+            }
+
+            try {
+                $mfaService->beginChallenge(
+                    $request,
+                    'admin',
+                    (string) $admin->getKey(),
+                    (string) $admin->email,
+                    $admin->mfa_totp_secret,
+                    (bool) $admin->mfa_totp_enabled
+                );
+            } catch (\Throwable $exception) {
+                Log::error('Admin MFA challenge initialization failed.', [
+                    'admin_id' => $admin->getKey(),
+                    'error' => $exception->getMessage(),
+                ]);
+
+                return back()
+                    ->withErrors([
+                        'login' => 'Unable to send verification code right now. Please try again later.'
+                    ])
+                    ->withInput();
+            }
+
+            return redirect()->route('mfa.verify.show')
+                ->with('success', 'A verification code has been sent to your email.');
         } catch (\Throwable $exception) {
-            Log::error('Admin MFA challenge initialization failed.', [
-                'admin_id' => $admin->getKey(),
+            Log::error('Admin login controller error.', [
+                'email' => $request->input('email'),
                 'error' => $exception->getMessage(),
+                'trace' => $exception->getTraceAsString(),
             ]);
 
             return back()
                 ->withErrors([
-                    'login' => 'Unable to send verification code right now. Please try again later.'
+                    'login' => 'An error occurred during login. Please try again later.'
                 ])
                 ->withInput();
         }
-
-        return redirect()->route('mfa.verify.show')
-            ->with('success', 'A verification code has been sent to your email.');
     }
 
     public function logout(Request $request)
