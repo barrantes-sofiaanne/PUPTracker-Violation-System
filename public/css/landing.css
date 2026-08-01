@@ -36,14 +36,14 @@ body {
 
 .landing-card {
     position: relative;
-    width: min(100%, 480px);
-    padding: 2.6rem 2.5rem 2rem;
+    width: min(100%, 380px);
+    padding: 1.8rem 1.5rem 1.2rem;
     background: linear-gradient(
         170deg,
         rgba(255, 255, 255, 0.95) 0%,
         rgba(255, 249, 231, 0.95) 100%
     );
-    border-radius: 1.5rem;
+    border-radius: 1.2rem;
     border: 1px solid rgba(128, 0, 0, 0.14);
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
     overflow: hidden;
@@ -53,7 +53,7 @@ body {
     content: "";
     position: absolute;
     inset: 0 0 auto 0;
-    height: 7px;
+    height: 5px;
     background: linear-gradient(
         90deg,
         var(--landing-maroon-dark) 0%,
@@ -77,12 +77,12 @@ body {
 .landing-logo-wrap {
     display: flex;
     justify-content: center;
-    margin-bottom: 0.9rem;
+    margin-bottom: 0.6rem;
 }
 
 .logo {
-    width: 110px;
-    height: 110px;
+    width: 90px;
+    height: 90px;
     object-fit: contain;
     border-radius: 999px;
     border: 3px solid rgba(128, 0, 0, 0.18);
@@ -92,13 +92,13 @@ body {
 }
 
 .system-pill {
-    margin: 0 auto 0.8rem;
+    margin: 0 auto 0.6rem;
     width: fit-content;
     font-weight: 600;
-    font-size: 0.78rem;
+    font-size: 0.68rem;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    padding: 0.35rem 0.8rem;
+    letter-spacing: 0.08em;
+    padding: 0.28rem 0.65rem;
     border-radius: 999px;
     background: rgba(128, 0, 0, 0.1);
     color: var(--landing-maroon);
@@ -107,44 +107,44 @@ body {
 .landing-card h1 {
     text-align: center;
     color: var(--landing-maroon);
-    font-size: clamp(2.1rem, 4vw, 3rem);
+    font-size: clamp(1.8rem, 3.5vw, 2.4rem);
     font-weight: 800;
     letter-spacing: -0.02em;
-    margin-bottom: 0.15rem;
+    margin-bottom: 0.1rem;
 }
 
 .landing-card h5 {
     text-align: center;
     color: #493f40;
-    font-size: clamp(1.05rem, 2.5vw, 1.35rem);
+    font-size: clamp(0.9rem, 2vw, 1.1rem);
     font-weight: 600;
-    margin-bottom: 1.2rem;
+    margin-bottom: 0.8rem;
 }
 
 .description {
-    margin: 0 auto 1.2rem;
-    max-width: 510px;
+    margin: 0 auto 0.9rem;
+    max-width: 350px;
     text-align: center;
     color: #564b4d;
-    font-size: 0.98rem;
-    line-height: 1.75;
+    font-size: 0.85rem;
+    line-height: 1.6;
 }
 
 .highlights {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.55rem;
+    gap: 0.4rem;
     justify-content: center;
-    margin-bottom: 1.4rem;
+    margin-bottom: 1rem;
 }
 
 .highlights span {
     display: inline-flex;
     align-items: center;
-    gap: 0.38rem;
-    font-size: 0.82rem;
+    gap: 0.32rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    padding: 0.38rem 0.72rem;
+    padding: 0.32rem 0.6rem;
     border-radius: 999px;
     color: #5f0000;
     background: rgba(255, 223, 0, 0.22);
@@ -152,20 +152,21 @@ body {
 
 .portal-buttons {
     display: grid;
-    gap: 0.75rem;
+    gap: 0.6rem;
 }
 
 .portal-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.55rem;
+    gap: 0.45rem;
     text-decoration: none;
     font-weight: 700;
     letter-spacing: 0.01em;
+    font-size: 0.95rem;
     color: #fff;
-    border-radius: 0.95rem;
-    padding: 0.95rem 1rem;
+    border-radius: 0.85rem;
+    padding: 0.8rem 0.85rem;
     background: linear-gradient(
         135deg,
         var(--landing-maroon) 0%,
@@ -175,7 +176,7 @@ body {
     transition:
         transform 0.2s ease,
         box-shadow 0.2s ease;
-    min-height: 52px;
+    min-height: 48px;
 }
 
 .portal-btn:hover {
@@ -189,21 +190,21 @@ body {
 }
 
 .footer-links {
-    margin-top: 1.45rem;
+    margin-top: 1rem;
     text-align: center;
     color: #695f61;
-    font-size: 0.84rem;
+    font-size: 0.78rem;
 }
 
 .footer-links a {
     color: #695f61;
     text-decoration: none;
     font-weight: 600;
-    min-height: 40px;
+    min-height: 36px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.1rem 0.25rem;
+    padding: 0.08rem 0.2rem;
 }
 
 .footer-links a:hover {
@@ -218,65 +219,65 @@ body {
     }
 
     .landing-card {
-        padding: 1.6rem 1.1rem 1.2rem;
-        border-radius: 1.1rem;
+        padding: 1.3rem 1rem 0.9rem;
+        border-radius: 1rem;
         width: 100%;
         max-width: 100%;
         box-sizing: border-box;
     }
 
     .logo {
-        width: 88px;
-        height: 88px;
+        width: 80px;
+        height: 80px;
     }
 
     .system-pill {
-        font-size: 0.68rem;
-        letter-spacing: 0.07em;
-        padding: 0.3rem 0.55rem;
+        font-size: 0.62rem;
+        letter-spacing: 0.06em;
+        padding: 0.25rem 0.5rem;
     }
 
     .landing-card h1 {
-        font-size: 1.85rem;
+        font-size: 1.6rem;
     }
 
     .landing-card h5 {
-        font-size: 0.98rem;
-        margin-bottom: 0.9rem;
+        font-size: 0.9rem;
+        margin-bottom: 0.7rem;
     }
 
     .description {
-        font-size: 0.9rem;
-        line-height: 1.55;
-        margin-bottom: 1rem;
+        font-size: 0.82rem;
+        line-height: 1.5;
+        margin-bottom: 0.8rem;
     }
 
     .highlights {
-        gap: 0.45rem;
-        margin-bottom: 1rem;
+        gap: 0.4rem;
+        margin-bottom: 0.8rem;
     }
 
     .highlights span {
-        font-size: 0.74rem;
-        padding: 0.34rem 0.52rem;
+        font-size: 0.68rem;
+        padding: 0.3rem 0.48rem;
     }
 
     .portal-buttons {
-        gap: 0.62rem;
+        gap: 0.55rem;
     }
 
     .portal-btn {
-        font-size: 0.92rem;
-        border-radius: 0.8rem;
-        min-height: 48px;
-        padding: 0.82rem 0.8rem;
+        font-size: 0.88rem;
+        border-radius: 0.75rem;
+        min-height: 44px;
+        padding: 0.7rem 0.75rem;
     }
 
     .footer-links {
-        margin-top: 1rem;
+        margin-top: 0.8rem;
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
+        gap: 0.2rem;
     }
 
     .footer-links span {
