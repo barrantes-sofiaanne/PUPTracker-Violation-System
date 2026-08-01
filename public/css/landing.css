@@ -36,7 +36,7 @@ body {
 
 .landing-card {
     position: relative;
-    width: min(100%, 640px);
+    width: min(100%, 480px);
     padding: 2.6rem 2.5rem 2rem;
     background: linear-gradient(
         170deg,
