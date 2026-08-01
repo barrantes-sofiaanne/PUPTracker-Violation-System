@@ -2,6 +2,7 @@ FROM php:8.2-cli
 
 RUN apt-get update && apt-get install -y \
     git \
+    curl \
     unzip \
     zip \
     libpng-dev \
@@ -10,15 +11,23 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libicu-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd zip intl pdo_mysql
+    && docker-php-ext-install \
+        gd \
+        zip \
+        intl \
+        pdo_mysql
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-COPY . .
+COPY composer.json composer.lock ./
 
 RUN composer install --no-dev --optimize-autoloader
+
+COPY . .
+
+RUN php artisan config:clear
 
 RUN if [ -f package.json ]; then \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
@@ -26,8 +35,6 @@ RUN if [ -f package.json ]; then \
     npm install && \
     npm run build; \
     fi
-
-RUN php artisan config:clear
 
 EXPOSE 8080
 
