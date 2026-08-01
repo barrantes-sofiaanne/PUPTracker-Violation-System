@@ -44,7 +44,7 @@ class SecurityHeadersMiddleware
         // Always set HSTS header (production uses HTTPS)
         // Set to 1 year (31536000 seconds)
         $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-
+        
         return $response;
     }
 }
