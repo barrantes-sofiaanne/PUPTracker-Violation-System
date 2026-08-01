@@ -273,5 +273,18 @@
         @if (Route::has('login'))
             <div class="h-14.5 hidden lg:block"></div>
         @endif
+
+        <!-- Security Footer -->
+        <footer class="bg-gray-900 text-gray-100 text-center py-4 border-t border-gray-800">
+            <div class="max-w-7xl mx-auto">
+                <p class="text-sm mb-2">
+                    <span class="text-gray-400">Security concerns? </span>
+                    <a href="{{ route('security.report') }}" class="text-blue-400 hover:text-blue-300 font-semibold">Report a Security Incident</a>
+                    <span class="text-gray-400"> | </span>
+                    <a href="mailto:security@pup.edu.ph" class="text-blue-400 hover:text-blue-300 font-semibold">security@pup.edu.ph</a>
+                </p>
+                <p class="text-xs text-gray-500">© {{ date('Y') }} PUP Tracker Violation System. All rights reserved.</p>
+            </div>
+        </footer>
     </body>
 </html>
