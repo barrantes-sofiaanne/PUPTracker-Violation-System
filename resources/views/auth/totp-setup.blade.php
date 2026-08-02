@@ -24,7 +24,7 @@
                                 Use an authenticator app like Google Authenticator, Microsoft Authenticator, or Authy
                             </p>
                             <div class="qr-code-container" style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                {!! $qrCode !!}
+                                <img src="{{ $qrCode }}" alt="TOTP QR Code" class="img-fluid">
                             </div>
                             <p class="text-muted small mt-3">
                                 <a href="#" data-bs-toggle="collapse" data-bs-target="#manualEntry">
@@ -109,6 +109,7 @@
 </div>
 
 <style>
+    .qr-code-container img,
     .qr-code-container svg {
         max-width: 200px;
         height: auto;
