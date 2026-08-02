@@ -73,7 +73,7 @@
                 <span>•</span>
 
                 <a href="{{ route('security.report') }}" title="Report security vulnerabilities or incidents">
-                    <i class="bi bi-exclamation-triangle"></i> Security Contact
+                    <i class="bi bi-exclamation-triangle"></i> Contact Us
                 </a>
 
             </div>

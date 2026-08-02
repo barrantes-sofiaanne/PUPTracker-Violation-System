@@ -90,9 +90,16 @@
 
             @if($selectedMethod === 'totp' && !$hasTotpSecret)
                 <div class="alert alert-warning">
-                    Your authenticator app is not set up yet.
-                    <a href="{{ route('totp.setup', ['guard' => $pending['guard'] ?? 'admin']) }}" class="alert-link">Set up TOTP now</a>
-                    then return and verify your login.
+                    TOTP is not enabled for this account yet.
+                    @if(($pending['guard'] ?? 'student') === 'admin')
+                        Please sign in to the admin area and enable TOTP from your account settings first.
+                        <a href="{{ route('admin.login') }}" class="alert-link">Return to admin login</a>.
+                    @elseif(($pending['guard'] ?? 'student') === 'security')
+                        Please sign in to the security area and enable TOTP from your account settings first.
+                        <a href="{{ route('security.login') }}" class="alert-link">Return to security login</a>.
+                    @else
+                        TOTP setup is only available for admin and security accounts.
+                    @endif
                 </div>
             @else
                 <form
