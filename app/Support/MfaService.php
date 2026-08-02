@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Mail\OtpCode;
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -296,23 +297,8 @@ class MfaService
 
     private function sendCode(string $email, string $code): void
     {
-        $subject = 'Your PUPTracker verification code';
-        $message = implode(PHP_EOL, [
-            'Hello,',
-            '',
-            "Your PUPTracker verification code is: {$code}",
-            'This code will expire in 5 minutes.',
-            '',
-            'If you requested this login, enter this code to continue.',
-            'If you did not request this, please ignore this email. Do not share this code with anyone.',
-            '',
-            'For security, PUPTracker support will never ask for your OTP.',
-        ]);
-
         try {
-            Mail::raw($message, function ($mail) use ($email, $subject): void {
-                $mail->to($email)->subject($subject);
-            });
+            Mail::to($email)->send(new OtpCode($code, expiryMinutes: 5));
         } catch (\Throwable $exception) {
             if (app()->environment('local', 'testing')) {
                 Log::warning('MFA mail sending failed in local/testing, using log fallback.', [
@@ -324,7 +310,6 @@ class MfaService
                 return;
             }
 
-            // With Mailgun, this error should not occur. Log it for debugging.
             Log::error('MFA email send failed', [
                 'email' => $email,
                 'error' => $exception->getMessage(),
