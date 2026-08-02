@@ -4,6 +4,14 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/student-login.css') }}">
+<style>
+    .totp-qr-code svg,
+    .totp-qr-code img {
+        display: block;
+        width: 220px;
+        height: 220px;
+    }
+</style>
 @endpush
 
 @section('content')
@@ -98,9 +106,9 @@
                     <div class="alert alert-info text-start">
                         <strong>Step 1: Scan this QR code</strong>
                         @php $totpQrCode = (string) ($pending['totp_qr_code'] ?? ''); @endphp
-                        <div class="bg-white border rounded p-2 my-2 d-inline-block">
+                        <div class="totp-qr-code bg-white border rounded p-2 my-2 d-inline-block">
                             @if(str_starts_with($totpQrCode, 'data:image'))
-                                <img src="{{ $totpQrCode }}" alt="TOTP QR Code" class="img-fluid" style="max-width: 220px; height: auto;">
+                                <img src="{{ $totpQrCode }}" alt="TOTP QR Code">
                             @elseif(str_starts_with(ltrim($totpQrCode), '<svg'))
                                 {!! $totpQrCode !!}
                             @endif

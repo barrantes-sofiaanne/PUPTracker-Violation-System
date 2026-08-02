@@ -133,7 +133,9 @@ class MfaService
                     $appName = $guard === 'security' ? 'PUPTracker Security' : 'PUPTracker Admin';
                     $email = (string) ($pending['email'] ?? '');
 
-                    $pending['totp_qr_code'] = $this->totpService->getQRCode($email, $appName, $secret);
+                    $pending['totp_qr_code'] = $this->inlineSvgQrCode(
+                        $this->totpService->getQRCode($email, $appName, $secret)
+                    );
                     $pending['totp_manual_url'] = $this->totpService->getOtpAuthUrl($email, $appName, $secret);
 
                     $message = 'Scan the QR code with your authenticator app, then enter the 6-digit code.';
@@ -691,6 +693,19 @@ class MfaService
         }
 
         return true;
+    }
+
+    private function inlineSvgQrCode(string $qrCode): string
+    {
+        $prefix = 'data:image/svg+xml;base64,';
+
+        if (!str_starts_with($qrCode, $prefix)) {
+            return $qrCode;
+        }
+
+        $svg = base64_decode(substr($qrCode, strlen($prefix)), true);
+
+        return $svg === false ? $qrCode : $svg;
     }
 
     private function resolveUserForGuard(string $guard, string $identifier): Admin|Security|User|null
