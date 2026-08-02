@@ -546,9 +546,10 @@ Route::get('/http-test', function () {
 
 Route::get('/env-test', function () {
     return response()->json([
-        'MAILGUN_DOMAIN'   => env('MAILGUN_DOMAIN'),
-        'MAILGUN_ENDPOINT' => env('MAILGUN_ENDPOINT'),
-        'MAIL_FROM_ADDRESS'=> env('MAIL_FROM_ADDRESS'),
-        'MAIL_MAILER'      => env('MAIL_MAILER'),
+        'MAILGUN_DOMAIN'   => config('services.mailgun.domain'),
+        'MAILGUN_ENDPOINT' => config('services.mailgun.endpoint'),
+        'MAIL_FROM_ADDRESS'=> config('mail.from.address'),
+        'MAIL_MAILER'      => config('mail.default'),
+        'SECRET_LENGTH'    => strlen(config('services.mailgun.secret') ?? ''),
     ]);
 });
