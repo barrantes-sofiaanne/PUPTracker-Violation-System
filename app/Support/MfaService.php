@@ -32,8 +32,8 @@ class MfaService
         ?string $backupCodesUsedJson = null
     ): void
     {
-        $code = $this->generateCode();
-        $hasTotp = !empty($totpSecret);
+        $isAdminSecurityFlow = in_array($guard, ['admin', 'security'], true);
+        $hasTotp = $isAdminSecurityFlow;
         $backupCodes = $this->decodeJsonArray($backupCodesJson);
         $backupCodesUsed = $this->decodeJsonArray($backupCodesUsedJson);
         $hasBackupCodes = !empty($backupCodes);
@@ -51,18 +51,26 @@ class MfaService
             'identifier' => $identifier,
             'email' => $email,
             'email_masked' => $this->maskEmail($email),
-            'totp_secret' => $hasTotp ? $totpSecret : null,
+            'totp_secret' => !empty($totpSecret) ? $totpSecret : null,
             'methods' => $methods,
-            'selected_method' => 'email',
+            'selected_method' => $isAdminSecurityFlow ? null : 'email',
+            'stage' => $isAdminSecurityFlow ? 'select' : 'code',
             'backup_codes' => $hasBackupCodes ? $backupCodes : [],
             'backup_codes_used' => $hasBackupCodes ? $backupCodesUsed : [],
-            'code_hash' => Hash::make($code),
-            'expires_at' => now()->addMinutes(5)->timestamp,
-            'resend_available_at' => now()->addSeconds(30)->timestamp,
+            'code_hash' => null,
+            'expires_at' => null,
+            'resend_available_at' => null,
             'attempts' => 0,
         ]);
 
-        $this->sendCode($email, $code);
+        if (!$isAdminSecurityFlow) {
+            $pending = $this->getPending($request);
+
+            if (is_array($pending)) {
+                $this->issueEmailCode($pending);
+                $request->session()->put(self::SESSION_KEY, $pending);
+            }
+        }
 
         $this->audit(
             $guard,
@@ -71,6 +79,78 @@ class MfaService
             'Authentication',
             'MFA challenge started using methods: ' . implode(', ', $methods)
         );
+    }
+
+    public function selectMethod(Request $request, string $method): array
+    {
+        $pending = $this->getPending($request);
+
+        if (!$pending) {
+            return [
+                'ok' => false,
+                'message' => 'No pending verification session found. Please login again.',
+            ];
+        }
+
+        $guard = (string) ($pending['guard'] ?? 'unknown');
+        $identifier = (string) ($pending['identifier'] ?? '');
+        $allowedMethods = $pending['methods'] ?? ['email'];
+
+        if (!in_array($method, $allowedMethods, true)) {
+            return [
+                'ok' => false,
+                'message' => 'Invalid verification method selected.',
+            ];
+        }
+
+        $pending['selected_method'] = $method;
+        $pending['stage'] = 'code';
+        $pending['attempts'] = 0;
+
+        if ($method === 'email') {
+            $this->issueEmailCode($pending);
+            $message = 'A verification code has been sent to your email.';
+        } else {
+            $pending['code_hash'] = null;
+            $pending['expires_at'] = null;
+            $pending['resend_available_at'] = null;
+            $message = $method === 'totp'
+                ? 'Enter the code from your authenticator app.'
+                : 'Enter one of your backup codes.';
+        }
+
+        $request->session()->put(self::SESSION_KEY, $pending);
+
+        $this->audit(
+            $guard,
+            $identifier,
+            'mfa.method.selected',
+            'Authentication',
+            'User selected MFA method: ' . $method
+        );
+
+        return [
+            'ok' => true,
+            'message' => $message,
+        ];
+    }
+
+    public function returnToMethodSelection(Request $request): void
+    {
+        $pending = $this->getPending($request);
+
+        if (!$pending) {
+            return;
+        }
+
+        $pending['stage'] = 'select';
+        $pending['selected_method'] = null;
+        $pending['code_hash'] = null;
+        $pending['expires_at'] = null;
+        $pending['resend_available_at'] = null;
+        $pending['attempts'] = 0;
+
+        $request->session()->put(self::SESSION_KEY, $pending);
     }
 
     public function hasPending(Request $request): bool
@@ -116,17 +196,8 @@ class MfaService
         }
 
         $pending['selected_method'] = $method;
+        $pending['stage'] = 'code';
         $request->session()->put(self::SESSION_KEY, $pending);
-
-        if (now()->timestamp > (int) $pending['expires_at']) {
-            $this->clear($request);
-            $this->audit($guard, $identifier, 'mfa.verify.failed', 'Authentication', 'Verification failed: email OTP expired.');
-
-            return [
-                'valid' => false,
-                'message' => 'Verification code expired. Please login again.',
-            ];
-        }
 
         $attempts = ((int) ($pending['attempts'] ?? 0)) + 1;
         $pending['attempts'] = $attempts;
@@ -190,6 +261,23 @@ class MfaService
             ];
         }
 
+        if (empty($pending['code_hash']) || empty($pending['expires_at'])) {
+            return [
+                'valid' => false,
+                'message' => 'Please choose Email OTP first to generate a verification code.',
+            ];
+        }
+
+        if (now()->timestamp > (int) $pending['expires_at']) {
+            $this->clear($request);
+            $this->audit($guard, $identifier, 'mfa.verify.failed', 'Authentication', 'Verification failed: email OTP expired.');
+
+            return [
+                'valid' => false,
+                'message' => 'Verification code expired. Please login again.',
+            ];
+        }
+
         if (!preg_match('/^\d{6}$/', $code)) {
             $this->audit($guard, $identifier, 'mfa.verify.failed', 'Authentication', 'Verification failed: invalid email OTP format.');
 
@@ -230,6 +318,14 @@ class MfaService
 
         $guard = (string) ($pending['guard'] ?? 'unknown');
         $identifier = (string) ($pending['identifier'] ?? '');
+        $selectedMethod = (string) ($pending['selected_method'] ?? '');
+
+        if ($selectedMethod !== 'email') {
+            return [
+                'ok' => false,
+                'message' => 'Resend is only available for Email OTP.',
+            ];
+        }
 
         if (now()->timestamp < (int) ($pending['resend_available_at'] ?? 0)) {
             $this->audit($guard, $identifier, 'mfa.resend.blocked', 'Authentication', 'MFA resend blocked due to cooldown.');
@@ -240,16 +336,9 @@ class MfaService
             ];
         }
 
-        $code = $this->generateCode();
-
-        $pending['code_hash'] = Hash::make($code);
-        $pending['expires_at'] = now()->addMinutes(5)->timestamp;
-        $pending['resend_available_at'] = now()->addSeconds(30)->timestamp;
-        $pending['attempts'] = 0;
+        $this->issueEmailCode($pending);
 
         $request->session()->put(self::SESSION_KEY, $pending);
-
-        $this->sendCode((string) $pending['email'], $code);
 
         $this->audit($guard, $identifier, 'mfa.resend.success', 'Authentication', 'MFA email OTP resent successfully.');
 
@@ -257,6 +346,56 @@ class MfaService
             'ok' => true,
             'message' => 'A new verification code has been sent.',
         ];
+    }
+
+    public function generateInitialBackupCodes(string $guard, string $identifier): array
+    {
+        if (!in_array($guard, ['admin', 'security'], true)) {
+            return [];
+        }
+
+        $user = $this->resolveUserForGuard($guard, $identifier);
+        if (!$user || !MfaSchema::supportsBackupCodes($user)) {
+            return [];
+        }
+
+        $existingCodes = $this->decodeJsonArray($user->mfa_backup_codes);
+        if (!empty($existingCodes)) {
+            return [];
+        }
+
+        $plainCodes = $this->totpService->generateBackupCodes();
+        $hashedCodes = $this->totpService->hashBackupCodes($plainCodes);
+
+        $user->mfa_backup_codes = json_encode($hashedCodes);
+        $user->mfa_backup_codes_used = json_encode([]);
+
+        try {
+            $user->save();
+        } catch (QueryException $exception) {
+            if (!MfaSchema::isMissingColumnException($exception)) {
+                throw $exception;
+            }
+
+            MfaSchema::forgetBackupCodeAttributes($user);
+
+            Log::warning('Initial backup code generation skipped because MFA backup-code columns are missing', [
+                'guard' => $guard,
+                'identifier' => $identifier,
+            ]);
+
+            return [];
+        }
+
+        $this->audit(
+            $guard,
+            $identifier,
+            'mfa.backup.generated',
+            'Authentication',
+            'Initial backup codes generated after first successful MFA verification.'
+        );
+
+        return $plainCodes;
     }
 
     public function logCancellation(Request $request): void
@@ -470,6 +609,16 @@ class MfaService
         $decoded = json_decode($value, true);
 
         return is_array($decoded) ? $decoded : [];
+    }
+
+    private function issueEmailCode(array &$pending): void
+    {
+        $code = $this->generateCode();
+        $pending['code_hash'] = Hash::make($code);
+        $pending['expires_at'] = now()->addMinutes(5)->timestamp;
+        $pending['resend_available_at'] = now()->addSeconds(30)->timestamp;
+        $pending['attempts'] = 0;
+        $this->sendCode((string) ($pending['email'] ?? ''), $code);
     }
 
     private function resolveUserForGuard(string $guard, string $identifier): Admin|Security|User|null

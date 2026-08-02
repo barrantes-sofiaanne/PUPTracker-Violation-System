@@ -67,7 +67,7 @@ class SecurityLoginController extends Controller
         }
 
         return redirect()->route('mfa.verify.show')
-            ->with('success', 'A verification code has been sent to your email.');
+            ->with('success', 'Continue with multi-factor verification.');
     }
 
     public function logout(Request $request)

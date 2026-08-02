@@ -82,7 +82,7 @@ class AdminLoginController extends Controller
             }
 
             return redirect()->route('mfa.verify.show')
-                ->with('success', 'A verification code has been sent to your email.');
+                ->with('success', 'Continue with multi-factor verification.');
         } catch (\Throwable $exception) {
             Log::error('Admin login controller error - UNCAUGHT', [
                 'email' => $request->input('email'),

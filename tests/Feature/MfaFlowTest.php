@@ -165,29 +165,26 @@ class MfaFlowTest extends TestCase
         $this->assertSame($secret, $admin->mfa_totp_secret);
     }
 
-    public function test_student_login_skips_mfa_when_trusted_device_cookie_is_valid(): void
+    public function test_student_login_always_requires_mfa(): void
     {
         User::create([
             'student_number' => '2026-00002',
-            'first_name' => 'Trusted',
+            'first_name' => 'Regular',
             'last_name' => 'Student',
-            'email' => 'trusted-student@example.com',
+            'email' => 'regular-student@example.com',
             'status_id' => 1,
             'password_hash' => Hash::make('password123'),
             'mfa_totp_enabled' => false,
         ]);
 
-        $cookie = app(MfaService::class)->makeTrustedDeviceCookie('student', '2026-00002');
+        $response = $this->post(route('student.login.post'), [
+            'student_number' => '2026-00002',
+            'password' => 'password123',
+        ]);
 
-        $response = $this->withCookie($cookie->getName(), $cookie->getValue())
-            ->post(route('student.login.post'), [
-                'student_number' => '2026-00002',
-                'password' => 'password123',
-            ]);
-
-        $response->assertRedirect(route('student.dashboard'));
-        $response->assertSessionMissing('mfa.pending');
-        $this->assertAuthenticated('student');
+        $response->assertRedirect(route('mfa.verify.show'));
+        $response->assertSessionHas('mfa.pending');
+        $this->assertGuest('student');
     }
 
     private function ensureAuthTablesForTests(): void

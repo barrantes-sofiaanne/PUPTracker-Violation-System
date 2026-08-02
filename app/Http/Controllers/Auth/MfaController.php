@@ -26,12 +26,43 @@ class MfaController extends Controller
 
     public function verify(Request $request, MfaService $mfaService): RedirectResponse
     {
+        $action = (string) $request->input('action', 'verify');
+        if ($action === 'back') {
+            $mfaService->returnToMethodSelection($request);
+
+            return redirect()->route('mfa.verify.show');
+        }
+
+        if ($action === 'select') {
+            $validated = $request->validate([
+                'method' => ['required', 'in:email,totp,backup'],
+            ]);
+
+            $result = $mfaService->selectMethod($request, $validated['method']);
+
+            if (!($result['ok'] ?? false)) {
+                return back()->withErrors([
+                    'method' => $result['message'] ?? 'Unable to select verification method.',
+                ])->withInput();
+            }
+
+            return redirect()->route('mfa.verify.show')->with('success', $result['message'] ?? 'Verification method selected.');
+        }
+
+        $pending = $mfaService->getPending($request);
+        if (!$pending) {
+            return redirect()->route('home');
+        }
+
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:20'],
             'method' => ['nullable', 'in:email,totp,backup'],
         ]);
 
-        $result = $mfaService->verifyCode($request, $validated['code'], $validated['method'] ?? 'email');
+        $selectedMethod = (string) ($pending['selected_method'] ?? '');
+        $method = $validated['method'] ?? ($selectedMethod !== '' ? $selectedMethod : 'email');
+
+        $result = $mfaService->verifyCode($request, $validated['code'], $method);
 
         if (!($result['valid'] ?? false)) {
             return back()->withErrors([
@@ -54,6 +85,14 @@ class MfaController extends Controller
         Auth::guard($guard)->login($user);
         $request->session()->regenerate();
         $mfaService->clear($request);
+
+        $backupCodes = $mfaService->generateInitialBackupCodes($guard, $identifier);
+        if (!empty($backupCodes)) {
+            return redirect()
+                ->route('totp.backup-codes', ['guard' => $guard])
+                ->with('backup_codes', $backupCodes)
+                ->with('success', 'Verification successful. Save your one-time backup codes.');
+        }
 
         return redirect()
             ->route($this->redirectRouteForGuard($guard, $user))

@@ -8,104 +8,153 @@
 
 @section('content')
 
+@php
+    $methods = $pending['methods'] ?? ['email'];
+    $selectedMethod = old('method', $pending['selected_method'] ?? null);
+    $stage = $pending['stage'] ?? (count($methods) > 1 ? 'select' : 'code');
+    $hasTotpSecret = !empty($pending['totp_secret']);
+    $methodLabels = [
+        'email' => 'Email OTP',
+        'totp' => 'Authenticator App',
+        'backup' => 'Backup Code',
+    ];
+@endphp
+
 <div class="login-page">
 
-    <div class="login-card">
+    @if($stage === 'select')
+        <div class="login-card">
+            <img
+                src="{{ asset('assets/images/Tracker-logo.png') }}"
+                class="logo"
+                alt="PUPTracker Logo">
 
-        <img
-            src="{{ asset('assets/images/Tracker-logo.png') }}"
-            class="logo"
-            alt="PUPTracker Logo">
+            <p class="module-chip">Multi-Factor Authentication</p>
+            <h2>Choose Verification Method</h2>
+            <p class="subtitle">Select how you want to verify this login.</p>
 
-        <p class="module-chip">Multi-Factor Authentication</p>
+            @error('method')
+                <div class="alert alert-danger">{{ $message }}</div>
+            @enderror
 
-        <h2>Verify Login</h2>
+            <div class="d-grid gap-2">
+                <form action="{{ route('mfa.verify.submit') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="action" value="select">
+                    <input type="hidden" name="method" value="email">
+                    <button type="submit" class="btn btn-success w-100">Use Email OTP ({{ $pending['email_masked'] ?? 'masked email' }})</button>
+                </form>
 
-        @php
-            $methods = $pending['methods'] ?? ['email'];
-            $selectedMethod = old('method', $pending['selected_method'] ?? 'email');
-            $hasTotp = in_array('totp', $methods, true);
-            $hasBackup = in_array('backup', $methods, true);
-        @endphp
+                @if(in_array('totp', $methods, true))
+                    <form action="{{ route('mfa.verify.submit') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="action" value="select">
+                        <input type="hidden" name="method" value="totp">
+                        <button type="submit" class="btn btn-outline-success w-100">Use Authenticator App (TOTP)</button>
+                    </form>
+                @endif
 
-        <p class="subtitle">
-            @if($hasTotp || $hasBackup)
-                Choose your verification method, then enter your code.
-            @else
-                Enter the 6-digit code sent to {{ $pending['email_masked'] ?? 'your email' }}.
-            @endif
-        </p>
-
-        <form
-            action="{{ route('mfa.verify.submit') }}"
-            method="POST"
-            autocomplete="off">
-
-            @csrf
-
-            @if($hasTotp || $hasBackup)
-                <div class="mb-3">
-                    <label class="form-label">Verification Method</label>
-                    <select name="method" class="form-select" required>
-                        <option value="email" {{ $selectedMethod === 'email' ? 'selected' : '' }}>Email OTP ({{ $pending['email_masked'] ?? 'masked email' }})</option>
-                        @if($hasTotp)
-                            <option value="totp" {{ $selectedMethod === 'totp' ? 'selected' : '' }}>Authenticator App</option>
-                        @endif
-                        @if($hasBackup)
-                            <option value="backup" {{ $selectedMethod === 'backup' ? 'selected' : '' }}>Backup Code</option>
-                        @endif
-                    </select>
-                </div>
-            @else
-                <input type="hidden" name="method" value="email">
-            @endif
-
-            <div class="mb-3">
-                <label class="form-label">Verification Code</label>
-                <input
-                    type="text"
-                    name="code"
-                    class="form-control @error('code') is-invalid @enderror"
-                    value="{{ old('code') }}"
-                    maxlength="20"
-                    required>
-
-                @error('code')
-                    <div class="invalid-feedback d-block">
-                        {{ $message }}
-                    </div>
-                @enderror
+                @if(in_array('backup', $methods, true))
+                    <form action="{{ route('mfa.verify.submit') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="action" value="select">
+                        <input type="hidden" name="method" value="backup">
+                        <button type="submit" class="btn btn-outline-secondary w-100">Use Backup Code</button>
+                    </form>
+                @endif
             </div>
 
-            <button
-                type="submit"
-                class="btn btn-success w-100 login-btn mb-2">
-                Verify and Continue
-            </button>
-        </form>
-
-        <div class="d-flex gap-2 flex-wrap mt-2">
-            <form action="{{ route('mfa.verify.resend') }}" method="POST" class="flex-grow-1">
-                @csrf
-                <button type="submit" class="btn btn-outline-secondary w-100">Resend Code</button>
-            </form>
-
-            <form action="{{ route('mfa.verify.cancel') }}" method="POST" class="flex-grow-1">
+            <form action="{{ route('mfa.verify.cancel') }}" method="POST" class="mt-3">
                 @csrf
                 <button type="submit" class="btn btn-outline-danger w-100">Cancel</button>
             </form>
         </div>
+    @else
+        <div class="login-card">
+            <img
+                src="{{ asset('assets/images/Tracker-logo.png') }}"
+                class="logo"
+                alt="PUPTracker Logo">
 
-    </div>
+            <p class="module-chip">Multi-Factor Authentication</p>
+            <h2>Verify Login</h2>
+            <p class="subtitle">
+                @if($selectedMethod === 'email')
+                    Enter the 6-digit code sent to {{ $pending['email_masked'] ?? 'your email' }}.
+                @elseif($selectedMethod === 'totp')
+                    Enter the 6-digit code from your authenticator app.
+                @else
+                    Enter one of your backup recovery codes.
+                @endif
+            </p>
+
+            @if($selectedMethod === 'totp' && !$hasTotpSecret)
+                <div class="alert alert-warning">
+                    Your authenticator app is not set up yet.
+                    <a href="{{ route('totp.setup', ['guard' => $pending['guard'] ?? 'admin']) }}" class="alert-link">Set up TOTP now</a>
+                    then return and verify your login.
+                </div>
+            @else
+                <form
+                    action="{{ route('mfa.verify.submit') }}"
+                    method="POST"
+                    autocomplete="off">
+
+                    @csrf
+                    <input type="hidden" name="action" value="verify">
+                    <input type="hidden" name="method" value="{{ $selectedMethod ?? 'email' }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            {{ $methodLabels[$selectedMethod ?? 'email'] ?? 'Verification Code' }}
+                        </label>
+                        <input
+                            type="text"
+                            name="code"
+                            class="form-control @error('code') is-invalid @enderror"
+                            value="{{ old('code') }}"
+                            maxlength="20"
+                            required>
+
+                        @error('code')
+                            <div class="invalid-feedback d-block">
+                                {{ $message }}
+                            </div>
+                        @enderror
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="btn btn-success w-100 login-btn mb-2">
+                        Verify and Continue
+                    </button>
+                </form>
+            @endif
+
+            <div class="d-flex gap-2 flex-wrap mt-2">
+                @if(($selectedMethod ?? 'email') === 'email')
+                    <form action="{{ route('mfa.verify.resend') }}" method="POST" class="flex-grow-1">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-secondary w-100">Resend Code</button>
+                    </form>
+                @endif
+
+                @if(count($methods) > 1)
+                    <form action="{{ route('mfa.verify.submit') }}" method="POST" class="flex-grow-1">
+                        @csrf
+                        <input type="hidden" name="action" value="back">
+                        <button type="submit" class="btn btn-outline-primary w-100">Choose Another Method</button>
+                    </form>
+                @endif
+
+                <form action="{{ route('mfa.verify.cancel') }}" method="POST" class="flex-grow-1">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-danger w-100">Cancel</button>
+                </form>
+            </div>
+        </div>
+    @endif
 
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
-        new bootstrap.Tooltip(element);
-    });
-});
-</script>
 
 @endsection
