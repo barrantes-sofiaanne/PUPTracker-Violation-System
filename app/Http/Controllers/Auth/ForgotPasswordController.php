@@ -151,6 +151,8 @@ class ForgotPasswordController extends Controller
                 'email' => $email,
                 'mailer' => config('mail.default'),
                 'mailgun_domain' => config('mail.mailers.mailgun.domain'),
+                'mailgun_secret_exists' => !empty(config('mail.mailers.mailgun.secret')),
+                'mailgun_secret_length' => strlen(config('mail.mailers.mailgun.secret') ?? ''),
             ]);
             Mail::raw($message, function ($mail) use ($email): void {
                 $mail->to($email)->subject('PUPTracker Password Reset');
