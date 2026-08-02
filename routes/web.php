@@ -544,14 +544,11 @@ Route::get('/http-test', function () {
     }
 });
 
-
-
-Route::get('/mailgun-env', function () {
+Route::get('/env-test', function () {
     return response()->json([
-        'MAIL_MAILER' => env('MAIL_MAILER'),
-        'MAILGUN_DOMAIN' => env('MAILGUN_DOMAIN'),
+        'MAILGUN_DOMAIN'   => env('MAILGUN_DOMAIN'),
         'MAILGUN_ENDPOINT' => env('MAILGUN_ENDPOINT'),
-        'MAIL_FROM_ADDRESS' => env('MAIL_FROM_ADDRESS'),
-        'secret_length' => strlen(env('MAILGUN_SECRET') ?? ''),
+        'MAIL_FROM_ADDRESS'=> env('MAIL_FROM_ADDRESS'),
+        'MAIL_MAILER'      => env('MAIL_MAILER'),
     ]);
 });
