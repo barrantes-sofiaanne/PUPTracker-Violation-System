@@ -13,6 +13,7 @@
     $selectedMethod = old('method', $pending['selected_method'] ?? null);
     $stage = $pending['stage'] ?? (count($methods) > 1 ? 'select' : 'code');
     $hasTotpSecret = !empty($pending['totp_secret']);
+    $totpPendingSetup = (bool) ($pending['totp_pending_setup'] ?? false);
     $methodLabels = [
         'email' => 'Email OTP',
         'totp' => 'Authenticator App',
@@ -90,18 +91,19 @@
 
             @if($selectedMethod === 'totp' && !$hasTotpSecret)
                 <div class="alert alert-warning">
-                    TOTP is not enabled for this account yet.
-                    @if(($pending['guard'] ?? 'student') === 'admin')
-                        Please sign in to the admin area and enable TOTP from your account settings first.
-                        <a href="{{ route('admin.login') }}" class="alert-link">Return to admin login</a>.
-                    @elseif(($pending['guard'] ?? 'student') === 'security')
-                        Please sign in to the security area and enable TOTP from your account settings first.
-                        <a href="{{ route('security.login') }}" class="alert-link">Return to security login</a>.
-                    @else
-                        TOTP setup is only available for admin and security accounts.
-                    @endif
+                    Unable to start authenticator setup right now. Please choose another method and try again.
                 </div>
             @else
+                @if($selectedMethod === 'totp' && $totpPendingSetup)
+                    <div class="alert alert-info text-start">
+                        <strong>Step 1: Scan this QR code</strong>
+                        <div class="bg-white border rounded p-2 my-2 d-inline-block">
+                            {!! $pending['totp_qr_code'] ?? '' !!}
+                        </div>
+                        <div class="small text-muted mt-2">Step 2: Enter the 6-digit code from your authenticator app below.</div>
+                    </div>
+                @endif
+
                 <form
                     action="{{ route('mfa.verify.submit') }}"
                     method="POST"

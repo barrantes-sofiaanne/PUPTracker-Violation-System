@@ -52,6 +52,10 @@ class MfaService
             'email' => $email,
             'email_masked' => $this->maskEmail($email),
             'totp_secret' => !empty($totpSecret) ? $totpSecret : null,
+            'totp_enabled' => $totpEnabled,
+            'totp_pending_setup' => false,
+            'totp_qr_code' => null,
+            'totp_manual_url' => null,
             'methods' => $methods,
             'selected_method' => $isAdminSecurityFlow ? null : 'email',
             'stage' => $isAdminSecurityFlow ? 'select' : 'code',
@@ -114,9 +118,31 @@ class MfaService
             $pending['code_hash'] = null;
             $pending['expires_at'] = null;
             $pending['resend_available_at'] = null;
-            $message = $method === 'totp'
-                ? 'Enter the code from your authenticator app.'
-                : 'Enter one of your backup codes.';
+            $pending['totp_qr_code'] = null;
+            $pending['totp_manual_url'] = null;
+            $pending['totp_pending_setup'] = false;
+
+            if ($method === 'totp') {
+                $totpNeedsSetup = empty($pending['totp_secret']) || !((bool) ($pending['totp_enabled'] ?? false));
+
+                if ($totpNeedsSetup) {
+                    $secret = $this->totpService->generateSecret();
+                    $pending['totp_secret'] = $secret;
+                    $pending['totp_pending_setup'] = true;
+
+                    $appName = $guard === 'security' ? 'PUPTracker Security' : 'PUPTracker Admin';
+                    $email = (string) ($pending['email'] ?? '');
+
+                    $pending['totp_qr_code'] = $this->totpService->getQRCode($email, $appName, $secret);
+                    $pending['totp_manual_url'] = $this->totpService->getOtpAuthUrl($email, $appName, $secret);
+
+                    $message = 'Scan the QR code with your authenticator app, then enter the 6-digit code.';
+                } else {
+                    $message = 'Enter the code from your authenticator app.';
+                }
+            } else {
+                $message = 'Enter one of your backup codes.';
+            }
         }
 
         $request->session()->put(self::SESSION_KEY, $pending);
@@ -149,6 +175,9 @@ class MfaService
         $pending['expires_at'] = null;
         $pending['resend_available_at'] = null;
         $pending['attempts'] = 0;
+        $pending['totp_qr_code'] = null;
+        $pending['totp_manual_url'] = null;
+        $pending['totp_pending_setup'] = false;
 
         $request->session()->put(self::SESSION_KEY, $pending);
     }
@@ -230,6 +259,23 @@ class MfaService
                     'valid' => false,
                     'message' => 'Invalid authenticator code. Please try again.',
                 ];
+            }
+
+            if ((bool) ($pending['totp_pending_setup'] ?? false)) {
+                if (!$this->enableTotpForUser($guard, $identifier, (string) $pending['totp_secret'])) {
+                    $this->audit($guard, $identifier, 'mfa.verify.failed', 'Authentication', 'Verification failed: unable to enable authenticator setup.');
+
+                    return [
+                        'valid' => false,
+                        'message' => 'Unable to enable authenticator setup right now. Please try again.',
+                    ];
+                }
+
+                $pending['totp_enabled'] = true;
+                $pending['totp_pending_setup'] = false;
+                $pending['totp_qr_code'] = null;
+                $pending['totp_manual_url'] = null;
+                $request->session()->put(self::SESSION_KEY, $pending);
             }
 
             $this->audit($guard, $identifier, 'mfa.verify.success', 'Authentication', 'MFA verified successfully using authenticator app.');
@@ -619,6 +665,32 @@ class MfaService
         $pending['resend_available_at'] = now()->addSeconds(30)->timestamp;
         $pending['attempts'] = 0;
         $this->sendCode((string) ($pending['email'] ?? ''), $code);
+    }
+
+    private function enableTotpForUser(string $guard, string $identifier, string $secret): bool
+    {
+        $user = $this->resolveUserForGuard($guard, $identifier);
+
+        if (!$user) {
+            return false;
+        }
+
+        $user->mfa_totp_secret = $secret;
+        $user->mfa_totp_enabled = true;
+
+        try {
+            $user->save();
+        } catch (QueryException $exception) {
+            Log::error('Failed to persist TOTP setup during MFA challenge', [
+                'guard' => $guard,
+                'identifier' => $identifier,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return false;
+        }
+
+        return true;
     }
 
     private function resolveUserForGuard(string $guard, string $identifier): Admin|Security|User|null
