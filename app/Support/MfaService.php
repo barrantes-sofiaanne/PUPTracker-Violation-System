@@ -324,10 +324,12 @@ class MfaService
                 return;
             }
 
-            // Log code to Deploy Logs as fallback when email fails
-            Log::error('ADMIN MFA CODE (email failed, check logs): ' . $code . ' for ' . $email, [
-                'smtp_error' => $exception->getMessage(),
+            // With Mailgun, this error should not occur. Log it for debugging.
+            Log::error('MFA email send failed', [
+                'email' => $email,
+                'error' => $exception->getMessage(),
             ]);
+            throw $exception;
         }
     }
 
