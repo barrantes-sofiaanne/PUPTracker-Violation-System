@@ -32,6 +32,10 @@ protected $fillable = [
     'middle_name',
     'last_name',
     'email',
+    'idp_subject',
+    'idp_email',
+    'idp_connected_at',
+    'idp_last_login_at',
     'gender_id',
     'status_id',
     'roles_id',
@@ -62,6 +66,8 @@ protected $fillable = [
             'updated_at'               => 'datetime',
             'reset_token_expires_at'   => 'datetime',
             'new_until'                => 'datetime',
+            'idp_connected_at'         => 'datetime',
+            'idp_last_login_at'        => 'datetime',
             'mfa_totp_enabled'         => 'boolean',
         ];
     }

@@ -18,6 +18,7 @@ use App\Models\Year;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -101,13 +102,13 @@ class StudentController extends Controller
             ->paginate(15, ['*'], 'admins_page');
 
         $securities = Security::query()
-            ->with('securityInfo')
+            ->with(['securityInfo', 'securityProfile'])
             ->when($request->filled('security_search'), function ($query) use ($request) {
                 $search = '%' . trim($request->security_search) . '%';
                 $query->where(function ($searchQuery) use ($search) {
                     $searchQuery->where('email', 'like', $search)
-                        ->orWhereHas('securityInfo', function ($securityInfoQuery) use ($search) {
-                            $securityInfoQuery->where('firstname', 'like', $search)
+                        ->orWhereHas('securityProfile', function ($securityProfileQuery) use ($search) {
+                            $securityProfileQuery->where('firstname', 'like', $search)
                                 ->orWhere('middlename', 'like', $search)
                                 ->orWhere('lastname', 'like', $search);
                         })
@@ -252,14 +253,10 @@ class StudentController extends Controller
 
             SecurityInfo::updateOrCreate(
                 ['security_id' => $security->id],
-                [
-                    'firstname' => $validated['firstname'],
-                    'middlename' => $validated['middlename'] ?? null,
-                    'lastname' => $validated['lastname'],
-                    'contact_number' => $validated['contact_number'] ?? '',
-                    'address' => $validated['address'] ?? '',
-                ]
+                $this->buildSecurityInfoData($validated)
             );
+
+            $this->syncLegacySecurityNameData($security->id, $validated);
         });
 
         return redirect()->route('admin.students', ['tab' => 'security'])
@@ -341,14 +338,10 @@ class StudentController extends Controller
 
             SecurityInfo::updateOrCreate(
                 ['security_id' => $security->id],
-                [
-                    'firstname' => $validated['firstname'],
-                    'middlename' => $validated['middlename'] ?? null,
-                    'lastname' => $validated['lastname'],
-                    'contact_number' => $validated['contact_number'] ?? '',
-                    'address' => $validated['address'] ?? '',
-                ]
+                $this->buildSecurityInfoData($validated)
             );
+
+            $this->syncLegacySecurityNameData($security->id, $validated);
         });
 
         return redirect()->route('admin.students', ['tab' => 'security'])
@@ -359,6 +352,10 @@ class StudentController extends Controller
     {
         if ($security->securityInfo) {
             $security->securityInfo->delete();
+        }
+
+        if ($security->securityProfile) {
+            $security->securityProfile->delete();
         }
 
         $security->delete();
@@ -585,7 +582,6 @@ class StudentController extends Controller
                 : $student->password_hash,
         ]);
 
-        $studentInfo = $student->studentInfo()->firstOrCreate(['user_id' => $student->getKey()]);
         $studentStatusId = $this->resolveStudentStatusIdFromUserStatusId((int) $request->input('status_id'));
 
         if (!$studentStatusId) {
@@ -594,7 +590,10 @@ class StudentController extends Controller
             ]);
         }
 
+        $studentInfo = $student->studentInfo()->firstOrNew(['user_id' => $student->getKey()]);
+
         $studentInfo->fill([
+            'user_id' => $student->getKey(),
             'program_id' => $request->input('program_id'),
             'year_id' => $request->input('year_id'),
             'section_id' => $request->input('section_id'),
@@ -763,16 +762,80 @@ class StudentController extends Controller
 
         SecurityInfo::updateOrCreate(
             ['security_id' => $security->id],
-            [
-                'firstname' => $row['firstname'] ?? '',
-                'middlename' => $row['middlename'] ?? null,
-                'lastname' => $row['lastname'] ?? '',
-                'contact_number' => $row['contact_number'] ?? '',
-                'address' => $row['address'] ?? '',
-            ]
+            $this->buildSecurityInfoData($row)
         );
 
+        $this->syncLegacySecurityNameData($security->id, $row);
+
         return 1;
+    }
+
+    private function buildSecurityInfoData(array $data): array
+    {
+        $securityInfoData = [
+            'contact_number' => $data['contact_number'] ?? '',
+            'address' => $data['address'] ?? '',
+        ];
+
+        // Some environments may still be pending the name-fields migration.
+        if (Schema::hasColumn('security_info_tbl', 'firstname')) {
+            $securityInfoData['firstname'] = $data['firstname'] ?? '';
+        }
+
+        if (Schema::hasColumn('security_info_tbl', 'middlename')) {
+            $securityInfoData['middlename'] = $data['middlename'] ?? null;
+        }
+
+        if (Schema::hasColumn('security_info_tbl', 'lastname')) {
+            $securityInfoData['lastname'] = $data['lastname'] ?? '';
+        }
+
+        return $securityInfoData;
+    }
+
+    private function syncLegacySecurityNameData(int $securityId, array $data): void
+    {
+        if (!Schema::hasTable('security_info')) {
+            return;
+        }
+
+        $legacyData = [];
+
+        if (Schema::hasColumn('security_info', 'firstname')) {
+            $legacyData['firstname'] = $data['firstname'] ?? '';
+        }
+
+        if (Schema::hasColumn('security_info', 'middlename')) {
+            $legacyData['middlename'] = $data['middlename'] ?? null;
+        }
+
+        if (Schema::hasColumn('security_info', 'lastname')) {
+            $legacyData['lastname'] = $data['lastname'] ?? '';
+        }
+
+        if (Schema::hasColumn('security_info', 'updated_at')) {
+            $legacyData['updated_at'] = now();
+        }
+
+        if (!empty($legacyData)) {
+            $existing = DB::table('security_info')
+                ->where('security_id', $securityId)
+                ->exists();
+
+            if ($existing) {
+                DB::table('security_info')
+                    ->where('security_id', $securityId)
+                    ->update($legacyData);
+                return;
+            }
+
+            if (Schema::hasColumn('security_info', 'created_at')) {
+                $legacyData['created_at'] = now();
+            }
+
+            $legacyData['security_id'] = $securityId;
+            DB::table('security_info')->insert($legacyData);
+        }
     }
 
     private function resolveStudentStatusIdFromUserStatusId(?int $statusId): ?int

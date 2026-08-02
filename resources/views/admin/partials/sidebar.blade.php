@@ -157,6 +157,13 @@
                     Maintenance Config
                 </a>
             </li>
+
+            <li>
+                <a href="{{ route('admin.super-admin.audit-control-plan') }}" class="{{ request()->routeIs('admin.super-admin.audit-control-plan') ? 'active' : '' }}">
+                    <i class="bi bi-shield-check"></i>
+                    Audit & Risk Plan
+                </a>
+            </li>
         @endif
 
     </ul>

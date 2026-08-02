@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'idp' => [
+        'base_url' => env('IDP_BASE_URL', 'https://identity-provider.isaxbsit2027.com/api/v1'),
+        'client_id' => env('IDP_CLIENT_ID','5e87caa7-79f0-46bb-bd89-572b2e4c7391'),
+        'client_secret' => env('IDP_CLIENT_SECRET','AaLxZMdpTWyHsiDW_jHfvtzqWLI0Gj5ddmFCOMgwbNM'),
+    ],
+
 ];

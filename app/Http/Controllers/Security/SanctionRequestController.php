@@ -11,6 +11,7 @@ use App\Models\StudentSanctionRecord;
 use App\Models\Violation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SanctionRequestController extends Controller
 {
@@ -52,19 +53,43 @@ class SanctionRequestController extends Controller
                     ->latest('violation_date')
                     ->first();
 
+                $offenseCount = Violation::where('student_number', $student->student_number)
+                    ->where('violation_type', $violationType->violation_type_id)
+                    ->count();
+
+                $offenseLevel = $this->formatOffenseLevel($offenseCount);
+
                 $assignedSanction = DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
+                    ->where('offense_level', $offenseLevel)
+                    ->first()
+                    ?? DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
                     ->orderBy('disciplinary_sanction_id')
                     ->first();
 
-                if ($latestViolation) {
-                    StudentSanctionRecord::create([
-                        'student_number' => $student->student_number,
-                        'violation_id' => $latestViolation->violation_id,
-                        'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
-                        'assigned_by_admin_id' => 1,
-                        'status' => 'Pending',
-                        'date_assigned' => now(),
+                $sanctionText = strtolower((string) ($assignedSanction?->disciplinary_sanction ?? ''));
+                if ($decision === 'approved' && $sanctionText !== '' && str_contains($sanctionText, 'warning')) {
+                    throw ValidationException::withMessages([
+                        'sanction_request' => 'Warning-level violations should remain in the individual violations log and cannot be moved to sanction records.',
                     ]);
+                }
+
+                if ($decision === 'approved' && $latestViolation) {
+                    $pendingRecord = StudentSanctionRecord::where('student_number', $student->student_number)
+                        ->where('violation_id', $latestViolation->violation_id)
+                        ->where('status', 'Pending')
+                        ->latest('record_id')
+                        ->first();
+
+                    if (!$pendingRecord) {
+                        StudentSanctionRecord::create([
+                            'student_number' => $student->student_number,
+                            'violation_id' => $latestViolation->violation_id,
+                            'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
+                            'assigned_by_admin_id' => 1,
+                            'status' => 'Pending',
+                            'date_assigned' => now(),
+                        ]);
+                    }
                 }
             }
 
@@ -87,5 +112,15 @@ class SanctionRequestController extends Controller
                 'description' => 'Security processed sanction request #' . $sanctionRequest->request_id . ' for student ' . ($student?->student_number ?? 'unknown'),
             ]);
         });
+    }
+
+    private function formatOffenseLevel(int $offenseCount): string
+    {
+        return match ($offenseCount) {
+            1 => '1st Offense',
+            2 => '2nd Offense',
+            3 => '3rd Offense',
+            default => $offenseCount . 'th Offense',
+        };
     }
 }

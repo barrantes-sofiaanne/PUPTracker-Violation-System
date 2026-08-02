@@ -199,12 +199,14 @@
 
         </div>
 
-        {{-- Action Buttons --}}
+        {{-- Actions and Notice --}}
         <div style="padding: 2rem; border-top: 1px solid rgba(128, 0, 0, 0.12);">
+            <div class="alert alert-warning mb-3" role="alert" style="border: 1px solid rgba(128, 0, 0, 0.2);">
+                <i class="bi bi-info-circle me-2"></i>
+                Only the Administrator or IT Administrator can change student information. Please contact the administrator for any profile updates.
+            </div>
+
             <div class="d-flex gap-2 flex-wrap">
-                <a href="{{ route('student.settings') }}" class="btn portal-btn">
-                    <i class="bi bi-pencil me-2"></i>Edit Profile
-                </a>
                 <a href="{{ route('student.dashboard') }}" class="btn portal-btn-outline">
                     <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
                 </a>

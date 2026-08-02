@@ -63,14 +63,18 @@ $approvedRequests = SanctionRequest::where(
 $pendingSanctionTypeKeys = StudentSanctionRecord::with('violation')
     ->where('student_number', $user->student_number)
     ->where('status', 'Pending')
-    ->whereHas('violation.violationType')
     ->get()
     ->flatMap(function ($record) {
         $raw = (string) ($record->violation?->violation_type ?? '');
+        $resolvedTypeId = (string) ($record->violation?->resolvedViolationType()?->violation_type_id ?? '');
+        $resolvedTypeName = (string) ($record->violation?->resolvedViolationType()?->violation_type ?? '');
 
         return array_filter([
             $raw,
             strtolower($raw),
+            $resolvedTypeId,
+            $resolvedTypeName,
+            strtolower($resolvedTypeName),
         ]);
     })
     ->unique()
@@ -80,14 +84,18 @@ $pendingSanctionTypeKeys = StudentSanctionRecord::with('violation')
 $approvedSanctionTypeKeys = StudentSanctionRecord::with('violation')
     ->where('student_number', $user->student_number)
     ->whereIn('status', ['Pending', 'Completed'])
-    ->whereHas('violation.violationType')
     ->get()
     ->flatMap(function ($record) {
         $raw = (string) ($record->violation?->violation_type ?? '');
+        $resolvedTypeId = (string) ($record->violation?->resolvedViolationType()?->violation_type_id ?? '');
+        $resolvedTypeName = (string) ($record->violation?->resolvedViolationType()?->violation_type ?? '');
 
         return array_filter([
             $raw,
             strtolower($raw),
+            $resolvedTypeId,
+            $resolvedTypeName,
+            strtolower($resolvedTypeName),
         ]);
     })
     ->unique()
@@ -98,6 +106,9 @@ $matchesViolationType = function ($violationRecord, array $pool): bool {
     $rawType = (string) ($violationRecord->violation_type ?? '');
     $relationTypeId = (string) ($violationRecord->violationType?->violation_type_id ?? '');
     $relationTypeName = (string) ($violationRecord->violationType?->violation_type ?? '');
+    $resolvedType = $violationRecord->resolvedViolationType();
+    $resolvedTypeId = (string) ($resolvedType?->violation_type_id ?? '');
+    $resolvedTypeName = (string) ($resolvedType?->violation_type ?? '');
 
     $candidates = array_filter([
         $rawType,
@@ -105,6 +116,9 @@ $matchesViolationType = function ($violationRecord, array $pool): bool {
         $relationTypeId,
         $relationTypeName,
         strtolower($relationTypeName),
+        $resolvedTypeId,
+        $resolvedTypeName,
+        strtolower($resolvedTypeName),
     ]);
 
     foreach ($candidates as $candidate) {
@@ -122,7 +136,15 @@ $groupedViolations = Violation::with([
 ])
     ->where('student_number', $user->student_number)
     ->get()
-    ->groupBy('violation_type');
+    ->groupBy(function ($violation) {
+        $resolvedType = $violation->resolvedViolationType();
+
+        if (!empty($resolvedType?->violation_type_id)) {
+            return 'id:' . $resolvedType->violation_type_id;
+        }
+
+        return 'raw:' . strtolower(trim((string) $violation->violation_type));
+    });
 
 foreach ($groupedViolations as $records) {
 
@@ -136,38 +158,47 @@ foreach ($groupedViolations as $records) {
         default => $count . 'th Offense'
     };
 
-    // Resolve sanction for this row using offense level, then fallback to any configured sanction.
-    $sanctions = $first->violationType?->disciplinarySanctions;
+    $resolvedType = $first->resolvedViolationType();
 
-    $sanction = $sanctions?->firstWhere('offense_level', $offenseLevel)
-        ?? $sanctions?->first();
+    $sanction = null;
+    if (!empty($resolvedType?->violation_type_id)) {
+        $sanction = DisciplinarySanction::where('violation_type_id', $resolvedType->violation_type_id)
+            ->where('offense_level', $offenseLevel)
+            ->first()
+            ?? DisciplinarySanction::where('violation_type_id', $resolvedType->violation_type_id)
+                ->orderBy('disciplinary_sanction_id')
+                ->first();
+    }
 
     $disciplinarySanction = $sanction->disciplinary_sanction ?? 'N/A';
 
-    $status = str_contains(strtolower($disciplinarySanction), 'warning')
-        ? 'Warning'
-        : 'Sanction';
+    $status = 'Unknown';
+    if (str_contains(strtolower($disciplinarySanction), 'warning')) {
+        $status = 'Warning';
+    } elseif ($disciplinarySanction !== 'N/A') {
+        $status = 'Sanction';
+    }
 
-    if ($matchesViolationType($first, $activeRequests)) {
-        $workflowStatus = 'Requested';
-    } elseif ($matchesViolationType($first, $pendingSanctionTypeKeys)) {
-        $workflowStatus = 'Pending';
-    } elseif (
-        $matchesViolationType($first, $approvedRequests)
+    if (
+        $matchesViolationType($first, $pendingSanctionTypeKeys)
+        || $matchesViolationType($first, $approvedRequests)
         || $matchesViolationType($first, $approvedSanctionTypeKeys)
     ) {
-        $workflowStatus = 'Approved';
-    } else {
-        $workflowStatus = 'Actionable';
+        // Once a violation enters sanction workflow, it should be shown only in Sanction Record.
+        continue;
     }
+
+    $workflowStatus = $matchesViolationType($first, $activeRequests)
+        ? 'Requested'
+        : 'Actionable';
 
     $violationSummary[] = [
         // Using ?-> prevents the "reading property on null" error
-        'category' => $first->violationType?->violationCategory?->category_name ?? 'N/A',
+        'category' => $first->violation_category_display,
 
-        'type' => $first->violationType?->violation_type ?? 'Unknown',
+        'type' => $first->violation_type_display,
 
-        'violation_type_id' => $first->violation_type,
+        'violation_type_id' => $resolvedType?->violation_type_id,
 
         'offense_level' => $offenseLevel,
 
@@ -191,7 +222,6 @@ $sanctionRecords = StudentSanctionRecord::with([
     'student_number',
     $user->student_number
 )
-->whereHas('violation.violationType')
 ->orderByDesc('date_assigned')
 ->get();
 
@@ -213,6 +243,58 @@ public function requestSanction(Request $request)
     ]);
 
     $user = Auth::user();
+
+    $violationType = \App\Models\ViolationType::find($request->violation_type_id);
+
+    if (!$violationType) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Violation type was not found.'
+        ], 422);
+    }
+
+    $offenseCount = Violation::where('student_number', $user->student_number)
+        ->where(function ($query) use ($violationType) {
+            $query->where('violation_type', (string) $violationType->violation_type_id)
+                ->orWhere('violation_type', $violationType->violation_type);
+        })
+        ->count();
+
+    if ($offenseCount < 1) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No matching violation record found for this request.'
+        ], 422);
+    }
+
+    $offenseLevel = match ($offenseCount) {
+        1 => '1st Offense',
+        2 => '2nd Offense',
+        3 => '3rd Offense',
+        default => $offenseCount . 'th Offense',
+    };
+
+    $assignedSanction = DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
+        ->where('offense_level', $offenseLevel)
+        ->first()
+        ?? DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
+            ->orderBy('disciplinary_sanction_id')
+            ->first();
+
+    if (!$assignedSanction) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No disciplinary sanction is configured for this violation yet.'
+        ], 422);
+    }
+
+    $sanctionText = strtolower((string) ($assignedSanction?->disciplinary_sanction ?? ''));
+    if ($sanctionText !== '' && str_contains($sanctionText, 'warning')) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Warning-level violations remain in the violation log and cannot be moved to sanction records.'
+        ], 422);
+    }
 
     $existing = SanctionRequest::where(
         'student_number',
@@ -244,13 +326,57 @@ public function requestSanction(Request $request)
 
     try {
 
-        SanctionRequest::create([
+        $defaultAdminId = (int) (DB::table('admins')->min('id') ?? 0);
+
+        if ($defaultAdminId <= 0) {
+            throw new \RuntimeException('Cannot queue sanction request because no admin account is available.');
+        }
+
+        $sanctionRequest = SanctionRequest::create([
 
             'student_number' => $user->student_number,
 
-            'violation_type_id' => $request->violation_type_id
+            'violation_type_id' => $request->violation_type_id,
+
+            'request_date' => now(),
+
+            'is_active' => true,
+
+            'status' => 'Pending',
+
+            'approved_by_admin_id' => null,
+
+            'approved_at' => null,
 
         ]);
+
+        $latestViolation = Violation::where('student_number', $user->student_number)
+            ->where(function ($query) use ($violationType) {
+                $query->where('violation_type', (string) $violationType->violation_type_id)
+                    ->orWhere('violation_type', $violationType->violation_type);
+            })
+            ->latest('violation_date')
+            ->first();
+
+        if (!$latestViolation) {
+            throw new \RuntimeException('Unable to locate the latest violation for this sanction request.');
+        }
+
+        $existingPendingRecord = StudentSanctionRecord::where('student_number', $user->student_number)
+            ->where('violation_id', $latestViolation->violation_id)
+            ->where('status', 'Pending')
+            ->first();
+
+        if (!$existingPendingRecord) {
+            StudentSanctionRecord::create([
+                'student_number' => $user->student_number,
+                'violation_id' => $latestViolation->violation_id,
+                'assigned_sanction_id' => $assignedSanction->disciplinary_sanction_id,
+                'assigned_by_admin_id' => $defaultAdminId,
+                'status' => 'Pending',
+                'date_assigned' => now(),
+            ]);
+        }
 
         AdminNotification::create([
 
@@ -269,7 +395,9 @@ public function requestSanction(Request $request)
 
             'success' => true,
 
-            'message' => 'Request submitted successfully.'
+            'message' => 'Request submitted successfully. It is now in your Sanction Record as Pending.',
+
+            'request_id' => $sanctionRequest->request_id,
 
         ]);
 

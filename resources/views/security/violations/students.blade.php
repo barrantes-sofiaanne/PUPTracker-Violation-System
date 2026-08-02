@@ -98,6 +98,16 @@
         background: rgba(138, 0, 0, 0.06);
     }
 
+    .report-modal-header {
+        background: linear-gradient(135deg, #800000 0%, #5f0000 100%);
+        color: #fff;
+    }
+
+    .report-modal-header .modal-title,
+    .report-modal-header .modal-title i {
+        color: #fff !important;
+    }
+
     .filter-grid {
         display: grid;
         grid-template-columns: 1.5fr 1fr 1fr auto auto;
@@ -245,7 +255,7 @@
 <div class="modal fade" id="reportOptionsModal" tabindex="-1" aria-labelledby="reportOptionsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header" style="background: linear-gradient(135deg, #800000 0%, #5f0000 100%); color: #fff;">
+            <div class="modal-header report-modal-header">
                 <h5 class="modal-title fw-bold" id="reportOptionsModalLabel">
                     <i class="bi bi-file-earmark-bar-graph me-2"></i>Generate Violation Report
                 </h5>
@@ -257,9 +267,19 @@
                     <p class="mb-3 text-muted">Select the report range you want to generate.</p>
 
                     <div class="d-grid gap-2 mb-3">
-                        <label class="report-option active" data-option="last7">
+                        <label class="report-option active" data-option="today">
                             <div class="d-flex align-items-start gap-2">
-                                <input class="form-check-input" type="radio" name="period" value="last7" checked>
+                                <input class="form-check-input" type="radio" name="period" value="today" checked>
+                                <div>
+                                    <div class="fw-semibold">Today (PHT)</div>
+                                    <small class="text-muted">Uses current Philippine time (Asia/Manila).</small>
+                                </div>
+                            </div>
+                        </label>
+
+                        <label class="report-option" data-option="last7">
+                            <div class="d-flex align-items-start gap-2">
+                                <input class="form-check-input" type="radio" name="period" value="last7">
                                 <div>
                                     <div class="fw-semibold">Last 7 Days</div>
                                     <small class="text-muted">Only records created within the last week.</small>

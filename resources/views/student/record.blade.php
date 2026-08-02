@@ -276,19 +276,25 @@
 
         @else
 
-            <button
-                class="btn portal-btn btn-sm request-sanction-btn"
-                data-violation-type-id="{{ $summary['violation_type_id'] }}"
+            @if($summary['violation_status'] !== 'Sanction')
 
-                @if($summary['violation_status'] !== 'Sanction')
-                    disabled
-                @endif>
+                <span class="badge bg-secondary-subtle text-secondary-emphasis border">
+                    No Request Needed
+                </span>
 
-                <i class="bi bi-send"></i>
+            @else
 
-                Request Sanction
+                <button
+                    class="btn portal-btn btn-sm request-sanction-btn"
+                    data-violation-type-id="{{ $summary['violation_type_id'] }}">
 
-            </button>
+                    <i class="bi bi-send"></i>
+
+                    Request Sanction
+
+                </button>
+
+            @endif
 
         @endif
 
@@ -380,7 +386,7 @@
 
                         <td>
 
-                            {{ optional($violation->violationType)->violation_type ?? '-' }}
+                            {{ $violation->violation_type_display }}
 
                         </td>
 
@@ -392,7 +398,7 @@
 
                         <td>
 
-                            {{ optional(optional($violation->violationType)->violationCategory)->category_name ?? '-' }}
+                            {{ $violation->violation_category_display }}
 
                         </td>
 
@@ -596,6 +602,27 @@
 </div>
 
         </div>
+
+<div class="modal fade" id="requestSanctionConfirmModal" tabindex="-1" aria-labelledby="requestSanctionConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="requestSanctionConfirmModalLabel">Confirm Sanction Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to request this disciplinary sanction?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn portal-btn" id="confirmRequestSanctionBtn">
+                    <i class="bi bi-send"></i>
+                    Yes, Request Sanction
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')

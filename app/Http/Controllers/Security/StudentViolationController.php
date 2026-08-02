@@ -20,6 +20,8 @@ use Illuminate\Support\Collection;
 
 class StudentViolationController extends Controller
 {
+    private const REPORT_TIMEZONE = 'Asia/Manila';
+
     /**
      * Display a listing of students with violations
      */
@@ -265,7 +267,7 @@ class StudentViolationController extends Controller
     public function report(Request $request)
     {
         $period = (string) $request->input('period', 'last7');
-        $period = in_array($period, ['last7', 'last30', 'all', 'custom'], true) ? $period : 'last7';
+        $period = in_array($period, ['today', 'last7', 'last30', 'all', 'custom'], true) ? $period : 'last7';
 
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
@@ -273,9 +275,10 @@ class StudentViolationController extends Controller
         $reportStudents = $this->buildReportStudents($period, $dateFrom, $dateTo);
 
         $security = Auth::guard('security')->user();
-        $generatedBy = $this->buildSecurityRecorderLabel($security?->id, $security?->email);
+        $reportedBy = $this->buildSecurityAccountName($security);
 
         $filtersApplied = match ($period) {
+            'today' => 'Today (PHT)',
             'last7' => 'Last 7 Days',
             'last30' => 'Last 30 Days',
             'all' => 'All My Recorded Violations',
@@ -285,9 +288,9 @@ class StudentViolationController extends Controller
 
         return view('security.violations.report', [
             'reportStudents' => $reportStudents,
-            'generatedAt' => now(),
+            'generatedAt' => $this->phtNow(),
             'filtersApplied' => $filtersApplied,
-            'generatedBy' => $generatedBy,
+            'reportedBy' => $reportedBy,
         ]);
     }
 
@@ -345,10 +348,17 @@ class StudentViolationController extends Controller
                 $this->applyRecorderScope($query);
             });
 
-        if ($period === 'last7') {
-            $violationsQuery->where('violation_date', '>=', now()->subDays(7));
+        $phtNow = $this->phtNow();
+
+        if ($period === 'today') {
+            $violationsQuery->whereBetween('violation_date', [
+                $phtNow->copy()->startOfDay(),
+                $phtNow->copy()->endOfDay(),
+            ]);
+        } elseif ($period === 'last7') {
+            $violationsQuery->where('violation_date', '>=', $phtNow->copy()->subDays(7));
         } elseif ($period === 'last30') {
-            $violationsQuery->where('violation_date', '>=', now()->subDays(30));
+            $violationsQuery->where('violation_date', '>=', $phtNow->copy()->subDays(30));
         } elseif ($period === 'custom') {
             $from = $this->normalizeDateBoundary($dateFrom, false);
             $to = $this->normalizeDateBoundary($dateTo, true);
@@ -435,11 +445,16 @@ class StudentViolationController extends Controller
         }
 
         try {
-            $parsed = Carbon::parse($date);
+            $parsed = Carbon::parse($date, self::REPORT_TIMEZONE);
             return $endOfDay ? $parsed->endOfDay() : $parsed->startOfDay();
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function phtNow(): Carbon
+    {
+        return Carbon::now(self::REPORT_TIMEZONE);
     }
 
     private function formatCustomDateFilter(?string $dateFrom, ?string $dateTo): string
@@ -507,5 +522,27 @@ class StudentViolationController extends Controller
         }
 
         return 'Security #' . ($securityId ?? 'Unknown');
+    }
+
+    private function buildSecurityAccountName($security): string
+    {
+        if (!$security) {
+            return 'Security Account';
+        }
+
+        $info = $security->securityInfo;
+        $legacyInfo = $security->securityProfile;
+
+        $fullName = trim(implode(' ', array_filter([
+            $info?->firstname ?? $legacyInfo?->firstname,
+            $info?->middlename ?? $legacyInfo?->middlename,
+            $info?->lastname ?? $legacyInfo?->lastname,
+        ], fn ($value) => !empty($value))));
+
+        if ($fullName !== '') {
+            return $fullName;
+        }
+
+        return $security->email ?: 'Security Account';
     }
 }

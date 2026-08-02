@@ -22,28 +22,20 @@
         <h2>Student Login</h2>
 
         <p class="subtitle">
-            Sign in using your Student Number.
+            Sign in with your IDP student account.
         </p>
 
-        <form
-            action="{{ route('student.login.post') }}"
-            method="POST"
-            autocomplete="off">
+        @if($errors->has('login'))
+            <div class="login-error mb-3">
+                {{ $errors->first('login') }}
+            </div>
+        @endif
 
+        <form action="{{ route('student.idp.start') }}" method="POST" autocomplete="off">
             @csrf
 
-            @if($errors->has('login'))
-                <div class="login-error">
-                    {{ $errors->first('login') }}
-                </div>
-            @endif
-
             <div class="mb-3">
-
-                <label class="form-label">
-                    Student Number
-                </label>
-
+                <label class="form-label">Student Number</label>
                 <input
                     type="text"
                     name="student_number"
@@ -52,56 +44,18 @@
                     required>
 
                 @error('student_number')
-                    <div class="invalid-feedback">
-                        {{ $message }}
-                    </div>
+                    <div class="invalid-feedback d-block">{{ $message }}</div>
                 @enderror
-
             </div>
 
-            <div class="mb-4">
-
-                <label class="form-label">
-                    Password
-                </label>
-
-                <div class="password-wrapper">
-
-                    <input
-                        id="password"
-                        type="password"
-                        name="password"
-                        class="form-control @error('password') is-invalid @enderror"
-                        required>
-
-                    <button
-                        type="button"
-                        class="toggle-password"
-                        id="togglePassword">
-
-                        <i class="bi bi-eye"></i>
-
-                    </button>
-
-                </div>
-
-                @error('password')
-                    <div class="invalid-feedback d-block">
-                        {{ $message }}
-                    </div>
-                @enderror
-
-            </div>
-
-            <button
-                type="submit"
-                class="btn btn-success w-100 login-btn">
-
-                Login
-
+            <button type="submit" class="btn btn-success w-100 login-btn">
+                Continue with IDP
             </button>
-
         </form>
+
+        <p class="subtitle mt-3 mb-0">
+            Student passwords are no longer used for login. Your account is linked using IDP identity and student number.
+        </p>
 
         <div class="footer-links">
 

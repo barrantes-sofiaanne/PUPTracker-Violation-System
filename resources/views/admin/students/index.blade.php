@@ -387,8 +387,20 @@
                             </thead>
                             <tbody>
                                 @forelse($securities as $security)
+                                    @php
+                                        $securityFirstName = $security->securityInfo->firstname
+                                            ?? $security->securityProfile->firstname
+                                            ?? '';
+                                        $securityMiddleName = $security->securityInfo->middlename
+                                            ?? $security->securityProfile->middlename
+                                            ?? '';
+                                        $securityLastName = $security->securityInfo->lastname
+                                            ?? $security->securityProfile->lastname
+                                            ?? '';
+                                        $securityFullName = trim($securityFirstName . ' ' . $securityMiddleName . ' ' . $securityLastName);
+                                    @endphp
                                     <tr>
-                                        <td>{{ trim(($security->securityInfo->firstname ?? '') . ' ' . ($security->securityInfo->middlename ?? '') . ' ' . ($security->securityInfo->lastname ?? '')) ?: '—' }}</td>
+                                        <td>{{ $securityFullName ?: '—' }}</td>
                                         <td>{{ $security->email }}</td>
                                         <td>{{ $security->securityInfo->contact_number ?? '—' }}</td>
                                         <td>{{ $security->securityInfo->address ?? '—' }}</td>
@@ -399,9 +411,9 @@
                                                     class="btn btn-primary btn-sm user-action-btn editSecurityBtn"
                                                     data-id="{{ $security->id }}"
                                                     data-email="{{ $security->email }}"
-                                                    data-firstname="{{ $security->securityInfo->firstname ?? '' }}"
-                                                    data-middlename="{{ $security->securityInfo->middlename ?? '' }}"
-                                                    data-lastname="{{ $security->securityInfo->lastname ?? '' }}"
+                                                    data-firstname="{{ $securityFirstName }}"
+                                                    data-middlename="{{ $securityMiddleName }}"
+                                                    data-lastname="{{ $securityLastName }}"
                                                     data-contact="{{ $security->securityInfo->contact_number ?? '' }}"
                                                     data-address="{{ $security->securityInfo->address ?? '' }}">
                                                     <i class="bi bi-pencil-square me-1"></i>Edit

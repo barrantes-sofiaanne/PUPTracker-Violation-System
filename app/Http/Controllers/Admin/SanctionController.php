@@ -172,14 +172,35 @@ class SanctionController extends Controller
                     ->orderBy('disciplinary_sanction_id')
                     ->first();
 
-            StudentSanctionRecord::create([
-                'student_number' => $student->student_number,
-                'violation_id' => $latestViolation->violation_id,
-                'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
-                'assigned_by_admin_id' => $adminId,
-                'status' => 'Pending',
-                'date_assigned' => $scheduledDate,
-            ]);
+            $sanctionText = strtolower((string) ($assignedSanction?->disciplinary_sanction ?? ''));
+            if ($sanctionText !== '' && str_contains($sanctionText, 'warning')) {
+                throw ValidationException::withMessages([
+                    'sanction_request' => 'Warning-level violations should remain in the individual violations log and cannot be moved to sanction records.',
+                ]);
+            }
+
+            $pendingRecord = StudentSanctionRecord::where('student_number', $student->student_number)
+                ->where('violation_id', $latestViolation->violation_id)
+                ->where('status', 'Pending')
+                ->latest('record_id')
+                ->first();
+
+            if ($pendingRecord) {
+                $pendingRecord->update([
+                    'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
+                    'assigned_by_admin_id' => $adminId,
+                    'date_assigned' => $scheduledDate,
+                ]);
+            } else {
+                StudentSanctionRecord::create([
+                    'student_number' => $student->student_number,
+                    'violation_id' => $latestViolation->violation_id,
+                    'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
+                    'assigned_by_admin_id' => $adminId,
+                    'status' => 'Pending',
+                    'date_assigned' => $scheduledDate,
+                ]);
+            }
 
             $sanctionRequest->update([
                 'is_active' => false,

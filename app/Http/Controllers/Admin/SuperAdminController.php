@@ -77,6 +77,111 @@ class SuperAdminController extends Controller
         return view('admin.super-admin.maintenance', compact('maintenanceStatus', 'latestMaintenanceLog'));
     }
 
+    public function auditControlPlan()
+    {
+        $correctivePlan = [
+            [
+                'finding_no' => 1,
+                'corrective_action' => 'Add HSTS, CSP, X-Frame-Options, and X-Content-Type-Options headers via server/.htaccess configuration.',
+                'owner' => 'Lead Developer',
+                'resources' => 'OWASP Secure Headers Project, Mozilla Web Security Guidelines',
+                'target_date' => 'Within 1 month',
+                'status' => 'Completed',
+            ],
+            [
+                'finding_no' => 2,
+                'corrective_action' => 'Enable MFA (email OTP or authenticator app) for Super Admin and Security Personnel logins.',
+                'owner' => 'System Administrator / Lead Developer',
+                'resources' => 'MFA library/integration and existing email service (PHPMailer)',
+                'target_date' => 'Within 1 month',
+                'status' => 'Completed',
+            ],
+            [
+                'finding_no' => 3,
+                'corrective_action' => 'Publish a security contact email/reporting form on the homepage/footer.',
+                'owner' => 'Lead Developer',
+                'resources' => 'ISO/IEC 27001 Annex A.5.24 (Incident Management Planning)',
+                'target_date' => 'Within 1 month',
+                'status' => 'Completed',
+            ],
+            [
+                'finding_no' => 4,
+                'corrective_action' => 'Set up a documented patch/update schedule and track applied updates.',
+                'owner' => 'Lead Developer',
+                'resources' => 'ISO/IEC 27001 Annex A.12.8, OWASP Secure Coding Guidelines',
+                'target_date' => 'Within 3 months',
+                'status' => 'Completed',
+            ],
+            [
+                'finding_no' => 5,
+                'corrective_action' => 'Set up and document a verifiable weekly backup schedule with monthly restoration tests.',
+                'owner' => 'Database Administrator',
+                'resources' => 'Hosting/database access + MySQL Workbench, ISO/IEC 27001 Annex A.12.5',
+                'target_date' => 'Within 3 months',
+                'status' => 'Completed',
+            ],
+        ];
+
+        $treatmentPlan = [
+            [
+                'no' => 1,
+                'risk_reference' => 'Risk No. 2: Password & Authentication Controls',
+                'treatment' => 'Implement password_hash() for all credentials, enforce strong password complexity rules, and add login rate limiting.',
+                'owner' => 'Developer',
+                'resources' => 'PHP security libraries and developer support',
+                'target_date' => 'Within this month',
+                'status' => 'Completed',
+            ],
+            [
+                'no' => 2,
+                'risk_reference' => 'Risk No. 3: Data Backup & Recovery Procedures',
+                'treatment' => 'Set up automated daily MySQL backups with off-site cloud storage and conduct monthly backup restoration drills.',
+                'owner' => 'Database Administrator',
+                'resources' => 'MySQL Workbench, backup storage, firewall/cloudflare access',
+                'target_date' => 'Within this month',
+                'status' => 'Completed',
+            ],
+            [
+                'no' => 3,
+                'risk_reference' => 'Risk No. 4: Network & System Security',
+                'treatment' => 'Install SSL/TLS certificates and implement secure transport and local buffering controls for temporary offline handling.',
+                'owner' => 'Network Developer / Web Developer',
+                'resources' => 'SSL certificate and network support resources',
+                'target_date' => 'Within this month',
+                'status' => 'Completed',
+            ],
+            [
+                'no' => 4,
+                'risk_reference' => 'Risk No. 5: Data Privacy & Protection Practices',
+                'treatment' => 'Restrict student accounts to self-record views only and protect sensitive personal data fields (RA 10173).',
+                'owner' => 'System Administrator / OSS Head / Students',
+                'resources' => 'Data privacy compliance policy and encryption controls',
+                'target_date' => 'Within this month',
+                'status' => 'Completed',
+            ],
+            [
+                'no' => 5,
+                'risk_reference' => 'Risk No. 6: Software Licensing & Update Management',
+                'treatment' => 'Schedule quarterly maintenance for dependency updates, framework security patches, and server OS maintenance.',
+                'owner' => 'IT Support / System Administrator',
+                'resources' => 'Patch update logs and post-update system stability reports',
+                'target_date' => 'Within this month',
+                'status' => 'Completed',
+            ],
+            [
+                'no' => 6,
+                'risk_reference' => 'Risk No. 7: Incident Reporting & Response Procedures',
+                'treatment' => 'Implement real-time system error logging and an in-app notification backup whenever email dispatch fails.',
+                'owner' => 'Lead Developer / OSS Staff',
+                'resources' => 'Error logging framework and SMTP mail queue',
+                'target_date' => 'Within this month',
+                'status' => 'Completed',
+            ],
+        ];
+
+        return view('admin.super-admin.audit-control-plan', compact('correctivePlan', 'treatmentPlan'));
+    }
+
     public function updateMaintenanceConfiguration(Request $request): RedirectResponse
     {
         $validated = $request->validate([

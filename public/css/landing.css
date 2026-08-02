@@ -32,18 +32,31 @@ body {
         url("../assets/images/PUPT-picture.jpg");
     background-size: cover;
     background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.landing-page .container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    width: 100%;
+    padding: 1rem;
 }
 
 .landing-card {
     position: relative;
-    width: min(100%, 380px);
-    padding: 1.8rem 1.5rem 1.2rem;
+    width: 100%;
+    max-width: 450px;
+    padding: 1.6rem 1.3rem 1rem;
     background: linear-gradient(
         170deg,
         rgba(255, 255, 255, 0.95) 0%,
         rgba(255, 249, 231, 0.95) 100%
     );
-    border-radius: 1.2rem;
+    border-radius: 1.1rem;
     border: 1px solid rgba(128, 0, 0, 0.14);
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
     overflow: hidden;
@@ -77,12 +90,12 @@ body {
 .landing-logo-wrap {
     display: flex;
     justify-content: center;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.45rem;
 }
 
 .logo {
-    width: 90px;
-    height: 90px;
+    width: 80px;
+    height: 80px;
     object-fit: contain;
     border-radius: 999px;
     border: 3px solid rgba(128, 0, 0, 0.18);
@@ -92,13 +105,13 @@ body {
 }
 
 .system-pill {
-    margin: 0 auto 0.6rem;
+    margin: 0 auto 0.45rem;
     width: fit-content;
     font-weight: 600;
-    font-size: 0.68rem;
+    font-size: 0.55rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    padding: 0.28rem 0.65rem;
+    padding: 0.22rem 0.55rem;
     border-radius: 999px;
     background: rgba(128, 0, 0, 0.1);
     color: var(--landing-maroon);
@@ -107,44 +120,44 @@ body {
 .landing-card h1 {
     text-align: center;
     color: var(--landing-maroon);
-    font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+    font-size: clamp(1.5rem, 2.8vw, 1.85rem);
     font-weight: 800;
     letter-spacing: -0.02em;
-    margin-bottom: 0.1rem;
+    margin-bottom: 0.05rem;
 }
 
 .landing-card h5 {
     text-align: center;
     color: #493f40;
-    font-size: clamp(0.9rem, 2vw, 1.1rem);
+    font-size: clamp(0.75rem, 1.5vw, 0.9rem);
     font-weight: 600;
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.65rem;
 }
 
 .description {
-    margin: 0 auto 0.9rem;
-    max-width: 350px;
+    margin: 0 auto 0.75rem;
+    max-width: 380px;
     text-align: center;
     color: #564b4d;
-    font-size: 0.85rem;
-    line-height: 1.6;
+    font-size: 0.75rem;
+    line-height: 1.45;
 }
 
 .highlights {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
+    gap: 0.3rem;
     justify-content: center;
-    margin-bottom: 1rem;
+    margin-bottom: 0.85rem;
 }
 
 .highlights span {
     display: inline-flex;
     align-items: center;
-    gap: 0.32rem;
-    font-size: 0.75rem;
+    gap: 0.28rem;
+    font-size: 0.64rem;
     font-weight: 600;
-    padding: 0.32rem 0.6rem;
+    padding: 0.28rem 0.5rem;
     border-radius: 999px;
     color: #5f0000;
     background: rgba(255, 223, 0, 0.22);
@@ -152,21 +165,21 @@ body {
 
 .portal-buttons {
     display: grid;
-    gap: 0.6rem;
+    gap: 0.5rem;
 }
 
 .portal-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.45rem;
+    gap: 0.4rem;
     text-decoration: none;
     font-weight: 700;
     letter-spacing: 0.01em;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     color: #fff;
-    border-radius: 0.85rem;
-    padding: 0.8rem 0.85rem;
+    border-radius: 0.8rem;
+    padding: 0.7rem 0.75rem;
     background: linear-gradient(
         135deg,
         var(--landing-maroon) 0%,
@@ -176,7 +189,7 @@ body {
     transition:
         transform 0.2s ease,
         box-shadow 0.2s ease;
-    min-height: 48px;
+    min-height: 44px;
 }
 
 .portal-btn:hover {
@@ -190,21 +203,25 @@ body {
 }
 
 .footer-links {
-    margin-top: 1rem;
+    margin-top: 0.8rem;
     text-align: center;
     color: #695f61;
-    font-size: 0.78rem;
+    font-size: 0.68rem;
 }
 
 .footer-links a {
     color: #695f61;
     text-decoration: none;
     font-weight: 600;
-    min-height: 36px;
+    min-height: 32px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.08rem 0.2rem;
+    padding: 0.05rem 0.18rem;
+}
+
+.footer-links a:hover {
+    color: var(--landing-maroon);
 }
 
 .footer-links a:hover {
@@ -212,72 +229,81 @@ body {
 }
 
 @media (max-width: 768px) {
+    .landing-page {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
     .landing-page .container {
-        padding: 1rem 0.7rem;
-        min-height: 100svh !important;
-        align-items: flex-start !important;
+        padding: 1rem !important;
+        min-height: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .landing-card {
-        padding: 1.3rem 1rem 0.9rem;
+        padding: 1.2rem 1rem 0.8rem;
         border-radius: 1rem;
         width: 100%;
-        max-width: 100%;
+        max-width: 420px;
         box-sizing: border-box;
     }
 
     .logo {
-        width: 80px;
-        height: 80px;
+        width: 75px;
+        height: 75px;
     }
 
     .system-pill {
-        font-size: 0.62rem;
+        font-size: 0.53rem;
         letter-spacing: 0.06em;
-        padding: 0.25rem 0.5rem;
+        padding: 0.22rem 0.48rem;
     }
 
     .landing-card h1 {
-        font-size: 1.6rem;
+        font-size: 1.4rem;
     }
 
     .landing-card h5 {
-        font-size: 0.9rem;
-        margin-bottom: 0.7rem;
+        font-size: 0.8rem;
+        margin-bottom: 0.6rem;
     }
 
     .description {
-        font-size: 0.82rem;
-        line-height: 1.5;
-        margin-bottom: 0.8rem;
+        font-size: 0.7rem;
+        line-height: 1.4;
+        margin-bottom: 0.65rem;
     }
 
     .highlights {
-        gap: 0.4rem;
-        margin-bottom: 0.8rem;
+        gap: 0.3rem;
+        margin-bottom: 0.7rem;
     }
 
     .highlights span {
-        font-size: 0.68rem;
-        padding: 0.3rem 0.48rem;
+        font-size: 0.6rem;
+        padding: 0.26rem 0.45rem;
     }
 
     .portal-buttons {
-        gap: 0.55rem;
+        gap: 0.45rem;
     }
 
     .portal-btn {
-        font-size: 0.88rem;
+        font-size: 0.8rem;
         border-radius: 0.75rem;
-        min-height: 44px;
-        padding: 0.7rem 0.75rem;
+        min-height: 40px;
+        padding: 0.6rem 0.65rem;
     }
 
     .footer-links {
-        margin-top: 0.8rem;
+        margin-top: 0.65rem;
         display: flex;
         flex-direction: column;
-        gap: 0.2rem;
+        gap: 0.18rem;
+        font-size: 0.64rem;
     }
 
     .footer-links span {
@@ -287,117 +313,129 @@ body {
 
 @media (max-width: 480px) {
     .landing-page {
-        overflow-x: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
     }
 
     .landing-page .container {
-        padding: 0.5rem 0.3rem !important;
-        min-height: 100svh !important;
+        padding: 0.8rem !important;
+        min-height: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .landing-card {
-        padding: 1rem 0.6rem 0.8rem;
-        border-radius: 0.8rem;
-        width: 95%;
-        max-width: calc(100vw - 20px);
+        padding: 1rem 0.85rem 0.75rem;
+        border-radius: 0.95rem;
+        width: 100%;
+        max-width: 100%;
         box-sizing: border-box;
         margin: 0;
     }
 
     .logo {
-        width: 60px;
-        height: 60px;
+        width: 70px;
+        height: 70px;
         margin-bottom: 0.3rem;
     }
 
     .system-pill {
-        font-size: 0.58rem;
+        font-size: 0.5rem;
         letter-spacing: 0.04em;
-        padding: 0.2rem 0.35rem;
+        padding: 0.2rem 0.4rem;
         margin-bottom: 0.3rem;
     }
 
     .landing-card h1 {
-        font-size: 1.35rem;
-        margin-bottom: 0.05rem;
+        font-size: 1.25rem;
+        margin-bottom: 0.04rem;
     }
 
     .landing-card h5 {
-        font-size: 0.8rem;
-        margin-bottom: 0.6rem;
+        font-size: 0.73rem;
+        margin-bottom: 0.55rem;
     }
 
     .description {
-        font-size: 0.75rem;
-        line-height: 1.4;
-        margin-bottom: 0.6rem;
+        font-size: 0.68rem;
+        line-height: 1.35;
+        margin-bottom: 0.55rem;
     }
 
     .highlights {
-        gap: 0.3rem;
+        gap: 0.28rem;
         margin-bottom: 0.6rem;
     }
 
     .highlights span {
-        font-size: 0.63rem;
-        padding: 0.24rem 0.35rem;
+        font-size: 0.58rem;
+        padding: 0.24rem 0.4rem;
     }
 
     .portal-buttons {
-        gap: 0.4rem;
+        gap: 0.42rem;
     }
 
     .portal-btn {
-        font-size: 0.8rem;
-        border-radius: 0.65rem;
-        min-height: 42px;
-        padding: 0.6rem 0.6rem;
+        font-size: 0.77rem;
+        border-radius: 0.68rem;
+        min-height: 38px;
+        padding: 0.55rem 0.6rem;
     }
 
     .portal-btn i {
-        font-size: 0.9rem;
+        font-size: 0.8rem;
     }
 
     .footer-links {
-        margin-top: 0.6rem;
-        gap: 0.15rem;
-        font-size: 0.7rem;
+        margin-top: 0.55rem;
+        gap: 0.14rem;
+        font-size: 0.62rem;
     }
 
     .footer-links a {
-        min-height: 32px;
-        padding: 0.02rem 0.15rem;
+        min-height: 28px;
+        padding: 0.04rem 0.14rem;
     }
 }
 
 @media (max-width: 360px) {
     .landing-card {
-        padding: 0.8rem 0.5rem 0.6rem;
-        width: 93%;
-        max-width: calc(100vw - 16px);
+        padding: 0.9rem 0.75rem 0.65rem;
+        width: calc(100% - 14px);
+        margin: 0 7px;
+        max-width: none;
     }
 
     .logo {
-        width: 55px;
-        height: 55px;
+        width: 65px;
+        height: 65px;
+    }
+
+    .system-pill {
+        font-size: 0.48rem;
+        padding: 0.18rem 0.38rem;
     }
 
     .landing-card h1 {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
     }
 
     .landing-card h5 {
-        font-size: 0.75rem;
+        font-size: 0.68rem;
     }
 
     .description {
-        font-size: 0.7rem;
+        font-size: 0.64rem;
     }
 
     .portal-btn {
-        font-size: 0.75rem;
-        min-height: 40px;
-        padding: 0.5rem 0.5rem;
+        font-size: 0.72rem;
+        min-height: 36px;
+        padding: 0.5rem 0.55rem;
     }
 }
 
