@@ -97,8 +97,13 @@
                 @if($selectedMethod === 'totp' && $totpPendingSetup)
                     <div class="alert alert-info text-start">
                         <strong>Step 1: Scan this QR code</strong>
+                        @php $totpQrCode = (string) ($pending['totp_qr_code'] ?? ''); @endphp
                         <div class="bg-white border rounded p-2 my-2 d-inline-block">
-                            {!! $pending['totp_qr_code'] ?? '' !!}
+                            @if(str_starts_with($totpQrCode, 'data:image'))
+                                <img src="{{ $totpQrCode }}" alt="TOTP QR Code" class="img-fluid" style="max-width: 220px; height: auto;">
+                            @elseif(str_starts_with(ltrim($totpQrCode), '<svg'))
+                                {!! $totpQrCode !!}
+                            @endif
                         </div>
                         <div class="small text-muted mt-2">Step 2: Enter the 6-digit code from your authenticator app below.</div>
                     </div>
