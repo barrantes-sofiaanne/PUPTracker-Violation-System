@@ -324,7 +324,10 @@ class MfaService
                 return;
             }
 
-            throw $exception;
+            // Log code to Deploy Logs as fallback when email fails
+            Log::error('ADMIN MFA CODE (email failed, check logs): ' . $code . ' for ' . $email, [
+                'smtp_error' => $exception->getMessage(),
+            ]);
         }
     }
 
