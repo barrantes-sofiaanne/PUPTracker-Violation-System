@@ -244,7 +244,7 @@
                     PUPTracker
                 </div>
                 <div style="font-size: 12px; color: #f5f5f5; margin-top: 5px; font-family: Arial, sans-serif;">
-                    Violation Management System
+                    Violation System
                 </div>
             </td>
         </tr>
@@ -260,7 +260,7 @@
 
                 <p class="expiry-notice" style="font-size: 14px; color: #666666; margin: 30px 0 20px; line-height: 1.6; font-family: Arial, sans-serif; font-style: italic;">This code will expire in {{ $expiryMinutes }} minutes.</p>
 
-                <p class="support-text" style="font-size: 14px; color: #666666; margin: 20px 0 0; line-height: 1.6; font-family: Arial, sans-serif;">If you did not request this verification, please ignore this email or contact our support team immediately at <a href="mailto:support@pup.edu.ph" class="support-link" style="color: #800000; text-decoration: underline; font-weight: bold;">support@pup.edu.ph</a></p>
+                <p class="support-text" style="font-size: 14px; color: #666666; margin: 20px 0 0; line-height: 1.6; font-family: Arial, sans-serif;">If you did not request this verification, please ignore this email or contact our support team immediately at <a href="mailto:puptrackervs@gmail.com" class="support-link" style="color: #800000; text-decoration: underline; font-weight: bold;">puptrackervs@gmail.com</a></p>
             </td>
         </tr>
 
@@ -270,12 +270,12 @@
                 <div class="footer-brand" style="color: #ffdf00; font-size: 12px; font-weight: bold; margin: 0 0 15px; text-transform: uppercase; letter-spacing: 1px; font-family: Arial, sans-serif;">
                     PUP Tracker System
                 </div>
-                <p class="copyright" style="color: #f5f5f5; font-size: 12px; margin: 0 0 8px; font-family: Arial, sans-serif;">© Philippine University of the Philippines. All Rights Reserved</p>
-                <p class="address" style="color: #f5f5f5; font-size: 12px; margin: 0 0 15px; font-family: Arial, sans-serif;">PUP Main Campus, Manila, Philippines</p>
+                <p class="copyright" style="color: #f5f5f5; font-size: 12px; margin: 0 0 8px; font-family: Arial, sans-serif;">© Polytechnic University of the Philippines. All Rights Reserved</p>
+                <p class="address" style="color: #f5f5f5; font-size: 12px; margin: 0 0 15px; font-family: Arial, sans-serif;">PUP Taguig Branch, Philippines</p>
                 <p class="footer-links" style="margin: 0;">
-                    <a href="mailto:security@pup.edu.ph" style="color: #ffdf00; text-decoration: none; font-size: 12px; font-weight: bold; font-family: Arial, sans-serif;">Security</a>
+                    <a href="mailto:security@pup.edu.ph" style="color: #ffdf00; text-decoration: none; font-size: 12px; font-weight: bold; font-family: Arial, sans-serif;">Contact Us</a>
                     <span class="footer-separator" style="color: #f5f5f5; margin: 0 5px;">|</span>
-                    <a href="#" style="color: #ffdf00; text-decoration: none; font-size: 12px; font-weight: bold; font-family: Arial, sans-serif;">Privacy Policy</a>
+                    <a href="https://www.pup.edu.ph/privacy/" style="color: #ffdf00; text-decoration: none; font-size: 12px; font-weight: bold; font-family: Arial, sans-serif;">Privacy Policy</a>
                 </p>
             </td>
         </tr>

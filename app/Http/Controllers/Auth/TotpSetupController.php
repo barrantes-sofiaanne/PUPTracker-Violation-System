@@ -6,6 +6,8 @@ use App\Support\MfaSchema;
 use App\Support\MfaService;
 use App\Support\TotpService;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -81,7 +83,7 @@ class TotpSetupController extends Controller
             return redirect()->route($this->loginRouteForGuard($guard));
         }
 
-        /** @var \Illuminate\Database\Eloquent\Model $user */
+        /** @var Model&Authenticatable $user */
 
         $request->validate([
             'totp_code' => 'required|string|size:6',
@@ -122,7 +124,19 @@ class TotpSetupController extends Controller
             $user->mfa_backup_codes_used = json_encode([]);
         }
 
-        $user->save();
+        try {
+            $user->save();
+        } catch (QueryException $exception) {
+            if (!$supportsBackupCodes || !MfaSchema::isMissingColumnException($exception)) {
+                throw $exception;
+            }
+
+            MfaSchema::forgetBackupCodeAttributes($user);
+            $supportsBackupCodes = false;
+            $backupCodes = [];
+
+            $user->save();
+        }
 
         session()->forget("totp_setup_secret_{$guard}");
 
@@ -198,7 +212,7 @@ class TotpSetupController extends Controller
             return redirect()->route($this->loginRouteForGuard($guard));
         }
 
-        /** @var \Illuminate\Database\Eloquent\Model $user */
+        /** @var Model&Authenticatable $user */
 
         $request->validate([
             'password' => 'required|string',
@@ -217,7 +231,16 @@ class TotpSetupController extends Controller
             $user->mfa_backup_codes_used = null;
         }
 
-        $user->save();
+        try {
+            $user->save();
+        } catch (QueryException $exception) {
+            if (!MfaSchema::isMissingColumnException($exception)) {
+                throw $exception;
+            }
+
+            MfaSchema::forgetBackupCodeAttributes($user);
+            $user->save();
+        }
 
         Log::warning('TOTP disabled', [
             'guard' => $guard,

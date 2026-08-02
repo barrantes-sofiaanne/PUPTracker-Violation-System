@@ -7,6 +7,7 @@ use App\Models\Admin;
 use App\Models\AuditLog;
 use App\Models\Security;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -436,7 +437,23 @@ class MfaService
 
         $user->mfa_backup_codes = json_encode($backupCodes);
         $user->mfa_backup_codes_used = json_encode($backupCodesUsed);
-        $user->save();
+
+        try {
+            $user->save();
+        } catch (QueryException $exception) {
+            if (!MfaSchema::isMissingColumnException($exception)) {
+                throw $exception;
+            }
+
+            MfaSchema::forgetBackupCodeAttributes($user);
+
+            Log::warning('Backup code consumption skipped because MFA backup-code columns are missing', [
+                'guard' => $guard,
+                'identifier' => $identifier,
+            ]);
+
+            return false;
+        }
 
         $pending['backup_codes'] = $backupCodes;
         $pending['backup_codes_used'] = $backupCodesUsed;
