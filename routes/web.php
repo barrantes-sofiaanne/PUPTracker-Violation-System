@@ -544,29 +544,24 @@ Route::get('/http-test', function () {
     }
 });
 
-Route::get('/mailgun-direct-test', function () {
-    try {
-        $response = Http::withBasicAuth('api', env('MAILGUN_SECRET'))
-            ->asForm()
-            ->post(
-                'https://' . env('MAILGUN_ENDPOINT') . '/v3/' . env('MAILGUN_DOMAIN') . '/messages',
-                [
-                    'from' => 'PUPTracker <' . env('MAIL_FROM_ADDRESS') . '>',
-                    'to' => 'sabarrantes2911@gmail.com',
-                    'subject' => 'Mailgun Test',
-                    'text' => 'Hello World',
-                ]
-            );
 
-        return response()->json([
-            'status' => $response->status(),
-            'body' => $response->body(),
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'error' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-        ], 500);
-    }
+
+Route::get('/mailgun-direct-test', function () {
+
+    $response = Http::withBasicAuth('api', env('MAILGUN_SECRET'))
+        ->asForm()
+        ->post(
+            'https://' . env('MAILGUN_ENDPOINT') . '/v3/' . env('MAILGUN_DOMAIN') . '/messages',
+            [
+                'from' => 'PUP Tracker <' . env('MAIL_FROM_ADDRESS') . '>',
+                'to' => 'sabarrantes2911@gmail.com',
+                'subject' => 'Railway Mailgun Test',
+                'text' => 'Hello from Railway!',
+            ]
+        );
+
+    return response()->json([
+        'status' => $response->status(),
+        'body' => $response->body(),
+    ]);
 });
