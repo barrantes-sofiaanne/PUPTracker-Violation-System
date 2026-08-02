@@ -16,6 +16,10 @@ class MfaService
     private const REMEMBER_COOKIE_KEY = 'mfa_trusted';
     private const LEGACY_REMEMBER_COOKIE_KEY = 'mfa.trusted';
 
+    public function __construct(
+        private TotpService $totpService = new TotpService(),
+    ) {}
+
     public function beginChallenge(
         Request $request,
         string $guard,

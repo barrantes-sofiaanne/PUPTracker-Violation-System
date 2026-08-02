@@ -30,6 +30,7 @@ use App\Http\Controllers\Admin\UserManagementHistoryController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\SecurityLoginController;
 use App\Http\Controllers\Auth\MfaController;
+use App\Http\Controllers\Auth\TotpSetupController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Admin\ViolationCategoryController;
 use App\Http\Controllers\Admin\ViolationTypeController;
@@ -144,6 +145,32 @@ Route::post('/password/reset/{guard}', [ForgotPasswordController::class, 'reset'
     ->whereIn('guard', ['student', 'admin', 'security'])
     ->middleware('throttle:5,1')
     ->name('password.update');
+
+/*
+|--------------------------------------------------------------------------
+| Two-Factor Authentication (TOTP) Setup
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('auth:admin,security')
+    ->group(function () {
+        Route::get('/totp/setup', [App\Http\Controllers\Auth\TotpSetupController::class, 'show'])
+            ->name('totp.setup');
+
+        Route::post('/totp/verify', [App\Http\Controllers\Auth\TotpSetupController::class, 'verify'])
+            ->middleware('throttle:6,1')
+            ->name('totp.verify');
+
+        Route::get('/totp/backup-codes', [App\Http\Controllers\Auth\TotpSetupController::class, 'showBackupCodes'])
+            ->name('totp.backup-codes');
+
+        Route::post('/totp/confirm-backup-codes', [App\Http\Controllers\Auth\TotpSetupController::class, 'confirmBackupCodes'])
+            ->name('totp.confirm-backup-codes');
+
+        Route::post('/totp/disable', [App\Http\Controllers\Auth\TotpSetupController::class, 'disable'])
+            ->middleware('throttle:3,1')
+            ->name('totp.disable');
+    });
 
    
 
@@ -520,9 +547,9 @@ Route::prefix('violation-categories')
     });
 
 // TEMPORARY DEBUG ROUTE - DELETE AFTER USE
-Route::get('/debug/reset-admin-password', [App\Http\Controllers\Admin\DebugPasswordResetController::class, 'resetAdminPassword'])
-    ->withoutMiddleware(['web'])
-    ->name('debug.reset-admin-password');
+// Route::get('/debug/reset-admin-password', [App\Http\Controllers\Admin\DebugPasswordResetController::class, 'resetAdminPassword'])
+//     ->withoutMiddleware(['web'])
+//     ->name('debug.reset-admin-password');
 
 
 
