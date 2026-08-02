@@ -48,6 +48,41 @@ Route::get('/', function () {
 
 /*
 |--------------------------------------------------------------------------
+| Debug Routes (Temporary - for troubleshooting)
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/debug/admin-check/{email}', function ($email) {
+    try {
+        $admin = \App\Models\Admin::where('email', $email)->first();
+        
+        if (!$admin) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Admin account not found',
+                'email_searched' => $email,
+            ], 404);
+        }
+        
+        return response()->json([
+            'status' => 'success',
+            'admin_id' => $admin->id,
+            'email' => $admin->email,
+            'username' => $admin->username,
+            'has_password' => !empty($admin->password),
+            'mfa_totp_enabled' => $admin->mfa_totp_enabled ?? false,
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Database error',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+});
+
+/*
+|--------------------------------------------------------------------------
 | Security Contact & Incident Reporting
 |--------------------------------------------------------------------------
 */
