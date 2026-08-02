@@ -45,6 +45,8 @@ protected $fillable = [
     'new_until',
     'mfa_totp_secret',
     'mfa_totp_enabled',
+    'mfa_backup_codes',
+    'mfa_backup_codes_used',
 ];
 
     /**

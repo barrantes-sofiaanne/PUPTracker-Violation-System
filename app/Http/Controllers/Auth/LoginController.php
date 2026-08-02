@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
-use App\Support\MfaService;
 
 class LoginController extends Controller
 {
@@ -17,7 +16,7 @@ class LoginController extends Controller
         return view('student.login');
     }
 
-    public function login(Request $request, MfaService $mfaService)
+    public function login(Request $request)
 {
         return redirect()->route('student.idp.login');
 }
