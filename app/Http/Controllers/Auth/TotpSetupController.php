@@ -33,11 +33,11 @@ class TotpSetupController extends Controller
         $user = auth()->guard($guard)->user();
 
         if (!$user) {
-            return redirect()->route('login');
+            return redirect()->route($this->loginRouteForGuard($guard));
         }
 
         if ($user->mfa_totp_enabled ?? false) {
-            return redirect()->route('dashboard')->with('info', 'TOTP is already enabled on your account');
+            return redirect()->route($this->dashboardRouteForGuard($guard, $user))->with('info', 'TOTP is already enabled on your account');
         }
 
         // Generate new secret if not in session
@@ -77,7 +77,7 @@ class TotpSetupController extends Controller
         $user = auth()->guard($guard)->user();
 
         if (!$user) {
-            return redirect()->route('login');
+            return redirect()->route($this->loginRouteForGuard($guard));
         }
 
         /** @var \Illuminate\Database\Eloquent\Model $user */
@@ -137,9 +137,10 @@ class TotpSetupController extends Controller
     {
         $guard = $request->query('guard', 'admin');
         $backupCodes = session('backup_codes');
+        $user = auth()->guard($guard)->user();
 
         if (!$backupCodes) {
-            return redirect()->route('dashboard')->with('info', 'No backup codes in session');
+            return redirect()->route($this->dashboardRouteForGuard($guard, $user))->with('info', 'No backup codes in session');
         }
 
         return view('auth.totp-backup-codes', [
@@ -154,6 +155,7 @@ class TotpSetupController extends Controller
     public function confirmBackupCodes(Request $request): RedirectResponse
     {
         $guard = $request->input('guard', 'admin');
+        $user = auth()->guard($guard)->user();
 
         session()->forget('backup_codes');
 
@@ -162,7 +164,7 @@ class TotpSetupController extends Controller
             'user_id' => auth()->guard($guard)->id(),
         ]);
 
-        return redirect()->route('dashboard')
+        return redirect()->route($this->dashboardRouteForGuard($guard, $user))
             ->with('success', 'TOTP setup complete! You can now use your authenticator app to log in.');
     }
 
@@ -175,7 +177,7 @@ class TotpSetupController extends Controller
         $user = auth()->guard($guard)->user();
 
         if (!$user) {
-            return redirect()->route('login');
+            return redirect()->route($this->loginRouteForGuard($guard));
         }
 
         /** @var \Illuminate\Database\Eloquent\Model $user */
@@ -202,5 +204,27 @@ class TotpSetupController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'TOTP has been disabled.');
+    }
+
+    private function loginRouteForGuard(string $guard): string
+    {
+        return match ($guard) {
+            'admin' => 'admin.login',
+            'security' => 'security.login',
+            default => 'student.login',
+        };
+    }
+
+    private function dashboardRouteForGuard(string $guard, ?Authenticatable $user): string
+    {
+        if ($guard === 'admin') {
+            return method_exists($user, 'isItAdministrator') && $user->isItAdministrator()
+                ? 'admin.super-admin.dashboard'
+                : 'admin.dashboard';
+        }
+
+        return $guard === 'security'
+            ? 'security.dashboard'
+            : 'student.dashboard';
     }
 }

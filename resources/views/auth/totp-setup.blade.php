@@ -99,7 +99,7 @@
 
             <div class="card mt-3 shadow-sm">
                 <div class="card-body">
-                    <a href="{{ route('dashboard') }}" class="btn btn-secondary">
+                    <a href="{{ $guard === 'security' ? route('security.dashboard') : (auth('admin')->check() && auth('admin')->user()->isItAdministrator() ? route('admin.super-admin.dashboard') : route('admin.dashboard')) }}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left"></i> Cancel
                     </a>
                 </div>

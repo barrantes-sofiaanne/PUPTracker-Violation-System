@@ -43,6 +43,20 @@
     <div class="col-lg-6">
         <div class="card shadow-sm border-0 h-100">
             <div class="card-body">
+                <h5>Authenticator MFA</h5>
+                <p class="text-muted">
+                    Status:
+                    <strong>{{ auth('admin')->user()?->mfa_totp_enabled ? 'Enabled' : 'Not Enabled' }}</strong>
+                </p>
+                <a href="{{ route('totp.setup', ['guard' => 'admin']) }}" class="btn btn-primary btn-sm">
+                    {{ auth('admin')->user()?->mfa_totp_enabled ? 'Manage Authenticator Setup' : 'Enable Authenticator App' }}
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
                 <h5>Audit Trail</h5>
                 <p class="text-muted">Monitor and search all recorded system activity.</p>
                 <a href="{{ route('admin.super-admin.audit-trail') }}" class="btn btn-primary btn-sm">Open Audit Trail</a>
