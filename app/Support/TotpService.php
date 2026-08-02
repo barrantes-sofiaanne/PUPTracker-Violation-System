@@ -29,7 +29,7 @@ class TotpService
         $otpauthUrl = $this->getOtpAuthUrl($email, $appName, $secret);
 
         $options = new QROptions([
-            'version'         => 5,
+            'version'         => -1,
             'outputInterface' => QRMarkupSVG::class,
             'eccLevel'        => EccLevel::L,
         ]);
