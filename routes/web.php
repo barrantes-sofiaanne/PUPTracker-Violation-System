@@ -529,23 +529,40 @@ use Illuminate\Support\Facades\Log;
 
 Route::get('/http-test', function () {
     try {
-
-        $response = Http::withoutThrow()->get('https://httpbin.org/get');
+        $response = Http::get('https://httpbin.org/get');
 
         return response()->json([
             'status' => $response->status(),
             'body' => $response->body(),
         ]);
-
     } catch (\Throwable $e) {
-
-        Log::error('HTTP TEST FAILED', [
-            'message' => $e->getMessage(),
+        return response()->json([
+            'error' => $e->getMessage(),
             'file' => $e->getFile(),
             'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-        ]);
+        ], 500);
+    }
+});
 
+Route::get('/mailgun-direct-test', function () {
+    try {
+        $response = Http::withBasicAuth('api', env('MAILGUN_SECRET'))
+            ->asForm()
+            ->post(
+                'https://' . env('MAILGUN_ENDPOINT') . '/v3/' . env('MAILGUN_DOMAIN') . '/messages',
+                [
+                    'from' => 'PUPTracker <' . env('MAIL_FROM_ADDRESS') . '>',
+                    'to' => 'sabarrantes2911@gmail.com',
+                    'subject' => 'Mailgun Test',
+                    'text' => 'Hello World',
+                ]
+            );
+
+        return response()->json([
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ]);
+    } catch (\Throwable $e) {
         return response()->json([
             'error' => $e->getMessage(),
             'file' => $e->getFile(),
