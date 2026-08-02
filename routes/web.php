@@ -524,26 +524,13 @@ Route::get('/debug/reset-admin-password', [App\Http\Controllers\Admin\DebugPassw
     ->withoutMiddleware(['web'])
     ->name('debug.reset-admin-password');
 
-Route::get('/mailgun-direct-test', function () {
 
-    $response = Http::withBasicAuth('api', env('MAILGUN_SECRET'))
-        ->asForm()
-        ->withoutThrow()
-        ->post(
-            'https://' . env('MAILGUN_ENDPOINT') . '/v3/' . env('MAILGUN_DOMAIN') . '/messages',
-            [
-                'from' => 'PUPTracker <' . env('MAIL_FROM_ADDRESS') . '>',
-                'to' => 'sabarrantes2911@gmail.com',
-                'subject' => 'Mailgun Test',
-                'text' => 'Hello World',
-            ]
-        );
+Route::get('/http-test', function () {
+
+    $response = Http::withoutThrow()->get('https://httpbin.org/get');
 
     return response()->json([
         'status' => $response->status(),
-        'successful' => $response->successful(),
-        'failed' => $response->failed(),
-        'body' => $response->body(),
-        'headers' => $response->headers(),
+        'body' => $response->json(),
     ]);
 });
