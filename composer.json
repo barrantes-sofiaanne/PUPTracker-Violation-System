@@ -11,6 +11,7 @@
         "laravel/tinker": "^2.10.1",
         "mpdf/mpdf": "8.2",
         "phpoffice/phpspreadsheet": "^5.9",
+        "symfony/http-client": "^7.4",
         "symfony/mailgun-mailer": "^7.4"
     },
     "require-dev": {
