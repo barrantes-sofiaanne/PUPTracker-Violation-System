@@ -425,6 +425,15 @@ class MfaService
             return false;
         }
 
+        if (!MfaSchema::supportsBackupCodes($user)) {
+            Log::warning('Backup code consumption skipped because MFA backup-code columns are missing', [
+                'guard' => $guard,
+                'identifier' => $identifier,
+            ]);
+
+            return false;
+        }
+
         $user->mfa_backup_codes = json_encode($backupCodes);
         $user->mfa_backup_codes_used = json_encode($backupCodesUsed);
         $user->save();

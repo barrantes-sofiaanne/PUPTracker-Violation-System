@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Support\MfaSchema;
 use App\Support\MfaService;
 use App\Support\TotpService;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -106,15 +107,21 @@ class TotpSetupController extends Controller
             return redirect()->back()->withErrors(['Invalid verification code. Please try again.']);
         }
 
-        // Generate backup codes
-        $backupCodes = $this->totpService->generateBackupCodes();
-        $hashedCodes = $this->totpService->hashBackupCodes($backupCodes);
-
         // Save to database
         $user->mfa_totp_secret = $secret;
         $user->mfa_totp_enabled = true;
-        $user->mfa_backup_codes = json_encode($hashedCodes);
-        $user->mfa_backup_codes_used = json_encode([]);
+
+        $backupCodes = [];
+        $supportsBackupCodes = MfaSchema::supportsBackupCodes($user);
+
+        if ($supportsBackupCodes) {
+            $backupCodes = $this->totpService->generateBackupCodes();
+            $hashedCodes = $this->totpService->hashBackupCodes($backupCodes);
+
+            $user->mfa_backup_codes = json_encode($hashedCodes);
+            $user->mfa_backup_codes_used = json_encode([]);
+        }
+
         $user->save();
 
         session()->forget("totp_setup_secret_{$guard}");
@@ -124,6 +131,17 @@ class TotpSetupController extends Controller
             'user_id' => $user->id,
             'email' => $user->email,
         ]);
+
+        if (!$supportsBackupCodes) {
+            Log::warning('TOTP enabled without backup codes because MFA backup-code columns are missing', [
+                'guard' => $guard,
+                'user_id' => $user->id,
+                'email' => $user->email,
+            ]);
+
+            return redirect()->route($this->dashboardRouteForGuard($guard, $user))
+                ->with('warning', 'TOTP was enabled, but backup codes are unavailable until the MFA backup-code migration is run.');
+        }
 
         return redirect()->route('totp.backup-codes', ['guard' => $guard])
             ->with('backup_codes', $backupCodes)
@@ -193,8 +211,12 @@ class TotpSetupController extends Controller
 
         $user->mfa_totp_secret = null;
         $user->mfa_totp_enabled = false;
-        $user->mfa_backup_codes = null;
-        $user->mfa_backup_codes_used = null;
+
+        if (MfaSchema::supportsBackupCodes($user)) {
+            $user->mfa_backup_codes = null;
+            $user->mfa_backup_codes_used = null;
+        }
+
         $user->save();
 
         Log::warning('TOTP disabled', [

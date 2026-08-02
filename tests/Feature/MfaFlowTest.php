@@ -6,6 +6,7 @@ use App\Models\Admin;
 use App\Models\AuditLog;
 use App\Models\Security;
 use App\Models\User;
+use App\Support\TotpService;
 use App\Support\MfaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -135,6 +136,33 @@ class MfaFlowTest extends TestCase
             'action' => 'mfa.challenge.cancelled',
             'actor_type' => 'security',
         ]);
+    }
+
+    public function test_totp_setup_enables_totp_without_crashing_when_backup_code_columns_are_missing(): void
+    {
+        $admin = Admin::create([
+            'username' => 'schema-admin',
+            'email' => 'schema-admin@example.com',
+            'password' => Hash::make('adminpass'),
+            'mfa_totp_enabled' => false,
+        ]);
+
+        $secret = app(TotpService::class)->generateSecret();
+
+        $response = $this->actingAs($admin, 'admin')
+            ->withSession(['totp_setup_secret_admin' => $secret])
+            ->post(route('totp.verify'), [
+                'guard' => 'admin',
+                'totp_code' => $this->generateCurrentTotp($secret),
+            ]);
+
+        $response->assertRedirect(route('admin.dashboard'));
+        $response->assertSessionHas('warning');
+
+        $admin->refresh();
+
+        $this->assertTrue($admin->mfa_totp_enabled);
+        $this->assertSame($secret, $admin->mfa_totp_secret);
     }
 
     public function test_student_login_skips_mfa_when_trusted_device_cookie_is_valid(): void
