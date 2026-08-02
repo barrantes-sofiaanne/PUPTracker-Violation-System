@@ -546,22 +546,12 @@ Route::get('/http-test', function () {
 
 
 
-Route::get('/mailgun-direct-test', function () {
-
-    $response = Http::withBasicAuth('api', env('MAILGUN_SECRET'))
-        ->asForm()
-        ->post(
-            'https://' . env('MAILGUN_ENDPOINT') . '/v3/' . env('MAILGUN_DOMAIN') . '/messages',
-            [
-                'from' => 'PUP Tracker <' . env('MAIL_FROM_ADDRESS') . '>',
-                'to' => 'sabarrantes2911@gmail.com',
-                'subject' => 'Railway Mailgun Test',
-                'text' => 'Hello from Railway!',
-            ]
-        );
-
+Route::get('/mailgun-env', function () {
     return response()->json([
-        'status' => $response->status(),
-        'body' => $response->body(),
+        'MAIL_MAILER' => env('MAIL_MAILER'),
+        'MAILGUN_DOMAIN' => env('MAILGUN_DOMAIN'),
+        'MAILGUN_ENDPOINT' => env('MAILGUN_ENDPOINT'),
+        'MAIL_FROM_ADDRESS' => env('MAIL_FROM_ADDRESS'),
+        'secret_length' => strlen(env('MAILGUN_SECRET') ?? ''),
     ]);
 });
