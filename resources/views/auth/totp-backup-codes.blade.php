@@ -86,9 +86,15 @@
     </div>
 </div>
 
+<input
+    type="hidden"
+    id="backup-codes-data"
+    value='@json($backupCodes)'>
+
 <script>
     function downloadCodes() {
-        const codes = {!! json_encode($backupCodes) !!};
+        const codesInput = document.getElementById('backup-codes-data');
+        const codes = JSON.parse(codesInput ? codesInput.value : '[]');
         const content = `PUPTracker TOTP Backup Codes\n\nGenerated: ${new Date().toLocaleString()}\n\nIMPORTANT: Keep these codes safe and secure!\n\n${codes.join('\n')}\n\nEach code can only be used once to regain access to your account.`;
 
         const blob = new Blob([content], { type: 'text/plain' });
