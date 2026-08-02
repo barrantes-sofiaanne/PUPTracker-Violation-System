@@ -525,31 +525,30 @@ Route::get('/debug/reset-admin-password', [App\Http\Controllers\Admin\DebugPassw
     ->name('debug.reset-admin-password');
 
 
-use Illuminate\Support\Facades\Log;
 
-Route::get('/http-test', function () {
-    try {
-        $response = Http::get('https://httpbin.org/get');
+Route::get('/mailgun-direct-test', function () {
 
-        return response()->json([
-            'status' => $response->status(),
-            'body' => $response->body(),
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'error' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-        ], 500);
-    }
-});
+    $response = Http::withBasicAuth(
+            'api',
+            config('services.mailgun.secret')
+        )
+        ->asForm()
+        ->post(
+            'https://' .
+            config('services.mailgun.endpoint') .
+            '/v3/' .
+            config('services.mailgun.domain') .
+            '/messages',
+            [
+                'from'    => 'PUP Tracker <' . config('mail.from.address') . '>',
+                'to'      => 'sabarrantes2911@gmail.com',
+                'subject' => 'Railway Mailgun Test',
+                'text'    => 'Hello from Railway and Mailgun!',
+            ]
+        );
 
-Route::get('/env-test', function () {
     return response()->json([
-        'MAILGUN_DOMAIN'   => config('services.mailgun.domain'),
-        'MAILGUN_ENDPOINT' => config('services.mailgun.endpoint'),
-        'MAIL_FROM_ADDRESS'=> config('mail.from.address'),
-        'MAIL_MAILER'      => config('mail.default'),
-        'SECRET_LENGTH'    => strlen(config('services.mailgun.secret') ?? ''),
+        'status' => $response->status(),
+        'body'   => $response->body(),
     ]);
 });
