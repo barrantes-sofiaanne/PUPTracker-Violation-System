@@ -147,7 +147,11 @@ class ForgotPasswordController extends Controller
         ]);
 
         try {
-            Log::info('Attempting to send mail via Mail::raw', ['email' => $email]);
+            Log::info('Attempting to send mail via Mail::raw', [
+                'email' => $email,
+                'mailer' => config('mail.default'),
+                'mailgun_domain' => config('mail.mailers.mailgun.domain'),
+            ]);
             Mail::raw($message, function ($mail) use ($email): void {
                 $mail->to($email)->subject('PUPTracker Password Reset');
             });
