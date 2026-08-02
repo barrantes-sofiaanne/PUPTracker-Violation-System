@@ -22,7 +22,7 @@
         <h2>Student Login</h2>
 
         <p class="subtitle">
-            Sign in with your IDP student account.
+            Student login is temporarily unavailable while IDP access is being updated.
         </p>
 
         @if($errors->has('login'))
@@ -31,31 +31,10 @@
             </div>
         @endif
 
-        <form action="{{ route('student.idp.start') }}" method="POST" autocomplete="off">
-            @csrf
-
-            <div class="mb-3">
-                <label class="form-label">Student Number</label>
-                <input
-                    type="text"
-                    name="student_number"
-                    class="form-control @error('student_number') is-invalid @enderror"
-                    value="{{ old('student_number') }}"
-                    required>
-
-                @error('student_number')
-                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                @enderror
-            </div>
-
-            <button type="submit" class="btn btn-success w-100 login-btn">
-                Continue with IDP
-            </button>
-        </form>
-
-        <p class="subtitle mt-3 mb-0">
-            Student passwords are no longer used for login. Your account is linked using IDP identity and student number.
-        </p>
+        {{-- IDP student login is temporarily disabled. --}}
+        <div class="alert alert-warning mb-0" role="alert">
+            IDP sign-in for students is currently disabled. Please try again later.
+        </div>
 
         <div class="footer-links">
 
