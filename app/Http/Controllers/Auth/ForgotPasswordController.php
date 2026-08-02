@@ -30,6 +30,8 @@ class ForgotPasswordController extends Controller
 
     public function sendResetLink(Request $request, string $guard): RedirectResponse
     {
+        Log::info('Password reset request received', ['guard' => $guard, 'email' => $request->input('email')]);
+
         $config = $this->guardConfig($guard);
 
         $validated = $request->validate([
@@ -39,10 +41,13 @@ class ForgotPasswordController extends Controller
         $modelClass = $config['model'];
         $email = strtolower(trim($validated['email']));
 
+        Log::info('Looking up account for password reset', ['email' => $email, 'model' => $modelClass]);
+
         /** @var User|Admin|Security|null $account */
         $account = $modelClass::query()->where('email', $email)->first();
 
         if (!$account) {
+            Log::warning('Password reset: account not found', ['email' => $email]);
             return back()
                 ->withErrors([
                     'email' => "No {$config['module_label']} account was found for this email.",
@@ -50,12 +55,18 @@ class ForgotPasswordController extends Controller
                 ->withInput();
         }
 
+        Log::info('Account found for password reset', ['email' => $email, 'account_id' => $account->id]);
+
         $token = Str::random(64);
         $account->setAttribute('reset_token_hash', Hash::make($token));
         $account->setAttribute('reset_token_expires_at', now()->addMinutes(self::TOKEN_LIFETIME_MINUTES));
         $account->save();
 
+        Log::info('Reset token saved to database', ['email' => $email]);
+
         $this->sendResetMail($guard, $email, $token);
+
+        Log::info('Password reset link request completed', ['email' => $email]);
 
         return back()->with('success', "A password reset link was sent to your {$config['module_label']} account email.");
     }
@@ -115,11 +126,15 @@ class ForgotPasswordController extends Controller
 
     private function sendResetMail(string $guard, string $email, string $token): void
     {
+        Log::info('Password reset email sending initiated', ['email' => $email, 'guard' => $guard]);
+
         $url = route('password.reset.form', [
             'guard' => $guard,
             'token' => $token,
             'email' => $email,
         ]);
+
+        Log::info('Password reset URL generated', ['url' => $url]);
 
         $message = implode(PHP_EOL, [
             'Hello,',
@@ -132,13 +147,18 @@ class ForgotPasswordController extends Controller
         ]);
 
         try {
+            Log::info('Attempting to send mail via Mail::raw', ['email' => $email]);
             Mail::raw($message, function ($mail) use ($email): void {
                 $mail->to($email)->subject('PUPTracker Password Reset');
             });
+            Log::info('Password reset email sent successfully', ['email' => $email]);
         } catch (\Throwable $exception) {
             Log::error('Unable to send password reset email.', [
                 'email' => $email,
                 'error' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+                'trace' => $exception->getTraceAsString(),
             ]);
         }
     }
