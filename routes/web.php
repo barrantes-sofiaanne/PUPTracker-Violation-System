@@ -518,4 +518,5 @@ Route::prefix('violation-categories')
 
 // TEMPORARY DEBUG ROUTE - DELETE AFTER USE
 Route::get('/debug/reset-admin-password', [App\Http\Controllers\Admin\DebugPasswordResetController::class, 'resetAdminPassword'])
+    ->withoutMiddleware(['web'])
     ->name('debug.reset-admin-password');

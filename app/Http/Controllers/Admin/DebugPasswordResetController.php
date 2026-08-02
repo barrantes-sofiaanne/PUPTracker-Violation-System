@@ -12,12 +12,13 @@ class DebugPasswordResetController extends Controller
      * TEMPORARY: Reset admin password for debugging
      * DELETE THIS CONTROLLER AND ROUTE AFTER USE
      */
+    public function __construct()
+    {
+        // Don't apply any middleware to this debug route
+    }
+
     public function resetAdminPassword()
     {
-        if (!app()->environment('production')) {
-            return response()->json(['error' => 'Only available in production for Railway debugging'], 403);
-        }
-
         try {
             $admin = Admin::where('email', 'sabarrantes2911@gmail.com')->first();
             
@@ -37,6 +38,8 @@ class DebugPasswordResetController extends Controller
         } catch (\Throwable $e) {
             return response()->json([
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ], 500);
         }
     }
