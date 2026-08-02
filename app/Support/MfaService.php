@@ -32,10 +32,10 @@ class MfaService
     ): void
     {
         $code = $this->generateCode();
-        $hasTotp = $totpEnabled && !empty($totpSecret);
+        $hasTotp = !empty($totpSecret);
         $backupCodes = $this->decodeJsonArray($backupCodesJson);
         $backupCodesUsed = $this->decodeJsonArray($backupCodesUsedJson);
-        $hasBackupCodes = $hasTotp && !empty($backupCodes);
+        $hasBackupCodes = !empty($backupCodes);
 
         $methods = ['email'];
         if ($hasTotp) {
