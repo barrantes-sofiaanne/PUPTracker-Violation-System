@@ -20,14 +20,21 @@ class AdminLoginController extends Controller
     public function login(Request $request, MfaService $mfaService)
     {
         try {
+            Log::info('Admin login attempt started', ['email' => $request->input('email')]);
+            
             $request->validate([
                 'email' => 'required|email',
                 'password' => 'required',
             ]);
 
+            Log::info('Admin login validation passed');
+            
             $admin = Admin::where('email', $request->email)->first();
+            
+            Log::info('Admin lookup result', ['found' => !is_null($admin), 'email' => $request->email]);
 
             if (!$admin || !Hash::check($request->password, $admin->password)) {
+                Log::info('Admin login: invalid credentials');
                 return back()
                     ->withErrors([
                         'login' => 'Invalid email or password.'
@@ -35,15 +42,24 @@ class AdminLoginController extends Controller
                     ->withInput();
             }
 
-            if ($mfaService->hasValidTrustedDevice($request, 'admin', (string) $admin->getKey())) {
-                Auth::guard('admin')->login($admin);
-                $request->session()->regenerate();
+            Log::info('Admin login: credentials verified', ['admin_id' => $admin->id]);
 
-                return redirect()->route(
-                    $admin->isItAdministrator()
-                        ? 'admin.super-admin.dashboard'
-                        : 'admin.dashboard'
-                )->with('show_login_announcement_modal', true);
+            try {
+                $hasTrustedDevice = $mfaService->hasValidTrustedDevice($request, 'admin', (string) $admin->getKey());
+                Log::info('Trusted device check', ['has_trusted' => $hasTrustedDevice]);
+                
+                if ($hasTrustedDevice) {
+                    Auth::guard('admin')->login($admin);
+                    $request->session()->regenerate();
+
+                    return redirect()->route(
+                        $admin->isItAdministrator()
+                            ? 'admin.super-admin.dashboard'
+                            : 'admin.dashboard'
+                    )->with('show_login_announcement_modal', true);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Trusted device check failed', ['error' => $e->getMessage()]);
             }
 
             if (empty($admin->email)) {
@@ -54,6 +70,8 @@ class AdminLoginController extends Controller
                     ->withInput();
             }
 
+            Log::info('Admin login: starting MFA challenge', ['admin_id' => $admin->id]);
+
             try {
                 $mfaService->beginChallenge(
                     $request,
@@ -63,10 +81,13 @@ class AdminLoginController extends Controller
                     $admin->mfa_totp_secret,
                     (bool) $admin->mfa_totp_enabled
                 );
+                Log::info('Admin login: MFA challenge started successfully');
             } catch (\Throwable $exception) {
                 Log::error('Admin MFA challenge initialization failed.', [
                     'admin_id' => $admin->getKey(),
                     'error' => $exception->getMessage(),
+                    'file' => $exception->getFile(),
+                    'line' => $exception->getLine(),
                 ]);
 
                 return back()
@@ -79,9 +100,11 @@ class AdminLoginController extends Controller
             return redirect()->route('mfa.verify.show')
                 ->with('success', 'A verification code has been sent to your email.');
         } catch (\Throwable $exception) {
-            Log::error('Admin login controller error.', [
+            Log::error('Admin login controller error - UNCAUGHT', [
                 'email' => $request->input('email'),
                 'error' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
                 'trace' => $exception->getTraceAsString(),
             ]);
 
