@@ -525,12 +525,31 @@ Route::get('/debug/reset-admin-password', [App\Http\Controllers\Admin\DebugPassw
     ->name('debug.reset-admin-password');
 
 
+use Illuminate\Support\Facades\Log;
+
 Route::get('/http-test', function () {
+    try {
 
-    $response = Http::withoutThrow()->get('https://httpbin.org/get');
+        $response = Http::withoutThrow()->get('https://httpbin.org/get');
 
-    return response()->json([
-        'status' => $response->status(),
-        'body' => $response->json(),
-    ]);
+        return response()->json([
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ]);
+
+    } catch (\Throwable $e) {
+
+        Log::error('HTTP TEST FAILED', [
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ], 500);
+    }
 });
