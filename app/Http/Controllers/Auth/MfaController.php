@@ -20,9 +20,8 @@ class MfaController extends Controller
         }
 
         $pending = $mfaService->getPending($request);
-        $rememberUntil = $mfaService->rememberUntilLabel();
 
-        return view('auth.mfa-verify', compact('pending', 'rememberUntil'));
+        return view('auth.mfa-verify', compact('pending'));
     }
 
     public function verify(Request $request, MfaService $mfaService): RedirectResponse
@@ -30,8 +29,6 @@ class MfaController extends Controller
         $validated = $request->validate([
             'code' => ['required', 'digits:6'],
             'method' => ['nullable', 'in:email,totp'],
-            'remember_device' => ['nullable', 'boolean'],
-            'remember_device_checked_at' => ['nullable', 'integer'],
         ]);
 
         $result = $mfaService->verifyCode($request, $validated['code'], $validated['method'] ?? 'email');
@@ -58,21 +55,9 @@ class MfaController extends Controller
         $request->session()->regenerate();
         $mfaService->clear($request);
 
-        $redirect = redirect()
+        return redirect()
             ->route($this->redirectRouteForGuard($guard, $user))
             ->with('show_login_announcement_modal', true);
-
-        if (!empty($validated['remember_device'])) {
-            $rememberDeviceCheckedAt = isset($validated['remember_device_checked_at'])
-                ? (int) $validated['remember_device_checked_at']
-                : null;
-
-            $redirect->withCookie(
-                $mfaService->makeTrustedDeviceCookie($guard, $identifier, $rememberDeviceCheckedAt)
-            );
-        }
-
-        return $redirect;
     }
 
     public function resend(Request $request, MfaService $mfaService): RedirectResponse

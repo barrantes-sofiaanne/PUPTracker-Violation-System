@@ -256,43 +256,44 @@ class MfaService
         return true;
     }
 
-    public function makeTrustedDeviceCookie(string $guard, string $identifier, ?int $checkedAtTimestamp = null): Cookie
-    {
-        $checkedAt = $this->resolveRememberCheckedAt($checkedAtTimestamp);
-        $expiresAt = $checkedAt->copy()->addMonthNoOverflow()->timestamp;
-        $minutes = max(1, (int) now()->diffInMinutes($checkedAt->copy()->addMonthNoOverflow(), false));
-
-        $payload = base64_encode((string) json_encode([
-            'guard' => $guard,
-            'identifier' => $identifier,
-            'expires_at' => $expiresAt,
-        ]));
-
-        $this->audit(
-            $guard,
-            $identifier,
-            'mfa.trusted_device.created',
-            'Authentication',
-            'Trusted device cookie issued for one month starting from checkbox selection time.'
-        );
-
-        return cookie()->make(
-            self::REMEMBER_COOKIE_KEY,
-            $payload,
-            $minutes,
-            '/',
-            null,
-            config('session.secure_cookie'),
-            true,
-            false,
-            'lax'
-        );
-    }
-
-    public function rememberUntilLabel(): string
-    {
-        return now()->addMonthNoOverflow()->format('F j, Y');
-    }
+    // DEPRECATED: Remember device functionality removed as MFA is now required for every login
+    // public function makeTrustedDeviceCookie(string $guard, string $identifier, ?int $checkedAtTimestamp = null): Cookie
+    // {
+    //     $checkedAt = $this->resolveRememberCheckedAt($checkedAtTimestamp);
+    //     $expiresAt = $checkedAt->copy()->addMonthNoOverflow()->timestamp;
+    //     $minutes = max(1, (int) now()->diffInMinutes($checkedAt->copy()->addMonthNoOverflow(), false));
+    //
+    //     $payload = base64_encode((string) json_encode([
+    //         'guard' => $guard,
+    //         'identifier' => $identifier,
+    //         'expires_at' => $expiresAt,
+    //     ]));
+    //
+    //     $this->audit(
+    //         $guard,
+    //         $identifier,
+    //         'mfa.trusted_device.created',
+    //         'Authentication',
+    //         'Trusted device cookie issued for one month starting from checkbox selection time.'
+    //     );
+    //
+    //     return cookie()->make(
+    //         self::REMEMBER_COOKIE_KEY,
+    //         $payload,
+    //         $minutes,
+    //         '/',
+    //         null,
+    //         config('session.secure_cookie'),
+    //         true,
+    //         false,
+    //         'lax'
+    //     );
+    // }
+    //
+    // public function rememberUntilLabel(): string
+    // {
+    //     return now()->addMonthNoOverflow()->format('F j, Y');
+    // }
 
     private function generateCode(): string
     {
