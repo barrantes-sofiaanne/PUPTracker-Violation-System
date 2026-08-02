@@ -3,9 +3,11 @@
 namespace App\Support;
 
 use App\Mail\OtpCode;
+use App\Models\Admin;
 use App\Models\AuditLog;
+use App\Models\Security;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Cookie;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -13,8 +15,6 @@ use Illuminate\Support\Facades\Mail;
 class MfaService
 {
     private const SESSION_KEY = 'mfa.pending';
-    private const REMEMBER_COOKIE_KEY = 'mfa_trusted';
-    private const LEGACY_REMEMBER_COOKIE_KEY = 'mfa.trusted';
 
     public function __construct(
         private TotpService $totpService = new TotpService(),
@@ -26,12 +26,24 @@ class MfaService
         string $identifier,
         string $email,
         ?string $totpSecret = null,
-        bool $totpEnabled = false
+        bool $totpEnabled = false,
+        ?string $backupCodesJson = null,
+        ?string $backupCodesUsedJson = null
     ): void
     {
         $code = $this->generateCode();
         $hasTotp = $totpEnabled && !empty($totpSecret);
-        $methods = $hasTotp ? ['email', 'totp'] : ['email'];
+        $backupCodes = $this->decodeJsonArray($backupCodesJson);
+        $backupCodesUsed = $this->decodeJsonArray($backupCodesUsedJson);
+        $hasBackupCodes = $hasTotp && !empty($backupCodes);
+
+        $methods = ['email'];
+        if ($hasTotp) {
+            $methods[] = 'totp';
+        }
+        if ($hasBackupCodes) {
+            $methods[] = 'backup';
+        }
 
         $request->session()->put(self::SESSION_KEY, [
             'guard' => $guard,
@@ -41,6 +53,8 @@ class MfaService
             'totp_secret' => $hasTotp ? $totpSecret : null,
             'methods' => $methods,
             'selected_method' => 'email',
+            'backup_codes' => $hasBackupCodes ? $backupCodes : [],
+            'backup_codes_used' => $hasBackupCodes ? $backupCodesUsed : [],
             'code_hash' => Hash::make($code),
             'expires_at' => now()->addMinutes(5)->timestamp,
             'resend_available_at' => now()->addSeconds(30)->timestamp,
@@ -76,6 +90,7 @@ class MfaService
     public function verifyCode(Request $request, string $code, string $method = 'email'): array
     {
         $pending = $this->getPending($request);
+        $code = trim($code);
 
         if (!$pending) {
             $this->audit('unknown', null, 'mfa.verify.failed', 'Authentication', 'Verification failed: no pending session.');
@@ -151,6 +166,35 @@ class MfaService
                 'valid' => true,
                 'pending' => $pending,
                 'method' => 'totp',
+            ];
+        }
+
+        if ($method === 'backup') {
+            if (!$this->consumeBackupCode($guard, $identifier, $code, $pending)) {
+                $this->audit($guard, $identifier, 'mfa.verify.failed', 'Authentication', 'Verification failed: invalid backup code.');
+
+                return [
+                    'valid' => false,
+                    'message' => 'Invalid backup code. Please try again.',
+                ];
+            }
+
+            $request->session()->put(self::SESSION_KEY, $pending);
+            $this->audit($guard, $identifier, 'mfa.verify.success', 'Authentication', 'MFA verified successfully using backup code.');
+
+            return [
+                'valid' => true,
+                'pending' => $pending,
+                'method' => 'backup',
+            ];
+        }
+
+        if (!preg_match('/^\d{6}$/', $code)) {
+            $this->audit($guard, $identifier, 'mfa.verify.failed', 'Authentication', 'Verification failed: invalid email OTP format.');
+
+            return [
+                'valid' => false,
+                'message' => 'Email OTP must be a 6-digit code.',
             ];
         }
 
@@ -230,70 +274,6 @@ class MfaService
             'User cancelled MFA verification step.'
         );
     }
-
-    public function hasValidTrustedDevice(Request $request, string $guard, string $identifier): bool
-    {
-        $payload = $this->readTrustedDeviceCookie($request);
-
-        if (!$payload) {
-            return false;
-        }
-
-        if ((string) ($payload['guard'] ?? '') !== $guard) {
-            return false;
-        }
-
-        if ((string) ($payload['identifier'] ?? '') !== $identifier) {
-            return false;
-        }
-
-        $expiresAt = (int) ($payload['expires_at'] ?? 0);
-
-        if ($expiresAt < now()->timestamp) {
-            return false;
-        }
-
-        return true;
-    }
-
-    // DEPRECATED: Remember device functionality removed as MFA is now required for every login
-    // public function makeTrustedDeviceCookie(string $guard, string $identifier, ?int $checkedAtTimestamp = null): Cookie
-    // {
-    //     $checkedAt = $this->resolveRememberCheckedAt($checkedAtTimestamp);
-    //     $expiresAt = $checkedAt->copy()->addMonthNoOverflow()->timestamp;
-    //     $minutes = max(1, (int) now()->diffInMinutes($checkedAt->copy()->addMonthNoOverflow(), false));
-    //
-    //     $payload = base64_encode((string) json_encode([
-    //         'guard' => $guard,
-    //         'identifier' => $identifier,
-    //         'expires_at' => $expiresAt,
-    //     ]));
-    //
-    //     $this->audit(
-    //         $guard,
-    //         $identifier,
-    //         'mfa.trusted_device.created',
-    //         'Authentication',
-    //         'Trusted device cookie issued for one month starting from checkbox selection time.'
-    //     );
-    //
-    //     return cookie()->make(
-    //         self::REMEMBER_COOKIE_KEY,
-    //         $payload,
-    //         $minutes,
-    //         '/',
-    //         null,
-    //         config('session.secure_cookie'),
-    //         true,
-    //         false,
-    //         'lax'
-    //     );
-    // }
-    //
-    // public function rememberUntilLabel(): string
-    // {
-    //     return now()->addMonthNoOverflow()->format('F j, Y');
-    // }
 
     private function generateCode(): string
     {
@@ -408,45 +388,72 @@ class MfaService
         return $output;
     }
 
-    private function readTrustedDeviceCookie(Request $request): ?array
+    private function consumeBackupCode(string $guard, string $identifier, string $code, array &$pending): bool
     {
-        $raw = $request->cookie(self::REMEMBER_COOKIE_KEY);
+        $backupCodes = is_array($pending['backup_codes'] ?? null) ? $pending['backup_codes'] : [];
+        $backupCodesUsed = is_array($pending['backup_codes_used'] ?? null) ? $pending['backup_codes_used'] : [];
 
-        if (!is_string($raw) || $raw === '') {
-            // Legacy compatibility for older cookie name.
-            $raw = $request->cookie(self::LEGACY_REMEMBER_COOKIE_KEY);
+        if (empty($backupCodes)) {
+            return false;
         }
 
-        if (!is_string($raw) || $raw === '') {
-            return null;
+        $digitsOnly = preg_replace('/\D/', '', $code) ?? '';
+        if (!preg_match('/^\d{8}$/', $digitsOnly)) {
+            return false;
         }
 
-        $decoded = base64_decode($raw, true);
+        $normalizedCode = substr($digitsOnly, 0, 4) . '-' . substr($digitsOnly, 4, 4);
+        $matchedIndex = null;
 
-        if ($decoded === false) {
-            return null;
+        foreach ($backupCodes as $index => $hashedCode) {
+            if (is_string($hashedCode) && password_verify($normalizedCode, $hashedCode)) {
+                $matchedIndex = $index;
+                break;
+            }
         }
 
-        $payload = json_decode($decoded, true);
+        if ($matchedIndex === null) {
+            return false;
+        }
 
-        return is_array($payload) ? $payload : null;
+        unset($backupCodes[$matchedIndex]);
+        $backupCodes = array_values($backupCodes);
+        $backupCodesUsed[] = $normalizedCode;
+
+        $user = $this->resolveUserForGuard($guard, $identifier);
+        if (!$user) {
+            return false;
+        }
+
+        $user->mfa_backup_codes = json_encode($backupCodes);
+        $user->mfa_backup_codes_used = json_encode($backupCodesUsed);
+        $user->save();
+
+        $pending['backup_codes'] = $backupCodes;
+        $pending['backup_codes_used'] = $backupCodesUsed;
+
+        return true;
     }
 
-    private function resolveRememberCheckedAt(?int $checkedAtTimestamp)
+    private function decodeJsonArray(?string $value): array
     {
-        if ($checkedAtTimestamp === null) {
-            return now();
+        if (!is_string($value) || $value === '') {
+            return [];
         }
 
-        $checkedAt = now()->createFromTimestamp($checkedAtTimestamp);
-        $minAllowed = now()->subDay();
-        $maxAllowed = now()->addMinutes(5);
+        $decoded = json_decode($value, true);
 
-        if ($checkedAt->lt($minAllowed) || $checkedAt->gt($maxAllowed)) {
-            return now();
-        }
+        return is_array($decoded) ? $decoded : [];
+    }
 
-        return $checkedAt;
+    private function resolveUserForGuard(string $guard, string $identifier): Admin|Security|User|null
+    {
+        return match ($guard) {
+            'admin' => Admin::find($identifier),
+            'security' => Security::find($identifier),
+            'student' => User::where('student_number', $identifier)->first(),
+            default => null,
+        };
     }
 
     private function audit(string $guard, ?string $identifier, string $action, string $module, string $description): void

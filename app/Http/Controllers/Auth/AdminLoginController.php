@@ -44,24 +44,6 @@ class AdminLoginController extends Controller
 
             Log::info('Admin login: credentials verified', ['admin_id' => $admin->id]);
 
-            try {
-                $hasTrustedDevice = $mfaService->hasValidTrustedDevice($request, 'admin', (string) $admin->getKey());
-                Log::info('Trusted device check', ['has_trusted' => $hasTrustedDevice]);
-                
-                if ($hasTrustedDevice) {
-                    Auth::guard('admin')->login($admin);
-                    $request->session()->regenerate();
-
-                    return redirect()->route(
-                        $admin->isItAdministrator()
-                            ? 'admin.super-admin.dashboard'
-                            : 'admin.dashboard'
-                    )->with('show_login_announcement_modal', true);
-                }
-            } catch (\Throwable $e) {
-                Log::warning('Trusted device check failed', ['error' => $e->getMessage()]);
-            }
-
             if (empty($admin->email)) {
                 return back()
                     ->withErrors([
@@ -79,7 +61,9 @@ class AdminLoginController extends Controller
                     (string) $admin->getKey(),
                     (string) $admin->email,
                     $admin->mfa_totp_secret,
-                    (bool) $admin->mfa_totp_enabled
+                    (bool) $admin->mfa_totp_enabled,
+                    $admin->mfa_backup_codes,
+                    $admin->mfa_backup_codes_used
                 );
                 Log::info('Admin login: MFA challenge started successfully');
             } catch (\Throwable $exception) {

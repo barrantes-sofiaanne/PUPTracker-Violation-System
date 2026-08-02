@@ -27,8 +27,8 @@ class MfaController extends Controller
     public function verify(Request $request, MfaService $mfaService): RedirectResponse
     {
         $validated = $request->validate([
-            'code' => ['required', 'digits:6'],
-            'method' => ['nullable', 'in:email,totp'],
+            'code' => ['required', 'string', 'max:20'],
+            'method' => ['nullable', 'in:email,totp,backup'],
         ]);
 
         $result = $mfaService->verifyCode($request, $validated['code'], $validated['method'] ?? 'email');

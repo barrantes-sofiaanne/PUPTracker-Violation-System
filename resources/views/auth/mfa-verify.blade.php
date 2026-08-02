@@ -25,11 +25,12 @@
             $methods = $pending['methods'] ?? ['email'];
             $selectedMethod = old('method', $pending['selected_method'] ?? 'email');
             $hasTotp = in_array('totp', $methods, true);
+            $hasBackup = in_array('backup', $methods, true);
         @endphp
 
         <p class="subtitle">
-            @if($hasTotp)
-                Choose your verification method, then enter a 6-digit code.
+            @if($hasTotp || $hasBackup)
+                Choose your verification method, then enter your code.
             @else
                 Enter the 6-digit code sent to {{ $pending['email_masked'] ?? 'your email' }}.
             @endif
@@ -42,12 +43,17 @@
 
             @csrf
 
-            @if($hasTotp)
+            @if($hasTotp || $hasBackup)
                 <div class="mb-3">
                     <label class="form-label">Verification Method</label>
                     <select name="method" class="form-select" required>
                         <option value="email" {{ $selectedMethod === 'email' ? 'selected' : '' }}>Email OTP ({{ $pending['email_masked'] ?? 'masked email' }})</option>
-                        <option value="totp" {{ $selectedMethod === 'totp' ? 'selected' : '' }}>Authenticator App</option>
+                        @if($hasTotp)
+                            <option value="totp" {{ $selectedMethod === 'totp' ? 'selected' : '' }}>Authenticator App</option>
+                        @endif
+                        @if($hasBackup)
+                            <option value="backup" {{ $selectedMethod === 'backup' ? 'selected' : '' }}>Backup Code</option>
+                        @endif
                     </select>
                 </div>
             @else
@@ -61,9 +67,7 @@
                     name="code"
                     class="form-control @error('code') is-invalid @enderror"
                     value="{{ old('code') }}"
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    maxlength="6"
+                    maxlength="20"
                     required>
 
                 @error('code')

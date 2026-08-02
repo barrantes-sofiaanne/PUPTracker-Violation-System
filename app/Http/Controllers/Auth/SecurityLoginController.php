@@ -34,14 +34,6 @@ class SecurityLoginController extends Controller
                 ->withInput();
         }
 
-        if ($mfaService->hasValidTrustedDevice($request, 'security', (string) $security->getKey())) {
-            Auth::guard('security')->login($security);
-            $request->session()->regenerate();
-
-            return redirect()->route('security.dashboard')
-                ->with('show_login_announcement_modal', true);
-        }
-
         if (empty($security->email)) {
             return back()
                 ->withErrors([
@@ -57,7 +49,9 @@ class SecurityLoginController extends Controller
                 (string) $security->getKey(),
                 (string) $security->email,
                 $security->mfa_totp_secret,
-                (bool) $security->mfa_totp_enabled
+                (bool) $security->mfa_totp_enabled,
+                $security->mfa_backup_codes,
+                $security->mfa_backup_codes_used
             );
         } catch (\Throwable $exception) {
             Log::error('Security MFA challenge initialization failed.', [
