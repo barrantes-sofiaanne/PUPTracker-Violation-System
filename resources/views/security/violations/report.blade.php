@@ -73,10 +73,11 @@
             font-size: 10px;
         }
 
-        .column-violation { width: 46%; }
+        .column-violation { width: 28%; }
         .column-offense { width: 14%; text-align: center; }
         .column-date { width: 20%; text-align: center; }
         .column-status { width: 14%; text-align: center; }
+        .column-remarks { width: 24%; }
 
         .remarks {
             margin-top: 2px;
@@ -123,8 +124,7 @@
                         <th class="column-status">SANCTION</th>
                         <th class="column-date">DATE RECORDED</th>
                         <th class="column-status">STATUS</th>
-                        <th class="column-status">RECORDED BY</th>
-                        <th class="column-violation">DESCRIPTION / REMARKS</th>
+                        <th class="column-remarks">DESCRIPTION / REMARKS</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -140,8 +140,7 @@
                                 {{ $record->date_recorded ? \Carbon\Carbon::parse($record->date_recorded)->format('F j, Y, h:i:s a') : '-' }}
                             </td>
                             <td class="column-status">{{ $record->status }}</td>
-                            <td class="column-status">{{ $record->recorded_by }}</td>
-                            <td class="column-violation">{{ $record->remarks }}</td>
+                            <td class="column-remarks">{{ $record->remarks }}</td>
                         </tr>
                     @endforeach
                 </tbody>

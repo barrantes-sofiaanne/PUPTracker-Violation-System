@@ -102,8 +102,6 @@ document.addEventListener("DOMContentLoaded", function () {
             student.year?.year_name ?? "-";
         document.getElementById("studentSection").value =
             student.section?.section_name ?? "-";
-        document.getElementById("studentStatus").value =
-            student.student_status?.status_name ?? "-";
 
         document.getElementById("noStudentSelected").classList.add("d-none");
         document

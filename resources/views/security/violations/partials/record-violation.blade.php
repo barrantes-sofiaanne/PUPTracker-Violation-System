@@ -4,15 +4,23 @@
     }
 
     .security-record-modal .modal-content {
-        border-radius: 1rem;
+        border: 1px solid rgba(128, 0, 0, 0.12);
+        border-radius: var(--portal-radius-lg);
         overflow: hidden;
         max-height: calc(100vh - 2rem);
     }
 
     .security-record-modal .modal-header {
-        background: linear-gradient(135deg, #800000 0%, #5f0000 100%);
+        background: linear-gradient(120deg, #800000 0%, #5f0000 65%, #daa520 180%);
         border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-        padding: 1rem 1.2rem;
+        color: #fff;
+        padding: 1.1rem 1.25rem;
+    }
+
+    .security-record-modal .modal-header .modal-title,
+    .security-record-modal .modal-header .modal-title i,
+    .security-record-modal .modal-header small {
+        color: #fff !important;
     }
 
     .security-record-modal .modal-body {
@@ -40,13 +48,31 @@
 
     .security-record-modal .wizard-card {
         border: 1px solid rgba(128, 0, 0, 0.12);
-        border-radius: 0.95rem;
-        box-shadow: 0 8px 20px rgba(128, 0, 0, 0.08);
+        border-radius: var(--portal-radius-lg);
+        box-shadow: var(--portal-shadow);
     }
 
     .security-record-modal .wizard-card .card-header {
-        background: linear-gradient(180deg, #fffefa 0%, #fff5d9 100%);
+        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
         border-bottom: 1px solid rgba(128, 0, 0, 0.12);
+        color: #5f0000;
+        padding: 0.9rem 1.1rem;
+    }
+
+    .security-record-modal .wizard-card .card-header i {
+        color: #800000 !important;
+    }
+
+    .security-record-modal .form-control,
+    .security-record-modal .form-select {
+        border-color: rgba(128, 0, 0, 0.2);
+        border-radius: 0.72rem;
+    }
+
+    .security-record-modal .form-control:focus,
+    .security-record-modal .form-select:focus {
+        border-color: rgba(128, 0, 0, 0.5);
+        box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.12);
     }
 
     .security-record-modal .preview-box {
@@ -150,10 +176,6 @@
                                             <input id="studentSection" class="form-control" readonly>
                                         </div>
 
-                                        <div class="col-md-4">
-                                            <label class="form-label">Student Status</label>
-                                            <input id="studentStatus" class="form-control" readonly>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
