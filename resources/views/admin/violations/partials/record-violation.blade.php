@@ -2,7 +2,67 @@
 <!-- Record Violation Modal -->
 <!-- ========================================================= -->
 
-<div class="modal fade"
+<style>
+    .admin-record-modal .modal-dialog {
+        max-width: 1160px;
+    }
+
+    .admin-record-modal .modal-content {
+        border: 1px solid rgba(128, 0, 0, 0.12) !important;
+        border-radius: 1rem !important;
+        max-height: calc(100vh - 2rem);
+    }
+
+    .admin-record-modal .modal-header {
+        background: linear-gradient(120deg, #800000 0%, #5f0000 65%, #daa520 180%) !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        color: #fff;
+    }
+
+    .admin-record-modal .modal-header .modal-title,
+    .admin-record-modal .modal-header .modal-title i,
+    .admin-record-modal .modal-header small {
+        color: #fff !important;
+    }
+
+    .admin-record-modal .modal-body {
+        background: linear-gradient(180deg, #fffefa 0%, #fff7e3 100%);
+        max-height: calc(100vh - 220px);
+        overflow-y: auto;
+    }
+
+    .admin-record-modal .modal-footer {
+        background: #fffdf6;
+        border-top: 1px solid rgba(128, 0, 0, 0.12);
+    }
+
+    .admin-record-modal .card {
+        border: 1px solid rgba(128, 0, 0, 0.12) !important;
+        border-radius: 0.95rem;
+        box-shadow: 0 8px 20px rgba(128, 0, 0, 0.08) !important;
+        overflow: hidden;
+    }
+
+    .admin-record-modal .card-header {
+        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%) !important;
+        border-bottom: 1px solid rgba(128, 0, 0, 0.12);
+        color: #5f0000;
+    }
+
+    .admin-record-modal .form-control,
+    .admin-record-modal .form-select {
+        border-color: rgba(128, 0, 0, 0.2);
+        border-radius: 0.72rem;
+    }
+
+    .admin-record-modal .form-control:focus,
+    .admin-record-modal .form-select:focus {
+        border-color: rgba(128, 0, 0, 0.5);
+        box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.12);
+    }
+</style>
+
+<div class="modal fade admin-record-modal"
      id="addViolationModal"
      tabindex="-1"
      aria-labelledby="addViolationModalLabel"

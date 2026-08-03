@@ -1,5 +1,3 @@
-<div class="card border-0">
-
     {{-- Header --}}
     <div class="d-flex justify-content-between align-items-center mb-4">
 
@@ -146,8 +144,10 @@
                         <td>
 
                             <button
-                                class="btn btn-info btn-sm view-history"
-                                data-id="{{ $history->violation_record_id }}">
+                                type="button"
+                                class="btn btn-info btn-sm viewStudent"
+                                data-student="{{ $history->student_number }}"
+                                aria-label="View {{ $history->student?->last_name ?? 'student' }}'s violation record">
 
                                 <i class="bi bi-eye"></i>
 
@@ -181,7 +181,6 @@
 
         </table>
 
-    </div>
 
     <div class="mt-3">
 

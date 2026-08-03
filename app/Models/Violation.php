@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Admin;
+use App\Models\Security;
 use App\Models\ViolationType;
 
 class Violation extends Model
@@ -88,6 +89,22 @@ class Violation extends Model
     public function getRecordedByDisplayAttribute(): string
     {
         if (!empty($this->recorder_name)) {
+            if (str_starts_with($this->recorder_name, 'Security: ')) {
+                $security = Security::where('email', substr($this->recorder_name, 10))
+                    ->with(['securityInfo', 'securityProfile'])
+                    ->first();
+
+                $fullName = trim(implode(' ', array_filter([
+                    $security?->securityInfo?->firstname ?? $security?->securityProfile?->firstname,
+                    $security?->securityInfo?->middlename ?? $security?->securityProfile?->middlename,
+                    $security?->securityInfo?->lastname ?? $security?->securityProfile?->lastname,
+                ], fn ($value) => !empty($value))));
+
+                if ($fullName !== '') {
+                    return $fullName;
+                }
+            }
+
             return $this->recorder_name;
         }
 

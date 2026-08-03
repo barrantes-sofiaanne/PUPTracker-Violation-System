@@ -233,7 +233,7 @@ class StudentViolationController extends Controller
             }
 
             $security = Auth::guard('security')->user();
-            $securityLabel = $this->buildSecurityRecorderLabel($security?->id, $security?->email);
+            $securityLabel = $this->buildSecurityAccountName($security);
 
             $violation = Violation::create([
                 'student_number' => $validated['student_number'],
@@ -505,13 +505,18 @@ class StudentViolationController extends Controller
     private function applyRecorderScope($query): void
     {
         $security = Auth::guard('security')->user();
-        $securityLabel = $this->buildSecurityRecorderLabel($security?->id, $security?->email);
+        $securityLabel = $this->buildSecurityAccountName($security);
+        $legacySecurityEmailLabel = !empty($security?->email) ? 'Security: ' . $security->email : null;
         $legacySecurityIdLabel = 'Security #' . ($security?->id ?? 'Unknown');
 
         $query->where('recorder_type', 'security')
-            ->where(function ($innerQuery) use ($securityLabel, $legacySecurityIdLabel) {
+            ->where(function ($innerQuery) use ($securityLabel, $legacySecurityEmailLabel, $legacySecurityIdLabel) {
                 $innerQuery->where('recorder_name', $securityLabel)
                     ->orWhere('recorder_name', $legacySecurityIdLabel);
+
+                if ($legacySecurityEmailLabel !== null) {
+                    $innerQuery->orWhere('recorder_name', $legacySecurityEmailLabel);
+                }
             });
     }
 

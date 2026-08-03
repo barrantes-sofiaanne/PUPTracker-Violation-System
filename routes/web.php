@@ -357,6 +357,11 @@ Route::resource(
         Route::post('/sanctions/records/{studentSanctionRecord}/revert', [SanctionController::class, 'revertRecordToPending'])
             ->name('admin.sanctions.records.revert');
 
+        Route::get(
+    '/violations/student/{student_number}',
+    [ViolationController::class, 'show']
+)->name('admin.violations.studentHistory');
+
         /*
         |--------------------------------------------------------------------------
         | IMPORTANT
@@ -366,10 +371,6 @@ Route::resource(
 
         Route::get('/violations/{student_number}', [ViolationController::class, 'show'])
             ->name('admin.violations.show');
-        Route::get(
-    '/violations/student/{student_number}',
-    [ViolationController::class, 'show']
-)->name('admin.violations.studentHistory');
 
 /*
 |--------------------------------------------------------------------------
