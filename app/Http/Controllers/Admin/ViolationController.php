@@ -298,8 +298,11 @@ public function searchStudents(Request $request)
         'studentInfo.program',
         'studentInfo.year',
         'studentInfo.section',
-        'studentInfo.studentStatus'
+        'studentInfo.studentStatus',
     ])
+    ->whereHas('role', function ($query) {
+        $query->where('roles_name', 'Student');
+    })
     ->where(function ($query) use ($keyword) {
 
         $query->where('student_number', 'like', "%{$keyword}%")
@@ -311,8 +314,41 @@ public function searchStudents(Request $request)
     ->limit(10)
     ->get();
 
-    return response()->json($students);
+    return response()->json($students->map(function (User $student) {
+        return [
+            'student_number' => $student->student_number,
+            'first_name' => $student->first_name,
+            'last_name' => $student->last_name,
+            'program' => [
+                'program_name' => $student->studentInfo?->program?->program_name,
+            ],
+            'year' => [
+                'year_name' => $student->studentInfo?->year?->year,
+            ],
+            'section' => [
+                'section_name' => $student->studentInfo?->section?->section_name,
+            ],
+        ];
+    }));
 }
+
+    public function getViolationTypes(Request $request): JsonResponse
+    {
+        $categoryId = $request->integer('category_id');
+
+        if (!$categoryId) {
+            return response()->json([]);
+        }
+
+        $types = ViolationType::where('violation_category_id', $categoryId)
+            ->orderBy('violation_type')
+            ->get([
+                'violation_type_id',
+                'violation_type',
+            ]);
+
+        return response()->json($types);
+    }
 
 
     /*
