@@ -17,12 +17,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
         sidebar.classList.add("open");
         sidebarBackdrop.classList.add("show");
+        sidebarToggle.setAttribute("aria-expanded", "true");
         document.body.style.overflow = "hidden";
     };
 
     const closeSidebar = () => {
         sidebar.classList.remove("open");
         sidebarBackdrop.classList.remove("show");
+        sidebarToggle.setAttribute("aria-expanded", "false");
         document.body.style.overflow = "";
     };
 

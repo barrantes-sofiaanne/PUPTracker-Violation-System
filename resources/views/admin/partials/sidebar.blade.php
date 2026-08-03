@@ -1,4 +1,4 @@
-<aside class="sidebar">
+<aside class="sidebar" id="adminSidebar">
 
     <button type="button" class="btn btn-sm btn-light mobile-only mb-2" id="sidebarClose">
         <i class="bi bi-x-lg"></i>

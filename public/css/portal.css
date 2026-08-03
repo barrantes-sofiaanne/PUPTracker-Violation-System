@@ -44,13 +44,16 @@ body {
     background: linear-gradient(170deg, #5f0000 0%, #800000 45%, #3f0000 100%);
     color: var(--portal-white);
     border-right: 1px solid rgba(255, 255, 255, 0.15);
-    padding: 1rem;
-    overflow-y: auto;
+    padding: 0.8rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 10px 0 28px rgba(49, 0, 0, 0.14);
 }
 
 .portal-logo-wrap {
     text-align: center;
-    padding: 0.3rem 0.3rem 1rem;
+    padding: 0.3rem 0.3rem 0.75rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -80,10 +83,10 @@ body {
 
 .portal-nav-list {
     list-style: none;
-    margin: 1rem 0 0;
+    margin: 0.7rem 0 0;
     padding: 0;
     display: grid;
-    gap: 0.35rem;
+    gap: 0.2rem;
 }
 
 .portal-nav-list a {
@@ -94,7 +97,8 @@ body {
     gap: 0.62rem;
     font-weight: 700;
     border-radius: 0.75rem;
-    padding: 0.72rem 0.85rem;
+    padding: 0.58rem 0.75rem;
+    font-size: 0.91rem;
     transition: all 0.2s ease;
 }
 
@@ -109,8 +113,8 @@ body {
 }
 
 .portal-logout-form {
-    margin-top: 1rem;
-    padding-top: 1rem;
+    margin-top: auto;
+    padding-top: 0.75rem;
     border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -205,6 +209,11 @@ body {
 }
 
 #portalSidebarToggle {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border-color: rgba(128, 0, 0, 0.3);
     color: var(--portal-maroon);
 }
@@ -532,6 +541,7 @@ body {
         transform: translateX(-110%);
         transition: transform 0.25s ease;
         width: min(84vw, var(--portal-sidebar-width));
+        overflow-y: auto;
     }
 
     .portal-sidebar.open {
@@ -605,6 +615,24 @@ body {
 }
 
 @media (max-width: 575.98px) {
+    .portal-sidebar {
+        width: min(88vw, 300px);
+        padding: 0.7rem;
+    }
+
+    .portal-logo {
+        width: 52px;
+        height: 52px;
+    }
+
+    .portal-logo-wrap h5 {
+        font-size: 1.05rem;
+    }
+
+    .portal-nav-list a {
+        padding: 0.55rem 0.65rem;
+        font-size: 0.88rem;
+    }
     .portal-topbar {
         top: 0.5rem;
     }
