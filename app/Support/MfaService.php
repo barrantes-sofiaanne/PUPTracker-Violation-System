@@ -705,7 +705,11 @@ class MfaService
 
         $svg = base64_decode(substr($qrCode, strlen($prefix)), true);
 
-        return $svg === false ? $qrCode : $svg;
+        if ($svg === false) {
+            return $qrCode;
+        }
+
+        return preg_replace('/^\s*<\?xml[^>]*>\s*/', '', $svg) ?? $svg;
     }
 
     private function resolveUserForGuard(string $guard, string $identifier): Admin|Security|User|null
