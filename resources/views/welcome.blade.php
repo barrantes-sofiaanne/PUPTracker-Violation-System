@@ -279,7 +279,7 @@
             <div class="max-w-7xl mx-auto">
                 <p class="text-sm mb-2">
                     <span class="text-gray-400">Security concerns? </span>
-                    <a href="{{ route('security.report') }}" class="text-blue-400 hover:text-blue-300 font-semibold">Report a Security Incident</a>
+                    <a href="mailto:puptrackervs@gmail.com" class="text-blue-400 hover:text-blue-300 font-semibold">puptrackervs@gmail.com</a>
                     <span class="text-gray-400"> | </span>
                     <a href="mailto:security@pup.edu.ph" class="text-blue-400 hover:text-blue-300 font-semibold">security@pup.edu.ph</a>
                 </p>

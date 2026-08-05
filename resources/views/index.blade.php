@@ -16,9 +16,9 @@
             <div class="landing-heading">
                 <div class="landing-logo-wrap">
                     <img
-                        src="{{ asset('assets/images/Tracker-logo.png') }}"
+                        src="{{ asset('assets/images/System-logo.png') }}"
                         class="logo"
-                        alt="PUPTracker Logo">
+                        alt="PUPTracker Violation System logo">
                 </div>
 
                 <div>
@@ -44,16 +44,16 @@
                     Privacy Statement
                 </a>
 
-                <span>•</span>
+                <span class="footer-separator" aria-hidden="true">•</span>
 
                 <a href="https://www.pup.edu.ph/terms/" target="_blank">
                     Terms of Use
                 </a>
 
-                <span>•</span>
+                <span class="footer-separator" aria-hidden="true">•</span>
 
-                <a href="{{ route('security.report') }}" title="Report security vulnerabilities or incidents">
-                    <i class="bi bi-exclamation-triangle"></i> Contact Us
+                <a href="mailto:puptrackervs@gmail.com">
+                    puptrackervs@gmail.com
                 </a>
 
             </div>

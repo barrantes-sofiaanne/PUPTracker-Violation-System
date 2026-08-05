@@ -37,7 +37,6 @@ use App\Http\Controllers\Admin\ViolationTypeController;
 
 // Security Controllers
 use App\Http\Controllers\Security\SecurityDashboardController;
-use App\Http\Controllers\SecurityContactController;
 /*
 
 
@@ -49,19 +48,6 @@ use App\Http\Controllers\SecurityContactController;
 Route::get('/', function () {
     return view('index');
 })->name('home');
-
-/*
-|--------------------------------------------------------------------------
-| Security Contact & Incident Reporting
-|--------------------------------------------------------------------------
-*/
-
-Route::get('/security/report', [SecurityContactController::class, 'show'])
-    ->name('security.report');
-
-Route::post('/security/report', [SecurityContactController::class, 'submit'])
-    ->middleware('throttle:5,60')
-    ->name('security.report.submit');
 
 /*
 |--------------------------------------------------------------------------

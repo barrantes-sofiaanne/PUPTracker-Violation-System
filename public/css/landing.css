@@ -126,3 +126,36 @@ body { margin: 0; color: var(--landing-ink); font-family: "Poppins", sans-serif;
     .landing-access { padding: 1rem; }
     .landing-access .portal-btn { min-height: 72px; }
 }
+
+/* The system mark contains its own white frame, so the landing page does not add a second one. */
+.landing-intro .landing-logo-wrap {
+    padding: 0;
+    background: transparent;
+    border-radius: 1rem;
+    box-shadow: none;
+}
+
+.landing-intro .logo {
+    width: 96px;
+    height: 96px;
+    padding: 0;
+    object-fit: contain;
+    background: transparent;
+    border-radius: 1rem;
+}
+
+.landing-intro .footer-separator {
+    display: inline-grid;
+    width: 0.7rem;
+    height: 32px;
+    place-items: center;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1;
+}
+
+@media (max-width: 768px) {
+    .landing-intro .logo {
+        width: 72px;
+        height: 72px;
+    }
+}
