@@ -22,9 +22,9 @@
                 </div>
 
                 <div>
-                    <p class="system-pill">Polytechnic University of the Philippines</p>
+                    <p class="system-pill">Polytechnic University of the Philippines Taguig Campus</p>
                     <h1>PUPTracker</h1>
-                    <h5>Violation Management System</h5>
+                    <h5>Violation System</h5>
                 </div>
             </div>
 
