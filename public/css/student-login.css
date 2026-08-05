@@ -320,13 +320,21 @@ body {
 .login-page::before {
     top: -10rem;
     right: -8rem;
-    background: radial-gradient(circle, rgba(245, 198, 93, 0.34), transparent 68%);
+    background: radial-gradient(
+        circle,
+        rgba(245, 198, 93, 0.34),
+        transparent 68%
+    );
 }
 
 .login-page::after {
     bottom: -12rem;
     left: -9rem;
-    background: radial-gradient(circle, rgba(190, 45, 64, 0.33), transparent 68%);
+    background: radial-gradient(
+        circle,
+        rgba(190, 45, 64, 0.33),
+        transparent 68%
+    );
 }
 
 .login-card {
@@ -345,7 +353,12 @@ body {
     right: 0;
     left: 0;
     height: 6px;
-    background: linear-gradient(90deg, var(--login-maroon-dark), var(--login-gold), var(--login-maroon));
+    background: linear-gradient(
+        90deg,
+        var(--login-maroon-dark),
+        var(--login-gold),
+        var(--login-maroon)
+    );
 }
 
 .login-card .logo {
@@ -423,7 +436,10 @@ body {
     border-radius: 0.8rem;
     font-size: 0.9rem;
     font-weight: 700;
-    transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+    transition:
+        transform 180ms ease,
+        box-shadow 180ms ease,
+        background-color 180ms ease;
 }
 
 .login-card .btn:hover {
@@ -440,7 +456,11 @@ body {
 .login-card .login-btn,
 .login-card .btn-success {
     color: #fff;
-    background: linear-gradient(135deg, var(--login-maroon), var(--login-maroon-dark)) !important;
+    background: linear-gradient(
+        135deg,
+        var(--login-maroon),
+        var(--login-maroon-dark)
+    ) !important;
     border-color: var(--login-maroon-dark) !important;
     box-shadow: 0 12px 20px rgba(122, 23, 32, 0.22);
 }
@@ -498,9 +518,67 @@ body {
 }
 
 @media (max-width: 576px) {
-    .login-page { padding: 1rem 0.75rem; }
-    .login-card { max-height: none; padding: 1.5rem 1.1rem; border-radius: 1.25rem; }
-    .login-card .logo { width: 70px; height: 70px; border-radius: 0.9rem; }
-    .module-chip { font-size: 0.58rem; }
-    .login-card .btn, .login-card .form-control { min-height: 46px; }
+    .login-page {
+        padding: 1rem 0.75rem;
+    }
+    .login-card {
+        max-height: none;
+        padding: 1.5rem 1.1rem;
+        border-radius: 1.25rem;
+    }
+    .login-card .logo {
+        width: 70px;
+        height: 70px;
+        border-radius: 0.9rem;
+    }
+    .module-chip {
+        font-size: 0.58rem;
+    }
+    .login-card .btn,
+    .login-card .form-control {
+        min-height: 46px;
+    }
+}
+
+.login-card .login-input-group {
+    overflow: hidden;
+    border: 1px solid rgba(122, 23, 32, 0.16);
+    border-radius: 0.8rem;
+    box-shadow: inset 0 1px 2px rgba(58, 22, 25, 0.03);
+}
+
+.login-card .login-input-group:focus-within {
+    border-color: rgba(122, 23, 32, 0.56);
+    box-shadow: 0 0 0 0.22rem rgba(122, 23, 32, 0.12);
+}
+
+.login-card .login-input-group .input-group-text {
+    padding: 0.7rem 0.25rem 0.7rem 0.85rem;
+    color: var(--login-maroon);
+    background: #fff;
+    border: 0;
+}
+
+.login-card .login-input-group .form-control {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.login-card .login-input-group .form-control:focus {
+    box-shadow: none;
+}
+
+.password-wrapper .password-input-icon {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    left: 0.85rem;
+    color: var(--login-maroon);
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.password-wrapper input {
+    padding-left: 2.5rem;
 }

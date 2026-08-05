@@ -23,12 +23,16 @@
 
             <div class="mb-4">
                 <label class="form-label">Email</label>
-                <input
-                    type="email"
-                    name="email"
-                    class="form-control @error('email') is-invalid @enderror"
-                    value="{{ old('email') }}"
-                    required>
+                <div class="input-group login-input-group">
+                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                    <input
+                        type="email"
+                        name="email"
+                        class="form-control @error('email') is-invalid @enderror"
+                        value="{{ old('email') }}"
+                        autocomplete="email"
+                        required>
+                </div>
                 @error('email')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror

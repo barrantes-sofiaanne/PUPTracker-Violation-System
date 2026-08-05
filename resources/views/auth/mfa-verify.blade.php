@@ -130,13 +130,17 @@
                         <label class="form-label">
                             {{ $methodLabels[$selectedMethod ?? 'email'] ?? 'Verification Code' }}
                         </label>
-                        <input
-                            type="text"
-                            name="code"
-                            class="form-control @error('code') is-invalid @enderror"
-                            value="{{ old('code') }}"
-                            maxlength="20"
-                            required>
+                        <div class="input-group login-input-group">
+                            <span class="input-group-text"><i class="bi bi-shield-check"></i></span>
+                            <input
+                                type="text"
+                                name="code"
+                                class="form-control @error('code') is-invalid @enderror"
+                                value="{{ old('code') }}"
+                                maxlength="20"
+                                autocomplete="one-time-code"
+                                required>
+                        </div>
 
                         @error('code')
                             <div class="invalid-feedback d-block">

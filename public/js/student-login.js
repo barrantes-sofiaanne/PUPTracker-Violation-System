@@ -8,10 +8,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 password.type = "text";
 
                 toggle.innerHTML = '<i class="bi bi-eye-slash"></i>';
+                toggle.setAttribute("aria-label", "Hide password");
             } else {
                 password.type = "password";
 
                 toggle.innerHTML = '<i class="bi bi-eye"></i>';
+                toggle.setAttribute("aria-label", "Show password");
             }
         });
     }

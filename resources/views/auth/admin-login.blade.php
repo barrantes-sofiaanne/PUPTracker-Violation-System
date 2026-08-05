@@ -44,12 +44,16 @@
                     Email
                 </label>
 
-                <input
-                    type="text"
-                    name="email"
-                    class="form-control @error('email') is-invalid @enderror"
-                    value="{{ old('email') }}"
-                    required>
+                <div class="input-group login-input-group">
+                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                    <input
+                        type="email"
+                        name="email"
+                        class="form-control @error('email') is-invalid @enderror"
+                        value="{{ old('email') }}"
+                        autocomplete="email"
+                        required>
+                </div>
 
                 @error('email')
                     <div class="invalid-feedback">
@@ -67,17 +71,20 @@
 
                 <div class="password-wrapper">
 
+                    <span class="password-input-icon"><i class="bi bi-key"></i></span>
                     <input
                         id="password"
                         type="password"
                         name="password"
                         class="form-control @error('password') is-invalid @enderror"
+                        autocomplete="current-password"
                         required>
 
                     <button
                         type="button"
                         class="toggle-password"
-                        id="togglePassword">
+                        id="togglePassword"
+                        aria-label="Show password">
 
                         <i class="bi bi-eye"></i>
 

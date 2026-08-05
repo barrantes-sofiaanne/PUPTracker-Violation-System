@@ -25,12 +25,16 @@
 
             <div class="mb-3">
                 <label class="form-label">Email</label>
-                <input
-                    type="email"
-                    name="email"
-                    class="form-control @error('email') is-invalid @enderror"
-                    value="{{ old('email', $email) }}"
-                    required>
+                <div class="input-group login-input-group">
+                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                    <input
+                        type="email"
+                        name="email"
+                        class="form-control @error('email') is-invalid @enderror"
+                        value="{{ old('email', $email) }}"
+                        autocomplete="email"
+                        required>
+                </div>
                 @error('email')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
                 @enderror
@@ -38,11 +42,15 @@
 
             <div class="mb-3">
                 <label class="form-label">New Password</label>
-                <input
-                    type="password"
-                    name="password"
-                    class="form-control @error('password') is-invalid @enderror"
-                    required>
+                <div class="input-group login-input-group">
+                    <span class="input-group-text"><i class="bi bi-key"></i></span>
+                    <input
+                        type="password"
+                        name="password"
+                        class="form-control @error('password') is-invalid @enderror"
+                        autocomplete="new-password"
+                        required>
+                </div>
                 @error('password')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
                 @enderror
@@ -50,11 +58,15 @@
 
             <div class="mb-4">
                 <label class="form-label">Confirm Password</label>
-                <input
-                    type="password"
-                    name="password_confirmation"
-                    class="form-control"
-                    required>
+                <div class="input-group login-input-group">
+                    <span class="input-group-text"><i class="bi bi-shield-check"></i></span>
+                    <input
+                        type="password"
+                        name="password_confirmation"
+                        class="form-control"
+                        autocomplete="new-password"
+                        required>
+                </div>
             </div>
 
             <button type="submit" class="btn btn-success w-100 login-btn">Reset Password</button>
