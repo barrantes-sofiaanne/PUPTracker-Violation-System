@@ -53,7 +53,7 @@
                 <span class="footer-separator" aria-hidden="true">•</span>
 
                 <a href="mailto:puptrackervs@gmail.com">
-                    puptrackervs@gmail.com
+                    Contact Us
                 </a>
 
             </div>
