@@ -9,7 +9,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>@yield('title')</title>
-    <link rel="icon" type="image/png" href="{{ asset('assets/images/Tracker-logo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('assets/images/System-logo.png') }}">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 

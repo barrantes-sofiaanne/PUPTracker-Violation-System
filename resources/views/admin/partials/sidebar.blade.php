@@ -26,6 +26,7 @@
 
     <ul>
 
+        @unless($isItAdministrator)
         <li>
 
             <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
@@ -37,6 +38,7 @@
             </a>
 
         </li>
+        @endunless
 
         <li>
 
@@ -50,6 +52,7 @@
 
         </li>
 
+        @unless($isItAdministrator)
         <li>
 
             <a href="{{ route('admin.violations.index') }}" class="{{ request()->routeIs('admin.violations*') ? 'active' : '' }}">
@@ -61,7 +64,9 @@
             </a>
 
         </li>
+        @endunless
 
+        @unless($isItAdministrator)
         <li>
 
             <a href="{{ route('admin.sanctions.index') }}" class="{{ request()->routeIs('admin.sanctions*') || request()->routeIs('admin.disciplinary-sanctions*') ? 'active' : '' }}">
@@ -73,6 +78,7 @@
             </a>
 
         </li>
+        @endunless
 
         <li>
 
@@ -86,6 +92,7 @@
 
         </li>
 
+        @unless($isItAdministrator)
         <li>
 
             <a href="{{ route('admin.reports') }}" class="{{ request()->routeIs('admin.reports*') ? 'active' : '' }}">
@@ -97,6 +104,7 @@
             </a>
 
         </li>
+        @endunless
 
         <li>
 

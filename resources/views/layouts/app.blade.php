@@ -9,7 +9,7 @@
     @endif
 
     <title>@yield('title', 'PUPTracker Violation System')</title>
-    <link rel="icon" type="image/png" href="{{ asset('assets/images/Tracker-logo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('assets/images/System-logo.png') }}">
 
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
