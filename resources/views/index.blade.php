@@ -11,10 +11,8 @@
 <div class="landing-page">
 
 
-    <div class="container d-flex justify-content-center align-items-center min-vh-100">
-
-        <div class="landing-card">
-
+    <main class="landing-shell">
+        <section class="landing-intro">
             <div class="landing-heading">
                 <div class="landing-logo-wrap">
                     <img
@@ -40,6 +38,28 @@
                 <span><i class="bi bi-graph-up-arrow"></i> Faster Tracking</span>
             </div>
 
+            <div class="footer-links">
+
+                <a href="https://www.pup.edu.ph/privacy/" target="_blank">
+                    Privacy Statement
+                </a>
+
+                <span>•</span>
+
+                <a href="https://www.pup.edu.ph/terms/" target="_blank">
+                    Terms of Use
+                </a>
+
+                <span>•</span>
+
+                <a href="{{ route('security.report') }}" title="Report security vulnerabilities or incidents">
+                    <i class="bi bi-exclamation-triangle"></i> Contact Us
+                </a>
+
+            </div>
+        </section>
+
+        <section class="landing-access">
             <div class="portal-buttons">
 
                 <a href="{{ route('student.login') }}" class="portal-btn">
@@ -70,30 +90,8 @@
                 </a>
 
             </div>
-
-            <div class="footer-links">
-
-                <a href="https://www.pup.edu.ph/privacy/" target="_blank">
-                    Privacy Statement
-                </a>
-
-                <span>•</span>
-
-                <a href="https://www.pup.edu.ph/terms/" target="_blank">
-                    Terms of Use
-                </a>
-
-                <span>•</span>
-
-                <a href="{{ route('security.report') }}" title="Report security vulnerabilities or incidents">
-                    <i class="bi bi-exclamation-triangle"></i> Contact Us
-                </a>
-
-            </div>
-
-        </div>
-
-    </div>
+        </section>
+    </main>
 
 </div>
 

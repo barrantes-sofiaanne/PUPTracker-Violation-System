@@ -70,3 +70,59 @@ body { margin: 0; color: var(--landing-ink); font-family: "Poppins", sans-serif;
     .portal-copy small { font-size: 0.63rem; }
     .footer-links { font-size: 0.62rem; }
 }
+
+/* Desktop portal layout: identity and information are separated from access choices. */
+.landing-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+    width: min(100% - 2rem, 1040px);
+    min-height: min(620px, calc(100svh - 4rem));
+    margin: 2rem auto;
+    overflow: hidden;
+    background: rgba(255, 252, 245, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.66);
+    border-radius: 1.75rem;
+    box-shadow: 0 28px 75px rgba(12, 4, 5, 0.42);
+}
+
+.landing-intro {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(2rem, 5vw, 4rem);
+    color: #fff;
+    background: linear-gradient(145deg, rgba(69, 16, 23, 0.96), rgba(122, 23, 32, 0.88)), url("../assets/images/PUPT-picture.jpg") center/cover;
+}
+
+.landing-intro .landing-heading { margin-bottom: 1.6rem; }
+.landing-intro .landing-logo-wrap { background: linear-gradient(135deg, var(--landing-gold), #fff3c8); }
+.landing-intro .logo { width: 82px; height: 82px; }
+.landing-intro .system-pill { color: #f9d986; }
+.landing-intro h1 { margin: 0; color: #fff; font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 800; letter-spacing: -0.06em; line-height: 1; }
+.landing-intro h5 { margin: 0.55rem 0 0; color: rgba(255, 255, 255, 0.82); font-size: 0.95rem; }
+.landing-intro .description { max-width: 430px; color: rgba(255, 255, 255, 0.83); font-size: 0.95rem; }
+.landing-intro .highlights span { color: #fff7dd; background: rgba(255, 255, 255, 0.11); border-color: rgba(255, 255, 255, 0.14); }
+.landing-intro .highlights i { color: var(--landing-gold); }
+.landing-intro .footer-links { justify-content: flex-start; margin-top: 1.3rem; color: rgba(255, 255, 255, 0.7); }
+.landing-intro .footer-links a:hover { color: var(--landing-gold); }
+
+.landing-access {
+    display: flex;
+    align-items: center;
+    padding: clamp(1.4rem, 4vw, 2.5rem);
+    background: radial-gradient(circle at 95% 5%, rgba(245, 198, 93, 0.28), transparent 30%), #fffaf5;
+}
+.landing-access .portal-buttons { width: 100%; }
+.landing-access .portal-btn { min-height: 92px; }
+
+@media (max-width: 768px) {
+    .landing-shell { grid-template-columns: 1fr; width: min(100% - 1.5rem, 560px); min-height: 0; margin: 0.75rem auto; border-radius: 1.35rem; }
+    .landing-intro { padding: 1.5rem; }
+    .landing-intro .landing-heading { margin-bottom: 1rem; }
+    .landing-intro .logo { width: 62px; height: 62px; }
+    .landing-intro h1 { font-size: 2rem; }
+    .landing-intro .description { font-size: 0.82rem; }
+    .landing-intro .footer-links { margin-top: 0.8rem; }
+    .landing-access { padding: 1rem; }
+    .landing-access .portal-btn { min-height: 72px; }
+}
