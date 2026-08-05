@@ -15,22 +15,23 @@
 
         <div class="landing-card">
 
-            <div class="landing-logo-wrap">
-                <img
-                    src="{{ asset('assets/images/Tracker-logo.png') }}"
-                    class="logo"
-                    alt="PUPTracker Logo">
+            <div class="landing-heading">
+                <div class="landing-logo-wrap">
+                    <img
+                        src="{{ asset('assets/images/Tracker-logo.png') }}"
+                        class="logo"
+                        alt="PUPTracker Logo">
+                </div>
+
+                <div>
+                    <p class="system-pill">Polytechnic University of the Philippines</p>
+                    <h1>PUPTracker</h1>
+                    <h5>Violation Management System</h5>
+                </div>
             </div>
 
-            <p class="system-pill">Polytechnic University of the Philippines</p>
-
-            <h1>PUPTracker</h1>
-
-            <h5>Violation Management System</h5>
-
             <p class="description">
-                Official portal for managing campus violations,
-                disciplinary records, and announcements.
+                A clear, secure space for managing campus conduct records and staying informed.
             </p>
 
             <div class="highlights">
@@ -42,18 +43,30 @@
             <div class="portal-buttons">
 
                 <a href="{{ route('student.login') }}" class="portal-btn">
-                    <i class="bi bi-mortarboard-fill"></i>
-                    Student Portal
+                    <span class="portal-icon"><i class="bi bi-mortarboard-fill"></i></span>
+                    <span class="portal-copy">
+                        <strong>Student Portal</strong>
+                        <small>View your records and updates</small>
+                    </span>
+                    <i class="bi bi-arrow-up-right portal-arrow" aria-hidden="true"></i>
                 </a>
 
                 <a href="{{ route('security.login') }}" class="portal-btn">
-                    <i class="bi bi-shield-lock-fill"></i>
-                    Security Portal
+                    <span class="portal-icon"><i class="bi bi-shield-lock-fill"></i></span>
+                    <span class="portal-copy">
+                        <strong>Security Portal</strong>
+                        <small>Manage campus conduct reports</small>
+                    </span>
+                    <i class="bi bi-arrow-up-right portal-arrow" aria-hidden="true"></i>
                 </a>
 
                 <a href="{{ route('admin.login') }}" class="portal-btn">
-                    <i class="bi bi-person-workspace"></i>
-                    Administrator
+                    <span class="portal-icon"><i class="bi bi-person-workspace"></i></span>
+                    <span class="portal-copy">
+                        <strong>Administrator</strong>
+                        <small>Oversee records and system activity</small>
+                    </span>
+                    <i class="bi bi-arrow-up-right portal-arrow" aria-hidden="true"></i>
                 </a>
 
             </div>

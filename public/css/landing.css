@@ -1,449 +1,72 @@
 :root {
-    --landing-maroon: #800000;
-    --landing-maroon-dark: #5f0000;
-    --landing-gold: #ffdf00;
-    --landing-goldenrod: #daa520;
-    --landing-ink: #241a1b;
+    --landing-maroon: #7a1720;
+    --landing-maroon-dark: #451017;
+    --landing-gold: #f5c65d;
+    --landing-ink: #24191b;
+    --landing-muted: #68585a;
 }
 
-body {
-    font-family: "Poppins", sans-serif;
-    margin: 0;
-    color: var(--landing-ink);
-}
+body { margin: 0; color: var(--landing-ink); font-family: "Poppins", sans-serif; }
 
 .landing-page {
-    position: relative;
+    isolation: isolate;
     min-height: 100vh;
-    overflow-x: hidden;
-    overflow-y: auto;
-    background:
-        radial-gradient(
-            circle at 12% 14%,
-            rgba(255, 223, 0, 0.2) 0%,
-            rgba(255, 223, 0, 0) 32%
-        ),
-        radial-gradient(
-            circle at 85% 12%,
-            rgba(218, 165, 32, 0.22) 0%,
-            rgba(218, 165, 32, 0) 30%
-        ),
-        linear-gradient(rgba(15, 8, 8, 0.62), rgba(15, 8, 8, 0.62)),
-        url("../assets/images/PUPT-picture.jpg");
-    background-size: cover;
-    background-position: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    min-height: 100svh;
+    overflow: hidden auto;
+    background: linear-gradient(115deg, rgba(27, 8, 12, 0.9), rgba(71, 17, 24, 0.66)), url("../assets/images/PUPT-picture.jpg") center/cover no-repeat;
 }
 
-.landing-page .container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    width: 100%;
-    padding: 1rem;
+.landing-page::before, .landing-page::after {
+    position: fixed; z-index: -1; width: 28rem; height: 28rem; content: ""; pointer-events: none; border-radius: 50%;
 }
+.landing-page::before { top: -12rem; right: -8rem; background: radial-gradient(circle, rgba(245, 198, 93, 0.32), transparent 68%); }
+.landing-page::after { bottom: -15rem; left: -10rem; background: radial-gradient(circle, rgba(185, 55, 71, 0.32), transparent 68%); }
 
+.landing-page .container { width: 100%; min-height: 100vh; min-height: 100svh; padding: 2rem 1rem; }
 .landing-card {
-    position: relative;
-    width: 100%;
-    max-width: 450px;
-    padding: 1.6rem 1.3rem 1rem;
-    background: linear-gradient(
-        170deg,
-        rgba(255, 255, 255, 0.95) 0%,
-        rgba(255, 249, 231, 0.95) 100%
-    );
-    border-radius: 1.1rem;
-    border: 1px solid rgba(128, 0, 0, 0.14);
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
-    overflow: hidden;
+    position: relative; width: min(100%, 650px); padding: clamp(1.5rem, 4vw, 2.6rem); overflow: hidden;
+    background: rgba(255, 252, 245, 0.96); border: 1px solid rgba(255, 255, 255, 0.66); border-radius: 1.75rem;
+    box-shadow: 0 28px 75px rgba(12, 4, 5, 0.42);
 }
+.landing-card::before { position: absolute; inset: 0 auto 0 0; width: 6px; content: ""; background: linear-gradient(var(--landing-gold), var(--landing-maroon), var(--landing-gold)); }
+.landing-heading { display: flex; gap: 1rem; align-items: center; margin-bottom: 1.35rem; }
+.landing-logo-wrap { flex: 0 0 auto; padding: 0.35rem; background: linear-gradient(135deg, var(--landing-gold), #fff3c8); border-radius: 1.35rem; box-shadow: 0 10px 25px rgba(122, 23, 32, 0.16); }
+.logo { display: block; width: 72px; height: 72px; padding: 0.25rem; object-fit: contain; background: #fff; border-radius: 1.05rem; }
+.system-pill { width: fit-content; margin: 0 0 0.25rem; color: var(--landing-maroon); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.landing-card h1 { margin: 0; color: var(--landing-maroon-dark); font-size: clamp(1.8rem, 5vw, 2.5rem); font-weight: 800; letter-spacing: -0.06em; line-height: 1; }
+.landing-card h5 { margin: 0.4rem 0 0; color: #4d3c3e; font-size: 0.88rem; font-weight: 600; }
+.description { max-width: 550px; margin: 0 0 1rem; color: var(--landing-muted); font-size: 0.92rem; line-height: 1.65; }
+.highlights { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+.highlights span { display: inline-flex; gap: 0.38rem; align-items: center; padding: 0.38rem 0.66rem; color: #63321e; font-size: 0.72rem; font-weight: 600; background: #fff2ca; border: 1px solid rgba(214, 158, 46, 0.2); border-radius: 999px; }
+.highlights i { color: var(--landing-maroon); }
+.portal-buttons { display: grid; gap: 0.72rem; }
+.portal-btn { display: grid; grid-template-columns: auto 1fr auto; gap: 0.85rem; align-items: center; min-height: 76px; padding: 0.78rem 0.9rem; color: var(--landing-ink); text-decoration: none; background: #fff; border: 1px solid rgba(122, 23, 32, 0.1); border-radius: 1rem; box-shadow: 0 6px 16px rgba(52, 21, 24, 0.06); transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+.portal-btn:hover { color: var(--landing-ink); border-color: rgba(122, 23, 32, 0.3); box-shadow: 0 14px 25px rgba(52, 21, 24, 0.13); transform: translateY(-3px); }
+.portal-btn:focus-visible, .footer-links a:focus-visible { outline: 3px solid rgba(245, 198, 93, 0.8); outline-offset: 3px; }
+.portal-icon { display: grid; width: 42px; height: 42px; place-items: center; color: #fff; font-size: 1.15rem; background: linear-gradient(135deg, var(--landing-maroon), var(--landing-maroon-dark)); border-radius: 0.8rem; }
+.portal-btn .portal-icon i { color: #fff; }
+.portal-copy { display: grid; gap: 0.15rem; }
+.portal-copy strong { font-size: 0.9rem; }
+.portal-copy small { color: var(--landing-muted); font-size: 0.7rem; }
+.portal-arrow { color: var(--landing-maroon); font-size: 1.05rem; transition: transform 180ms ease; }
+.portal-btn:hover .portal-arrow { transform: translate(2px, -2px); }
+.footer-links { display: flex; flex-wrap: wrap; gap: 0.2rem 0.45rem; justify-content: center; margin-top: 1.3rem; color: var(--landing-muted); font-size: 0.7rem; }
+.footer-links a { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 32px; color: inherit; font-weight: 600; text-decoration: none; }
+.footer-links a:hover { color: var(--landing-maroon); }
 
-.landing-card::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 5px;
-    background: linear-gradient(
-        90deg,
-        var(--landing-maroon-dark) 0%,
-        var(--landing-goldenrod) 45%,
-        var(--landing-maroon) 100%
-    );
-}
-
-.landing-logo-wrap,
-.system-pill,
-.landing-card h1,
-.landing-card h5,
-.description,
-.highlights,
-.portal-buttons,
-.footer-links {
-    position: relative;
-    z-index: 1;
-}
-
-.landing-logo-wrap {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 0.45rem;
-}
-
-.logo {
-    width: 80px;
-    height: 80px;
-    object-fit: contain;
-    border-radius: 999px;
-    border: 3px solid rgba(128, 0, 0, 0.18);
-    background: #fff;
-    padding: 0.45rem;
-    box-shadow: 0 10px 24px rgba(128, 0, 0, 0.16);
-}
-
-.system-pill {
-    margin: 0 auto 0.45rem;
-    width: fit-content;
-    font-weight: 600;
-    font-size: 0.55rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 0.22rem 0.55rem;
-    border-radius: 999px;
-    background: rgba(128, 0, 0, 0.1);
-    color: var(--landing-maroon);
-}
-
-.landing-card h1 {
-    text-align: center;
-    color: var(--landing-maroon);
-    font-size: clamp(1.5rem, 2.8vw, 1.85rem);
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    margin-bottom: 0.05rem;
-}
-
-.landing-card h5 {
-    text-align: center;
-    color: #493f40;
-    font-size: clamp(0.75rem, 1.5vw, 0.9rem);
-    font-weight: 600;
-    margin-bottom: 0.65rem;
-}
-
-.description {
-    margin: 0 auto 0.75rem;
-    max-width: 380px;
-    text-align: center;
-    color: #564b4d;
-    font-size: 0.75rem;
-    line-height: 1.45;
-}
-
-.highlights {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-    justify-content: center;
-    margin-bottom: 0.85rem;
-}
-
-.highlights span {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.28rem;
-    font-size: 0.64rem;
-    font-weight: 600;
-    padding: 0.28rem 0.5rem;
-    border-radius: 999px;
-    color: #5f0000;
-    background: rgba(255, 223, 0, 0.22);
-}
-
-.portal-buttons {
-    display: grid;
-    gap: 0.5rem;
-}
-
-.portal-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    text-decoration: none;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    font-size: 0.85rem;
-    color: #fff;
-    border-radius: 0.8rem;
-    padding: 0.7rem 0.75rem;
-    background: linear-gradient(
-        135deg,
-        var(--landing-maroon) 0%,
-        var(--landing-maroon-dark) 100%
-    );
-    box-shadow: 0 12px 20px rgba(128, 0, 0, 0.22);
-    transition:
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
-    min-height: 44px;
-}
-
-.portal-btn:hover {
-    color: #fff;
-    transform: translateY(-2px);
-    box-shadow: 0 16px 24px rgba(128, 0, 0, 0.28);
-}
-
-.portal-btn i {
-    color: var(--landing-gold);
-}
-
-.footer-links {
-    margin-top: 0.8rem;
-    text-align: center;
-    color: #695f61;
-    font-size: 0.68rem;
-}
-
-.footer-links a {
-    color: #695f61;
-    text-decoration: none;
-    font-weight: 600;
-    min-height: 32px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.05rem 0.18rem;
-}
-
-.footer-links a:hover {
-    color: var(--landing-maroon);
-}
-
-.footer-links a:hover {
-    color: var(--landing-maroon);
-}
-
-@media (max-width: 768px) {
-    .landing-page {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .landing-page .container {
-        padding: 1rem !important;
-        min-height: auto;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .landing-card {
-        padding: 1.2rem 1rem 0.8rem;
-        border-radius: 1rem;
-        width: 100%;
-        max-width: 420px;
-        box-sizing: border-box;
-    }
-
-    .logo {
-        width: 75px;
-        height: 75px;
-    }
-
-    .system-pill {
-        font-size: 0.53rem;
-        letter-spacing: 0.06em;
-        padding: 0.22rem 0.48rem;
-    }
-
-    .landing-card h1 {
-        font-size: 1.4rem;
-    }
-
-    .landing-card h5 {
-        font-size: 0.8rem;
-        margin-bottom: 0.6rem;
-    }
-
-    .description {
-        font-size: 0.7rem;
-        line-height: 1.4;
-        margin-bottom: 0.65rem;
-    }
-
-    .highlights {
-        gap: 0.3rem;
-        margin-bottom: 0.7rem;
-    }
-
-    .highlights span {
-        font-size: 0.6rem;
-        padding: 0.26rem 0.45rem;
-    }
-
-    .portal-buttons {
-        gap: 0.45rem;
-    }
-
-    .portal-btn {
-        font-size: 0.8rem;
-        border-radius: 0.75rem;
-        min-height: 40px;
-        padding: 0.6rem 0.65rem;
-    }
-
-    .footer-links {
-        margin-top: 0.65rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.18rem;
-        font-size: 0.64rem;
-    }
-
-    .footer-links span {
-        display: none;
-    }
-}
-
-@media (max-width: 480px) {
-    .landing-page {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-    }
-
-    .landing-page .container {
-        padding: 0.8rem !important;
-        min-height: auto;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .landing-card {
-        padding: 1rem 0.85rem 0.75rem;
-        border-radius: 0.95rem;
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-        margin: 0;
-    }
-
-    .logo {
-        width: 70px;
-        height: 70px;
-        margin-bottom: 0.3rem;
-    }
-
-    .system-pill {
-        font-size: 0.5rem;
-        letter-spacing: 0.04em;
-        padding: 0.2rem 0.4rem;
-        margin-bottom: 0.3rem;
-    }
-
-    .landing-card h1 {
-        font-size: 1.25rem;
-        margin-bottom: 0.04rem;
-    }
-
-    .landing-card h5 {
-        font-size: 0.73rem;
-        margin-bottom: 0.55rem;
-    }
-
-    .description {
-        font-size: 0.68rem;
-        line-height: 1.35;
-        margin-bottom: 0.55rem;
-    }
-
-    .highlights {
-        gap: 0.28rem;
-        margin-bottom: 0.6rem;
-    }
-
-    .highlights span {
-        font-size: 0.58rem;
-        padding: 0.24rem 0.4rem;
-    }
-
-    .portal-buttons {
-        gap: 0.42rem;
-    }
-
-    .portal-btn {
-        font-size: 0.77rem;
-        border-radius: 0.68rem;
-        min-height: 38px;
-        padding: 0.55rem 0.6rem;
-    }
-
-    .portal-btn i {
-        font-size: 0.8rem;
-    }
-
-    .footer-links {
-        margin-top: 0.55rem;
-        gap: 0.14rem;
-        font-size: 0.62rem;
-    }
-
-    .footer-links a {
-        min-height: 28px;
-        padding: 0.04rem 0.14rem;
-    }
-}
-
-@media (max-width: 360px) {
-    .landing-card {
-        padding: 0.9rem 0.75rem 0.65rem;
-        width: calc(100% - 14px);
-        margin: 0 7px;
-        max-width: none;
-    }
-
-    .logo {
-        width: 65px;
-        height: 65px;
-    }
-
-    .system-pill {
-        font-size: 0.48rem;
-        padding: 0.18rem 0.38rem;
-    }
-
-    .landing-card h1 {
-        font-size: 1.1rem;
-    }
-
-    .landing-card h5 {
-        font-size: 0.68rem;
-    }
-
-    .description {
-        font-size: 0.64rem;
-    }
-
-    .portal-btn {
-        font-size: 0.72rem;
-        min-height: 36px;
-        padding: 0.5rem 0.55rem;
-    }
-}
-
-@media (max-height: 740px) {
-    .landing-page .container {
-        min-height: auto !important;
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        align-items: flex-start !important;
-    }
+@media (max-width: 576px) {
+    .landing-page .container { padding: 1rem 0.8rem; }
+    .landing-card { padding: 1.25rem; border-radius: 1.35rem; }
+    .landing-heading { gap: 0.75rem; margin-bottom: 1rem; }
+    .landing-logo-wrap { padding: 0.25rem; border-radius: 1rem; }
+    .logo { width: 58px; height: 58px; border-radius: 0.78rem; }
+    .system-pill { font-size: 0.53rem; }
+    .landing-card h1 { font-size: 1.7rem; }
+    .landing-card h5, .description { font-size: 0.78rem; }
+    .description { line-height: 1.55; }
+    .highlights { gap: 0.35rem; margin-bottom: 1rem; }
+    .highlights span { font-size: 0.62rem; }
+    .portal-btn { min-height: 68px; }
+    .portal-copy small { font-size: 0.63rem; }
+    .footer-links { font-size: 0.62rem; }
 }
