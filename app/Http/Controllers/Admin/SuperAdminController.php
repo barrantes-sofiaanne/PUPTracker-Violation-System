@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use App\Models\AuditLog;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class SuperAdminController extends Controller
 {
@@ -82,7 +85,7 @@ class SuperAdminController extends Controller
         $correctivePlan = [
             [
                 'finding_no' => 1,
-                'corrective_action' => 'Add HSTS, CSP, X-Frame-Options, and X-Content-Type-Options headers via server/.htaccess configuration.',
+                'corrective_action' => 'Add HTTP Strict Transport Security, CSP, X-Frame-Options, and X-Content-Type-Options headers via server/.htaccess configuration.',
                 'owner' => 'Lead Developer',
                 'resources' => 'OWASP Secure Headers Project, Mozilla Web Security Guidelines',
                 'target_date' => 'Within 1 month',
@@ -182,33 +185,64 @@ class SuperAdminController extends Controller
         return view('admin.super-admin.audit-control-plan', compact('correctivePlan', 'treatmentPlan'));
     }
 
-    public function updateMaintenanceConfiguration(Request $request): RedirectResponse
+    public function updateMaintenanceConfiguration(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'action' => ['required', 'in:enable,disable'],
         ]);
 
         $admin = Auth::guard('admin')->user();
+        $adminId = $admin instanceof Admin ? $admin->id : null;
+        $adminEmail = $admin instanceof Admin ? $admin->email : 'unknown';
         $isDown = app()->isDownForMaintenance();
         $action = $validated['action'];
 
         if ($action === 'enable') {
             if ($isDown) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => 'Maintenance mode is already enabled.',
+                    ], 422);
+                }
+
                 return back()->with('info', 'Maintenance mode is already enabled.');
             }
 
-            Artisan::call('down');
+            $maintenanceSecret = Str::random(40);
+            $exitCode = Artisan::call('down', [
+                '--secret' => $maintenanceSecret,
+            ]);
+
+            if ($exitCode !== 0) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => 'Unable to enable maintenance mode. Please try again.',
+                    ], 500);
+                }
+
+                return back()->with('error', 'Unable to enable maintenance mode. Please try again.');
+            }
 
             AuditLog::create([
                 'actor_type' => 'admin',
-                'actor_id' => $admin?->getKey(),
+                'actor_id' => $adminId,
                 'action' => 'Enabled Maintenance Mode',
                 'module' => 'Maintenance Configuration',
-                'description' => 'Maintenance mode enabled by IT Administrator ' . ($admin?->email ?? 'unknown') . '.',
+                'description' => 'Maintenance mode enabled by IT Administrator ' . $adminEmail . '.',
                 'created_at' => now(),
             ]);
 
-            return back()->with('success', 'Maintenance mode has been enabled.');
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Maintenance mode has been enabled. Save the bypass key before continuing.',
+                    'secret' => $maintenanceSecret,
+                    'bypass_url' => url($maintenanceSecret),
+                ]);
+            }
+
+            return redirect()
+                ->to('/' . $maintenanceSecret)
+                ->with('success', 'Maintenance mode has been enabled. Your maintenance bypass URL is active for this browser.');
         }
 
         if (!$isDown) {
@@ -219,10 +253,10 @@ class SuperAdminController extends Controller
 
         AuditLog::create([
             'actor_type' => 'admin',
-            'actor_id' => $admin?->getKey(),
+            'actor_id' => $adminId,
             'action' => 'Disabled Maintenance Mode',
             'module' => 'Maintenance Configuration',
-            'description' => 'Maintenance mode disabled by IT Administrator ' . ($admin?->email ?? 'unknown') . '.',
+            'description' => 'Maintenance mode disabled by IT Administrator ' . $adminEmail . '.',
             'created_at' => now(),
         ]);
 

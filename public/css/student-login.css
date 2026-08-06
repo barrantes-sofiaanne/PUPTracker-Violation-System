@@ -582,3 +582,97 @@ body {
 .password-wrapper input {
     padding-left: 2.5rem;
 }
+
+/* System-logo.png already includes its own rounded white field. */
+.login-card .logo {
+    width: 88px;
+    height: 88px;
+    padding: 0;
+    background: transparent;
+    border-radius: 1rem;
+    box-shadow: none;
+}
+
+.password-policy {
+    margin: -0.15rem 0 1.25rem;
+    padding: 0.85rem;
+    color: #5e4c4e;
+    background: #fff8e5;
+    border: 1px solid #f0d993;
+    border-radius: 0.85rem;
+}
+
+.password-policy-heading {
+    display: flex;
+    gap: 0.45rem;
+    align-items: center;
+    margin-bottom: 0.45rem;
+    color: var(--login-maroon-dark);
+}
+
+.password-policy-heading i {
+    color: #b7791f;
+}
+
+.password-policy h3 {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.password-policy ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.3rem 0.65rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.72rem;
+}
+
+.password-policy li {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.password-policy li i {
+    color: #9d8e74;
+}
+
+.password-policy li.is-met {
+    color: #256c45;
+}
+
+.password-policy li.is-met i {
+    color: #27804c;
+}
+
+#resetPasswordSubmit:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    box-shadow: none;
+    transform: none;
+}
+
+@media (max-width: 576px) {
+    .login-card .logo {
+        width: 72px;
+        height: 72px;
+        border-radius: 0.85rem;
+    }
+
+    .password-policy ul {
+        grid-template-columns: 1fr;
+    }
+}
+
+.password-policy-preview {
+    margin: 0 0 1.25rem;
+}
+
+.password-policy-preview p {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.5;
+}

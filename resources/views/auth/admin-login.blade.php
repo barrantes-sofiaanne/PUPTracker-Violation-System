@@ -13,9 +13,9 @@
     <div class="login-card">
 
         <img
-            src="{{ asset('assets/images/Tracker-logo.png') }}"
+            src="{{ asset('assets/images/System-logo.png') }}"
             class="logo"
-            alt="PUPTracker Logo">
+            alt="PUPTracker Violation System logo">
 
         <p class="module-chip">Administrator Module</p>
 
