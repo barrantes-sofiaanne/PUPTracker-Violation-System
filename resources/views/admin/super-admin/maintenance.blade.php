@@ -86,8 +86,9 @@
 
         form.addEventListener('submit', async function (event) {
             const submitter = event.submitter;
+            const formAction = form.getAttribute('action');
 
-            if (!submitter || submitter.value !== 'enable') {
+            if (!submitter || submitter.value !== 'enable' || !formAction) {
                 return;
             }
 
@@ -95,13 +96,16 @@
             submitter.disabled = true;
 
             try {
-                const response = await fetch(form.action, {
+                const formData = new FormData(form);
+                formData.set('action', submitter.value);
+
+                const response = await fetch(formAction, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
-                    body: new FormData(form),
+                    body: formData,
                 });
                 const payload = await response.json();
 

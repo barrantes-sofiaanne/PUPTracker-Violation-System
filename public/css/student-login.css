@@ -698,7 +698,7 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.45);
     border-radius: 1.8rem;
     box-shadow: 0 30px 80px rgba(16, 4, 6, 0.46);
-    animation: portal-card-float 5.5s 600ms ease-in-out infinite;
+    animation: none;
 }
 
 .auth-portal-brand {
@@ -827,6 +827,7 @@ body {
             transparent 32%
         ),
         #fffaf5;
+    animation: auth-content-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .auth-content-card {
@@ -862,13 +863,14 @@ body {
     display: none;
 }
 
-@keyframes portal-card-float {
-    0%,
-    100% {
-        transform: translateY(0);
+@keyframes auth-content-enter {
+    from {
+        opacity: 0;
+        transform: translateX(22px);
     }
-    50% {
-        transform: translateY(-7px);
+    to {
+        opacity: 1;
+        transform: translateX(0);
     }
 }
 
@@ -923,7 +925,7 @@ body {
     }
 }
 
-/* The complete portal card floats as one unit, leaving the shared red brand unchanged. */
+/* The identity panel stays fixed; only the white content panel transitions. */
 .auth-portal-shell {
     transform: translateZ(0);
 }
@@ -1016,17 +1018,13 @@ body {
     transform: translateX(-3px);
 }
 
-html.is-navigating .auth-portal-shell {
+html.is-navigating .auth-portal-content {
     animation: none;
     opacity: 0;
-    transform: translateY(18px) scale(0.985);
+    transform: translateX(22px);
     transition:
         opacity 180ms ease,
         transform 180ms ease;
-}
-html.is-navigating .auth-portal-page {
-    opacity: 0.92;
-    transition: opacity 180ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {

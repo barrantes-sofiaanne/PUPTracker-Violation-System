@@ -6,6 +6,10 @@
 <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
 @endpush
 
+@push('scripts')
+<script src="{{ asset('js/portal-transitions.js') }}"></script>
+@endpush
+
 @section('content')
 
 <div class="landing-page">
@@ -29,12 +33,11 @@
             </div>
 
             <p class="description">
-                A clear, secure space for managing campus conduct records and staying informed.
+                Secure access to campus conduct records and updates.
             </p>
 
             <div class="highlights">
                 <span><i class="bi bi-shield-check"></i> Secure Access</span>
-                <span><i class="bi bi-clipboard2-check"></i> Organized Records</span>
                 <span><i class="bi bi-graph-up-arrow"></i> Faster Tracking</span>
             </div>
 
@@ -72,7 +75,7 @@
                 </a>
 
                 <a href="{{ route('security.login') }}" class="portal-btn">
-                    <span class="portal-icon"><i class="bi bi-shield-lock-fill"></i></span>
+                    <span class="portal-icon"><i class="bi bi-shield-fill-check"></i></span>
                     <span class="portal-copy">
                         <strong>Security Portal</strong>
                         <small>Manage campus conduct reports</small>
@@ -81,7 +84,7 @@
                 </a>
 
                 <a href="{{ route('admin.login') }}" class="portal-btn">
-                    <span class="portal-icon"><i class="bi bi-person-workspace"></i></span>
+                    <span class="portal-icon"><i class="bi bi-gear-fill"></i></span>
                     <span class="portal-copy">
                         <strong>Administrator</strong>
                         <small>Oversee records and system activity</small>

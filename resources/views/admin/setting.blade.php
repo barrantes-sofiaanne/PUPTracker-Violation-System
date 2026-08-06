@@ -49,7 +49,7 @@
                     <div class="d-flex gap-3 flex-wrap">
                         <div class="badge bg-secondary px-3 py-2">Theme: Light</div>
                         <div class="badge bg-secondary px-3 py-2">Notifications: Enabled</div>
-                        <div class="badge bg-secondary px-3 py-2">Version: 1.0.0</div>
+                        <div class="badge bg-secondary px-3 py-2">Version: 2.0.0</div>
                     </div>
                 </div>
             </div>
