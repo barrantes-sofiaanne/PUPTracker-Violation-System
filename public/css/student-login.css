@@ -716,10 +716,17 @@ body {
         url("../assets/images/PUPT-picture.jpg") center/cover;
 }
 
+.auth-brand-heading {
+    display: flex;
+    gap: 1.2rem;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
 .auth-brand-mark {
     display: block;
     width: 100px;
-    margin-bottom: 1.8rem;
+    flex: 0 0 auto;
     transition: transform 220ms ease;
 }
 
@@ -743,23 +750,68 @@ body {
 .auth-portal-brand h1 {
     margin: 0;
     color: #fff;
-    font-size: clamp(2.2rem, 5vw, 3.7rem);
+    font-size: clamp(2.2rem, 4vw, 3.5rem);
     font-weight: 800;
     letter-spacing: -0.06em;
     line-height: 0.95;
 }
 .auth-brand-system {
-    margin: 0.65rem 0 2.3rem;
+    margin: 0.55rem 0 0;
     color: rgba(255, 255, 255, 0.85);
     font-size: 1rem;
     font-weight: 600;
 }
 .auth-brand-description {
     max-width: 400px;
-    margin: 0;
+    margin: 0 0 1.4rem;
     color: rgba(255, 255, 255, 0.83);
     font-size: 1rem;
     line-height: 1.7;
+}
+
+.auth-brand-highlights {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.auth-brand-highlights span {
+    display: inline-flex;
+    gap: 0.38rem;
+    align-items: center;
+    padding: 0.38rem 0.66rem;
+    color: #fff7dd;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.11);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+}
+
+.auth-brand-highlights i {
+    color: #f5c65d;
+}
+
+.auth-brand-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.45rem;
+    align-items: center;
+    margin-top: 1.3rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.7rem;
+}
+
+.auth-brand-footer a {
+    min-height: 32px;
+    color: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 220ms ease;
+}
+
+.auth-brand-footer a:hover {
+    color: #f5c65d;
 }
 
 .auth-portal-content {
@@ -833,9 +885,12 @@ body {
     .auth-portal-brand {
         padding: 1.5rem;
     }
+    .auth-brand-heading {
+        gap: 0.9rem;
+        margin-bottom: 1rem;
+    }
     .auth-brand-mark {
         width: 72px;
-        margin-bottom: 1rem;
     }
     .auth-portal-brand h1 {
         font-size: 2rem;
@@ -845,6 +900,10 @@ body {
         font-size: 0.85rem;
     }
     .auth-brand-description {
+        display: none;
+    }
+    .auth-brand-highlights,
+    .auth-brand-footer {
         display: none;
     }
     .auth-portal-content {
