@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-<main class="auth-portal-page">
+<main class="auth-portal-page portal-{{ $portal ?? 'access' }}">
     <section class="auth-portal-shell">
         <aside class="auth-portal-brand">
             <a href="{{ route('home') }}" class="auth-brand-mark" aria-label="Back to PUPTracker home">
@@ -20,10 +20,14 @@
         </aside>
 
         <section class="auth-portal-content">
-            <div class="auth-content-card">
+            <div class="auth-content-card" data-portal="{{ $portal ?? 'access' }}">
                 @yield('auth-content')
             </div>
         </section>
     </section>
 </main>
 @endsection
+
+@push('scripts')
+<script src="{{ asset('js/portal-transitions.js') }}"></script>
+@endpush

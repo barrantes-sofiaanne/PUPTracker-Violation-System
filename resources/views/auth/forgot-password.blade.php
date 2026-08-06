@@ -1,4 +1,4 @@
-@extends('layouts.auth-portal', ['title' => $moduleLabel . ' Forgot Password'])
+@extends('layouts.auth-portal', ['title' => $moduleLabel . ' Forgot Password', 'portal' => 'recovery'])
 
 @section('auth-content')
 
@@ -37,6 +37,6 @@
         </form>
 
         <div class="footer-links mt-3">
-            <a href="{{ route($guard . '.login') }}">â† Back to Login</a>
+            <a href="{{ route($guard . '.login') }}">Ã¢â€ Â Back to Login</a>
         </div>
 @endsection

@@ -1,4 +1,4 @@
-@extends('layouts.auth-portal', ['title' => 'Security Login'])
+@extends('layouts.auth-portal', ['title' => 'Security Login', 'portal' => 'security'])
 
 @section('auth-content')
 

@@ -1,4 +1,4 @@
-@extends('layouts.auth-portal', ['title' => 'MFA Verification'])
+@extends('layouts.auth-portal', ['title' => 'MFA Verification', 'portal' => 'mfa'])
 
 @push('styles')
 <style>

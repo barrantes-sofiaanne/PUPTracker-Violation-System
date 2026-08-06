@@ -1,4 +1,4 @@
-@extends('layouts.auth-portal', ['title' => $moduleLabel . ' Reset Password'])
+@extends('layouts.auth-portal', ['title' => $moduleLabel . ' Reset Password', 'portal' => 'recovery'])
 
 @section('auth-content')
 
