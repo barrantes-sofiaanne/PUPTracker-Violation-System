@@ -1,9 +1,6 @@
-@extends('layouts.app')
-
-@section('title', 'MFA Verification')
+@extends('layouts.auth-portal', ['title' => 'MFA Verification'])
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/student-login.css') }}">
 <style>
     .totp-qr-code svg,
     .totp-qr-code img {
@@ -14,7 +11,7 @@
 </style>
 @endpush
 
-@section('content')
+@section('auth-content')
 
 @php
     $methods = $pending['methods'] ?? ['email'];
@@ -29,14 +26,8 @@
     ];
 @endphp
 
-<div class="login-page">
-
     @if($stage === 'select')
-        <div class="login-card">
-            <img
-                src="{{ asset('assets/images/System-logo.png') }}"
-                class="logo"
-                alt="PUPTracker Violation System logo">
+        <div>
 
             <p class="module-chip">Multi-Factor Authentication</p>
             <h2>Choose Verification Method</h2>
@@ -79,11 +70,7 @@
             </form>
         </div>
     @else
-        <div class="login-card">
-            <img
-                src="{{ asset('assets/images/System-logo.png') }}"
-                class="logo"
-                alt="PUPTracker Violation System logo">
+        <div>
 
             <p class="module-chip">Multi-Factor Authentication</p>
             <h2>Verify Login</h2>
@@ -180,7 +167,5 @@
             </div>
         </div>
     @endif
-
-</div>
 
 @endsection

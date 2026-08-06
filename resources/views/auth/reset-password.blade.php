@@ -1,15 +1,6 @@
-﻿@extends('layouts.app')
+@extends('layouts.auth-portal', ['title' => $moduleLabel . ' Reset Password'])
 
-@section('title', $moduleLabel . ' Reset Password')
-
-@push('styles')
-<link rel="stylesheet" href="{{ asset('css/student-login.css') }}">
-@endpush
-
-@section('content')
-<div class="login-page">
-    <div class="login-card">
-        <img src="{{ asset('assets/images/System-logo.png') }}" class="logo" alt="PUPTracker Violation System logo">
+@section('auth-content')
 
         <p class="module-chip">{{ $moduleLabel }} Module</p>
         <h2>Reset Password</h2>
@@ -65,8 +56,6 @@
 
             <button id="resetPasswordSubmit" type="submit" class="btn btn-success w-100 login-btn" disabled>Reset Password</button>
         </form>
-    </div>
-</div>
 @endsection
 
 @push('scripts')

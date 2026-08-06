@@ -676,3 +676,89 @@ body {
     font-size: 0.72rem;
     line-height: 1.5;
 }
+
+/* Shared portal layout for every authentication route. */
+.auth-portal-page {
+    min-height: 100vh;
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+    background: linear-gradient(115deg, rgba(27, 8, 12, 0.84), rgba(71, 17, 24, 0.58)), url("../assets/images/PUPT-picture.jpg") center/cover fixed;
+}
+
+.auth-portal-shell {
+    display: grid;
+    grid-template-columns: minmax(360px, 0.96fr) minmax(390px, 1.04fr);
+    width: min(100%, 1120px);
+    min-height: min(680px, calc(100svh - 4rem));
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 1.8rem;
+    box-shadow: 0 30px 80px rgba(16, 4, 6, 0.46);
+    animation: portal-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.auth-portal-brand {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(2rem, 5vw, 4rem);
+    color: #fff;
+    background: linear-gradient(145deg, rgba(69, 16, 23, 0.96), rgba(122, 23, 32, 0.86)), url("../assets/images/PUPT-picture.jpg") center/cover;
+}
+
+.auth-brand-mark {
+    display: block;
+    width: 100px;
+    margin-bottom: 1.8rem;
+    transition: transform 220ms ease;
+}
+
+.auth-brand-mark:hover { transform: translateY(-4px) rotate(-2deg); }
+.auth-brand-mark img { display: block; width: 100%; height: auto; border-radius: 1rem; }
+.auth-brand-campus { margin: 0 0 0.45rem; color: #f5cf75; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.auth-portal-brand h1 { margin: 0; color: #fff; font-size: clamp(2.2rem, 5vw, 3.7rem); font-weight: 800; letter-spacing: -0.06em; line-height: 0.95; }
+.auth-brand-system { margin: 0.65rem 0 2.3rem; color: rgba(255, 255, 255, 0.85); font-size: 1rem; font-weight: 600; }
+.auth-brand-description { max-width: 400px; margin: 0; color: rgba(255, 255, 255, 0.83); font-size: 1rem; line-height: 1.7; }
+
+.auth-portal-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    padding: clamp(1.5rem, 4vw, 3.5rem);
+    background: radial-gradient(circle at 100% 0, rgba(245, 198, 93, 0.25), transparent 32%), #fffaf5;
+}
+
+.auth-content-card {
+    width: min(100%, 430px);
+    animation: content-enter 620ms 100ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.auth-content-card .module-chip { margin: 0 0 0.7rem; }
+.auth-content-card h2 { margin-top: 0; text-align: left; }
+.auth-content-card .subtitle { margin: 0 0 1.5rem; text-align: left; }
+.auth-content-card .footer-links { justify-content: space-between; }
+.auth-content-card .login-card { width: 100%; padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+.auth-content-card .login-card::before { display: none; }
+.auth-content-card .login-card .logo { display: none; }
+
+@keyframes portal-enter { from { opacity: 0; transform: translateY(18px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes content-enter { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+
+@media (max-width: 850px) {
+    .auth-portal-page { padding: 1rem; }
+    .auth-portal-shell { grid-template-columns: 1fr; min-height: 0; border-radius: 1.35rem; }
+    .auth-portal-brand { padding: 1.5rem; }
+    .auth-brand-mark { width: 72px; margin-bottom: 1rem; }
+    .auth-portal-brand h1 { font-size: 2rem; }
+    .auth-brand-system { margin: 0.4rem 0 0; font-size: 0.85rem; }
+    .auth-brand-description { display: none; }
+    .auth-portal-content { padding: 1.5rem; }
+    .auth-content-card { max-width: 500px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-portal-shell, .auth-content-card, .auth-brand-mark { animation: none; transition: none; }
+}

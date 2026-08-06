@@ -1,21 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.auth-portal', ['title' => 'Admin Login'])
 
-@section('title', 'Admin Login')
-
-@push('styles')
-<link rel="stylesheet" href="{{ asset('css/student-login.css') }}">
-@endpush
-
-@section('content')
-
-<div class="login-page">
-
-    <div class="login-card">
-
-        <img
-            src="{{ asset('assets/images/System-logo.png') }}"
-            class="logo"
-            alt="PUPTracker Violation System logo">
+@section('auth-content')
 
         <p class="module-chip">Administrator Module</p>
 
@@ -113,7 +98,7 @@
         <div class="footer-links">
 
             <a href="{{ route('home') }}">
-                ← Back to Home
+                &larr; Back to Home
             </a>
 
             <a href="{{ route('password.request', ['guard' => 'admin']) }}">
@@ -121,10 +106,6 @@
             </a>
 
         </div>
-
-    </div>
-
-</div>
 
 @endsection
 

@@ -159,3 +159,9 @@ body { margin: 0; color: var(--landing-ink); font-family: "Poppins", sans-serif;
         height: 72px;
     }
 }
+
+/* Keep the landing portal visually alive without affecting motion-sensitive users. */
+.landing-shell { animation: landing-float 5s ease-in-out infinite; }
+.landing-access .portal-btn { transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease, background-color 220ms ease; }
+@keyframes landing-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) { .landing-shell { animation: none; } }
