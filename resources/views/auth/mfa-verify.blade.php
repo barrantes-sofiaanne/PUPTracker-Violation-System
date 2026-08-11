@@ -1,16 +1,5 @@
 @extends('layouts.auth-portal', ['title' => 'MFA Verification', 'portal' => 'mfa'])
 
-@push('styles')
-<style>
-    .totp-qr-code svg,
-    .totp-qr-code img {
-        display: block;
-        width: 220px;
-        height: 220px;
-    }
-</style>
-@endpush
-
 @section('auth-content')
 
 @php

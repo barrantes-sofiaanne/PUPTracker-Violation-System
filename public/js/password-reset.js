@@ -1,4 +1,4 @@
-﻿document.addEventListener("DOMContentLoaded", function () {
+function initializePasswordResetPolicy() {
     const password = document.getElementById("newPassword");
     const confirmation = document.getElementById("passwordConfirmation");
     const submit = document.getElementById("resetPasswordSubmit");
@@ -8,11 +8,21 @@
     }
 
     const requirements = {
-        length: (value) => value.length >= 8,
-        lowercase: (value) => /[a-z]/.test(value),
-        uppercase: (value) => /[A-Z]/.test(value),
-        number: (value) => /\d/.test(value),
-        symbol: (value) => /[^A-Za-z0-9]/.test(value),
+        length: function (value) {
+            return value.length >= 8;
+        },
+        lowercase: function (value) {
+            return /[a-z]/.test(value);
+        },
+        uppercase: function (value) {
+            return /[A-Z]/.test(value);
+        },
+        number: function (value) {
+            return /\d/.test(value);
+        },
+        symbol: function (value) {
+            return /[^A-Za-z0-9]/.test(value);
+        },
     };
 
     function updatePolicy() {
@@ -23,7 +33,9 @@
 
             if (item) {
                 item.classList.toggle("is-met", met);
-                item.querySelector("i").className = met ? "bi bi-check-circle-fill" : "bi bi-circle";
+                item.querySelector("i").className = met
+                    ? "bi bi-check-circle-fill"
+                    : "bi bi-circle";
             }
 
             return met;
@@ -35,4 +47,8 @@
     password.addEventListener("input", updatePolicy);
     confirmation.addEventListener("input", updatePolicy);
     updatePolicy();
-});
+}
+
+window.initializePasswordResetPolicy = initializePasswordResetPolicy;
+document.addEventListener("DOMContentLoaded", initializePasswordResetPolicy);
+document.addEventListener("auth:content-updated", initializePasswordResetPolicy);

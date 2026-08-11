@@ -57,7 +57,3 @@
             <button id="resetPasswordSubmit" type="submit" class="btn btn-success w-100 login-btn" disabled>Reset Password</button>
         </form>
 @endsection
-
-@push('scripts')
-<script src="{{ asset('js/password-reset.js') }}"></script>
-@endpush

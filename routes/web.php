@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Http;
 
 // Authentication
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\StudentIdpLoginController;
 
 // Student Controllers
 use App\Http\Controllers\Student\StudentDashboardController;
@@ -62,16 +63,16 @@ Route::post('/student/login', [LoginController::class, 'login'])
     ->middleware('throttle:5,1')
     ->name('student.login.post');
 
-// IDP login temporarily disabled due to missing database columns
-// Route::post('/student/idp/start', 'App\\Http\\Controllers\\Auth\\StudentIdpLoginController@start')
-//     ->middleware('throttle:5,1')
-//     ->name('student.idp.start');
+// Student IdP (OAuth2 authorization-code flow) login
+Route::post('/student/idp/start', [StudentIdpLoginController::class, 'start'])
+    ->middleware('throttle:5,1')
+    ->name('student.idp.start');
 
-// Route::get('/student/idp/login', 'App\\Http\\Controllers\\Auth\\StudentIdpLoginController@redirect')
-//     ->name('student.idp.login');
+Route::get('/student/idp/login', [StudentIdpLoginController::class, 'redirect'])
+    ->name('student.idp.login');
 
-// Route::get('/student/idp/callback', 'App\\Http\\Controllers\\Auth\\StudentIdpLoginController@callback')
-//     ->name('student.idp.callback');
+Route::get('/student/idp/callback', [StudentIdpLoginController::class, 'callback'])
+    ->name('student.idp.callback');
 
 Route::post('/logout', [LoginController::class, 'logout'])
     ->name('logout');

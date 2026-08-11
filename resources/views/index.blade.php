@@ -1,101 +1,36 @@
-@extends('layouts.app')
+@extends('layouts.auth-portal', ['title' => 'PUPTracker Violation System', 'portal' => 'access'])
 
-@section('title', 'PUPTracker Violation System')
+@section('auth-content')
+    <p class="module-chip">Access Portal</p>
+    <h2>Select a Portal</h2>
+    <p class="subtitle">Choose where you want to continue.</p>
 
-@push('styles')
-<link rel="stylesheet" href="{{ asset('css/landing.css') }}">
-@endpush
+    <div class="portal-buttons">
+        <a href="{{ route('student.login') }}" class="portal-btn">
+            <span class="portal-icon"><i class="bi bi-mortarboard-fill"></i></span>
+            <span class="portal-copy">
+                <strong>Student Portal</strong>
+                <small>View your records and updates</small>
+            </span>
+            <i class="bi bi-arrow-up-right portal-arrow" aria-hidden="true"></i>
+        </a>
 
-@push('scripts')
-<script src="{{ asset('js/portal-transitions.js') }}"></script>
-@endpush
+        <a href="{{ route('security.login') }}" class="portal-btn">
+            <span class="portal-icon"><i class="bi bi-shield-fill-check"></i></span>
+            <span class="portal-copy">
+                <strong>Security Portal</strong>
+                <small>Manage campus conduct reports</small>
+            </span>
+            <i class="bi bi-arrow-up-right portal-arrow" aria-hidden="true"></i>
+        </a>
 
-@section('content')
-
-<div class="landing-page">
-
-
-    <main class="landing-shell">
-        <section class="landing-intro">
-            <div class="landing-heading">
-                <div class="landing-logo-wrap">
-                    <img
-                        src="{{ asset('assets/images/System-logo.png') }}"
-                        class="logo"
-                        alt="PUPTracker Violation System logo">
-                </div>
-
-                <div>
-                    <p class="system-pill">Polytechnic University of the Philippines Taguig Campus</p>
-                    <h1>PUPTracker</h1>
-                    <h5>Violation System</h5>
-                </div>
-            </div>
-
-            <p class="description">
-                Secure access to campus conduct records and updates.
-            </p>
-
-            <div class="highlights">
-                <span><i class="bi bi-shield-check"></i> Secure Access</span>
-                <span><i class="bi bi-graph-up-arrow"></i> Faster Tracking</span>
-            </div>
-
-            <div class="footer-links">
-
-                <a href="https://www.pup.edu.ph/privacy/" target="_blank">
-                    Privacy Statement
-                </a>
-
-                <span class="footer-separator" aria-hidden="true">•</span>
-
-                <a href="https://www.pup.edu.ph/terms/" target="_blank">
-                    Terms of Use
-                </a>
-
-                <span class="footer-separator" aria-hidden="true">•</span>
-
-                <a href="mailto:puptrackervs@gmail.com">
-                    Contact Us
-                </a>
-
-            </div>
-        </section>
-
-        <section class="landing-access">
-            <div class="portal-buttons">
-
-                <a href="{{ route('student.login') }}" class="portal-btn">
-                    <span class="portal-icon"><i class="bi bi-mortarboard-fill"></i></span>
-                    <span class="portal-copy">
-                        <strong>Student Portal</strong>
-                        <small>View your records and updates</small>
-                    </span>
-                    <i class="bi bi-arrow-up-right portal-arrow" aria-hidden="true"></i>
-                </a>
-
-                <a href="{{ route('security.login') }}" class="portal-btn">
-                    <span class="portal-icon"><i class="bi bi-shield-fill-check"></i></span>
-                    <span class="portal-copy">
-                        <strong>Security Portal</strong>
-                        <small>Manage campus conduct reports</small>
-                    </span>
-                    <i class="bi bi-arrow-up-right portal-arrow" aria-hidden="true"></i>
-                </a>
-
-                <a href="{{ route('admin.login') }}" class="portal-btn">
-                    <span class="portal-icon"><i class="bi bi-gear-fill"></i></span>
-                    <span class="portal-copy">
-                        <strong>Administrator</strong>
-                        <small>Oversee records and system activity</small>
-                    </span>
-                    <i class="bi bi-arrow-up-right portal-arrow" aria-hidden="true"></i>
-                </a>
-
-            </div>
-        </section>
-    </main>
-
-</div>
-
+        <a href="{{ route('admin.login') }}" class="portal-btn">
+            <span class="portal-icon"><i class="bi bi-gear-fill"></i></span>
+            <span class="portal-copy">
+                <strong>Administrator</strong>
+                <small>Oversee records and system activity</small>
+            </span>
+            <i class="bi bi-arrow-up-right portal-arrow" aria-hidden="true"></i>
+        </a>
+    </div>
 @endsection

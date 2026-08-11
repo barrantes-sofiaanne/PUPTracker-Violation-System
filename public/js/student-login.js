@@ -246,7 +246,14 @@ function ensureSecurityNote() {
         ".auth-content-card .student-status-banner, .auth-content-card form",
     );
 
-    if (!card || card.querySelector(".security-note")) {
+    const portal = card ? card.getAttribute("data-portal") : null;
+
+    if (
+        !card ||
+        card.querySelector(".security-note") ||
+        portal === "admin" ||
+        portal === "security"
+    ) {
         return;
     }
 
@@ -310,7 +317,41 @@ function enhanceLoginButtons() {
     });
 }
 
-document.addEventListener("DOMContentLoaded", function () {
+function enhanceBrandMotion() {
+    const brandPanel = document.querySelector(".auth-portal-brand");
+    const brandMark = document.querySelector(".auth-brand-mark");
+
+    if (!brandPanel || !brandMark || brandMark.dataset.motionBound === "true") {
+        return;
+    }
+
+    brandMark.dataset.motionBound = "true";
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        return;
+    }
+
+    brandPanel.addEventListener("pointermove", function (event) {
+        const bounds = brandPanel.getBoundingClientRect();
+        const centerX = bounds.left + bounds.width / 2;
+        const centerY = bounds.top + bounds.height / 2;
+        const rotateY = ((event.clientX - centerX) / bounds.width) * 8;
+        const rotateX = ((centerY - event.clientY) / bounds.height) * 8;
+
+        brandMark.style.transform =
+            "translate3d(0, -2px, 0) rotateX(" +
+            rotateX.toFixed(2) +
+            "deg) rotateY(" +
+            rotateY.toFixed(2) +
+            "deg)";
+    });
+
+    brandPanel.addEventListener("pointerleave", function () {
+        brandMark.style.transform = "";
+    });
+}
+
+function initializeAuthEnhancements() {
     injectLoginEnhancementStyles();
     setInitialFocus();
     enhanceFieldHints();
@@ -320,4 +361,10 @@ document.addEventListener("DOMContentLoaded", function () {
     enhanceSupportLinks();
     ensureSecurityNote();
     enhanceLoginButtons();
-});
+    enhanceBrandMotion();
+}
+
+window.initializeAuthEnhancements = initializeAuthEnhancements;
+document.addEventListener("DOMContentLoaded", initializeAuthEnhancements);
+document.addEventListener("auth:content-updated", initializeAuthEnhancements);
+

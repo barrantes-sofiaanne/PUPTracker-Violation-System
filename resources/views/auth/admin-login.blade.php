@@ -13,7 +13,8 @@
         <form
             action="{{ route('admin.login.post') }}"
             method="POST"
-            autocomplete="off">
+            autocomplete="off"
+            class="auth-login-form">
 
             @csrf
 
@@ -109,6 +110,3 @@
 
 @endsection
 
-@push('scripts')
-<script src="{{ asset('js/student-login.js') }}"></script>
-@endpush

@@ -17,17 +17,23 @@ class LoginController extends Controller
     }
 
     public function login(Request $request)
-{
+    {
         return redirect()->route('student.idp.login');
-}
+    }
 
-public function logout(Request $request)
-{
-Auth::guard('student')->logout();
-    $request->session()->invalidate();
+    public function logout(Request $request)
+    {
+        Auth::guard('student')->logout();
 
-    $request->session()->regenerateToken();
+        // Clear any student IDP flow/session keys.
+        $request->session()->forget([
+            'student.idp.state',
+            'student.idp.student_number',
+        ]);
 
-    return redirect()->route('home');
-}
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('home');
+    }
 }

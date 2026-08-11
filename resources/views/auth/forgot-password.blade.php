@@ -37,6 +37,6 @@
         </form>
 
         <div class="footer-links mt-3">
-            <a href="{{ route($guard . '.login') }}">Ã¢â€ Â Back to Login</a>
+            <a href="{{ route($guard . '.login') }}">← Back to Login</a>
         </div>
 @endsection
