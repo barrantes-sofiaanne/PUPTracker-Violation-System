@@ -106,6 +106,20 @@
         </li>
         @endunless
 
+        @unless($isItAdministrator)
+        <li>
+
+            <a href="{{ route('admin.graduation-review.index') }}" class="{{ request()->routeIs('admin.graduation-review*') ? 'active' : '' }}">
+
+                <i class="bi bi-stars"></i>
+
+                AI Graduation Review
+
+            </a>
+
+        </li>
+        @endunless
+
         <li>
 
             <a href="{{ route('admin.audit-logs') }}" class="{{ request()->routeIs('admin.audit-logs*') ? 'active' : '' }}">

@@ -69,9 +69,7 @@ class StudentIdpLoginController extends Controller
         $authorizeUrl = $baseUrl . '/auth/authorize';
 
         return redirect()->away($authorizeUrl . '?' . http_build_query([
-            'client_id' => $clientId,
-            'redirect_uri' => $redirectUri,
-            'state' => $state,
+    'client_id' => $clientId,
         ]));
     }
 

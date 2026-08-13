@@ -47,8 +47,12 @@ use App\Http\Controllers\Security\SecurityDashboardController;
 */
 
 Route::get('/', function () {
-    return view('index');
+    return view('landing');
 })->name('home');
+
+Route::get('/login', function () {
+    return view('index');
+})->name('login');
 
 /*
 |--------------------------------------------------------------------------
@@ -459,6 +463,26 @@ Route::prefix('violation-categories')
 
         Route::get('/settings', [AdminSettingsController::class, 'index'])
             ->name('admin.settings');
+
+        /*
+        |--------------------------------------------------------------------------
+        | AI-Assisted Graduation Disciplinary Review
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/graduation-review', [App\Http\Controllers\Admin\GraduationReviewController::class, 'index'])
+            ->name('admin.graduation-review.index');
+
+        Route::get('/graduation-review/{student_number}', [App\Http\Controllers\Admin\GraduationReviewController::class, 'show'])
+            ->where('student_number', '[A-Za-z0-9\-]+')
+            ->name('admin.graduation-review.show');
+
+        Route::post('/graduation-review/{student_number}/generate', [App\Http\Controllers\Admin\GraduationReviewController::class, 'generate'])
+            ->where('student_number', '[A-Za-z0-9\-]+')
+            ->name('admin.graduation-review.generate');
+
+        Route::post('/graduation-review/generate-batch', [App\Http\Controllers\Admin\GraduationReviewController::class, 'generateBatch'])
+            ->name('admin.graduation-review.generate-batch');
 
         Route::get('/audit-logs', [AuditLogController::class, 'index'])
             ->name('admin.audit-logs');
