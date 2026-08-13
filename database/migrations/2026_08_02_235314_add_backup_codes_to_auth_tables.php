@@ -31,9 +31,11 @@ return new class extends Migration
                 $blueprint->json('mfa_backup_codes')->nullable()->comment('Array of hashed backup codes for account recovery');
             }
 
-            if (!Schema::hasColumn($table, 'mfa_backup_codes_used')) {
-                $blueprint->json('mfa_backup_codes_used')->nullable()->default('[]')->comment('Track which backup codes have been used');
-            }
+          if (!Schema::hasColumn($table, 'mfa_backup_codes_used')) {
+    $blueprint->json('mfa_backup_codes_used')
+        ->nullable()
+        ->comment('Track which backup codes have been used');
+}
         });
     }
 

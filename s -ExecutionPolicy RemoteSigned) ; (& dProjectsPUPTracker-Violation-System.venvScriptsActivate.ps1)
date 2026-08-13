@@ -1,0 +1,28 @@
+[1mdiff --git a/database/migrations/2026_08_02_235314_add_backup_codes_to_auth_tables.php b/database/migrations/2026_08_02_235314_add_backup_codes_to_auth_tables.php[m
+[1mindex 2bc45c6..7c3faca 100644[m
+[1m--- a/database/migrations/2026_08_02_235314_add_backup_codes_to_auth_tables.php[m
+[1m+++ b/database/migrations/2026_08_02_235314_add_backup_codes_to_auth_tables.php[m
+[36m@@ -25,22 +25,21 @@[m [mprivate function addBackupCodeColumns(string $table): void[m
+         if (!Schema::hasTable($table)) {[m
+             return;[m
+         }[m
+ [m
+         Schema::table($table, function (Blueprint $blueprint) use ($table): void {[m
+             if (!Schema::hasColumn($table, 'mfa_backup_codes')) {[m
+                 $blueprint->json('mfa_backup_codes')->nullable()->comment('Array of hashed backup codes for account recovery');[m
+             }[m
+ [m
+             if (!Schema::hasColumn($table, 'mfa_backup_codes_used')) {[m
+[31m-                $blueprint->json('mfa_backup_codes_used')->nullable()->default('[]')->comment('Track which backup codes have been used');[m
+[31m-            }[m
+[32m+[m[32m$blueprint->json('mfa_backup_codes_used')->nullable()->comment('Track which backup codes have been used');            }[m
+         });[m
+     }[m
+ [m
+     private function dropBackupCodeColumns(string $table): void[m
+     {[m
+         if (!Schema::hasTable($table)) {[m
+             return;[m
+         }[m
+ [m
+         Schema::table($table, function (Blueprint $blueprint) use ($table): void {[m
