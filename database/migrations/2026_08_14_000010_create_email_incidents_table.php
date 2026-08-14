@@ -36,6 +36,21 @@ return new class extends Migration
             });
         }
 
+        // Recovery path: the very first Railway run created this table with the
+        // original varchar(255) columns before the length fix was added, and the
+        // index ALTER failed. Resize those existing columns so the composite
+        // index will fit within MySQL's 3072-byte max key length.
+        if (Schema::hasTable('email_incidents') && $this->isMySql()) {
+            DB::statement(
+                'ALTER TABLE `email_incidents`
+                    MODIFY `incident_type` VARCHAR(50) NOT NULL DEFAULT \'email_dispatch_failed\',
+                    MODIFY `email_type` VARCHAR(100) NULL,
+                    MODIFY `related_record_type` VARCHAR(100) NULL,
+                    MODIFY `related_record_id` VARCHAR(100) NULL,
+                    MODIFY `status` VARCHAR(20) NOT NULL DEFAULT \'failed\''
+            );
+        }
+
         // Prevent notification spam: one open incident per operation.
         // Add the dedupe index separately so a partially-applied migration
         // (table created but index not) can be completed on re-run.
@@ -44,6 +59,11 @@ return new class extends Migration
                 $table->index(['email_type', 'related_record_type', 'related_record_id', 'status'], 'email_incident_dedupe_idx');
             });
         }
+    }
+
+    private function isMySql(): bool
+    {
+        return DB::connection()->getDriverName() === 'mysql';
     }
 
     /**
