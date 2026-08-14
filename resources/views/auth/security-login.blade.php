@@ -98,8 +98,8 @@
 
         <div class="footer-links">
 
-            <a href="{{ route('home') }}">
-                &larr; Back to Home
+            <a href="{{ route('login') }}">
+                &larr; Back
             </a>
 
             <a href="{{ route('password.request', ['guard' => 'security']) }}">

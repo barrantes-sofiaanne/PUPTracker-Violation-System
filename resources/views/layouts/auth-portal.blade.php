@@ -17,7 +17,7 @@
     <section class="auth-portal-shell" data-auth-shell>
         <aside class="auth-portal-brand">
             <div class="auth-brand-heading">
-                <a href="{{ route('home') }}" class="auth-brand-mark" aria-label="Back to PUPTracker home">
+                <a href="{{ route('login') }}" class="auth-brand-mark" aria-label="Back to Access Portal">
                     <img src="{{ asset('assets/images/System-logo.png') }}" alt="PUPTracker Violation System logo">
                 </a>
                 <div>
