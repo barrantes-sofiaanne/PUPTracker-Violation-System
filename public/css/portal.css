@@ -581,6 +581,22 @@ body {
         padding: 0.5rem;
     }
 
+    /* Page headers with action buttons must wrap/stack on small screens */
+    .portal-main .d-flex.justify-content-between {
+        flex-wrap: wrap;
+        row-gap: 0.75rem;
+    }
+
+    .portal-main .d-flex.justify-content-between > .d-flex {
+        flex-wrap: wrap;
+        row-gap: 0.5rem;
+    }
+
+    .portal-main .d-flex.justify-content-between .btn,
+    .portal-main .d-flex.justify-content-between form {
+        max-width: 100%;
+    }
+
     .portal-main .row {
         --bs-gutter-x: 0.75rem;
     }
@@ -668,5 +684,15 @@ body {
     .page-header-modern p,
     .portal-hero p {
         font-size: 0.86rem;
+    }
+
+    /* Header action buttons become full-width for easier tap targets */
+    .portal-main .d-flex.justify-content-between .btn,
+    .portal-main .d-flex.justify-content-between form > .btn {
+        width: 100%;
+    }
+
+    .portal-main .d-flex.justify-content-between form {
+        width: 100%;
     }
 }

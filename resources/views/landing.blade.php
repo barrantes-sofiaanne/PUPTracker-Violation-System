@@ -22,12 +22,6 @@
                 <small>Violation System</small>
             </span>
         </a>
-
-        <div class="lp-nav-actions">
-            <a href="{{ route('login') }}" class="lp-btn lp-btn-outline lp-btn-sm">
-                Login
-            </a>
-        </div>
     </header>
 
     {{-- ===================== HERO ===================== --}}
