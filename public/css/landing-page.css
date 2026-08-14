@@ -966,6 +966,170 @@ body {
 
 /*
 |--------------------------------------------------------------------------
+| Pointer glow (decorative, desktop only)
+|--------------------------------------------------------------------------
+*/
+
+.lp-glow {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    width: 420px;
+    height: 420px;
+    pointer-events: none;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgba(245, 198, 93, 0.16),
+        rgba(122, 23, 32, 0.04) 42%,
+        transparent 70%
+    );
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.6);
+    transition: opacity 500ms ease;
+    will-change: transform;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .lp-glow.is-visible {
+        opacity: 1;
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Sticky frosted-glass header
+|--------------------------------------------------------------------------
+*/
+
+.lp-nav {
+    position: sticky;
+    top: 0;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    transition:
+        background-color 260ms ease,
+        box-shadow 260ms ease,
+        padding 260ms ease,
+        backdrop-filter 260ms ease;
+}
+
+.lp-nav.is-scrolled {
+    background: rgba(255, 250, 244, 0.82);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    backdrop-filter: blur(14px) saturate(1.4);
+    box-shadow: 0 8px 26px rgba(69, 16, 23, 0.08);
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Scroll reveal (below-fold sections)
+|--------------------------------------------------------------------------
+*/
+
+[data-scroll-reveal] {
+    opacity: 0;
+    transform: translateY(22px);
+    transition:
+        opacity 0.6s ease,
+        transform 0.6s ease;
+}
+
+[data-scroll-reveal].is-revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Feature preview polish (window chrome + active glow)
+|--------------------------------------------------------------------------
+*/
+
+.lp-visual-card {
+    box-shadow:
+        0 30px 70px rgba(69, 16, 23, 0.16),
+        0 0 0 1px rgba(122, 23, 32, 0.04);
+}
+
+.lp-visual-head {
+    border-bottom: 1px solid rgba(122, 23, 32, 0.06);
+}
+
+.lp-visual-feature.is-active {
+    box-shadow: inset 3px 0 0 0 var(--lp-maroon);
+}
+
+.lp-visual-tag {
+    transition:
+        color 180ms ease,
+        background-color 180ms ease;
+}
+
+.lp-visual-feature.is-active .lp-visual-tag {
+    color: #fff;
+    background: var(--lp-maroon);
+}
+
+.lp-panel-line {
+    font-weight: 500;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Button pressed state + refined focus
+|--------------------------------------------------------------------------
+*/
+
+.lp-btn:active {
+    transform: translateY(0) scale(0.985);
+}
+
+.lp-btn:focus-visible,
+.lp-visual-feature:focus-visible,
+.lp-footer-links a:focus-visible,
+.lp-nav-brand:focus-visible {
+    outline: 3px solid rgba(245, 198, 93, 0.9);
+    outline-offset: 3px;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Trust + step card accent polish
+|--------------------------------------------------------------------------
+*/
+
+.lp-trust-item,
+.lp-step {
+    position: relative;
+    overflow: hidden;
+}
+
+.lp-trust-item::after,
+.lp-step::after {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    content: "";
+    background: linear-gradient(180deg, var(--lp-maroon), var(--lp-gold));
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 220ms ease;
+}
+
+.lp-trust-item:hover::after,
+.lp-step:hover::after,
+.lp-step:focus-within::after {
+    transform: scaleY(1);
+}
+
+/*
+|--------------------------------------------------------------------------
 | Responsive
 |--------------------------------------------------------------------------
 */
@@ -1013,6 +1177,10 @@ body {
         gap: 0.75rem;
     }
 
+    .lp-nav.is-scrolled {
+        gap: 0.4rem;
+    }
+
     .lp-hero {
         padding-top: 2rem;
     }
@@ -1033,6 +1201,10 @@ body {
     .lp-visual-card {
         width: 100%;
     }
+
+    .lp-glow {
+        display: none;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1051,12 +1223,23 @@ body {
         transition: none;
     }
 
+    [data-scroll-reveal] {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .lp-glow {
+        display: none;
+    }
+
     .lp-feature,
     .lp-btn,
     .lp-step,
     .lp-trust-item,
     .lp-visual-card,
-    .lp-cta-arrow .lp-arrow {
+    .lp-cta-arrow .lp-arrow,
+    .lp-nav {
         transition: none;
     }
 

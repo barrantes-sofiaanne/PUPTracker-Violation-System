@@ -10,8 +10,11 @@
 
 <div class="landing-page">
 
+    {{-- Decorative pointer glow (desktop, non-reduced-motion) --}}
+    <div class="lp-glow" aria-hidden="true"></div>
+
     {{-- ===================== TOP NAVIGATION ===================== --}}
-    <header class="lp-nav">
+    <header class="lp-nav" id="lpHeader">
         <a href="{{ route('home') }}" class="lp-nav-brand" aria-label="PUPTracker home">
             <img src="{{ asset('assets/images/System-logo.png') }}" alt="PUPTracker logo">
             <span>
@@ -136,7 +139,7 @@
     </section>
 
     {{-- ===================== TRUST STRIP ===================== --}}
-    <section class="lp-trust" aria-label="System strengths">
+    <section class="lp-trust" aria-label="System strengths" data-scroll-reveal>
         <div class="lp-trust-item">
             <i class="bi bi-shield-lock" aria-hidden="true"></i>
             <div>
@@ -161,7 +164,7 @@
     </section>
 
     {{-- ===================== HOW IT WORKS ===================== --}}
-    <section class="lp-section" aria-labelledby="lp-how-heading">
+    <section class="lp-section" aria-labelledby="lp-how-heading" data-scroll-reveal>
         <div class="lp-section-head">
             <h2 id="lp-how-heading">How PUPTracker Works</h2>
             <p>A straightforward path from recording an incident to resolving it.</p>
@@ -187,7 +190,7 @@
     </section>
 
     {{-- ===================== AI-ASSISTED REVIEW ===================== --}}
-    <section class="lp-ai" aria-labelledby="lp-ai-heading">
+    <section class="lp-ai" aria-labelledby="lp-ai-heading" data-scroll-reveal>
         <div class="lp-ai-icon" aria-hidden="true">
             <i class="bi bi-stars"></i>
         </div>
@@ -202,7 +205,7 @@
     </section>
 
     {{-- ===================== LOGIN CTA ===================== --}}
-    <section class="lp-cta-band" aria-labelledby="lp-cta-heading">
+    <section class="lp-cta-band" aria-labelledby="lp-cta-heading" data-scroll-reveal>
         <h2 id="lp-cta-heading">Ready to access the system?</h2>
         <p>Choose your portal to sign in securely and continue to your dashboard.</p>
         <a href="{{ route('login') }}" class="lp-btn lp-btn-gold lp-btn-lg lp-cta-arrow">
