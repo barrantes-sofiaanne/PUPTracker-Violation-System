@@ -19,7 +19,14 @@
                 @foreach($notifications as $notification)
                     <a href="{{ $notification->link ?: '#' }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-start {{ $notification->is_read ? '' : 'list-group-item-warning' }}" target="{{ $notification->link ? '_blank' : '_self' }}">
                         <div>
-                            <div class="fw-semibold">{{ $notification->message }}</div>
+                            <div class="fw-semibold">
+                                @if ($notification->notification_type === 'system_email_failure')
+                                    <i class="bi bi-exclamation-octagon-fill text-danger me-1"></i>
+                                @else
+                                    <i class="bi bi-bell-fill text-muted me-1"></i>
+                                @endif
+                                {{ $notification->message }}
+                            </div>
                             <small class="text-muted">{{ optional($notification->created_at)->format('F d, Y h:i A') }}</small>
                         </div>
                         <span class="badge rounded-pill {{ $notification->is_read ? 'bg-secondary' : 'bg-primary' }}">

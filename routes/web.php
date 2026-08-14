@@ -572,6 +572,30 @@ Route::prefix('violation-categories')
                 Route::delete('/maintenance-records/{maintenanceId}', [App\Http\Controllers\Admin\MaintenanceRecordController::class, 'destroy'])
                     ->whereNumber('maintenanceId')
                     ->name('maintenance-records.destroy');
+
+                /*
+                |--------------------------------------------------------------------------
+                | Email Incidents / System Logs (Risk No. 7)
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get('/email-incidents', [App\Http\Controllers\Admin\EmailIncidentController::class, 'index'])
+                    ->name('email-incidents.index');
+
+                Route::get('/email-incidents/{incidentId}', [App\Http\Controllers\Admin\EmailIncidentController::class, 'show'])
+                    ->whereNumber('incidentId')
+                    ->name('email-incidents.show');
+
+                Route::post('/email-incidents/{incidentId}/acknowledge', [App\Http\Controllers\Admin\EmailIncidentController::class, 'acknowledge'])
+                    ->whereNumber('incidentId')
+                    ->name('email-incidents.acknowledge');
+
+                Route::post('/email-incidents/{incidentId}/resolve', [App\Http\Controllers\Admin\EmailIncidentController::class, 'resolve'])
+                    ->whereNumber('incidentId')
+                    ->name('email-incidents.resolve');
+
+                Route::post('/email-incidents/simulate-failure', [App\Http\Controllers\Admin\EmailIncidentController::class, 'simulateFailure'])
+                    ->name('email-incidents.simulate-failure');
             });
     });
 

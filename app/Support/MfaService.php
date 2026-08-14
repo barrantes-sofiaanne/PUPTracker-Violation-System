@@ -7,6 +7,7 @@ use App\Models\Admin;
 use App\Models\AuditLog;
 use App\Models\Security;
 use App\Models\User;
+use App\Services\EmailIncidentService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -487,6 +488,16 @@ class MfaService
                 'email' => $email,
                 'error' => $exception->getMessage(),
             ]);
+
+            // Risk No. 7 — record a definitive email failure as an incident and
+            // notify the Super Admin through the existing in-app notification system.
+            app(EmailIncidentService::class)->record(
+                emailType: 'OTP',
+                errorMessage: $exception->getMessage(),
+                relatedRecordType: 'MFA',
+                relatedRecordId: $this->maskEmail($email),
+            );
+
             throw $exception;
         }
     }

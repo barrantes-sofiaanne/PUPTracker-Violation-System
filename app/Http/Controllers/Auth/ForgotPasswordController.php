@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Security;
 use App\Models\User;
+use App\Services\EmailIncidentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -175,6 +176,15 @@ class ForgotPasswordController extends Controller
                 'line' => $exception->getLine(),
                 'trace' => $exception->getTraceAsString(),
             ]);
+
+            // Risk No. 7 — record a definitive email failure as an incident and
+            // notify the Super Admin through the existing in-app notification system.
+            app(EmailIncidentService::class)->record(
+                emailType: 'Password Reset',
+                errorMessage: $exception->getMessage(),
+                relatedRecordType: 'Password Reset',
+                relatedRecordId: $email,
+            );
         }
     }
 

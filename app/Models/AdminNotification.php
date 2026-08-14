@@ -16,6 +16,9 @@ protected $primaryKey = 'admin_notification_id';
 
     protected $fillable = [
         'message',
-        'link'
+        'link',
+        'notification_type',
+        'is_read',
+        'created_at',
     ];
 }

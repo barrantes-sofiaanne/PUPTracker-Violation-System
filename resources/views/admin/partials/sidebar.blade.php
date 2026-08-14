@@ -212,6 +212,13 @@
             </li>
 
             <li>
+                <a href="{{ route('admin.super-admin.email-incidents.index') }}" class="{{ request()->routeIs('admin.super-admin.email-incidents*') ? 'active' : '' }}">
+                    <i class="bi bi-exclamation-octagon"></i>
+                    System Logs
+                </a>
+            </li>
+
+            <li>
                 <a href="{{ route('admin.super-admin.audit-control-plan') }}" class="{{ request()->routeIs('admin.super-admin.audit-control-plan') ? 'active' : '' }}">
                     <i class="bi bi-shield-check"></i>
                     Audit & Risk Plan
