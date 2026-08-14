@@ -72,6 +72,15 @@
             </div>
         </div>
     </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h5>Maintenance History</h5>
+                <p class="text-muted">Record and review quarterly maintenance activities (Risk No. 6).</p>
+                <a href="{{ route('admin.super-admin.maintenance-records.index') }}" class="btn btn-primary btn-sm">Open Maintenance History</a>
+            </div>
+        </div>
+    </div>
 </div>
 
 @if($latestLog)

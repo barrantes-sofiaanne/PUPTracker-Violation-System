@@ -149,6 +149,32 @@
                             };
                         @endphp
 
+                        @if ($savedReview->is_outdated)
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                AI review is outdated because the student's disciplinary record has changed.
+                                <form action="{{ route('admin.graduation-review.generate', $student->student_number) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-warning">
+                                        <i class="bi bi-arrow-repeat"></i> Regenerate AI Review
+                                    </button>
+                                </form>
+                            </div>
+                        @endif
+
+                        @if (! empty($savedReview->data_contradictions))
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-octagon"></i>
+                                <strong>Data Quality Alert</strong>
+                                <ul class="mb-0 mt-1">
+                                    @foreach ($savedReview->data_contradictions as $c)
+                                        <li>{{ $c }}</li>
+                                    @endforeach
+                                </ul>
+                                <small>Administrative verification recommended.</small>
+                            </div>
+                        @endif
+
                         <div class="mb-3">
                             <span class="badge bg-{{ $statusLabel[1] }} fs-6">
                                 {{ $statusLabel[0] }}
@@ -160,6 +186,16 @@
                                 @endif
                             </small>
                         </div>
+
+                        @if ($savedReview->behavior_trend)
+                            <h6 class="text-muted">Behavior Trend</h6>
+                            <p>
+                                <span class="badge bg-secondary">{{ ucwords(str_replace('_', ' ', $savedReview->behavior_trend)) }}</span>
+                                @if ($savedReview->trend_explanation)
+                                    <span class="d-block mt-1">{{ $savedReview->trend_explanation }}</span>
+                                @endif
+                            </p>
+                        @endif
 
                         <h6 class="text-muted">Summary</h6>
                         <p>{{ $savedReview->summary ?: '—' }}</p>
@@ -176,6 +212,15 @@
                         @if ($savedReview->disciplinary_pattern)
                             <h6 class="text-muted">Disciplinary Pattern</h6>
                             <p>{{ $savedReview->disciplinary_pattern }}</p>
+                        @endif
+
+                        @if (! empty($savedReview->supporting_evidence))
+                            <h6 class="text-muted">Supporting Evidence</h6>
+                            <ul class="mb-3">
+                                @foreach ($savedReview->supporting_evidence as $item)
+                                    <li>{{ $item }}</li>
+                                @endforeach
+                            </ul>
                         @endif
 
                         @if ($savedReview->reason_for_review)
@@ -211,31 +256,67 @@
 
     </div>
 
-    {{-- Final Decision (human) --}}
-    <div class="card shadow-sm border-0 mt-4">
-        <div class="card-header bg-white">
-            <i class="bi bi-clipboard-check text-primary"></i>
-            <strong>Final Decision</strong>
-            <span class="badge bg-secondary ms-1">Made by Discipline Office</span>
+    {{-- Final Decision (human-in-the-loop) --}}
+    @if ($savedReview)
+        <div class="card shadow-sm border-0 mt-4">
+            <div class="card-header bg-white">
+                <i class="bi bi-clipboard-check text-primary"></i>
+                <strong>Administrator Decision</strong>
+                <span class="badge bg-secondary ms-1">Made by Discipline Office — AI is advisory only</span>
+            </div>
+            <div class="card-body">
+                @if ($savedReview->decision_status)
+                    <div class="alert alert-light border mb-3">
+                        <strong>Recorded decision:</strong>
+                        {{ ucfirst($savedReview->decision_status) }}
+                        @if ($savedReview->decision_remarks)
+                            <br><em>{{ $savedReview->decision_remarks }}</em>
+                        @endif
+                        <br>
+                        <small class="text-muted">
+                            by {{ $savedReview->decidedBy?->email ?? '—' }}
+                            · {{ optional($savedReview->decision_at)->format('M d, Y h:i A') }}
+                        </small>
+                    </div>
+                @endif
+
+                <form action="{{ route('admin.graduation-review.decision', $student->student_number) }}" method="POST">
+                    @csrf
+                    <div class="mb-3">
+                        <label class="form-label">AI Recommendation</label>
+                        <div>
+                            <span class="badge bg-{{ $statusLabel[1] }}">{{ $statusLabel[0] }}</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Your Decision</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="decision_status" id="decisionAgree" value="agreed" @checked($savedReview->decision_status === 'agreed') required>
+                            <label class="form-check-label" for="decisionAgree">Agree with AI</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="decision_status" id="decisionModify" value="modified" @checked($savedReview->decision_status === 'modified')>
+                            <label class="form-check-label" for="decisionModify">Modify Recommendation</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="decision_status" id="decisionReject" value="rejected" @checked($savedReview->decision_status === 'rejected')>
+                            <label class="form-check-label" for="decisionReject">Reject Recommendation</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="decisionRemarks">Administrator Remarks</label>
+                        <textarea id="decisionRemarks" name="decision_remarks" class="form-control" rows="3" placeholder="Final decision and remarks...">{{ $savedReview->decision_remarks }}</textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check2-circle"></i> Record Decision
+                    </button>
+                </form>
+            </div>
         </div>
-        <div class="card-body">
-            <p class="text-muted mb-3">
-                The Discipline Office makes the final decision. The AI analysis is advisory only.
-            </p>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="final_decision" id="decisionCleared" value="cleared">
-                <label class="form-check-label" for="decisionCleared">Cleared</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="final_decision" id="decisionReview" value="requires_further_review">
-                <label class="form-check-label" for="decisionReview">Requires Further Review</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="final_decision" id="decisionPending" value="pending_resolution">
-                <label class="form-check-label" for="decisionPending">Pending Resolution</label>
-            </div>
-        </div>
-    </div>
+    @endif
 
     {{-- Supporting Records (transparency) --}}
     <div class="card shadow-sm border-0 mt-4">

@@ -484,6 +484,39 @@ Route::prefix('violation-categories')
         Route::post('/graduation-review/generate-batch', [App\Http\Controllers\Admin\GraduationReviewController::class, 'generateBatch'])
             ->name('admin.graduation-review.generate-batch');
 
+        Route::get('/graduation-review/batch-progress', [App\Http\Controllers\Admin\GraduationReviewController::class, 'batchProgress'])
+            ->name('admin.graduation-review.batch-progress');
+
+        Route::post('/graduation-review/retry-failed', [App\Http\Controllers\Admin\GraduationReviewController::class, 'retryFailed'])
+            ->name('admin.graduation-review.retry-failed');
+
+        Route::post('/graduation-review/{student_number}/decision', [App\Http\Controllers\Admin\GraduationReviewController::class, 'storeDecision'])
+            ->where('student_number', '[A-Za-z0-9\-]+')
+            ->name('admin.graduation-review.decision');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Program Sanction Summary Report
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/program-report', [App\Http\Controllers\Admin\ProgramReportController::class, 'index'])
+            ->name('admin.program-report.index');
+
+        Route::post('/program-report', [App\Http\Controllers\Admin\ProgramReportController::class, 'generate'])
+            ->name('admin.program-report.generate');
+
+        Route::get('/program-report/{reportId}', [App\Http\Controllers\Admin\ProgramReportController::class, 'show'])
+            ->whereNumber('reportId')
+            ->name('admin.program-report.show');
+
+        Route::get('/program-report/{reportId}/pdf', [App\Http\Controllers\Admin\ProgramReportController::class, 'pdf'])
+            ->whereNumber('reportId')
+            ->name('admin.program-report.pdf');
+
+        Route::get('/program-report/history/all', [App\Http\Controllers\Admin\ProgramReportController::class, 'history'])
+            ->name('admin.program-report.history');
+
         Route::get('/audit-logs', [AuditLogController::class, 'index'])
             ->name('admin.audit-logs');
 
@@ -508,6 +541,37 @@ Route::prefix('violation-categories')
 
                 Route::post('/maintenance-configuration', [SuperAdminController::class, 'updateMaintenanceConfiguration'])
                     ->name('maintenance.update');
+
+                /*
+                |--------------------------------------------------------------------------
+                | Quarterly Maintenance Records (Risk No. 6)
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get('/maintenance-records', [App\Http\Controllers\Admin\MaintenanceRecordController::class, 'index'])
+                    ->name('maintenance-records.index');
+
+                Route::get('/maintenance-records/create', [App\Http\Controllers\Admin\MaintenanceRecordController::class, 'create'])
+                    ->name('maintenance-records.create');
+
+                Route::post('/maintenance-records', [App\Http\Controllers\Admin\MaintenanceRecordController::class, 'store'])
+                    ->name('maintenance-records.store');
+
+                Route::get('/maintenance-records/{maintenanceId}', [App\Http\Controllers\Admin\MaintenanceRecordController::class, 'show'])
+                    ->whereNumber('maintenanceId')
+                    ->name('maintenance-records.show');
+
+                Route::get('/maintenance-records/{maintenanceId}/edit', [App\Http\Controllers\Admin\MaintenanceRecordController::class, 'edit'])
+                    ->whereNumber('maintenanceId')
+                    ->name('maintenance-records.edit');
+
+                Route::put('/maintenance-records/{maintenanceId}', [App\Http\Controllers\Admin\MaintenanceRecordController::class, 'update'])
+                    ->whereNumber('maintenanceId')
+                    ->name('maintenance-records.update');
+
+                Route::delete('/maintenance-records/{maintenanceId}', [App\Http\Controllers\Admin\MaintenanceRecordController::class, 'destroy'])
+                    ->whereNumber('maintenanceId')
+                    ->name('maintenance-records.destroy');
             });
     });
 

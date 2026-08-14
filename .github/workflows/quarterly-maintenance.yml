@@ -1,0 +1,111 @@
+name: Quarterly Maintenance
+
+# Risk No. 6 — "Schedule quarterly maintenance for dependency updates,
+# framework security patches, and server OS maintenance."
+#
+# This workflow runs on a quarterly schedule (Jan / Apr / Jul / Oct) and can
+# also be triggered manually. It performs CHECKS ONLY — it never auto-updates
+# production dependencies. If updates are available, it reports them as
+# artifacts/evidence for the IT Administrator to review and apply manually.
+
+on:
+  schedule:
+    # 15th of Jan, Apr, Jul, Oct at 03:00 UTC
+    - cron: "0 3 15 1,4,7,10 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quarterly-maintenance
+  cancel-in-progress: false
+
+jobs:
+  maintenance:
+    name: Quarterly Maintenance Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, intl, pdo, pdo_sqlite, fileinfo, curl, openssl
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: PHP version
+        run: php -v
+
+      - name: Laravel / Framework version
+        run: composer show laravel/framework | tee laravel-version.txt
+
+      - name: Detect outdated Composer packages (report only — no auto-update)
+        run: composer outdated --direct --no-interaction | tee composer-outdated.txt || true
+
+      - name: List installed packages with versions
+        run: composer show --direct | tee composer-packages.txt
+
+      - name: Prepare CI environment
+        run: |
+          cp .env.example .env || cp .env .env || true
+          php artisan config:clear || true
+          touch database/database.sqlite
+
+      - name: Run automated tests (Laravel)
+        run: php artisan test | tee test-output.txt
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+          AI_GRADUATION_REVIEW_ENABLED: "false"
+
+      - name: Build frontend assets (production check)
+        run: |
+          npm ci || npm install
+          npm run build || true
+
+      - name: Collect maintenance summary
+        id: summary
+        run: |
+          echo "## Quarterly Maintenance Result" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Date:** $(date -u +%Y-%m-%d)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **PHP:** $(php -v | head -1)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Laravel:** $(composer show laravel/framework | grep versions)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Outdated packages:** see `composer-outdated.txt` artifact." >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Tests:** see `test-output.txt` artifact." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "> This run performs checks only. Any security/dependency updates identified must be reviewed and applied manually by the IT Administrator." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload maintenance evidence artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: quarterly-maintenance-evidence
+          path: |
+            composer-outdated.txt
+            composer-packages.txt
+            laravel-version.txt
+            test-output.txt
+          if-no-files-found: warn

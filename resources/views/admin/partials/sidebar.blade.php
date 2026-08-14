@@ -122,6 +122,30 @@
 
         <li>
 
+            <a href="{{ route('admin.program-report.index') }}" class="{{ request()->routeIs('admin.program-report*') ? 'active' : '' }}">
+
+                <i class="bi bi-file-earmark-bar-graph"></i>
+
+                Program Sanction Report
+
+            </a>
+
+        </li>
+
+        <li>
+
+            <a href="{{ route('admin.program-report.history') }}" class="{{ request()->routeIs('admin.program-report.history') ? 'active' : '' }}">
+
+                <i class="bi bi-clock-history"></i>
+
+                Report History
+
+            </a>
+
+        </li>
+
+        <li>
+
             <a href="{{ route('admin.audit-logs') }}" class="{{ request()->routeIs('admin.audit-logs*') ? 'active' : '' }}">
 
                 <i class="bi bi-journal-text"></i>
@@ -177,6 +201,13 @@
                 <a href="{{ route('admin.super-admin.maintenance') }}" class="{{ request()->routeIs('admin.super-admin.maintenance*') ? 'active' : '' }}">
                     <i class="bi bi-tools"></i>
                     Maintenance Config
+                </a>
+            </li>
+
+            <li>
+                <a href="{{ route('admin.super-admin.maintenance-records.index') }}" class="{{ request()->routeIs('admin.super-admin.maintenance-records*') ? 'active' : '' }}">
+                    <i class="bi bi-calendar-check"></i>
+                    Maintenance History
                 </a>
             </li>
 

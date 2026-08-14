@@ -17,7 +17,14 @@
             </p>
         </div>
 
-        <div>
+        <div class="d-flex gap-2">
+            <form action="{{ route('admin.graduation-review.retry-failed') }}" method="POST">
+                @csrf
+                <button type="submit" class="btn btn-outline-warning">
+                    <i class="bi bi-arrow-repeat"></i>
+                    Retry Failed
+                </button>
+            </form>
             <form action="{{ route('admin.graduation-review.generate-batch') }}" method="POST">
                 @csrf
                 <button type="submit" class="btn btn-success">
@@ -27,6 +34,28 @@
             </form>
         </div>
 
+    </div>
+
+    {{-- Batch progress (queue) --}}
+    <div
+        id="batchProgressPanel"
+        class="card shadow-sm border-0 mb-4 d-none"
+        data-batch-id="{{ session('graduation_review.batch_id', '') }}"
+        data-progress-url="{{ route('admin.graduation-review.batch-progress') }}">
+        <div class="card-body">
+            <div class="d-flex justify-content-between mb-2">
+                <strong>AI Review Batch Progress</strong>
+                <span id="batchProgressText" class="text-muted">Preparing…</span>
+            </div>
+            <div class="progress" style="height: 20px;">
+                <div id="batchProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%"></div>
+            </div>
+            <div class="d-flex gap-4 mt-2 small text-muted">
+                <span>Completed: <strong id="batchCompleted">0</strong></span>
+                <span>Remaining: <strong id="batchRemaining">0</strong></span>
+                <span>Failed: <strong id="batchFailed">0</strong></span>
+            </div>
+        </div>
     </div>
 
     @if (session('success'))
@@ -213,3 +242,58 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const panel = document.getElementById('batchProgressPanel');
+        if (!panel) {
+            return;
+        }
+
+        const bar = document.getElementById('batchProgressBar');
+        const text = document.getElementById('batchProgressText');
+        const completedEl = document.getElementById('batchCompleted');
+        const remainingEl = document.getElementById('batchRemaining');
+        const failedEl = document.getElementById('batchFailed');
+
+        const batchId = panel.dataset.batchId || '';
+        const progressUrl = panel.dataset.progressUrl || '';
+
+        if (!batchId) {
+            return;
+        }
+
+        panel.classList.remove('d-none');
+
+        const url = progressUrl + '?batch_id=' + encodeURIComponent(batchId);
+
+        const timer = setInterval(async function () {
+            try {
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                const data = await res.json();
+
+                if (!data.available) {
+                    clearInterval(timer);
+                    text.textContent = 'No active batch.';
+                    return;
+                }
+
+                bar.style.width = data.percent + '%';
+                text.textContent = data.percent + '%';
+                completedEl.textContent = data.processed;
+                remainingEl.textContent = data.remaining;
+                failedEl.textContent = data.failed;
+
+                if (data.finished) {
+                    clearInterval(timer);
+                    text.textContent = 'Batch finished (' + data.percent + '%)';
+                    bar.classList.remove('progress-bar-animated');
+                }
+            } catch (error) {
+                // ignore transient polling errors
+            }
+        }, 2000);
+    });
+</script>
+@endpush
