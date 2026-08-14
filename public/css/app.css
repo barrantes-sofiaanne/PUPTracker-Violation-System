@@ -6,9 +6,13 @@
 }
 
 body {
-    height: 100vh;
-    width: 100vw;
-    overflow: hidden;
+    /* Removed height:100vh + overflow:hidden — this blocked vertical scrolling
+       on the public landing page (layouts/app.blade.php loads this file).
+       Pages that need a full-height viewport set their own scoped rules. */
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100svh;
+    overflow-x: hidden;
 }
 
 .login-container {

@@ -13,6 +13,13 @@
         ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
         : false;
 
+    // Enable reveal animation only when motion is allowed. Adding this class
+    // lets the CSS apply the hidden start state; without it (no-JS / reduced
+    // motion) content stays fully visible. This prevents FOUC.
+    if (!prefersReducedMotion) {
+        document.documentElement.classList.add("js-anim");
+    }
+
     function ready(fn) {
         if (document.readyState !== "loading") {
             fn();
