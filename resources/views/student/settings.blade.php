@@ -15,33 +15,20 @@
                 <div class="col-lg-8">
                     <div class="card portal-card">
                         <div class="card-header">
-                            <h5 class="mb-0">Change Password</h5>
+                            <h5 class="mb-0">Account Security</h5>
                         </div>
                         <div class="card-body">
-                            <form action="{{ route('student.change-password') }}" method="POST">
-                                @csrf
-                                <div class="mb-3">
-                                    <label class="form-label">Current Password</label>
-                                    <input type="password" name="current_password" class="form-control" required>
+                            <div class="d-flex align-items-start gap-3">
+                                <i class="bi bi-shield-lock-fill fs-3 text-muted" aria-hidden="true"></i>
+                                <div>
+                                    <h6 class="mb-1">Password managed by the PUP Identity Provider</h6>
+                                    <p class="text-muted mb-0">
+                                        Your password is managed by the PUP Identity Provider (IDP). To change your
+                                        password, use the PUP account password management options available through your
+                                        PUP Identity Provider account.
+                                    </p>
                                 </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">New Password</label>
-                                    <input type="password" name="new_password" class="form-control" required>
-                                </div>
-
-                                <div class="mb-4">
-                                    <label class="form-label">Confirm Password</label>
-                                    <input type="password" name="new_password_confirmation" class="form-control" required>
-                                </div>
-
-                                <div class="text-end">
-                                    <button type="submit" class="btn btn-danger">
-                                        <i class="bi bi-key-fill"></i>
-                                        Change Password
-                                    </button>
-                                </div>
-                            </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -53,11 +40,11 @@
                         </div>
                         <div class="card-body">
                             <ul class="mb-0">
-                                <li>Use at least 8 characters.</li>
-                                <li>Include uppercase letters.</li>
-                                <li>Include lowercase letters.</li>
-                                <li>Include numbers.</li>
-                                <li>Include special characters.</li>
+                                <li>Keep your PUP account password private.</li>
+                                <li>Use a strong, unique password.</li>
+                                <li>Never share your password with others.</li>
+                                <li>Sign in securely through the PUP Identity Provider.</li>
+                                <li>Contact the administrator if you need account assistance.</li>
                             </ul>
                         </div>
                     </div>

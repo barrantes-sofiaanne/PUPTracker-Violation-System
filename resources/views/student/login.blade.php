@@ -37,10 +37,6 @@
                 &larr; Back
             </a>
 
-            <a href="{{ route('password.request', ['guard' => 'student']) }}">
-                Forgot Password?
-            </a>
-
         </div>
 
 @endsection

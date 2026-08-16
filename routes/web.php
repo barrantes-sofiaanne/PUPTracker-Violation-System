@@ -209,9 +209,6 @@ Route::middleware('auth:student')
 
         Route::get('/settings', [SettingsController::class, 'index'])
             ->name('student.settings');
-
-        Route::post('/settings/change-password', [SettingsController::class, 'changePassword'])
-            ->name('student.change-password');
     });
 
 /*
