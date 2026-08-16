@@ -22,6 +22,17 @@ class StudentInfo extends Model
         'ladderized'
     ];
 
+    /**
+     * Casts.
+     *
+     * ladderized is a 0/1 flag on the legacy student_info_tbl. Casting it to
+     * boolean ensures Eloquent sends a proper boolean (not an unexpected type)
+     * to the database, avoiding "Data truncated" warnings on insert.
+     */
+    protected $casts = [
+        'ladderized' => 'boolean',
+    ];
+
 public function user()
 {
     return $this->belongsTo(User::class, 'user_id');
