@@ -284,6 +284,12 @@ Route::middleware('auth:admin')
         Route::get('/students/{student_number}', [StudentController::class, 'show'])
             ->name('admin.students.show');
 
+        Route::post('/students/{student_number}/link-idp', [StudentController::class, 'linkIdpAccount'])
+            ->name('admin.students.link-idp');
+
+        Route::post('/students/{student_number}/unlink-idp', [StudentController::class, 'unlinkIdpAccount'])
+            ->name('admin.students.unlink-idp');
+
         Route::post('/users/admins', [StudentController::class, 'storeAdmin'])
             ->name('admin.users.admins.store');
 

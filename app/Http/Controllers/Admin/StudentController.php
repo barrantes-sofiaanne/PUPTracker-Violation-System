@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AdminInfo;
+use App\Models\AuditLog;
 use App\Models\Gender;
 use App\Models\Program;
 use App\Models\Role;
@@ -16,6 +17,7 @@ use App\Models\StudentStatus;
 use App\Models\User;
 use App\Models\Year;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -604,6 +606,101 @@ class StudentController extends Controller
         return redirect()
             ->route('admin.students', ['tab' => 'students'])
             ->with('success', 'Student updated successfully.');
+    }
+
+    /**
+     * Administrator-assisted IDP linking.
+     *
+     * Links an existing PUPTracker student to a verified IDP Account ID
+     * (users_tbl.idp_subject). This is the ONLY supported way to bind an IDP
+     * identity to a local student — students can never submit their own IDP
+     * Account ID. The IDP Account ID must be unique across all students.
+     */
+    public function linkIdpAccount(Request $request, string $student_number)
+    {
+        $student = User::query()
+            ->where('student_number', $student_number)
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'idp_subject' => ['required', 'string', 'max:191'],
+        ]);
+
+        $idpSubject = trim($validated['idp_subject']);
+
+        if ($idpSubject === '') {
+            throw ValidationException::withMessages([
+                'idp_subject' => 'The IDP Account ID cannot be empty.',
+            ]);
+        }
+
+        // Uniqueness: one IDP Account ID may only be linked to ONE student.
+        $existing = User::query()
+            ->where('idp_subject', $idpSubject)
+            ->where('user_id', '!=', $student->getKey())
+            ->first();
+
+        if ($existing) {
+            throw ValidationException::withMessages([
+                'idp_subject' => 'This IDP Account ID is already linked to student ' . $existing->student_number . '.',
+            ]);
+        }
+
+        $admin = Auth::guard('admin')->user();
+        $adminId = $admin instanceof Admin ? $admin->id : null;
+        $adminEmail = $admin instanceof Admin ? $admin->email : 'unknown';
+
+        $student->forceFill([
+            'idp_subject' => $idpSubject,
+            'idp_email' => $request->filled('idp_email')
+                ? strtolower(trim((string) $request->input('idp_email')))
+                : $student->idp_email,
+            'idp_connected_at' => $student->idp_connected_at ?? now(),
+        ])->save();
+
+        AuditLog::create([
+            'actor_type' => 'admin',
+            'actor_id' => $adminId,
+            'action' => 'Link IDP Account',
+            'module' => 'Students',
+            'description' => 'Linked IDP Account ID to student ' . $student->student_number . ' by ' . $adminEmail . '.',
+            'created_at' => now(),
+        ]);
+
+        return back()->with('success', 'IDP Account linked to this student successfully.');
+    }
+
+    /**
+     * Administrator-assisted IDP unlink.
+     *
+     * Removes the IDP binding from a student. Used to correct a mistaken link.
+     */
+    public function unlinkIdpAccount(Request $request, string $student_number)
+    {
+        $student = User::query()
+            ->where('student_number', $student_number)
+            ->firstOrFail();
+
+        $admin = Auth::guard('admin')->user();
+        $adminId = $admin instanceof Admin ? $admin->id : null;
+        $adminEmail = $admin instanceof Admin ? $admin->email : 'unknown';
+
+        $student->forceFill([
+            'idp_subject' => null,
+            'idp_email' => null,
+            'idp_connected_at' => null,
+        ])->save();
+
+        AuditLog::create([
+            'actor_type' => 'admin',
+            'actor_id' => $adminId,
+            'action' => 'Unlink IDP Account',
+            'module' => 'Students',
+            'description' => 'Unlinked IDP Account from student ' . $student->student_number . ' by ' . $adminEmail . '.',
+            'created_at' => now(),
+        ]);
+
+        return back()->with('success', 'IDP Account unlinked from this student.');
     }
 
     public function destroy($student_number)
