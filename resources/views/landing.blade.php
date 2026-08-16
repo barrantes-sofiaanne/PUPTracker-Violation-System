@@ -211,27 +211,25 @@
 
     {{-- ===================== FOOTER ===================== --}}
     <footer class="lp-footer">
-        <div class="lp-footer-top">
-            <div class="lp-footer-brand">
-                <img src="{{ asset('assets/images/System-logo.png') }}" alt="PUPTracker logo">
-                <div>
-                    <strong>PUPTracker</strong>
-                    <span>Violation System</span>
-                </div>
-            </div>
-
-            <div class="lp-footer-info">
-                <strong>Polytechnic University of the Philippines</strong>
-                <span>Taguig Campus</span>
+        <div class="lp-footer-brand">
+            <img src="{{ asset('assets/images/System-logo.png') }}" alt="PUPTracker logo">
+            <div>
+                <strong>PUPTracker</strong>
+                <span>Violation System</span>
             </div>
         </div>
 
+        <div class="lp-footer-info">
+            <strong>Polytechnic University of the Philippines</strong>
+            <span>Taguig Campus</span>
+        </div>
+
         <div class="lp-footer-links">
-            <a href="https://www.pup.edu.ph/privacy/" target="_blank" rel="noopener noreferrer">
-                Privacy &amp; Confidentiality
-            </a>
+            <a href="https://www.pup.edu.ph/privacy/" target="_blank" rel="noopener noreferrer">Privacy Statement</a>
             <span class="lp-footer-sep" aria-hidden="true">•</span>
-            <a href="mailto:puptrackervs@gmail.com">Help &amp; Support</a>
+            <a href="https://www.pup.edu.ph/terms/" target="_blank" rel="noopener noreferrer">Terms of Use</a>
+            <span class="lp-footer-sep" aria-hidden="true">•</span>
+            <a href="mailto:puptrackervs@gmail.com">Contact Us</a>
         </div>
 
         <p class="lp-footer-note">
