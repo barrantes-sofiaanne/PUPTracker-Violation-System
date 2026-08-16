@@ -403,8 +403,16 @@ class StudentIdpLoginTest extends TestCase
             if (! str_contains($request->url(), '/auth/logout')) {
                 return true;
             }
+            // The access token must be sent as the Bearer header, never in the body.
             $body = $request->data();
-            return ! in_array('access-secret-xyz', $body, true);
+            $authHeaders = $request->header('Authorization', []);
+            if (is_array($authHeaders)) {
+                $authHeader = implode(' ', array_map('strval', $authHeaders));
+            } else {
+                $authHeader = (string) $authHeaders;
+            }
+            $hasBearer = str_contains($authHeader, 'Bearer access-secret-xyz');
+            return $hasBearer && ! in_array('access-secret-xyz', $body, true);
         });
     }
 

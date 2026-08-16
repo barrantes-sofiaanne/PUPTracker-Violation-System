@@ -23,16 +23,18 @@ class LoginController extends Controller
 
     public function logout(Request $request)
     {
-        // Capture the IDP refresh token BEFORE clearing the session so we can
-        // attempt a server-side IDP logout (token revocation) if configured.
-        $idpRefreshToken = (string) $request->session()->get('student.idp.refresh_token', '');
+        // Capture the IDP tokens BEFORE clearing the session so we can attempt
+        // a server-side IDP logout (token revocation). Verified contract:
+        //   POST /auth/logout  requires  Authorization: Bearer <access_token>
+        //   (401 without a valid Bearer token; body carries client_id).
+        $idpAccessToken = (string) $request->session()->get('student.idp.access_token', '');
+        $idpClientId = (string) config('services.idp.client_id', '');
 
         Auth::guard('student')->logout();
 
-        // Attempt IDP logout (POST /auth/logout) when a token exists. This is
-        // best-effort: never expose or log tokens, and never break local logout
-        // if the IDP endpoint is unavailable.
-        if ($idpRefreshToken !== '' || $request->session()->has('student.idp.access_token')) {
+        // Best-effort IDP logout: never expose or log tokens, and never break
+        // local logout if the IDP endpoint is unavailable.
+        if ($idpAccessToken !== '') {
             $idpBaseUrl = rtrim((string) config('services.idp.base_url'), '/');
             $idpLogoutPath = (string) config('services.idp.logout_path', '/auth/logout');
             $idpTimeout = (int) config('services.idp.timeout', 15);
@@ -42,9 +44,10 @@ class LoginController extends Controller
                     \Illuminate\Support\Facades\Http::baseUrl($idpBaseUrl)
                         ->acceptJson()
                         ->asJson()
+                        ->withToken($idpAccessToken)
                         ->timeout($idpTimeout)
                         ->post($idpLogoutPath, [
-                            'refresh_token' => $idpRefreshToken,
+                            'client_id' => $idpClientId,
                         ]);
                 }
             } catch (\Throwable $e) {
