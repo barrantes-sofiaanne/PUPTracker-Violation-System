@@ -211,16 +211,16 @@
 
     {{-- ===================== FOOTER ===================== --}}
     <footer class="lp-footer">
-        <div class="lp-footer-brand">
-            <img src="{{ asset('assets/images/System-logo.png') }}" alt="PUPTracker logo">
-            <div>
-                <strong>PUPTracker</strong>
-                <span>Violation System</span>
+        <div class="lp-footer-top">
+            <div class="lp-footer-brand">
+                <img src="{{ asset('assets/images/System-logo.png') }}" alt="PUPTracker logo">
+                <div>
+                    <strong>PUPTracker</strong>
+                    <span>Violation System</span>
+                </div>
             </div>
-        </div>
 
-        <div class="lp-footer-info">
-            <div>
+            <div class="lp-footer-info">
                 <strong>Polytechnic University of the Philippines</strong>
                 <span>Taguig Campus</span>
             </div>
@@ -230,11 +230,8 @@
             <a href="https://www.pup.edu.ph/privacy/" target="_blank" rel="noopener noreferrer">
                 Privacy &amp; Confidentiality
             </a>
+            <span class="lp-footer-sep" aria-hidden="true">•</span>
             <a href="mailto:puptrackervs@gmail.com">Help &amp; Support</a>
-            <span class="lp-status" id="lpSystemStatus" data-status-url="{{ url('/up') }}" title="System Status">
-                <span class="lp-status-dot" aria-hidden="true"></span>
-                System Status
-            </span>
         </div>
 
         <p class="lp-footer-note">

@@ -3,7 +3,6 @@
  *
  * - Staggered entrance reveal (respects prefers-reduced-motion)
  * - Interactive feature preview (hover + keyboard)
- * - Honest system status check against the real /up endpoint
  * - Subtle desktop-only ambient drift
  */
 (function () {
@@ -31,7 +30,6 @@
     ready(function () {
         initReveal();
         initFeaturePreview();
-        initSystemStatus();
         initAmbientDrift();
         initScrollReveal();
         initStickyHeader();
@@ -242,59 +240,6 @@
                 }
             });
         });
-    }
-
-    /**
-     * Honest system status. Fetches the real Laravel /up health endpoint.
-     * - 200 + ok:  "System Operational" (green)
-     * - any failure: "System Status" stays neutral (no fake offline claim)
-     */
-    function initSystemStatus() {
-        var statusEl = document.getElementById("lpSystemStatus");
-        if (!statusEl) {
-            return;
-        }
-
-        var url = statusEl.getAttribute("data-status-url") || "/up";
-        var dot = statusEl.querySelector(".lp-status-dot");
-
-        // Fetch with a short timeout so the page never hangs on this.
-        var controller =
-            "AbortController" in window ? new AbortController() : null;
-        var timeoutId = controller
-            ? window.setTimeout(function () {
-                  controller.abort();
-              }, 4000)
-            : null;
-
-        fetch(url, {
-            method: "GET",
-            headers: { Accept: "application/json" },
-            cache: "no-store",
-            signal: controller ? controller.signal : undefined,
-        })
-            .then(function (res) {
-                if (!res.ok) {
-                    throw new Error("not ok");
-                }
-                return res.json();
-            })
-            .then(function (data) {
-                if (data && data.status === "OK") {
-                    statusEl.classList.add("is-operational");
-                    statusEl.lastChild.textContent = " System Operational";
-                    statusEl.title = "System is operational";
-                }
-                // If the endpoint responds but is not "OK", stay neutral.
-            })
-            .catch(function () {
-                // Stay neutral ("System Status") — never fake a status.
-            })
-            .finally(function () {
-                if (timeoutId) {
-                    window.clearTimeout(timeoutId);
-                }
-            });
     }
 
     /**
