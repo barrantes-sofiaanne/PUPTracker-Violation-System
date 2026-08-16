@@ -7,60 +7,29 @@
         <h2>Student Login</h2>
 
         <p class="subtitle">
-            Sign in using your PUP account to access your records.
+            Sign in using your official PUP account.
         </p>
 
-        <form
-            action="{{ route('student.idp.start') }}"
-            method="POST"
-            autocomplete="off"
-            class="auth-login-form">
-
-            @csrf
-
-            @if($errors->has('login'))
-                <div class="login-error">
-                    <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
-                    <span>{{ $errors->first('login') }}</span>
-                </div>
-            @endif
-
-            <div class="mb-3">
-
-                <label class="form-label" for="student_number">
-                    Student Number
-                </label>
-
-                <div class="input-group login-input-group">
-                    <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
-                    <input
-                        id="student_number"
-                        type="text"
-                        name="student_number"
-                        class="form-control @error('student_number') is-invalid @enderror"
-                        value="{{ old('student_number') }}"
-                        placeholder="e.g. 2026-00001"
-                        autocomplete="off"
-                        required>
-                </div>
-
-                @error('student_number')
-                    <div class="invalid-feedback d-block">
-                        {{ $message }}
-                    </div>
-                @enderror
-
+        @if($errors->has('login'))
+            <div class="login-error">
+                <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+                <span>{{ $errors->first('login') }}</span>
             </div>
+        @endif
 
-            <button
-                type="submit"
-                class="btn btn-success w-100 login-btn">
+        <a
+            href="{{ route('student.idp.login') }}"
+            class="btn btn-success w-100 login-btn"
+            role="button">
 
-                Continue with PUP IDP
+            <span class="login-btn-label">Continue with PUP ID</span>
 
-            </button>
+        </a>
 
-        </form>
+        <p class="security-note">
+            <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
+            You will be securely redirected to the PUP Identity Provider to sign in.
+        </p>
 
         <div class="footer-links">
 

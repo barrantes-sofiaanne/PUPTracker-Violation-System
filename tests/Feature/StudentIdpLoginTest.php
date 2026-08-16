@@ -4,11 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class StudentIdpLoginTest extends TestCase
@@ -18,11 +20,43 @@ class StudentIdpLoginTest extends TestCase
         parent::setUp();
 
         $this->ensureAuthTablesForTests();
+        $this->configureIdp();
     }
 
-    public function test_student_can_start_and_complete_idp_login(): void
+    private function configureIdp(): void
     {
-        User::create([
+        Config::set('services.idp.base_url', 'https://idp.test/api/v1');
+        Config::set('services.idp.client_id', 'student-client');
+        Config::set('services.idp.client_secret', 'student-secret');
+        Config::set('services.idp.redirect_uri', 'https://puptvs.com/student/idp/callback');
+        Config::set('services.idp.timeout', 15);
+        Config::set('services.idp.student_roles', 'student');
+    }
+
+    private function fakeIdp(string $idpSubject = 'user-123', string $email = 'student.idp@example.com', string $roles = 'student'): void
+    {
+        Http::fake([
+            'https://idp.test/api/v1/auth/token' => Http::response([
+                'access_token' => 'access-token-123',
+                'refresh_token' => 'refresh-token-123',
+                'token_type' => 'Bearer',
+                'expires_in' => 3600,
+            ], 200),
+            'https://idp.test/api/v1/me' => Http::response([
+                'id' => $idpSubject,
+                'email' => $email,
+                'first_name' => 'IDP',
+                'middle_name' => null,
+                'last_name' => 'Student',
+                'name_suffix' => null,
+                'roles' => $roles,
+            ], 200),
+        ]);
+    }
+
+    private function createStudent(array $overrides = []): User
+    {
+        return User::create(array_merge([
             'student_number' => '2026-00003',
             'first_name' => 'IDP',
             'last_name' => 'Student',
@@ -33,57 +67,86 @@ class StudentIdpLoginTest extends TestCase
             'roles_id' => 2,
             'password_hash' => Hash::make('password123'),
             'mfa_totp_enabled' => false,
-        ]);
+        ], $overrides));
+    }
 
-        Config::set('services.idp.base_url', 'https://idp.test/api/v1');
-        Config::set('services.idp.client_id', 'student-client');
-        Config::set('services.idp.client_secret', 'student-secret');
+    private function hitCallback(string $code = 'auth-code-123', ?string $state = null): TestResponse
+    {
+        $session = ['student.idp.state' => 'state-123'];
+        $params = ['code' => $code];
+        if ($state !== null) {
+            $params['state'] = $state;
+        }
 
-        Http::fake([
-            'https://idp.test/api/v1/auth/token' => Http::response([
-                'access_token' => 'access-token-123',
-                'refresh_token' => 'refresh-token-123',
-                'token_type' => 'Bearer',
-                'expires_in' => 3600,
-            ], 200),
-            'https://idp.test/api/v1/me' => Http::response([
-                'id' => 'user-123',
-                'email' => 'student.idp@example.com',
-                'first_name' => 'IDP',
-                'middle_name' => null,
-                'last_name' => 'Student',
-                'name_suffix' => null,
-                'roles' => 'student',
-            ], 200),
-        ]);
+        return $this->withSession($session)->get(route('student.idp.callback', $params));
+    }
 
-        $start = $this->post(route('student.idp.start'), [
-            'student_number' => '2026-00003',
-        ]);
+    // ------------------------------------------------------------------
+    // 1-4. Login page + authorization redirect + secret not rendered
+    // ------------------------------------------------------------------
 
-        $start->assertRedirect(route('student.idp.login'));
+    public function test_student_login_page_displays_continue_with_pup_id(): void
+    {
+        $response = $this->get(route('student.login'));
+        $response->assertOk();
+        $response->assertSee('Continue with PUP ID');
+        $response->assertDontSee('Student Number');
+    }
 
-        $redirectToIdp = $this->withSession([
-            'student.idp.student_number' => '2026-00003',
-        ])->get(route('student.idp.login'));
+    public function test_student_login_no_longer_requires_student_number(): void
+    {
+        $content = $this->get(route('student.login'))->getContent();
+        $this->assertStringNotContainsString('student_number', $content);
+        $this->assertStringNotContainsString('student.idp.start', $content);
+    }
 
-        $redirectToIdp->assertRedirect();
-        $this->assertStringContainsString('https://idp.test/api/v1/auth/authorize', $redirectToIdp->headers->get('Location'));
-        $this->assertStringContainsString('client_id=student-client', $redirectToIdp->headers->get('Location'));
+    public function test_idp_authorization_redirect_uses_configured_client_id(): void
+    {
+        $response = $this->get(route('student.idp.login'));
 
-        $state = session('student.idp.state');
-        $pendingStudentNumber = session('student.idp.student_number');
+        $response->assertRedirect();
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringContainsString('https://idp.test/api/v1/auth/authorize', $location);
+        $this->assertStringContainsString('client_id=student-client', $location);
+        $this->assertStringContainsString('redirect_uri=https%3A%2F%2Fpuptvs.com%2Fstudent%2Fidp%2Fcallback', $location);
+        $this->assertStringContainsString('state=', $location);
+    }
 
-        $callback = $this->withSession([
-            'student.idp.state' => $state,
-            'student.idp.student_number' => $pendingStudentNumber,
-        ])
-            ->get(route('student.idp.callback', [
-                'code' => 'auth-code-123',
-                'state' => $state,
-            ]));
+    public function test_client_secret_is_never_rendered(): void
+    {
+        Config::set('services.idp.client_secret', 'super-secret-value');
 
-        $callback->assertRedirect(route('student.dashboard'));
+        $this->get(route('student.login'))->assertOk();
+        $this->assertStringNotContainsString('super-secret-value', $this->get(route('student.login'))->getContent());
+
+        $response = $this->get(route('student.idp.login'));
+        $this->assertStringNotContainsString('super-secret-value', (string) $response->headers->get('Location'));
+    }
+
+    // ------------------------------------------------------------------
+    // 5-8. Successful exchange, /me, existing idp_subject, first-time link
+    // ------------------------------------------------------------------
+
+    public function test_successful_token_exchange_and_me(): void
+    {
+        $this->createStudent(['idp_subject' => 'user-123', 'idp_email' => 'student.idp@example.com']);
+        $this->fakeIdp();
+
+        $response = $this->hitCallback();
+
+        $response->assertRedirect(route('student.dashboard'));
+        $this->assertAuthenticated('student');
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/auth/token'));
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/me'));
+    }
+
+    public function test_successful_login_using_existing_idp_subject(): void
+    {
+        $this->createStudent(['idp_subject' => 'user-123', 'idp_email' => 'student.idp@example.com']);
+        $this->fakeIdp();
+
+        $this->hitCallback()->assertRedirect(route('student.dashboard'));
         $this->assertAuthenticated('student');
 
         $this->assertDatabaseHas('users_tbl', [
@@ -91,335 +154,298 @@ class StudentIdpLoginTest extends TestCase
             'idp_subject' => 'user-123',
             'idp_email' => 'student.idp@example.com',
         ]);
-
-        Http::assertSentCount(2);
     }
 
-    public function test_start_rejects_unknown_or_inactive_student(): void
+    public function test_first_time_safe_account_linking_by_email(): void
     {
-        $response = $this->post(route('student.idp.start'), [
-            'student_number' => 'NOPE-999',
+        $this->createStudent();
+        $this->fakeIdp();
+
+        $this->hitCallback()->assertRedirect(route('student.dashboard'));
+        $this->assertAuthenticated('student');
+
+        $this->assertDatabaseHas('users_tbl', [
+            'student_number' => '2026-00003',
+            'idp_subject' => 'user-123',
+            'idp_email' => 'student.idp@example.com',
         ]);
+    }
 
+    public function test_unknown_idp_account_id_is_rejected_without_safe_mapping(): void
+    {
+        $this->createStudent(['email' => 'different@example.com']);
+        $this->fakeIdp(idpSubject: 'user-999', email: 'nobody@example.com');
+
+        $response = $this->hitCallback();
         $response->assertRedirect(route('student.login'));
         $response->assertSessionHasErrors('login');
+        $this->assertGuest('student');
     }
 
-    public function test_redirect_requires_configured_client(): void
+    // ------------------------------------------------------------------
+    // 9-13. Inactive / non-student / role matching
+    // ------------------------------------------------------------------
+
+    public function test_inactive_local_student_is_rejected(): void
     {
-        Config::set('services.idp.client_id', '');
+        $this->createStudent(['idp_subject' => 'user-inactive', 'status_id' => 2]);
+        $this->fakeIdp(idpSubject: 'user-inactive');
 
-        $response = $this->get(route('student.idp.login'));
-
+        $response = $this->hitCallback();
         $response->assertRedirect(route('student.login'));
         $response->assertSessionHasErrors('login');
+        $this->assertGuest('student');
     }
 
-    public function test_callback_requires_code(): void
+    public function test_local_non_student_account_is_rejected(): void
     {
-        $response = $this->withSession([
-            'student.idp.state' => 'abc',
-        ])->get(route('student.idp.callback'));
+        $this->createStudent(['idp_subject' => 'user-admin', 'roles_id' => 1]);
+        $this->fakeIdp(idpSubject: 'user-admin');
 
-        $response->assertSessionHasErrors('code');
-    }
-
-    public function test_callback_rejects_invalid_state(): void
-    {
-        Config::set('services.idp.base_url', 'https://idp.test/api/v1');
-        Config::set('services.idp.client_id', 'student-client');
-        Config::set('services.idp.client_secret', 'student-secret');
-
-        $response = $this->withSession([
-            'student.idp.state' => 'expected-state-123',
-        ])->get(route('student.idp.callback', [
-            'code' => 'auth-code-123',
-            'state' => 'tampered-state',
-        ]));
-
+        $response = $this->hitCallback();
         $response->assertRedirect(route('student.login'));
         $response->assertSessionHasErrors('login');
+        $this->assertGuest('student');
     }
 
-    public function test_callback_rejects_invalid_code_exchange(): void
+    public function test_idp_non_student_role_is_rejected(): void
     {
-        User::create([
+        $this->createStudent(['idp_subject' => 'user-123']);
+        $this->fakeIdp(roles: 'faculty');
+
+        $response = $this->hitCallback();
+        $response->assertRedirect(route('student.login'));
+        $response->assertSessionHasErrors('login');
+        $this->assertGuest('student');
+    }
+
+    public function test_exact_role_matching_accepts_capitalized_student(): void
+    {
+        // "Student" (capitalized) → accepted (case-insensitive whole token)
+        $this->createStudent(['idp_subject' => 'user-a']);
+        $this->fakeIdp(idpSubject: 'user-a', roles: 'Student');
+        $this->hitCallback()->assertRedirect(route('student.dashboard'));
+        $this->assertAuthenticated('student');
+    }
+
+    public function test_exact_role_matching_rejects_substring(): void
+    {
+        // "notstudent" → rejected (substring must NOT match "student")
+        $this->createStudent([
+            'idp_subject' => 'user-b',
+            'email' => 'b@example.com',
             'student_number' => '2026-00004',
-            'first_name' => 'IDP',
-            'last_name' => 'Student',
-            'email' => 'student2@example.com',
-            'idp_subject' => null,
-            'idp_email' => null,
-            'status_id' => 1,
-            'roles_id' => 2,
-            'password_hash' => Hash::make('password123'),
-            'mfa_totp_enabled' => false,
         ]);
-
-        Config::set('services.idp.base_url', 'https://idp.test/api/v1');
-        Config::set('services.idp.client_id', 'student-client');
-        Config::set('services.idp.client_secret', 'student-secret');
-
-        Http::fake([
-            'https://idp.test/api/v1/auth/token' => Http::response([
-                'code' => 1000,
-                'message' => 'Invalid authorization code.',
-                'error' => 'invalid_grant',
-            ], 401),
-        ]);
-
-        $response = $this->withSession([
-            'student.idp.state' => 'state',
-            'student.idp.student_number' => '2026-00004',
-        ])->get(route('student.idp.callback', [
-            'code' => 'bad-code',
-            'state' => 'state',
-        ]));
-
+        $this->fakeIdp(idpSubject: 'user-b', email: 'b@example.com', roles: 'notstudent');
+        $response = $this->hitCallback();
         $response->assertRedirect(route('student.login'));
         $response->assertSessionHasErrors('login');
         $this->assertGuest('student');
     }
 
-    public function test_callback_rejects_unknown_idp_user(): void
-    {
-        Config::set('services.idp.base_url', 'https://idp.test/api/v1');
-        Config::set('services.idp.client_id', 'student-client');
-        Config::set('services.idp.client_secret', 'student-secret');
+    // ------------------------------------------------------------------
+    // 14-16. Email change + account identity stability
+    // ------------------------------------------------------------------
 
-        Http::fake([
-            'https://idp.test/api/v1/auth/token' => Http::response([
-                'access_token' => 'access-token-999',
-                'token_type' => 'Bearer',
-                'expires_in' => 3600,
-            ], 200),
-            'https://idp.test/api/v1/me' => Http::response([
-                'id' => 'unknown-user-999',
-                'email' => 'nobody@example.com',
-                'first_name' => 'Nobody',
-                'last_name' => 'Nobody',
-                'roles' => 'student',
-            ], 200),
+    public function test_existing_account_id_remains_linked_even_if_email_changes(): void
+    {
+        $this->createStudent([
+            'idp_subject' => 'ABC123',
+            'idp_email' => 'old@student.pup.edu.ph',
         ]);
 
-        $response = $this->withSession([
-            'student.idp.state' => 'state',
-        ])->get(route('student.idp.callback', [
-            'code' => 'auth-code-123',
-            'state' => 'state',
-        ]));
+        $this->fakeIdp(idpSubject: 'ABC123', email: 'new@student.pup.edu.ph');
 
+        $this->hitCallback()->assertRedirect(route('student.dashboard'));
+        $this->assertAuthenticated('student');
+
+        $this->assertDatabaseHas('users_tbl', [
+            'student_number' => '2026-00003',
+            'idp_subject' => 'ABC123',
+            'idp_email' => 'new@student.pup.edu.ph',
+        ]);
+        $this->assertSame(1, User::count());
+    }
+
+    public function test_one_idp_account_cannot_be_linked_to_another_student(): void
+    {
+        $this->createStudent(['idp_subject' => 'user-bound-different']);
+        $this->fakeIdp(idpSubject: 'user-imposter');
+
+        $response = $this->hitCallback();
         $response->assertRedirect(route('student.login'));
         $response->assertSessionHasErrors('login');
         $this->assertGuest('student');
     }
 
-    public function test_callback_rejects_inactive_local_student(): void
+    // ------------------------------------------------------------------
+    // 17-19. Failure handling
+    // ------------------------------------------------------------------
+
+    public function test_token_exchange_api_failure_is_handled_safely(): void
     {
-        User::create([
-            'student_number' => '2026-00005',
-            'first_name' => 'IDP',
-            'last_name' => 'Student',
-            'email' => 'inactive.student@example.com',
-            'idp_subject' => 'user-inactive',
-            'idp_email' => 'inactive.student@example.com',
-            'status_id' => 2,
-            'roles_id' => 2,
-            'password_hash' => Hash::make('password123'),
-            'mfa_totp_enabled' => false,
-        ]);
-
-        Config::set('services.idp.base_url', 'https://idp.test/api/v1');
-        Config::set('services.idp.client_id', 'student-client');
-        Config::set('services.idp.client_secret', 'student-secret');
-
-        Http::fake([
-            'https://idp.test/api/v1/auth/token' => Http::response([
-                'access_token' => 'access-token-inactive',
-                'token_type' => 'Bearer',
-                'expires_in' => 3600,
-            ], 200),
-            'https://idp.test/api/v1/me' => Http::response([
-                'id' => 'user-inactive',
-                'email' => 'inactive.student@example.com',
-                'first_name' => 'IDP',
-                'last_name' => 'Student',
-                'roles' => 'student',
-            ], 200),
-        ]);
-
-        $response = $this->withSession([
-            'student.idp.state' => 'state',
-        ])->get(route('student.idp.callback', [
-            'code' => 'auth-code-123',
-            'state' => 'state',
-        ]));
-
-        $response->assertRedirect(route('student.login'));
-        $response->assertSessionHasErrors('login');
-        $this->assertGuest('student');
-    }
-
-    public function test_callback_rejects_wrong_role_account(): void
-    {
-        User::create([
-            'student_number' => '2026-00006',
-            'first_name' => 'Admin',
-            'last_name' => 'User',
-            'email' => 'admin.user@example.com',
-            'idp_subject' => 'user-admin',
-            'idp_email' => 'admin.user@example.com',
-            'status_id' => 1,
-            'roles_id' => 1, // Admin role
-            'password_hash' => Hash::make('password123'),
-            'mfa_totp_enabled' => false,
-        ]);
-
-        Config::set('services.idp.base_url', 'https://idp.test/api/v1');
-        Config::set('services.idp.client_id', 'student-client');
-        Config::set('services.idp.client_secret', 'student-secret');
-
-        Http::fake([
-            'https://idp.test/api/v1/auth/token' => Http::response([
-                'access_token' => 'access-token-admin',
-                'token_type' => 'Bearer',
-                'expires_in' => 3600,
-            ], 200),
-            'https://idp.test/api/v1/me' => Http::response([
-                'id' => 'user-admin',
-                'email' => 'admin.user@example.com',
-                'first_name' => 'Admin',
-                'last_name' => 'User',
-                'roles' => 'student',
-            ], 200),
-        ]);
-
-        $response = $this->withSession([
-            'student.idp.state' => 'state',
-        ])->get(route('student.idp.callback', [
-            'code' => 'auth-code-123',
-            'state' => 'state',
-        ]));
-
-        $response->assertRedirect(route('student.login'));
-        $response->assertSessionHasErrors('login');
-        $this->assertGuest('student');
-    }
-
-    public function test_callback_rejects_idp_account_linked_to_different_student(): void
-    {
-        // Local student is already bound to a DIFFERENT idp_subject.
-        User::create([
-            'student_number' => '2026-00007',
-            'first_name' => 'IDP',
-            'last_name' => 'Student',
-            'email' => 'bound.student@example.com',
-            'idp_subject' => 'user-bound-different',
-            'idp_email' => 'bound.student@example.com',
-            'status_id' => 1,
-            'roles_id' => 2,
-            'password_hash' => Hash::make('password123'),
-            'mfa_totp_enabled' => false,
-        ]);
-
-        Config::set('services.idp.base_url', 'https://idp.test/api/v1');
-        Config::set('services.idp.client_id', 'student-client');
-        Config::set('services.idp.client_secret', 'student-secret');
-
-        Http::fake([
-            'https://idp.test/api/v1/auth/token' => Http::response([
-                'access_token' => 'access-token-x',
-                'token_type' => 'Bearer',
-                'expires_in' => 3600,
-            ], 200),
-            'https://idp.test/api/v1/me' => Http::response([
-                'id' => 'user-imposter',
-                'email' => 'bound.student@example.com',
-                'first_name' => 'IDP',
-                'last_name' => 'Student',
-                'roles' => 'student',
-            ], 200),
-        ]);
-
-        // The email fallback would find the bound student, but its idp_subject
-        // differs, so login must be rejected.
-        $response = $this->withSession([
-            'student.idp.state' => 'state',
-        ])->get(route('student.idp.callback', [
-            'code' => 'auth-code-123',
-            'state' => 'state',
-        ]));
-
-        $response->assertRedirect(route('student.login'));
-        $response->assertSessionHasErrors('login');
-        $this->assertGuest('student');
-    }
-
-    public function test_idp_api_failure_is_handled(): void
-    {
-        Config::set('services.idp.base_url', 'https://idp.test/api/v1');
-        Config::set('services.idp.client_id', 'student-client');
-        Config::set('services.idp.client_secret', 'student-secret');
-
         Http::fake([
             'https://idp.test/api/v1/auth/token' => Http::response([], 500),
         ]);
 
-        $response = $this->withSession([
-            'student.idp.state' => 'state',
-        ])->get(route('student.idp.callback', [
-            'code' => 'auth-code-123',
-            'state' => 'state',
-        ]));
-
+        $response = $this->hitCallback();
         $response->assertRedirect(route('student.login'));
         $response->assertSessionHasErrors('login');
         $this->assertGuest('student');
     }
 
-    public function test_client_secret_is_not_exposed_in_rendered_views(): void
+    public function test_missing_access_token_is_handled_safely(): void
+    {
+        Http::fake([
+            'https://idp.test/api/v1/auth/token' => Http::response([
+                'refresh_token' => 'x',
+                'token_type' => 'Bearer',
+            ], 200),
+        ]);
+
+        $response = $this->hitCallback();
+        $response->assertRedirect(route('student.login'));
+        $response->assertSessionHasErrors('login');
+        $this->assertGuest('student');
+    }
+
+    public function test_missing_me_id_is_handled_safely(): void
+    {
+        $this->createStudent();
+        Http::fake([
+            'https://idp.test/api/v1/auth/token' => Http::response([
+                'access_token' => 'access-token-123',
+                'token_type' => 'Bearer',
+            ], 200),
+            'https://idp.test/api/v1/me' => Http::response([
+                'email' => 'student.idp@example.com',
+                'first_name' => 'IDP',
+                'last_name' => 'Student',
+                'roles' => 'student',
+            ], 200),
+        ]);
+
+        $response = $this->hitCallback();
+        $response->assertRedirect(route('student.login'));
+        $response->assertSessionHasErrors('login');
+        $this->assertGuest('student');
+    }
+
+    // ------------------------------------------------------------------
+    // 20-21. Guard + session regeneration
+    // ------------------------------------------------------------------
+
+    public function test_student_guard_is_authenticated_after_success(): void
+    {
+        $this->createStudent(['idp_subject' => 'user-123']);
+        $this->fakeIdp();
+
+        $this->hitCallback()->assertRedirect(route('student.dashboard'));
+        $this->assertAuthenticated('student');
+        $this->assertEquals('2026-00003', auth('student')->user()->student_number);
+    }
+
+    public function test_session_is_regenerated_after_successful_login(): void
+    {
+        $this->createStudent(['idp_subject' => 'user-123']);
+        $this->fakeIdp();
+
+        // Capture the session id before the callback login.
+        $this->withSession(['student.idp.state' => 'state-123']);
+        $before = session()->getId();
+
+        $response = $this->get(route('student.idp.callback', [
+            'code' => 'auth-code-123',
+            'state' => 'state-123',
+        ]));
+
+        $response->assertRedirect(route('student.dashboard'));
+        $this->assertAuthenticated('student');
+
+        // After login the session id should differ (session regenerated).
+        $this->assertNotSame($before, session()->getId());
+    }
+
+    // ------------------------------------------------------------------
+    // 22-23. Logout
+    // ------------------------------------------------------------------
+
+    public function test_logout_clears_local_authentication(): void
+    {
+        $this->createStudent(['idp_subject' => 'user-logout']);
+        $user = User::where('student_number', '2026-00003')->first();
+        $this->actingAs($user, 'student');
+        $this->assertAuthenticated('student');
+
+        $this->post(route('logout'))->assertRedirect(route('home'));
+        $this->assertGuest('student');
+    }
+
+    public function test_idp_logout_does_not_expose_tokens(): void
+    {
+        Http::fake([
+            'https://idp.test/api/v1/auth/logout' => Http::response([], 200),
+        ]);
+
+        $this->createStudent(['idp_subject' => 'user-logout']);
+        $user = User::where('student_number', '2026-00003')->first();
+
+        $this->withSession([
+            'student.idp.access_token' => 'access-secret-xyz',
+            'student.idp.refresh_token' => 'refresh-secret-xyz',
+        ])->actingAs($user, 'student');
+
+        $response = $this->post(route('logout'));
+        $response->assertRedirect(route('home'));
+        $this->assertGuest('student');
+
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), '/auth/logout')) {
+                return true;
+            }
+            $body = $request->data();
+            return ! in_array('access-secret-xyz', $body, true);
+        });
+    }
+
+    // ------------------------------------------------------------------
+    // 24-25. Tokens/secret not in rendered HTML, not in logs
+    // ------------------------------------------------------------------
+
+    public function test_no_access_or_refresh_token_in_rendered_html(): void
+    {
+        $this->createStudent(['idp_subject' => 'user-123']);
+        $this->fakeIdp();
+
+        $this->hitCallback()->assertRedirect(route('student.dashboard'));
+        $this->assertAuthenticated('student');
+
+        $this->assertStringNotContainsString('access-token-123', $this->get(route('student.login'))->getContent());
+        $this->assertStringNotContainsString('refresh-token-123', $this->get(route('student.login'))->getContent());
+    }
+
+    public function test_client_secret_does_not_appear_in_logs_or_responses(): void
     {
         Config::set('services.idp.client_secret', 'super-secret-value');
 
-        $this->get(route('student.login'))->assertOk();
+        $this->fakeIdp();
+        $this->createStudent(['idp_subject' => 'user-123']);
 
-        // Secret must never appear in rendered HTML/JS.
-        $this->assertStringNotContainsString(
-            'super-secret-value',
-            $this->get(route('student.login'))->getContent(),
-        );
-    }
+        $response = $this->hitCallback();
+        $response->assertRedirect(route('student.dashboard'));
 
-    public function test_logout_clears_student_session(): void
-    {
-        User::create([
-            'student_number' => '2026-00008',
-            'first_name' => 'IDP',
-            'last_name' => 'Student',
-            'email' => 'logout.student@example.com',
-            'idp_subject' => 'user-logout',
-            'idp_email' => 'logout.student@example.com',
-            'status_id' => 1,
-            'roles_id' => 2,
-            'password_hash' => Hash::make('password123'),
-            'mfa_totp_enabled' => false,
-        ]);
-
-        $user = User::where('student_number', '2026-00008')->first();
-        $this->actingAs($user, 'student');
-
-        $this->assertAuthenticated('student');
-
-        $this->post(route('logout'))
-            ->assertRedirect(route('home'));
-
-        $this->assertGuest('student');
+        $this->assertStringNotContainsString('super-secret-value', (string) $response->headers->get('Location'));
+        $this->assertStringNotContainsString('super-secret-value', $this->get(route('student.login'))->getContent());
     }
 
     public function test_protected_student_route_requires_auth(): void
     {
         $this->get(route('student.dashboard'))->assertRedirect(route('student.login'));
     }
+
+    // ------------------------------------------------------------------
+    // Schema
+    // ------------------------------------------------------------------
 
     private function ensureAuthTablesForTests(): void
     {

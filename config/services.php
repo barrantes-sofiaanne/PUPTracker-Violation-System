@@ -43,11 +43,18 @@ return [
         // Base URL includes the Swagger basePath (/api/v1).
         'base_url' => env('IDP_BASE_URL', 'https://identity-provider.isaxbsit2027.com/api/v1'),
         'client_id' => env('IDP_CLIENT_ID', ''),
+        // Server-side only. Never rendered, logged, or exposed to the browser.
         'client_secret' => env('IDP_CLIENT_SECRET', ''),
-        'redirect_uri' => env('IDP_REDIRECT_URI'),
+        // Canonical redirect URI. Both IDP_REDIRECT_URI and the previously-used
+        // IDP_REDIRECT_URL are accepted so a mismatched .env cannot silently
+        // break the flow; IDP_REDIRECT_URI takes precedence.
+        'redirect_uri' => env('IDP_REDIRECT_URI', env('IDP_REDIRECT_URL')),
         'timeout' => (int) env('IDP_TIMEOUT', 15),
         // Comma-separated role aliases that are allowed to sign in as a student.
+        // Matched exactly (case-insensitive, whole-token), never substring.
         'student_roles' => env('IDP_STUDENT_ROLES', 'student'),
+        // Optional: IDP logout endpoint relative to base_url (e.g. /auth/logout).
+        'logout_path' => env('IDP_LOGOUT_PATH', '/auth/logout'),
     ],
 
 ];

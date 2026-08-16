@@ -23,12 +23,42 @@ class LoginController extends Controller
 
     public function logout(Request $request)
     {
+        // Capture the IDP refresh token BEFORE clearing the session so we can
+        // attempt a server-side IDP logout (token revocation) if configured.
+        $idpRefreshToken = (string) $request->session()->get('student.idp.refresh_token', '');
+
         Auth::guard('student')->logout();
+
+        // Attempt IDP logout (POST /auth/logout) when a token exists. This is
+        // best-effort: never expose or log tokens, and never break local logout
+        // if the IDP endpoint is unavailable.
+        if ($idpRefreshToken !== '' || $request->session()->has('student.idp.access_token')) {
+            $idpBaseUrl = rtrim((string) config('services.idp.base_url'), '/');
+            $idpLogoutPath = (string) config('services.idp.logout_path', '/auth/logout');
+            $idpTimeout = (int) config('services.idp.timeout', 15);
+
+            try {
+                if ($idpBaseUrl !== '' && $idpLogoutPath !== '') {
+                    \Illuminate\Support\Facades\Http::baseUrl($idpBaseUrl)
+                        ->acceptJson()
+                        ->asJson()
+                        ->timeout($idpTimeout)
+                        ->post($idpLogoutPath, [
+                            'refresh_token' => $idpRefreshToken,
+                        ]);
+                }
+            } catch (\Throwable $e) {
+                // Best-effort only — local logout must still succeed.
+                Log::warning('IDP logout request failed', ['error' => $e->getMessage()]);
+            }
+        }
 
         // Clear any student IDP flow/session keys.
         $request->session()->forget([
             'student.idp.state',
             'student.idp.student_number',
+            'student.idp.access_token',
+            'student.idp.refresh_token',
         ]);
 
         $request->session()->invalidate();

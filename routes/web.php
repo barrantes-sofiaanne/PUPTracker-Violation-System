@@ -68,15 +68,15 @@ Route::post('/student/login', [LoginController::class, 'login'])
     ->name('student.login.post');
 
 // Student IdP (OAuth2 authorization-code flow) login
-Route::post('/student/idp/start', [StudentIdpLoginController::class, 'start'])
-    ->middleware('throttle:5,1')
-    ->name('student.idp.start');
-
-Route::get('/student/idp/login', [StudentIdpLoginController::class, 'redirect'])
+Route::get('/student/idp/login', [StudentIdpLoginController::class, 'start'])
     ->name('student.idp.login');
 
 Route::get('/student/idp/callback', [StudentIdpLoginController::class, 'callback'])
     ->name('student.idp.callback');
+
+// Backward-compatible POST alias (no student number is required anymore).
+Route::post('/student/idp/start', [StudentIdpLoginController::class, 'start'])
+    ->name('student.idp.start');
 
 Route::post('/logout', [LoginController::class, 'logout'])
     ->name('logout');
@@ -163,7 +163,7 @@ Route::middleware('auth:admin,security')
             ->name('totp.disable');
     });
 
-   
+
 
 /*
 |--------------------------------------------------------------------------
@@ -221,43 +221,45 @@ Route::middleware('auth:admin')
 
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])
             ->name('admin.dashboard');
-        Route::get('/violations/history', [ViolationController::class, 'history']
-            )->name('admin.violations.history');
-            Route::get(
-    '/violations/{violation}/edit',
-    [ViolationController::class, 'edit']
-)->name('admin.violations.edit');
+        Route::get(
+            '/violations/history',
+            [ViolationController::class, 'history']
+        )->name('admin.violations.history');
+        Route::get(
+            '/violations/{violation}/edit',
+            [ViolationController::class, 'edit']
+        )->name('admin.violations.edit');
 
-Route::put(
-    '/violations/{violation}',
-    [ViolationController::class, 'update']
-)->name('admin.violations.update');
+        Route::put(
+            '/violations/{violation}',
+            [ViolationController::class, 'update']
+        )->name('admin.violations.update');
 
-Route::delete(
-    '/violations/{violation}',
-    [ViolationController::class, 'destroy']
-)->name('admin.violations.destroy');
+        Route::delete(
+            '/violations/{violation}',
+            [ViolationController::class, 'destroy']
+        )->name('admin.violations.destroy');
 
-Route::resource(
-    'violation-types',
-    ViolationTypeController::class,
-    [
-        'as' => 'admin'
-    ]
-)->except(['create', 'edit']);
+        Route::resource(
+            'violation-types',
+            ViolationTypeController::class,
+            [
+                'as' => 'admin'
+            ]
+        )->except(['create', 'edit']);
 
-Route::get(
-    '/violation-types/category/{category}',
-    [ViolationTypeController::class, 'categoryTypes']
-)->name('admin.violation-types.category');
+        Route::get(
+            '/violation-types/category/{category}',
+            [ViolationTypeController::class, 'categoryTypes']
+        )->name('admin.violation-types.category');
 
-Route::resource(
-    'disciplinary-sanctions',
-    App\Http\Controllers\Admin\DisciplinarySanctionController::class,
-    [
-        'as' => 'admin'
-    ]
-)->except(['create', 'edit']);
+        Route::resource(
+            'disciplinary-sanctions',
+            App\Http\Controllers\Admin\DisciplinarySanctionController::class,
+            [
+                'as' => 'admin'
+            ]
+        )->except(['create', 'edit']);
         /*
         |--------------------------------------------------------------------------
         | Students
@@ -349,9 +351,9 @@ Route::resource(
             ->name('admin.sanctions.records.revert');
 
         Route::get(
-    '/violations/student/{student_number}',
-    [ViolationController::class, 'show']
-)->name('admin.violations.studentHistory');
+            '/violations/student/{student_number}',
+            [ViolationController::class, 'show']
+        )->name('admin.violations.studentHistory');
 
         /*
         |--------------------------------------------------------------------------
@@ -363,32 +365,32 @@ Route::resource(
         Route::get('/violations/{student_number}', [ViolationController::class, 'show'])
             ->name('admin.violations.show');
 
-/*
-|--------------------------------------------------------------------------
-| Violation Categories
-|--------------------------------------------------------------------------
-*/
+        /*
+        |--------------------------------------------------------------------------
+        | Violation Categories
+        |--------------------------------------------------------------------------
+        */
 
-Route::prefix('violation-categories')
-    ->name('admin.violation-categories.')
-    ->group(function () {
+        Route::prefix('violation-categories')
+            ->name('admin.violation-categories.')
+            ->group(function () {
 
-        Route::get('/', [ViolationCategoryController::class, 'index'])
-            ->name('index');
+                Route::get('/', [ViolationCategoryController::class, 'index'])
+                    ->name('index');
 
-        Route::post('/', [ViolationCategoryController::class, 'store'])
-            ->name('store');
+                Route::post('/', [ViolationCategoryController::class, 'store'])
+                    ->name('store');
 
-        Route::get('/{category}', [ViolationCategoryController::class, 'show'])
-            ->name('show');
+                Route::get('/{category}', [ViolationCategoryController::class, 'show'])
+                    ->name('show');
 
-        Route::put('/{category}', [ViolationCategoryController::class, 'update'])
-            ->name('update');
+                Route::put('/{category}', [ViolationCategoryController::class, 'update'])
+                    ->name('update');
 
-        Route::delete('/{category}', [ViolationCategoryController::class, 'destroy'])
-            ->name('destroy');
+                Route::delete('/{category}', [ViolationCategoryController::class, 'destroy'])
+                    ->name('destroy');
 
-    });
+            });
         /*
         |--------------------------------------------------------------------------
         | Violation Configuration
@@ -599,7 +601,7 @@ Route::prefix('violation-categories')
             });
     });
 
-    Route::middleware('auth:security')
+Route::middleware('auth:security')
     ->prefix('security')
     ->group(function () {
 
@@ -656,9 +658,9 @@ Route::prefix('violation-categories')
 Route::get('/mailgun-direct-test', function () {
 
     $response = Http::withBasicAuth(
-            'api',
-            config('services.mailgun.secret')
-        )
+        'api',
+        config('services.mailgun.secret')
+    )
         ->asForm()
         ->post(
             'https://' .
@@ -667,15 +669,15 @@ Route::get('/mailgun-direct-test', function () {
             config('services.mailgun.domain') .
             '/messages',
             [
-                'from'    => 'PUP Tracker <' . config('mail.from.address') . '>',
-                'to'      => 'sabarrantes2911@gmail.com',
+                'from' => 'PUP Tracker <' . config('mail.from.address') . '>',
+                'to' => 'sabarrantes2911@gmail.com',
                 'subject' => 'Railway Mailgun Test',
-                'text'    => 'Hello from Railway and Mailgun!',
+                'text' => 'Hello from Railway and Mailgun!',
             ]
         );
 
     return response()->json([
         'status' => $response->status(),
-        'body'   => $response->body(),
+        'body' => $response->body(),
     ]);
 });

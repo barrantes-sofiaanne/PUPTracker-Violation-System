@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -13,50 +14,19 @@ use Illuminate\Support\Str;
 class StudentIdpLoginController extends Controller
 {
     /**
-     * Pre-link a local student account to the IdP identity.
+     * Start the SSO flow by redirecting the student to the IDP authorization
+     * endpoint. No student number is required — the IDP session is the source
+     * of truth, and first-time linking is handled safely in the callback.
      *
-     * The student enters their local student number first so the IdP subject
-     * can be bound to the correct users_tbl record on first login. Once bound,
-     * subsequent logins match by idp_subject directly.
+     * GET /auth/authorize?client_id=...&redirect_uri=...&response_type=code&state=...
      */
-    public function start(Request $request)
-    {
-        $validated = $request->validate([
-            'student_number' => ['required', 'string'],
-        ]);
-
-        $student = User::query()
-            ->where('student_number', $validated['student_number'])
-            ->first();
-
-        if (! $student || (int) $student->status_id !== 1) {
-            return redirect()->route('student.login')
-                ->withErrors([
-                    'login' => 'Student account was not found or is inactive.',
-                ])
-                ->withInput();
-        }
-
-        $request->session()->put('student.idp.student_number', (string) $student->student_number);
-
-        return redirect()->route('student.idp.login');
-    }
-
-    /**
-     * Redirect the user to the IdP authorization endpoint.
-     *
-     * The IdP Swagger contract (basePath /api/v1):
-     *   GET /auth/authorize?client_id=...&redirect_uri=...&state=...
-     * The IdP preserves client_id and redirect_uri through its login SPA and
-     * returns the authorization code to redirect_uri.
-     */
-    public function redirect(Request $request)
+    public function start(Request $request): RedirectResponse
     {
         $clientId = (string) config('services.idp.client_id');
         $baseUrl = rtrim((string) config('services.idp.base_url'), '/');
-        $redirectUri = (string) config('services.idp.redirect_uri', route('student.idp.callback'));
+        $redirectUri = (string) config('services.idp.redirect_uri');
 
-        if ($clientId === '' || $baseUrl === '') {
+        if ($clientId === '' || $baseUrl === '' || $redirectUri === '') {
             return redirect()->route('student.login')
                 ->withErrors([
                     'login' => 'IDP login is not configured yet.',
@@ -69,7 +39,10 @@ class StudentIdpLoginController extends Controller
         $authorizeUrl = $baseUrl . '/auth/authorize';
 
         return redirect()->away($authorizeUrl . '?' . http_build_query([
-    'client_id' => $clientId,
+            'client_id' => $clientId,
+            'redirect_uri' => $redirectUri,
+            'response_type' => 'code',
+            'state' => $state,
         ]));
     }
 
@@ -133,6 +106,7 @@ class StudentIdpLoginController extends Controller
             }
 
             $accessToken = (string) $tokenResponse->json('access_token');
+            $refreshToken = (string) $tokenResponse->json('refresh_token');
 
             if ($accessToken === '') {
                 throw new \RuntimeException('Missing access token in IDP response.');
@@ -161,6 +135,7 @@ class StudentIdpLoginController extends Controller
                     ]);
             }
 
+            // IDP role must be student (exact normalized match).
             if (! $this->profileHasStudentRole($profile)) {
                 return redirect()->route('student.login')
                     ->withErrors([
@@ -168,12 +143,12 @@ class StudentIdpLoginController extends Controller
                     ]);
             }
 
-            $user = $this->resolveLocalUser($request, $idpSubject, $email);
+            $user = $this->resolveLocalUser($idpSubject, $email);
 
             if (! $user) {
                 return redirect()->route('student.login')
                     ->withErrors([
-                        'login' => 'No local student account is linked to this IDP profile. Enter your student number first, then try again.',
+                        'login' => 'Your PUP ID was authenticated, but your PUPTracker student account has not been linked yet. Please contact the administrator.',
                     ]);
             }
 
@@ -203,6 +178,13 @@ class StudentIdpLoginController extends Controller
             $this->persistIdpBinding($user, $idpSubject, $email);
             $this->touchLastLogin($user);
 
+            // Keep tokens server-side (session) for optional refresh/logout,
+            // never exposed to the browser.
+            $request->session()->put('student.idp.access_token', $accessToken);
+            if ($refreshToken !== '') {
+                $request->session()->put('student.idp.refresh_token', $refreshToken);
+            }
+
             Auth::guard('student')->login($user);
             $request->session()->regenerate();
 
@@ -225,20 +207,17 @@ class StudentIdpLoginController extends Controller
      */
     protected function profileHasStudentRole(array $profile): bool
     {
-        $roles = strtolower((string) data_get($profile, 'roles', ''));
-        $aliases = preg_split(
-            '/[\s,|]+/',
-            strtolower((string) config('services.idp.student_roles', 'student')),
-            -1,
-            PREG_SPLIT_NO_EMPTY,
-        );
+        $rolesRaw = (string) data_get($profile, 'roles', '');
 
-        if ($roles === '') {
+        if (trim($rolesRaw) === '') {
             return true; // No role info returned; rely on local role check.
         }
 
-        foreach ($aliases as $alias) {
-            if (str_contains($roles, $alias)) {
+        $roles = $this->normalizeRoleTokens($rolesRaw);
+        $aliases = $this->normalizeRoleTokens((string) config('services.idp.student_roles', 'student'));
+
+        foreach ($roles as $role) {
+            if (in_array($role, $aliases, true)) {
                 return true;
             }
         }
@@ -247,9 +226,28 @@ class StudentIdpLoginController extends Controller
     }
 
     /**
-     * Resolve the local users_tbl record for the given IdP identity.
+     * Split a role string into normalized whole tokens.
      */
-    protected function resolveLocalUser(Request $request, string $idpSubject, string $email): ?User
+    protected function normalizeRoleTokens(string $value): array
+    {
+        $tokens = preg_split('/[\s,|]+/', strtolower(trim($value)), -1, PREG_SPLIT_NO_EMPTY);
+
+        return $tokens === false ? [] : array_values(array_unique($tokens));
+    }
+
+    /**
+     * Resolve the local users_tbl record for the given IdP identity.
+     *
+     * Priority:
+     *   1. Existing idp_subject binding (strongest, permanent identity).
+     *   2. Safe first-time linking by email: an exact email match to an ACTIVE,
+     *      unbound local student. Email is a mutable attribute used ONLY for
+     *      controlled initial linking — never the permanent identity — and only
+     *      when the target is not already bound to a different IDP subject.
+     *
+     * Never auto-creates accounts and never links to an ambiguous match.
+     */
+    protected function resolveLocalUser(string $idpSubject, string $email): ?User
     {
         // 1) Strongest: existing idp_subject binding.
         try {
@@ -261,18 +259,27 @@ class StudentIdpLoginController extends Controller
             Log::warning('Could not query idp_subject column', ['error' => $e->getMessage()]);
         }
 
-        // 2) Pre-linked student number from the start() flow.
-        $pendingStudentNumber = (string) $request->session()->pull('student.idp.student_number', '');
-        if ($pendingStudentNumber !== '') {
-            $user = User::query()->where('student_number', $pendingStudentNumber)->first();
-            if ($user) {
-                return $user;
-            }
-        }
-
-        // 3) Legacy fallback for accounts linked before subject-based binding.
+        // 2) Safe first-time linking by email (active, unbound, unambiguous).
         if ($email !== '') {
-            return User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+            try {
+                $matches = User::query()
+                    ->whereRaw('LOWER(email) = ?', [$email])
+                    ->get();
+
+                if ($matches->count() === 1) {
+                    $candidate = $matches->first();
+
+                    if (
+                        $candidate
+                        && (int) $candidate->status_id === 1
+                        && ($candidate->idp_subject === null || (string) $candidate->idp_subject === '')
+                    ) {
+                        return $candidate;
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Could not query email for safe linking', ['error' => $e->getMessage()]);
+            }
         }
 
         return null;
@@ -280,24 +287,27 @@ class StudentIdpLoginController extends Controller
 
     /**
      * Persist the IdP subject/email binding on the local user.
+     *
+     * idp_subject is the permanent identity link; idp_email is a mutable
+     * attribute refreshed to the latest IDP email on every login.
      */
     protected function persistIdpBinding(User $user, string $idpSubject, string $email): void
     {
         try {
-            if ((string) $user->idp_subject !== $idpSubject || strtolower((string) $user->idp_email) !== $email) {
-                $user->forceFill([
-                    'idp_subject' => $idpSubject,
-                    'idp_email' => $email !== '' ? $email : $user->idp_email,
-                    'idp_connected_at' => $user->idp_connected_at ?? now(),
-                ])->save();
-            }
+            $wasFirstLink = $user->idp_subject === null || (string) $user->idp_subject === '';
+
+            $user->forceFill([
+                'idp_subject' => $idpSubject,
+                'idp_email' => $email !== '' ? $email : $user->idp_email,
+                'idp_connected_at' => $wasFirstLink ? now() : ($user->idp_connected_at ?? now()),
+            ])->save();
         } catch (\Throwable $e) {
             Log::warning('Could not update idp fields', ['error' => $e->getMessage()]);
         }
     }
 
     /**
-     * Verify the local user is assigned the student role.
+     * Verify the local user is assigned the student role (exact normalized match).
      */
     protected function userIsStudent(User $user): bool
     {
@@ -309,13 +319,13 @@ class StudentIdpLoginController extends Controller
                 return (int) $user->roles_id === 2;
             }
 
-            $roleName = strtolower((string) $role->roles_name);
+            $roleName = (string) $role->roles_name;
 
-            return str_contains($roleName, 'student');
+            return in_array('student', $this->normalizeRoleTokens($roleName), true);
         } catch (\Throwable $e) {
             Log::warning('Could not verify student role', ['error' => $e->getMessage()]);
 
-            return true; // Role verification unavailable; rely on IdP role check.
+            return false; // Fail closed when role verification is unavailable.
         }
     }
 
