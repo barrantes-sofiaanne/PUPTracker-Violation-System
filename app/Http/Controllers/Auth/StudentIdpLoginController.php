@@ -146,10 +146,14 @@ class StudentIdpLoginController extends Controller
             $user = $this->resolveLocalUser($idpSubject, $email);
 
             if (! $user) {
-                return redirect()->route('student.login')
-                    ->withErrors([
-                        'login' => 'Your PUP ID was authenticated, but your PUPTracker student account has not been linked yet. Please contact the administrator.',
-                    ]);
+                // Store the authenticated-but-unlinked IDP identity server-side so
+                // the student can complete a secure self-linking step. The IDP id
+                // is never sent to the browser form — only referenced from session.
+                $request->session()->put('student.idp.pending_subject', $idpSubject);
+                $request->session()->put('student.idp.pending_email', $email);
+
+                return redirect()->route('student.idp.link')
+                    ->with('info', 'Your PUP ID was authenticated. Verify your PUPTracker student account to complete linking.');
             }
 
             // Security: prevent an IdP account from binding to a local student
@@ -199,6 +203,130 @@ class StudentIdpLoginController extends Controller
                     'login' => 'Unable to complete IDP login right now. Please try again later.',
                 ]);
         }
+    }
+
+    /**
+     * Show the secure self-linking form.
+     *
+     * Only reachable when the student has an authenticated-but-unlinked IDP
+     * identity in the session (server-side). The student enters their local
+     * PUPTracker student number to verify ownership; the IDP id itself is never
+     * shown or typed by the student.
+     */
+    public function showLinkForm(Request $request)
+    {
+        $idpSubject = (string) $request->session()->get('student.idp.pending_subject', '');
+        $idpEmail = strtolower((string) $request->session()->get('student.idp.pending_email', ''));
+
+        if ($idpSubject === '') {
+            return redirect()->route('student.idp.login');
+        }
+
+        return view('student.idp-link', compact('idpSubject', 'idpEmail'));
+    }
+
+    /**
+     * Complete the secure self-linking flow.
+     *
+     * The student enters their local PUPTracker student number. We look up the
+     * local student and verify it is active and unbound. The IDP id used for the
+     * binding comes ONLY from the authenticated server-side session — never from
+     * the request. Email is used only as a secondary verification signal.
+     */
+    public function linkAccount(Request $request)
+    {
+        $idpSubject = (string) $request->session()->get('student.idp.pending_subject', '');
+        $idpEmail = strtolower((string) $request->session()->get('student.idp.pending_email', ''));
+
+        if ($idpSubject === '') {
+            return redirect()->route('student.login')
+                ->withErrors([
+                    'login' => 'Your PUP ID session has expired. Please sign in again.',
+                ]);
+        }
+
+        $validated = $request->validate([
+            'student_number' => ['required', 'string'],
+        ]);
+
+        // The IDP id is already bound to someone else — block and log.
+        $alreadyBound = User::query()->where('idp_subject', $idpSubject)->first();
+        if ($alreadyBound) {
+            $this->logSecurityEvent('IDP id already linked to another student', [
+                'idp_subject' => $idpSubject,
+                'attempted_student_number' => $validated['student_number'],
+            ]);
+
+            return redirect()->route('student.login')
+                ->withErrors([
+                    'login' => 'This PUP ID is already linked to another account. Please contact the administrator.',
+                ]);
+        }
+
+        $student = User::query()
+            ->where('student_number', $validated['student_number'])
+            ->first();
+
+        if (! $student) {
+            return back()->withErrors([
+                'student_number' => 'No PUPTracker student account was found with that student number.',
+            ]);
+        }
+
+        if ((int) $student->status_id !== 1) {
+            return back()->withErrors([
+                'student_number' => 'This student account is inactive. Please contact the administrator.',
+            ]);
+        }
+
+        // The local student must not already be bound to a different IDP id.
+        if ((string) $student->idp_subject !== '' && (string) $student->idp_subject !== $idpSubject) {
+            $this->logSecurityEvent('Attempt to overwrite existing IDP link', [
+                'idp_subject' => $idpSubject,
+                'student_number' => $student->student_number,
+                'existing_subject' => (string) $student->idp_subject,
+            ]);
+
+            return back()->withErrors([
+                'student_number' => 'This student account is already linked to a different PUP ID.',
+            ]);
+        }
+
+        // Email is a secondary verification signal: if both are present and they
+        // differ, require confirmation via the local account's email. This is not
+        // the permanent identity — it only gates the initial link.
+        $localEmail = strtolower(trim((string) $student->email));
+        if ($idpEmail !== '' && $localEmail !== '' && $idpEmail !== $localEmail) {
+            return back()->withErrors([
+                'email_mismatch' => 'The email on your PUP ID does not match this student account. Please contact the administrator to complete linking.',
+            ]);
+        }
+
+        // Bind the authenticated IDP id (from session) to the verified student.
+        $student->forceFill([
+            'idp_subject' => $idpSubject,
+            'idp_email' => $idpEmail !== '' ? $idpEmail : $student->idp_email,
+            'idp_connected_at' => $student->idp_connected_at ?? now(),
+        ])->save();
+
+        // Clear the pending flow and log the student in.
+        $request->session()->forget([
+            'student.idp.pending_subject',
+            'student.idp.pending_email',
+        ]);
+
+        Auth::guard('student')->login($student);
+        $request->session()->regenerate();
+
+        return redirect()->route('student.dashboard');
+    }
+
+    /**
+     * Log a security-relevant event without exposing tokens or secrets.
+     */
+    protected function logSecurityEvent(string $message, array $context = []): void
+    {
+        Log::warning('IDP linking security event: ' . $message, $context);
     }
 
     /**

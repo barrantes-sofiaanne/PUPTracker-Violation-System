@@ -159,7 +159,6 @@ class StudentController extends Controller
             'section_id' => 'required|exists:section_tbl,section_id',
             'gender_id' => 'required|exists:gender_tbl,gender_id',
             'status_id' => 'required|exists:status_tbl,status_id',
-            'password' => 'required|string|min:8',
         ]);
 
         DB::transaction(function () use ($validated): void {
@@ -171,6 +170,8 @@ class StudentController extends Controller
                 ]);
             }
 
+            // Student passwords are managed by the PUP Identity Provider (IDP),
+            // so no local password is configured for student accounts.
             $student = User::create([
                 'student_number' => $validated['student_number'],
                 'first_name' => $validated['first_name'],
@@ -180,7 +181,7 @@ class StudentController extends Controller
                 'gender_id' => $validated['gender_id'],
                 'status_id' => $validated['status_id'],
                 'roles_id' => 2,
-                'password_hash' => Hash::make($validated['password']),
+                'password_hash' => '',
             ]);
 
             $student->studentInfo()->create([
@@ -569,9 +570,10 @@ class StudentController extends Controller
             'section_id' => 'required',
             'gender_id' => 'required',
             'status_id' => 'required',
-            'password' => 'nullable|string|min:8',
         ]);
 
+        // Student passwords are managed by the PUP Identity Provider (IDP), so
+        // the local password is never updated here.
         $student->update([
             'first_name' => $request->input('first_name'),
             'middle_name' => $request->input('middle_name'),
@@ -579,9 +581,6 @@ class StudentController extends Controller
             'email' => $request->input('email'),
             'gender_id' => $request->input('gender_id'),
             'status_id' => $request->input('status_id'),
-            'password_hash' => $request->filled('password')
-                ? Hash::make($request->input('password'))
-                : $student->password_hash,
         ]);
 
         $studentStatusId = $this->resolveStudentStatusIdFromUserStatusId((int) $request->input('status_id'));
@@ -789,6 +788,8 @@ class StudentController extends Controller
             return 0;
         }
 
+        // Student passwords are managed by the PUP Identity Provider (IDP), so
+        // no local password is configured for imported student accounts.
         $student = User::create([
             'student_number' => $studentNumber,
             'first_name' => $row['first_name'] ?? '',
@@ -798,7 +799,7 @@ class StudentController extends Controller
             'gender_id' => $genderId,
             'status_id' => $statusId,
             'roles_id' => 2,
-            'password_hash' => Hash::make($row['password'] ?? 'Temp1234!'),
+            'password_hash' => '',
         ]);
 
         $student->studentInfo()->create([
