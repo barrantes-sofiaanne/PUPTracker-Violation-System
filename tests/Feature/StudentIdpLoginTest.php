@@ -385,7 +385,21 @@ class StudentIdpLoginTest extends TestCase
         $this->actingAs($user, 'student');
         $this->assertAuthenticated('student');
 
-        $this->post(route('logout'))->assertRedirect(route('home'));
+        $this->post(route('logout'))->assertRedirect();
+        $this->assertGuest('student');
+    }
+
+    public function test_logout_redirects_to_idp_front_channel_logout(): void
+    {
+        $this->createStudent(['idp_subject' => 'user-logout']);
+        $user = User::where('student_number', '2026-00003')->first();
+        $this->actingAs($user, 'student');
+
+        // logout_url falls back to base_url root (https://idp.test).
+        $response = $this->post(route('logout'));
+        $response->assertRedirect();
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringContainsString('https://idp.test', $location);
         $this->assertGuest('student');
     }
 
@@ -404,8 +418,12 @@ class StudentIdpLoginTest extends TestCase
         ])->actingAs($user, 'student');
 
         $response = $this->post(route('logout'));
-        $response->assertRedirect(route('home'));
+        $response->assertRedirect();
         $this->assertGuest('student');
+
+        // The front-channel redirect must not leak the access token.
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringNotContainsString('access-secret-xyz', $location);
 
         Http::assertSent(function ($request) {
             if (! str_contains($request->url(), '/auth/logout')) {

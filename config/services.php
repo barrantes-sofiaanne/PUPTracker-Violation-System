@@ -53,8 +53,12 @@ return [
         // Comma-separated role aliases that are allowed to sign in as a student.
         // Matched exactly (case-insensitive, whole-token), never substring.
         'student_roles' => env('IDP_STUDENT_ROLES', 'student'),
-        // Optional: IDP logout endpoint relative to base_url (e.g. /auth/logout).
+        // Server-side token revocation endpoint relative to base_url.
         'logout_path' => env('IDP_LOGOUT_PATH', '/auth/logout'),
+        // Front-channel (browser) IDP logout URL that clears the IDP SSO session
+        // cookie. Optional: set IDP_LOGOUT_URL (e.g. https://.../logout). If
+        // empty, the controller derives it from base_url by stripping /api/v1.
+        'logout_url' => env('IDP_LOGOUT_URL', ''),
     ],
 
 ];

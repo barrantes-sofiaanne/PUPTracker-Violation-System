@@ -32,8 +32,8 @@ class LoginController extends Controller
 
         Auth::guard('student')->logout();
 
-        // Best-effort IDP logout: never expose or log tokens, and never break
-        // local logout if the IDP endpoint is unavailable.
+        // Best-effort server-side token revocation: never expose or log tokens,
+        // and never break local logout if the IDP endpoint is unavailable.
         if ($idpAccessToken !== '') {
             $idpBaseUrl = rtrim((string) config('services.idp.base_url'), '/');
             $idpLogoutPath = (string) config('services.idp.logout_path', '/auth/logout');
@@ -52,7 +52,7 @@ class LoginController extends Controller
                 }
             } catch (\Throwable $e) {
                 // Best-effort only — local logout must still succeed.
-                Log::warning('IDP logout request failed', ['error' => $e->getMessage()]);
+                Log::warning('IDP token revocation failed', ['error' => $e->getMessage()]);
             }
         }
 
@@ -62,11 +62,34 @@ class LoginController extends Controller
             'student.idp.student_number',
             'student.idp.access_token',
             'student.idp.refresh_token',
+            'student.idp.pending_subject',
+            'student.idp.pending_email',
         ]);
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('home');
+        // Front-channel IDP logout: clear the IDP SSO session cookie in the
+        // browser. The IDP redirects back to the App Client's registered Logout
+        // URL (https://puptvs.com/student/login), so the student lands on the
+        // login page. If the IDP logout URL is not configured or unreachable,
+        // fall back to the local student login page so logout always succeeds.
+        $idpLogoutUrl = rtrim((string) config('services.idp.logout_url'), '/');
+
+        if ($idpLogoutUrl === '') {
+            // Derive from base_url by stripping the /api/v1 base path (the
+            // front-channel logout lives at the root, e.g. https://host/logout).
+            $idpLogoutUrl = rtrim(preg_replace('#/api/v1/?$#', '', (string) config('services.idp.base_url')), '/');
+        }
+
+        if ($idpLogoutUrl !== '') {
+            try {
+                return redirect()->away($idpLogoutUrl);
+            } catch (\Throwable $e) {
+                Log::warning('IDP front-channel logout redirect failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        return redirect()->route('student.login');
     }
 }
