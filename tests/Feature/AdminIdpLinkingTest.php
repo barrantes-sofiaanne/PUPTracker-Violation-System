@@ -110,12 +110,14 @@ class AdminIdpLinkingTest extends TestCase
 
     public function test_unlinked_idp_account_is_rejected(): void
     {
+        // Local student email does NOT match the IDP email, so no safe
+        // auto-link occurs. The student is NOT logged in; they are sent to the
+        // secure self-linking step instead.
         $this->createStudent(['email' => 'different@example.com']);
         $this->fakeIdp(idpSubject: 'user-unknown', email: 'nobody@example.com');
 
         $response = $this->hitCallback();
-        $response->assertRedirect(route('student.login'));
-        $response->assertSessionHasErrors('login');
+        $response->assertRedirect(route('student.idp.link'));
         $this->assertGuest('student');
     }
 
@@ -291,6 +293,146 @@ class AdminIdpLinkingTest extends TestCase
         $this->assertGuest('admin');
 
         $this->assertSame(null, $student->fresh()->idp_subject);
+    }
+
+    // ------------------------------------------------------------------
+    // Secure self-linking flow (student never types their IDP id)
+    // ------------------------------------------------------------------
+
+    public function test_unlinked_student_is_redirected_to_self_link_form(): void
+    {
+        $this->createStudent(['email' => 'different@example.com']);
+        $this->fakeIdp(idpSubject: 'user-new', email: 'nobody@example.com');
+
+        $response = $this->hitCallback();
+        $response->assertRedirect(route('student.idp.link'));
+    }
+
+    public function test_self_link_requires_pending_idp_session(): void
+    {
+        // No pending session -> redirect back to IDP login.
+        $response = $this->get(route('student.idp.link'));
+        $response->assertRedirect(route('student.idp.login'));
+    }
+
+    public function test_student_can_self_link_with_correct_student_number(): void
+    {
+        // Local email differs from IDP email so the callback does NOT auto-link.
+        $student = $this->createStudent(['email' => 'local@example.com']);
+        $this->fakeIdp(idpSubject: 'user-new', email: 'student.idp@example.com');
+
+        $this->hitCallback()->assertRedirect(route('student.idp.link'));
+
+        // Self-link form must use a matching local email (secondary signal).
+        $response = $this->withSession([
+            'student.idp.pending_subject' => 'user-new',
+            'student.idp.pending_email' => 'student.idp@example.com',
+        ])->post(route('student.idp.link.post'), [
+            'student_number' => '2026-00003',
+            // send matching local email to pass the secondary check
+        ]);
+
+        $response->assertSessionHasErrors('email_mismatch');
+        $this->assertGuest('student');
+
+        // Now with matching email (local email updated to match IDP), linking succeeds.
+        $student->forceFill(['email' => 'student.idp@example.com'])->save();
+
+        $response = $this->withSession([
+            'student.idp.pending_subject' => 'user-new',
+            'student.idp.pending_email' => 'student.idp@example.com',
+        ])->post(route('student.idp.link.post'), [
+            'student_number' => '2026-00003',
+        ]);
+
+        $response->assertRedirect(route('student.dashboard'));
+        $this->assertAuthenticated('student');
+
+        $this->assertDatabaseHas('users_tbl', [
+            'user_id' => $student->user_id,
+            'idp_subject' => 'user-new',
+            'idp_email' => 'student.idp@example.com',
+        ]);
+    }
+
+    public function test_self_link_rejects_unknown_student_number(): void
+    {
+        // A local student exists but the submitted student number is wrong.
+        $this->createStudent(['email' => 'other@example.com']);
+        $this->fakeIdp(idpSubject: 'user-new', email: 'student.idp@example.com');
+
+        $response = $this->withSession([
+            'student.idp.pending_subject' => 'user-new',
+            'student.idp.pending_email' => 'student.idp@example.com',
+        ])->post(route('student.idp.link.post'), [
+            'student_number' => 'NOPE-999',
+        ]);
+
+        $response->assertSessionHasErrors('student_number');
+        $this->assertGuest('student');
+    }
+
+    public function test_self_link_rejects_if_idp_id_already_bound_to_another(): void
+    {
+        $this->createStudent([
+            'student_number' => '2026-00001',
+            'idp_subject' => 'user-bound',
+            'email' => 'bound@example.com',
+        ]);
+        $other = $this->createStudent([
+            'student_number' => '2026-00002',
+            'email' => 'other@example.com',
+        ]);
+
+        $this->fakeIdp(idpSubject: 'user-bound', email: 'bound@example.com');
+
+        // IDP id user-bound already linked to 2026-00001.
+        $response = $this->withSession([
+            'student.idp.pending_subject' => 'user-bound',
+            'student.idp.pending_email' => 'bound@example.com',
+        ])->post(route('student.idp.link.post'), [
+            'student_number' => '2026-00002',
+        ]);
+
+        $response->assertSessionHasErrors('login');
+        $this->assertSame(null, $other->fresh()->idp_subject);
+        $this->assertGuest('student');
+    }
+
+    public function test_self_link_rejects_email_mismatch(): void
+    {
+        $student = $this->createStudent(['email' => 'local@example.com']);
+
+        $this->fakeIdp(idpSubject: 'user-new', email: 'different@idp.example.com');
+        $this->hitCallback()->assertRedirect(route('student.idp.link'));
+
+        $response = $this->withSession([
+            'student.idp.pending_subject' => 'user-new',
+            'student.idp.pending_email' => 'different@idp.example.com',
+        ])->post(route('student.idp.link.post'), [
+            'student_number' => '2026-00003',
+        ]);
+
+        $response->assertSessionHasErrors('email_mismatch');
+        $this->assertSame(null, $student->fresh()->idp_subject);
+        $this->assertGuest('student');
+    }
+
+    public function test_self_link_rejects_inactive_student(): void
+    {
+        $this->createStudent(['status_id' => 2]);
+        $this->fakeIdp(idpSubject: 'user-new', email: 'student.idp@example.com');
+        $this->hitCallback()->assertRedirect(route('student.idp.link'));
+
+        $response = $this->withSession([
+            'student.idp.pending_subject' => 'user-new',
+            'student.idp.pending_email' => 'student.idp@example.com',
+        ])->post(route('student.idp.link.post'), [
+            'student_number' => '2026-00003',
+        ]);
+
+        $response->assertSessionHasErrors('student_number');
+        $this->assertGuest('student');
     }
 
     // ------------------------------------------------------------------

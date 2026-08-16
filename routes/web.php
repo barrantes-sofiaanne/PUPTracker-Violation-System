@@ -78,6 +78,17 @@ Route::get('/student/idp/callback', [StudentIdpLoginController::class, 'callback
 Route::post('/student/idp/start', [StudentIdpLoginController::class, 'start'])
     ->name('student.idp.start');
 
+// Secure student self-linking: after IDP auth with an unlinked account, the
+// student verifies their local identity by entering their PUPTracker student
+// number. The IDP id (from the authenticated session) is then bound to the
+// verified local student. The student never types their IDP id.
+Route::get('/student/idp/link', [StudentIdpLoginController::class, 'showLinkForm'])
+    ->name('student.idp.link');
+
+Route::post('/student/idp/link', [StudentIdpLoginController::class, 'linkAccount'])
+    ->middleware('throttle:5,1')
+    ->name('student.idp.link.post');
+
 Route::post('/logout', [LoginController::class, 'logout'])
     ->name('logout');
 

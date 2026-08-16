@@ -77,7 +77,7 @@
     {{-- IDP Account Linking (administrator-controlled) --}}
     <div class="card shadow-sm border-0 mt-4">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <strong><i class="bi bi-person-badge me-1"></i> PUP ID Account Linking</strong>
+            <strong><i class="bi bi-person-badge me-1"></i> PUP IDP Account Linking</strong>
             @if($student->idp_subject)
                 <span class="badge bg-success">Linked</span>
             @else
@@ -104,7 +104,7 @@
                       onsubmit="return confirm('Unlink this student from their PUP ID? This will require re-linking before IDP login works again.');">
                     @csrf
                     <button type="submit" class="btn btn-outline-danger btn-sm">
-                        <i class="bi bi-link-45deg"></i> Unlink PUP ID
+                        <i class="bi bi-link-45deg"></i> Unlink PUP IDP
                     </button>
                 </form>
             @else

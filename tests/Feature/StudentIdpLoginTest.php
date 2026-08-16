@@ -173,12 +173,13 @@ class StudentIdpLoginTest extends TestCase
 
     public function test_unknown_idp_account_id_is_rejected_without_safe_mapping(): void
     {
+        // No local user matches and no safe email link exists. The student is
+        // NOT authenticated; they are routed to the secure self-linking step.
         $this->createStudent(['email' => 'different@example.com']);
         $this->fakeIdp(idpSubject: 'user-999', email: 'nobody@example.com');
 
         $response = $this->hitCallback();
-        $response->assertRedirect(route('student.login'));
-        $response->assertSessionHasErrors('login');
+        $response->assertRedirect(route('student.idp.link'));
         $this->assertGuest('student');
     }
 
@@ -269,13 +270,20 @@ class StudentIdpLoginTest extends TestCase
 
     public function test_one_idp_account_cannot_be_linked_to_another_student(): void
     {
+        // Local student is bound to a DIFFERENT idp_subject. The IDP returns a
+        // different id (user-imposter). The safe resolver returns null (student
+        // is already bound), so the student is routed to self-linking but never
+        // authenticated. The existing binding is preserved.
         $this->createStudent(['idp_subject' => 'user-bound-different']);
         $this->fakeIdp(idpSubject: 'user-imposter');
 
         $response = $this->hitCallback();
-        $response->assertRedirect(route('student.login'));
-        $response->assertSessionHasErrors('login');
+        $response->assertRedirect(route('student.idp.link'));
         $this->assertGuest('student');
+
+        $this->assertDatabaseHas('users_tbl', [
+            'idp_subject' => 'user-bound-different',
+        ]);
     }
 
     // ------------------------------------------------------------------
