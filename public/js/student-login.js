@@ -18,18 +18,18 @@ function injectLoginEnhancementStyles() {
     style.textContent = `
         body {
             background:
-                linear-gradient(rgba(16, 7, 10, 0.74), rgba(16, 7, 10, 0.74)),
+                linear-gradient(rgba(60, 0, 0, 0.74), rgba(60, 0, 0, 0.74)),
                 url("/assets/images/PUPT-picture.jpg") center/cover fixed;
         }
 
         .auth-content-card .form-control::placeholder {
-            color: #7f6f73;
+            color: #888888;
         }
 
         .auth-content-card .form-control:focus-visible,
         .toggle-password:focus-visible,
         .login-btn:focus-visible {
-            outline: 3px solid rgba(245, 198, 93, 0.82);
+            outline: 3px solid rgba(255, 223, 0, 0.82);
             outline-offset: 3px;
         }
 
@@ -43,12 +43,12 @@ function injectLoginEnhancementStyles() {
             min-height: 54px;
             gap: 0.55rem;
             font-size: 1rem;
-            box-shadow: 0 14px 26px rgba(122, 23, 32, 0.28);
+            box-shadow: 0 14px 26px rgba(128, 0, 0, 0.28);
         }
 
         .login-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 18px 28px rgba(122, 23, 32, 0.32);
+            box-shadow: 0 18px 28px rgba(128, 0, 0, 0.32);
         }
 
         .login-btn-spinner {
@@ -76,9 +76,9 @@ function injectLoginEnhancementStyles() {
         }
 
         .auth-secondary-link {
-            color: #7a1720 !important;
+            color: #800000 !important;
             text-decoration: underline;
-            text-decoration-color: rgba(122, 23, 32, 0.35);
+            text-decoration-color: rgba(128, 0, 0, 0.35);
             text-underline-offset: 0.18em;
         }
 
@@ -92,13 +92,13 @@ function injectLoginEnhancementStyles() {
             gap: 0.45rem;
             align-items: flex-start;
             margin: 0.9rem 0 0;
-            color: #70585d;
+            color: #555555;
             font-size: 0.74rem;
             line-height: 1.5;
         }
 
         .security-note i {
-            color: #7a1720;
+            color: #800000;
             margin-top: 0.1rem;
         }
 
@@ -133,7 +133,7 @@ function injectLoginEnhancementStyles() {
         }
 
         .login-input-group:hover {
-            border-color: rgba(122, 23, 32, 0.3);
+            border-color: rgba(128, 0, 0, 0.3);
         }
 
         @keyframes login-error-shake {
@@ -190,11 +190,13 @@ function enhanceFieldHints() {
         }
     });
 
-    document.querySelectorAll('input[type="password"]').forEach(function (input) {
-        if (!input.getAttribute("placeholder")) {
-            input.setAttribute("placeholder", "Enter your password");
-        }
-    });
+    document
+        .querySelectorAll('input[type="password"]')
+        .forEach(function (input) {
+            if (!input.getAttribute("placeholder")) {
+                input.setAttribute("placeholder", "Enter your password");
+            }
+        });
 }
 
 function enhanceLoginErrors() {
@@ -227,7 +229,7 @@ function enhanceStudentBanner() {
     unavailableAlert.setAttribute("aria-live", "polite");
     unavailableAlert.innerHTML =
         '<div class="student-status-icon"><i class="bi bi-info-circle-fill" aria-hidden="true"></i></div>' +
-        '<div><strong>Student portal temporarily unavailable</strong>' +
+        "<div><strong>Student portal temporarily unavailable</strong>" +
         '<p class="mb-0">IDP sign-in for students is currently disabled while access is being updated. Please try again later.</p></div>';
 }
 
@@ -273,48 +275,51 @@ function ensureSecurityNote() {
 }
 
 function enhanceLoginButtons() {
-    document.querySelectorAll(".auth-content-card form").forEach(function (form) {
-        const button = form.querySelector(".login-btn");
+    document
+        .querySelectorAll(".auth-content-card form")
+        .forEach(function (form) {
+            const button = form.querySelector(".login-btn");
 
-        if (!(button instanceof HTMLButtonElement)) {
-            return;
-        }
-
-        if (!button.querySelector(".login-btn-label")) {
-            const label = document.createElement("span");
-            label.className = "login-btn-label";
-            label.textContent = button.textContent.trim() || "Login";
-            button.textContent = "";
-            button.append(label);
-        }
-
-        if (!button.querySelector(".login-btn-spinner")) {
-            const spinner = document.createElement("span");
-            spinner.className = "spinner-border spinner-border-sm login-btn-spinner";
-            spinner.setAttribute("aria-hidden", "true");
-            button.append(spinner);
-        }
-
-        if (!button.dataset.loadingText) {
-            button.dataset.loadingText = "Signing in...";
-        }
-
-        form.addEventListener("submit", function () {
-            if (!form.checkValidity()) {
+            if (!(button instanceof HTMLButtonElement)) {
                 return;
             }
 
-            button.disabled = true;
-            button.classList.add("is-loading");
-            button.setAttribute("aria-busy", "true");
-
-            const label = button.querySelector(".login-btn-label");
-
-            if (label && button.dataset.loadingText) {
-                label.textContent = button.dataset.loadingText;
+            if (!button.querySelector(".login-btn-label")) {
+                const label = document.createElement("span");
+                label.className = "login-btn-label";
+                label.textContent = button.textContent.trim() || "Login";
+                button.textContent = "";
+                button.append(label);
             }
+
+            if (!button.querySelector(".login-btn-spinner")) {
+                const spinner = document.createElement("span");
+                spinner.className =
+                    "spinner-border spinner-border-sm login-btn-spinner";
+                spinner.setAttribute("aria-hidden", "true");
+                button.append(spinner);
+            }
+
+            if (!button.dataset.loadingText) {
+                button.dataset.loadingText = "Signing in...";
+            }
+
+            form.addEventListener("submit", function () {
+                if (!form.checkValidity()) {
+                    return;
+                }
+
+                button.disabled = true;
+                button.classList.add("is-loading");
+                button.setAttribute("aria-busy", "true");
+
+                const label = button.querySelector(".login-btn-label");
+
+                if (label && button.dataset.loadingText) {
+                    label.textContent = button.dataset.loadingText;
+                }
+            });
         });
-    });
 }
 
 function enhanceBrandMotion() {
@@ -367,4 +372,3 @@ function initializeAuthEnhancements() {
 window.initializeAuthEnhancements = initializeAuthEnhancements;
 document.addEventListener("DOMContentLoaded", initializeAuthEnhancements);
 document.addEventListener("auth:content-updated", initializeAuthEnhancements);
-
