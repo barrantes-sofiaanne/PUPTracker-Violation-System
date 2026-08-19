@@ -1,10 +1,10 @@
 :root {
-    --login-maroon: #7a0f1e;
-    --login-maroon-dark: #4a0209;
-    --login-gold: #f0c447;
-    --login-goldenrod: #c9981f;
-    --login-ink: #231417;
-    --login-muted: #6b565a;
+    --login-maroon: #800000;
+    --login-maroon-dark: #5f0000;
+    --login-gold: #ffdf00;
+    --login-goldenrod: #daa520;
+    --login-ink: #1f1620;
+    --login-muted: #555555;
 }
 
 body {
@@ -14,13 +14,13 @@ body {
     background:
         radial-gradient(
             circle at 10% 8%,
-            rgba(240, 196, 71, 0.2) 0%,
-            rgba(240, 196, 71, 0) 25%
+            rgba(255, 223, 0, 0.2) 0%,
+            rgba(255, 223, 0, 0) 25%
         ),
         radial-gradient(
             circle at 88% 12%,
-            rgba(201, 152, 31, 0.2) 0%,
-            rgba(201, 152, 31, 0) 25%
+            rgba(218, 165, 32, 0.2) 0%,
+            rgba(218, 165, 32, 0) 25%
         ),
         linear-gradient(rgba(19, 10, 11, 0.68), rgba(19, 10, 11, 0.68)),
         url("../assets/images/PUPT-picture.jpg") center/cover no-repeat;
@@ -45,7 +45,7 @@ body {
     );
     border-radius: 1.25rem;
     padding: 2rem 1.65rem 1.45rem;
-    border: 1px solid rgba(122, 15, 30, 0.14);
+    border: 1px solid rgba(128, 0, 0, 0.14);
     box-shadow: 0 28px 60px rgba(0, 0, 0, 0.3);
     position: relative;
     overflow: hidden;
@@ -74,7 +74,7 @@ body {
     margin: 0 auto 0.75rem;
     background: #fff;
     border-radius: 999px;
-    border: 3px solid rgba(122, 15, 30, 0.15);
+    border: 3px solid rgba(128, 0, 0, 0.15);
     padding: 0.32rem;
 }
 
@@ -86,7 +86,7 @@ body {
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--login-maroon);
-    background: rgba(122, 15, 30, 0.1);
+    background: rgba(128, 0, 0, 0.1);
     border-radius: 999px;
     padding: 0.35rem 0.72rem;
 }
@@ -105,20 +105,20 @@ body {
 }
 
 .login-card .form-label {
-    color: #6b565a;
+    color: #555555;
     font-weight: 600;
 }
 
 .login-card .form-control {
-    border: 1px solid rgba(122, 15, 30, 0.2);
+    border: 1px solid rgba(128, 0, 0, 0.2);
     border-radius: 0.72rem;
     min-height: 46px;
     font-size: 0.96rem;
 }
 
 .login-card .form-control:focus {
-    border-color: rgba(122, 15, 30, 0.45);
-    box-shadow: 0 0 0 0.2rem rgba(122, 15, 30, 0.12);
+    border-color: rgba(128, 0, 0, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.12);
 }
 
 .password-wrapper {
@@ -136,7 +136,7 @@ body {
     transform: translateY(-50%);
     border: none;
     background: transparent;
-    color: #6b565a;
+    color: #555555;
     cursor: pointer;
     width: 40px;
     height: 40px;
@@ -159,7 +159,7 @@ body {
         var(--login-maroon) 0%,
         var(--login-maroon-dark) 100%
     ) !important;
-    box-shadow: 0 12px 22px rgba(122, 15, 30, 0.22);
+    box-shadow: 0 12px 22px rgba(128, 0, 0, 0.22);
     padding-inline: 1rem;
 }
 
@@ -170,9 +170,9 @@ body {
 
 .login-error {
     border-radius: 0.72rem;
-    border: 1px solid rgba(122, 15, 30, 0.2);
+    border: 1px solid rgba(128, 0, 0, 0.2);
     background: #fff5f5;
-    color: #4a0209;
+    color: #5f0000;
     font-size: 0.9rem;
     padding: 0.6rem 0.72rem;
     margin-bottom: 1rem;
@@ -188,7 +188,7 @@ body {
 
 .footer-links a {
     text-decoration: none;
-    color: #6b565a;
+    color: #555555;
     font-size: 0.86rem;
     font-weight: 600;
     min-height: 40px;
@@ -286,18 +286,18 @@ body {
 
 /* Shared authentication surface for sign-in, recovery, and verification flows. */
 :root {
-    --login-maroon: #7a0f1e;
-    --login-maroon-dark: #4a0209;
-    --login-gold: #f0c447;
-    --login-goldenrod: #c9981f;
-    --login-ink: #231417;
-    --login-muted: #6b565a;
+    --login-maroon: #800000;
+    --login-maroon-dark: #5f0000;
+    --login-gold: #ffdf00;
+    --login-goldenrod: #daa520;
+    --login-ink: #1f1620;
+    --login-muted: #555555;
 }
 
 body {
     overflow: auto;
     background:
-        linear-gradient(120deg, rgba(60, 0, 0, 0.9), rgba(122, 15, 30, 0.67)),
+        linear-gradient(120deg, rgba(60, 0, 0, 0.9), rgba(128, 0, 0, 0.67)),
         url("../assets/images/PUPT-picture.jpg") center/cover fixed;
 }
 
@@ -323,7 +323,7 @@ body {
     right: -8rem;
     background: radial-gradient(
         circle,
-        rgba(240, 196, 71, 0.34),
+        rgba(255, 223, 0, 0.34),
         transparent 68%
     );
 }
@@ -331,11 +331,7 @@ body {
 .login-page::after {
     bottom: -12rem;
     left: -9rem;
-    background: radial-gradient(
-        circle,
-        rgba(122, 15, 30, 0.33),
-        transparent 68%
-    );
+    background: radial-gradient(circle, rgba(128, 0, 0, 0.33), transparent 68%);
 }
 
 .login-card {
@@ -343,7 +339,7 @@ body {
     max-height: none;
     padding: clamp(1.6rem, 4vw, 2.5rem);
     overflow: visible;
-    background: rgba(253, 246, 236, 0.97);
+    background: rgba(249, 246, 242, 0.97);
     border: 1px solid rgba(255, 255, 255, 0.72);
     border-radius: 1.6rem;
     box-shadow: 0 28px 70px rgba(16, 4, 6, 0.4);
@@ -369,7 +365,7 @@ body {
     margin-bottom: 0.9rem;
     border: 0;
     border-radius: 1.1rem;
-    box-shadow: 0 10px 22px rgba(122, 15, 30, 0.16);
+    box-shadow: 0 10px 22px rgba(128, 0, 0, 0.16);
 }
 
 .module-chip {
@@ -377,8 +373,8 @@ body {
     color: var(--login-maroon);
     font-size: 0.66rem;
     letter-spacing: 0.12em;
-    background: #fdecc4;
-    border: 1px solid rgba(201, 152, 31, 0.28);
+    background: #fff3cd;
+    border: 1px solid rgba(218, 165, 32, 0.25);
 }
 
 .login-card h2 {
@@ -398,7 +394,7 @@ body {
 
 .login-card .form-label {
     margin-bottom: 0.42rem;
-    color: #6b565a;
+    color: #555555;
     font-size: 0.84rem;
 }
 
@@ -407,18 +403,18 @@ body {
     padding: 0.7rem 0.85rem;
     color: var(--login-ink);
     background: #fff;
-    border: 1px solid rgba(122, 15, 30, 0.16);
+    border: 1px solid rgba(128, 0, 0, 0.16);
     border-radius: 0.8rem;
-    box-shadow: inset 0 1px 2px rgba(122, 15, 30, 0.03);
+    box-shadow: inset 0 1px 2px rgba(128, 0, 0, 0.03);
 }
 
 .login-card .form-control::placeholder {
-    color: #8b7a7d;
+    color: #888888;
 }
 
 .login-card .form-control:focus {
-    border-color: rgba(122, 15, 30, 0.56);
-    box-shadow: 0 0 0 0.22rem rgba(122, 15, 30, 0.12);
+    border-color: rgba(128, 0, 0, 0.56);
+    box-shadow: 0 0 0 0.22rem rgba(128, 0, 0, 0.12);
 }
 
 .toggle-password {
@@ -428,7 +424,7 @@ body {
 .toggle-password:hover,
 .toggle-password:focus-visible {
     color: var(--login-maroon-dark);
-    background: #fdecc4;
+    background: #fff3cd;
 }
 
 .login-card .btn {
@@ -450,7 +446,7 @@ body {
 .login-card .btn:focus-visible,
 .toggle-password:focus-visible,
 .footer-links a:focus-visible {
-    outline: 3px solid rgba(240, 196, 71, 0.82);
+    outline: 3px solid rgba(255, 223, 0, 0.82);
     outline-offset: 3px;
 }
 
@@ -463,7 +459,7 @@ body {
         var(--login-maroon-dark)
     ) !important;
     border-color: var(--login-maroon-dark) !important;
-    box-shadow: 0 12px 20px rgba(122, 15, 30, 0.22);
+    box-shadow: 0 12px 20px rgba(128, 0, 0, 0.22);
 }
 
 .login-card .btn-outline-success,
@@ -471,7 +467,7 @@ body {
 .login-card .btn-outline-secondary {
     color: var(--login-maroon);
     background: #fff;
-    border-color: rgba(122, 15, 30, 0.25);
+    border-color: rgba(128, 0, 0, 0.25);
 }
 
 .login-card .btn-outline-success:hover,
@@ -507,11 +503,11 @@ body {
 
 .footer-links {
     padding-top: 0.35rem;
-    border-top: 1px solid rgba(122, 15, 30, 0.1);
+    border-top: 1px solid rgba(128, 0, 0, 0.1);
 }
 
 .footer-links a {
-    color: #6b565a;
+    color: #555555;
 }
 
 .footer-links a:hover {
@@ -543,14 +539,14 @@ body {
 
 .login-card .login-input-group {
     overflow: hidden;
-    border: 1px solid rgba(122, 15, 30, 0.16);
+    border: 1px solid rgba(128, 0, 0, 0.16);
     border-radius: 0.8rem;
-    box-shadow: inset 0 1px 2px rgba(122, 15, 30, 0.03);
+    box-shadow: inset 0 1px 2px rgba(128, 0, 0, 0.03);
 }
 
 .login-card .login-input-group:focus-within {
-    border-color: rgba(122, 15, 30, 0.56);
-    box-shadow: 0 0 0 0.22rem rgba(122, 15, 30, 0.12);
+    border-color: rgba(128, 0, 0, 0.56);
+    box-shadow: 0 0 0 0.22rem rgba(128, 0, 0, 0.12);
 }
 
 .login-card .login-input-group .input-group-text {
@@ -597,7 +593,7 @@ body {
 .password-policy {
     margin: -0.15rem 0 1.25rem;
     padding: 0.85rem;
-    color: #6b565a;
+    color: #555555;
     background: #fff8e5;
     border: 1px solid #f0d993;
     border-radius: 0.85rem;
@@ -612,7 +608,7 @@ body {
 }
 
 .password-policy-heading i {
-    color: #c9981f;
+    color: #daa520;
 }
 
 .password-policy h3 {
@@ -686,7 +682,14 @@ body {
     place-items: center;
     padding: 2rem;
     background:
-        linear-gradient(115deg, rgba(60, 0, 0, 0.84), rgba(122, 15, 30, 0.58)),
+        linear-gradient(115deg, rgba(60, 0, 0, 0.84), rgba(128, 0, 0, 0.58)),
+        url("../assets/images/PUPT-picture.jpg") center/cover fixed;
+}
+
+.auth-portal-shell {
+    display: grid;
+    grid-template-columns: minmax(360px, 0.96fr) minmax(390px, 1.04fr);
+    width: min(100% - 2rem, 1040px);
     min-height: min(620px, calc(100svh - 4rem));
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.45);
@@ -702,7 +705,7 @@ body {
     padding: clamp(2rem, 5vw, 4rem);
     color: #fff;
     background:
-        linear-gradient(145deg, rgba(74, 2, 9, 0.97), rgba(122, 15, 30, 0.9)),
+        linear-gradient(145deg, rgba(95, 0, 0, 0.96), rgba(128, 0, 0, 0.86)),
         url("../assets/images/PUPT-picture.jpg") center/cover;
 }
 
@@ -731,7 +734,7 @@ body {
 }
 .auth-brand-campus {
     margin: 0 0 0.45rem;
-    color: #f0c447;
+    color: #ffdf00;
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.1em;
@@ -779,7 +782,7 @@ body {
 }
 
 .auth-brand-highlights i {
-    color: #f0c447;
+    color: #ffdf00;
 }
 
 .auth-brand-footer {
@@ -807,7 +810,7 @@ body {
 }
 
 .auth-brand-footer a:hover {
-    color: #f0c447;
+    color: #ffdf00;
 }
 
 .auth-brand-separator {
@@ -826,10 +829,10 @@ body {
     background:
         radial-gradient(
             circle at 100% 0,
-            rgba(240, 196, 71, 0.25),
+            rgba(255, 223, 0, 0.25),
             transparent 32%
         ),
-        #fdf6ec;
+        #f9f6f2;
     animation: auth-content-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -950,7 +953,7 @@ body {
     pointer-events: none;
     background: radial-gradient(
         circle,
-        rgba(240, 196, 71, 0.2),
+        rgba(255, 223, 0, 0.2),
         transparent 68%
     );
     border-radius: 50%;
@@ -964,9 +967,9 @@ body {
     position: relative;
     padding: clamp(1.35rem, 3vw, 2rem);
     background: rgba(255, 255, 255, 0.72);
-    border: 1px solid rgba(122, 15, 30, 0.1);
+    border: 1px solid rgba(128, 0, 0, 0.1);
     border-radius: 1.35rem;
-    box-shadow: 0 18px 42px rgba(74, 2, 9, 0.1);
+    box-shadow: 0 18px 42px rgba(95, 0, 0, 0.1);
     transition:
         transform 300ms ease,
         box-shadow 300ms ease,
@@ -985,23 +988,23 @@ body {
 }
 
 .auth-content-card[data-portal="student"]::before {
-    background: linear-gradient(90deg, #f0c447, #c9981f);
+    background: linear-gradient(90deg, #ffdf00, #daa520);
 }
 .auth-content-card[data-portal="security"]::before {
-    background: linear-gradient(90deg, #7a0f1e, #c9981f);
+    background: linear-gradient(90deg, #800000, #daa520);
 }
 .auth-content-card[data-portal="admin"]::before {
-    background: linear-gradient(90deg, #4a0209, #f0c447);
+    background: linear-gradient(90deg, #5f0000, #ffdf00);
 }
 .auth-content-card[data-portal="mfa"]::before {
     background: linear-gradient(90deg, #51217f, #8f6ed5);
 }
 .auth-content-card[data-portal="recovery"]::before {
-    background: linear-gradient(90deg, #c9981f, #f0c447);
+    background: linear-gradient(90deg, #daa520, #ffdf00);
 }
 
 .auth-content-card .module-chip {
-    box-shadow: 0 6px 15px rgba(122, 15, 30, 0.08);
+    box-shadow: 0 6px 15px rgba(128, 0, 0, 0.08);
 }
 .auth-content-card .btn,
 .auth-content-card a,
@@ -1015,7 +1018,7 @@ body {
 }
 .auth-content-card .btn:hover {
     transform: translateY(-3px);
-    box-shadow: 0 14px 24px rgba(74, 2, 9, 0.18);
+    box-shadow: 0 14px 24px rgba(95, 0, 0, 0.18);
 }
 .auth-content-card .footer-links a:hover {
     transform: translateX(3px);
@@ -1162,12 +1165,12 @@ html.is-navigating .auth-brand-mark::after {
     gap: 0.8rem;
     align-items: center;
     padding: 0.82rem 0.9rem;
-    color: #231417;
+    color: #1f1620;
     text-decoration: none;
     background: #fff;
-    border: 1px solid rgba(122, 15, 30, 0.14);
+    border: 1px solid rgba(128, 0, 0, 0.14);
     border-radius: 0.96rem;
-    box-shadow: 0 10px 20px rgba(122, 15, 30, 0.08);
+    box-shadow: 0 10px 20px rgba(128, 0, 0, 0.08);
     transition:
         transform 180ms ease-in-out,
         box-shadow 180ms ease-in-out,
@@ -1176,9 +1179,9 @@ html.is-navigating .auth-brand-mark::after {
 
 .portal-btn:hover,
 .portal-btn:focus-visible {
-    color: #231417;
-    border-color: rgba(122, 15, 30, 0.35);
-    box-shadow: 0 14px 26px rgba(122, 15, 30, 0.14);
+    color: #1f1620;
+    border-color: rgba(128, 0, 0, 0.35);
+    box-shadow: 0 14px 26px rgba(128, 0, 0, 0.14);
     transform: translateY(-2px);
 }
 
@@ -1188,8 +1191,8 @@ html.is-navigating .auth-brand-mark::after {
     width: 2rem;
     height: 2rem;
     place-items: center;
-    color: #7a0f1e;
-    background: #fdecc4;
+    color: #800000;
+    background: #fff3cd;
     border-radius: 0.72rem;
 }
 
@@ -1206,13 +1209,13 @@ html.is-navigating .auth-brand-mark::after {
 }
 
 .portal-copy small {
-    color: #6b565a;
+    color: #555555;
     font-size: 0.75rem;
 }
 
 .portal-arrow {
     font-size: 0.92rem;
-    color: #7a0f1e;
+    color: #800000;
 }
 
 .totp-qr-code svg,
@@ -1246,7 +1249,7 @@ html.is-navigating .auth-brand-mark::after {
     isolation: isolate;
     overflow: hidden;
     background:
-        linear-gradient(120deg, rgba(60, 0, 0, 0.82), rgba(122, 15, 30, 0.56)),
+        linear-gradient(120deg, rgba(60, 0, 0, 0.82), rgba(128, 0, 0, 0.56)),
         url("../assets/images/PUPT-picture.jpg") center/cover fixed;
 }
 
@@ -1271,7 +1274,7 @@ html.is-navigating .auth-brand-mark::after {
     height: 22rem;
     background: radial-gradient(
         circle,
-        rgba(240, 196, 71, 0.55),
+        rgba(255, 223, 0, 0.55),
         transparent 68%
     );
 }
@@ -1281,11 +1284,7 @@ html.is-navigating .auth-brand-mark::after {
     bottom: -8rem;
     width: 25rem;
     height: 25rem;
-    background: radial-gradient(
-        circle,
-        rgba(122, 15, 30, 0.5),
-        transparent 68%
-    );
+    background: radial-gradient(circle, rgba(128, 0, 0, 0.5), transparent 68%);
     animation-delay: -5s;
 }
 
@@ -1315,7 +1314,7 @@ html.is-navigating .auth-brand-mark::after {
     position: relative;
     overflow: hidden;
     background:
-        linear-gradient(152deg, rgba(74, 2, 9, 0.94), rgba(122, 15, 30, 0.86)),
+        linear-gradient(152deg, rgba(95, 0, 0, 0.93), rgba(128, 0, 0, 0.84)),
         radial-gradient(
             circle at 90% 12%,
             rgba(255, 255, 255, 0.22),
@@ -1344,7 +1343,7 @@ html.is-navigating .auth-brand-mark::after {
     position: absolute;
     inset: -0.3rem;
     border-radius: 1.25rem;
-    border: 1px solid rgba(240, 196, 71, 0.42);
+    border: 1px solid rgba(255, 223, 0, 0.42);
     opacity: 0.8;
     animation: auth-logo-ring-rotate 10s linear infinite;
 }
@@ -1384,7 +1383,7 @@ html.is-navigating .auth-brand-mark::after {
 }
 
 .auth-brand-metrics i {
-    color: #f0c447;
+    color: #ffdf00;
     flex-shrink: 0;
 }
 
@@ -1392,26 +1391,26 @@ html.is-navigating .auth-brand-mark::after {
     background:
         radial-gradient(
             circle at 100% 0,
-            rgba(240, 196, 71, 0.28),
+            rgba(255, 223, 0, 0.28),
             transparent 36%
         ),
         radial-gradient(
             circle at 0 100%,
-            rgba(122, 15, 30, 0.16),
+            rgba(128, 0, 0, 0.16),
             transparent 40%
         ),
-        rgba(253, 246, 236, 0.97);
+        rgba(249, 246, 242, 0.97);
 }
 
 .auth-content-card {
     background: linear-gradient(
         165deg,
         rgba(255, 255, 255, 0.8),
-        rgba(253, 246, 236, 0.66)
+        rgba(249, 246, 242, 0.66)
     );
-    border: 1px solid rgba(122, 15, 30, 0.14);
+    border: 1px solid rgba(128, 0, 0, 0.14);
     border-radius: 1.45rem;
-    box-shadow: 0 20px 44px rgba(74, 2, 9, 0.15);
+    box-shadow: 0 20px 44px rgba(95, 0, 0, 0.15);
 }
 
 .auth-content-card .form-control,
@@ -1421,12 +1420,12 @@ html.is-navigating .auth-brand-mark::after {
 }
 
 .auth-content-card .form-control {
-    border-color: rgba(122, 15, 30, 0.22);
+    border-color: rgba(128, 0, 0, 0.22);
 }
 
 .auth-content-card .form-control:focus {
-    border-color: rgba(122, 15, 30, 0.5);
-    box-shadow: 0 0 0 0.22rem rgba(122, 15, 30, 0.11);
+    border-color: rgba(128, 0, 0, 0.5);
+    box-shadow: 0 0 0 0.22rem rgba(128, 0, 0, 0.11);
 }
 
 .auth-module-note {
@@ -1435,16 +1434,16 @@ html.is-navigating .auth-brand-mark::after {
     gap: 0.45rem;
     margin: 0 0 1.1rem;
     padding: 0.48rem 0.78rem;
-    color: #4a0209;
+    color: #5f0000;
     font-size: 0.76rem;
     font-weight: 600;
-    background: rgba(122, 15, 30, 0.08);
-    border: 1px solid rgba(122, 15, 30, 0.14);
+    background: rgba(128, 0, 0, 0.08);
+    border: 1px solid rgba(128, 0, 0, 0.14);
     border-radius: 0.7rem;
 }
 
 .auth-module-note i {
-    color: #7a0f1e;
+    color: #800000;
 }
 
 .auth-login-form {
@@ -1460,14 +1459,14 @@ html.is-navigating .auth-brand-mark::after {
     display: inline-flex;
     align-items: flex-start;
     gap: 0.45rem;
-    color: #6b565a;
+    color: #555555;
     font-size: 0.73rem;
     line-height: 1.45;
 }
 
 .auth-login-trust i {
     margin-top: 0.06rem;
-    color: #7a0f1e;
+    color: #800000;
 }
 
 .portal-buttons {
@@ -1479,14 +1478,14 @@ html.is-navigating .auth-brand-mark::after {
     background: linear-gradient(
         158deg,
         rgba(255, 255, 255, 0.97),
-        rgba(253, 246, 236, 0.93)
+        rgba(249, 246, 242, 0.93)
     );
-    border: 1px solid rgba(122, 15, 30, 0.18);
+    border: 1px solid rgba(128, 0, 0, 0.18);
 }
 
 .portal-btn:hover,
 .portal-btn:focus-visible {
-    border-color: rgba(122, 15, 30, 0.45);
+    border-color: rgba(128, 0, 0, 0.45);
 }
 
 @keyframes auth-logo-float {
@@ -1800,7 +1799,7 @@ html.is-navigating .auth-brand-mark::after {
     }
 
     .auth-portal-content {
-        background: rgba(253, 246, 236, 0.95);
+        background: rgba(249, 246, 242, 0.95);
     }
 }
 
@@ -1947,16 +1946,16 @@ html.is-navigating .auth-brand-mark::after {
     background:
         radial-gradient(
             circle at 100% 0,
-            rgba(240, 196, 71, 0.2),
+            rgba(255, 223, 0, 0.2),
             transparent 38%
         ),
         linear-gradient(
             165deg,
             rgba(255, 255, 255, 0.93),
-            rgba(253, 246, 236, 0.86)
+            rgba(249, 246, 242, 0.86)
         );
-    border: 1px solid rgba(122, 15, 30, 0.18);
-    box-shadow: 0 18px 40px rgba(74, 2, 9, 0.15);
+    border: 1px solid rgba(128, 0, 0, 0.18);
+    box-shadow: 0 18px 40px rgba(95, 0, 0, 0.15);
 }
 
 .auth-content-card[data-portal="admin"]::after,
@@ -1968,21 +1967,21 @@ html.is-navigating .auth-brand-mark::after {
     pointer-events: none;
     background: radial-gradient(
         circle at center,
-        rgba(122, 15, 30, 0.16),
+        rgba(128, 0, 0, 0.16),
         transparent 72%
     );
 }
 
 .auth-content-card[data-portal="admin"] .module-chip,
 .auth-content-card[data-portal="security"] .module-chip {
-    border: 1px solid rgba(240, 196, 71, 0.55);
+    border: 1px solid rgba(255, 223, 0, 0.55);
     background: linear-gradient(
         160deg,
-        rgba(253, 236, 201, 0.92),
-        rgba(240, 196, 71, 0.36)
+        rgba(255, 243, 205, 0.92),
+        rgba(255, 223, 0, 0.36)
     );
-    color: #7a0f1e;
-    box-shadow: 0 8px 16px rgba(122, 15, 30, 0.12);
+    color: #800000;
+    box-shadow: 0 8px 16px rgba(128, 0, 0, 0.12);
 }
 
 .auth-content-card[data-portal="admin"] .auth-login-form,
@@ -1991,44 +1990,44 @@ html.is-navigating .auth-brand-mark::after {
     gap: 0.35rem;
     padding: 0.64rem;
     background: rgba(255, 255, 255, 0.58);
-    border: 1px solid rgba(122, 15, 30, 0.1);
+    border: 1px solid rgba(128, 0, 0, 0.1);
     border-radius: 0.95rem;
 }
 
 .auth-content-card[data-portal="admin"] .form-label,
 .auth-content-card[data-portal="security"] .form-label {
     margin-bottom: 0.45rem;
-    color: #231417;
+    color: #1f1620;
     font-weight: 700;
     letter-spacing: 0.01em;
 }
 
 .auth-content-card[data-portal="admin"] .login-input-group,
 .auth-content-card[data-portal="security"] .login-input-group {
-    border: 1px solid rgba(122, 15, 30, 0.24);
+    border: 1px solid rgba(128, 0, 0, 0.24);
     border-radius: 0.86rem;
     background: linear-gradient(
         180deg,
         rgba(255, 255, 255, 0.96),
-        rgba(253, 246, 236, 0.96)
+        rgba(249, 246, 242, 0.96)
     );
-    box-shadow: inset 0 1px 2px rgba(122, 15, 30, 0.08);
+    box-shadow: inset 0 1px 2px rgba(128, 0, 0, 0.08);
 }
 
 .auth-content-card[data-portal="admin"] .login-input-group:focus-within,
 .auth-content-card[data-portal="security"] .login-input-group:focus-within {
-    border-color: rgba(122, 15, 30, 0.58);
-    box-shadow: 0 0 0 0.18rem rgba(122, 15, 30, 0.13);
+    border-color: rgba(128, 0, 0, 0.58);
+    box-shadow: 0 0 0 0.18rem rgba(128, 0, 0, 0.13);
 }
 
 .auth-content-card[data-portal="admin"] .password-wrapper .form-control,
 .auth-content-card[data-portal="security"] .password-wrapper .form-control {
-    border: 1px solid rgba(122, 15, 30, 0.22);
+    border: 1px solid rgba(128, 0, 0, 0.22);
     border-radius: 0.86rem;
     background: linear-gradient(
         180deg,
         rgba(255, 255, 255, 0.98),
-        rgba(253, 246, 236, 0.98)
+        rgba(249, 246, 242, 0.98)
     );
 }
 
@@ -2036,15 +2035,15 @@ html.is-navigating .auth-brand-mark::after {
 .auth-content-card[data-portal="security"]
     .password-wrapper
     .form-control:focus {
-    border-color: rgba(122, 15, 30, 0.58);
-    box-shadow: 0 0 0 0.18rem rgba(122, 15, 30, 0.13);
+    border-color: rgba(128, 0, 0, 0.58);
+    box-shadow: 0 0 0 0.18rem rgba(128, 0, 0, 0.13);
 }
 
 .auth-content-card[data-portal="admin"] .password-input-icon,
 .auth-content-card[data-portal="security"] .password-input-icon,
 .auth-content-card[data-portal="admin"] .toggle-password,
 .auth-content-card[data-portal="security"] .toggle-password {
-    color: #7a0f1e;
+    color: #800000;
 }
 
 .auth-content-card[data-portal="admin"] .login-btn,
@@ -2053,35 +2052,35 @@ html.is-navigating .auth-brand-mark::after {
     border-radius: 0.98rem;
     background: linear-gradient(
         135deg,
-        #7a0f1e 0%,
-        #9c1626 58%,
-        #4a0209 100%
+        #800000 0%,
+        #a31515 58%,
+        #5f0000 100%
     ) !important;
-    box-shadow: 0 16px 26px rgba(122, 15, 30, 0.3);
+    box-shadow: 0 16px 26px rgba(128, 0, 0, 0.3);
     letter-spacing: 0.02em;
 }
 
 .auth-content-card[data-portal="admin"] .login-btn:hover,
 .auth-content-card[data-portal="security"] .login-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 20px 30px rgba(122, 15, 30, 0.33);
+    box-shadow: 0 20px 30px rgba(128, 0, 0, 0.33);
 }
 
 .auth-content-card[data-portal="admin"] .footer-links,
 .auth-content-card[data-portal="security"] .footer-links {
     padding-top: 0.55rem;
-    border-top: 1px solid rgba(122, 15, 30, 0.14);
+    border-top: 1px solid rgba(128, 0, 0, 0.14);
 }
 
 .auth-content-card[data-portal="admin"] .footer-links a,
 .auth-content-card[data-portal="security"] .footer-links a {
-    color: #4a0209;
+    color: #5f0000;
     font-weight: 700;
 }
 
 .auth-content-card[data-portal="admin"] .footer-links a:hover,
 .auth-content-card[data-portal="security"] .footer-links a:hover {
-    color: #7a0f1e;
+    color: #800000;
 }
 
 @media (max-width: 850px) {
