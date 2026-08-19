@@ -29,6 +29,12 @@ RUN apt-get update && apt-get install -y \
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Allow Composer plugins to run (build runs as root) and give downloads
+# a generous timeout. This avoids "Plugins have been disabled" warnings and
+# intermittent GitHub/API timeouts aborting the build.
+ENV COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_PROCESS_TIMEOUT=1200
+
 # Install Node.js
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs
@@ -38,11 +44,21 @@ WORKDIR /app
 # Copy the entire Laravel application first
 COPY . .
 
-# Install PHP dependencies
-RUN composer install \
-    --no-dev \
-    --optimize-autoloader \
-    --no-interaction
+# Install PHP dependencies with retries — package downloads from
+# api.github.com / packagist are flaky and a single transient 504 must
+# not abort the whole build.
+RUN set -eux; \
+    install_cmd="composer install --no-dev --optimize-autoloader --no-interaction"; \
+    attempts=0; \
+    until eval "$install_cmd"; do \
+        attempts=$((attempts + 1)); \
+        if [ "$attempts" -ge 5 ]; then \
+            echo "composer install failed after $attempts attempts" >&2; \
+            exit 1; \
+        fi; \
+        echo "composer install attempt $attempts failed (network?) - retrying in 5s..." >&2; \
+        sleep 5; \
+    done
 
 # Build frontend assets
 RUN if [ -f package.json ]; then \
