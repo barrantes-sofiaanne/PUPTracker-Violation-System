@@ -3,6 +3,44 @@
 @section('title', 'Student Dashboard')
 
 @push('styles')
+<style>
+    .dashboard-time-wrap {
+        text-align: right;
+        min-width: 240px;
+    }
+
+    .dashboard-time-label {
+        font-size: 0.76rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        opacity: 0.8;
+        margin-bottom: 0.2rem;
+    }
+
+    .dashboard-time-value {
+        font-size: 1.18rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 999px;
+        padding: 0.45rem 0.85rem;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 767.98px) {
+        .dashboard-time-wrap {
+            text-align: left;
+            min-width: unset;
+        }
+
+        .dashboard-time-value {
+            font-size: 1rem;
+        }
+    }
+</style>
 @endpush
 
 @section('content')
@@ -11,12 +49,24 @@
     
     {{-- Welcome Section --}}
     <div class="portal-hero">
-        <h2 class="mb-1 fw-bold">
-            <i class="bi bi-person-circle me-2"></i>Welcome, {{ $user->first_name }}!
-        </h2>
-        <p class="mb-0">
-            Student Number: <strong>{{ $user->student_number }}</strong>
-        </p>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+                <h2 class="mb-1 fw-bold">
+                    <i class="bi bi-person-circle me-2"></i>Welcome, {{ $user->first_name }}!
+                </h2>
+                <p class="mb-0">
+                    Student Number: <strong>{{ $user->student_number }}</strong>
+                </p>
+            </div>
+
+            <div class="dashboard-time-wrap">
+                <div class="dashboard-time-label">Philippine Standard Time</div>
+                <div id="phTimeDisplay" class="dashboard-time-value">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Loading...</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     {{-- Statistics Cards --}}
@@ -48,22 +98,6 @@
                         </div>
                         <div class="portal-icon-badge">
                             <i class="bi bi-exclamation-octagon-fill"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6">
-            <div class="card portal-stat-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="portal-stat-label mb-1">Quick Links</p>
-                            <h2 class="portal-stat-value mb-0">4</h2>
-                        </div>
-                        <div class="portal-icon-badge">
-                            <i class="bi bi-link-45deg"></i>
                         </div>
                     </div>
                 </div>
@@ -160,41 +194,6 @@
 
     </div>
 
-    {{-- Quick Actions --}}
-    <div class="row g-3 mb-4">
-        <div class="col-12">
-            <div class="card portal-card">
-                <div class="card-header card-header-custom">
-                    <h5 class="fw-bold mb-0">Quick Access</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-2">
-                        <div class="col-md-3">
-                            <a href="{{ route('student.record') }}" class="btn btn-outline-primary w-100">
-                                <i class="bi bi-file-text me-2"></i>My Records
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="{{ route('student.announcements') }}" class="btn btn-outline-primary w-100">
-                                <i class="bi bi-megaphone me-2"></i>Announcements
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="{{ route('student.profile') }}" class="btn btn-outline-primary w-100">
-                                <i class="bi bi-person me-2"></i>Profile
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="{{ route('student.settings') }}" class="btn btn-outline-primary w-100">
-                                <i class="bi bi-gear me-2"></i>Settings
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     {{-- Student Handbook --}}
     <div class="card portal-card">
         <div class="card-header card-header-custom">
@@ -277,5 +276,36 @@
 @endsection
 
 @push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const phTimeDisplay = document.getElementById('phTimeDisplay');
+
+    const updatePhilippineTime = function () {
+        if (!phTimeDisplay) {
+            return;
+        }
+
+        const now = new Date();
+        const formatted = new Intl.DateTimeFormat('en-PH', {
+            timeZone: 'Asia/Manila',
+            month: 'short',
+            day: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        }).format(now);
+
+        const span = phTimeDisplay.querySelector('span');
+        if (span) {
+            span.textContent = formatted + ' PHT';
+        }
+    };
+
+    updatePhilippineTime();
+    setInterval(updatePhilippineTime, 1000);
+});
+</script>
 <script src="{{ asset('js/student.js') }}"></script>
 @endpush

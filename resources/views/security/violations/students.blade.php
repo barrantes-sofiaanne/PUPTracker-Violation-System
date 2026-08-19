@@ -5,7 +5,7 @@
 @push('styles')
 <style>
     .student-card {
-        border: 1px solid rgba(128, 0, 0, 0.12);
+        border: 1px solid rgba(122, 15, 30, 0.12);
         border-radius: 0.95rem;
         transition: all 0.2s ease;
         overflow: hidden;
@@ -15,12 +15,12 @@
         padding: 1.15rem 1.25rem;
         margin-bottom: 1rem;
         background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
-        box-shadow: 0 8px 20px rgba(128, 0, 0, 0.08);
+        box-shadow: 0 8px 20px rgba(122, 15, 30, 0.08);
     }
 
     .student-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 12px 24px rgba(128, 0, 0, 0.12);
+        box-shadow: 0 12px 24px rgba(122, 15, 30, 0.12);
     }
 
     .violation-badge {
@@ -30,7 +30,7 @@
         width: 50px;
         height: 50px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #800000 0%, #5f0000 100%);
+        background: linear-gradient(135deg, #7a0f1e 0%, #4a0209 100%);
         color: white;
         font-weight: 700;
         font-size: 1.3rem;
@@ -38,7 +38,7 @@
 
     .student-name {
         font-weight: 800;
-        color: #5f0000;
+        color: #4a0209;
         margin-bottom: 0.25rem;
     }
 
@@ -65,8 +65,8 @@
     .action-btn-static-primary:hover,
     .action-btn-static-primary:focus,
     .action-btn-static-primary:active {
-        background: #8a0000 !important;
-        border: 1px solid #8a0000 !important;
+        background: #7a0f1e !important;
+        border: 1px solid #7a0f1e !important;
         color: #fff !important;
         box-shadow: none !important;
     }
@@ -82,7 +82,7 @@
     }
 
     .report-option {
-        border: 1px solid rgba(128, 0, 0, 0.15);
+        border: 1px solid rgba(122, 15, 30, 0.15);
         border-radius: 0.8rem;
         padding: 0.75rem 0.9rem;
         transition: border-color 0.2s ease, background-color 0.2s ease;
@@ -94,12 +94,12 @@
     }
 
     .report-option.active {
-        border-color: #8a0000;
-        background: rgba(138, 0, 0, 0.06);
+        border-color: #7a0f1e;
+        background: rgba(122, 15, 30, 0.06);
     }
 
     .report-modal-header {
-        background: linear-gradient(135deg, #800000 0%, #5f0000 100%);
+        background: linear-gradient(135deg, #7a0f1e 0%, #4a0209 100%);
         color: #fff;
     }
 

@@ -23,13 +23,13 @@ function injectLoginEnhancementStyles() {
         }
 
         .auth-content-card .form-control::placeholder {
-            color: #888888;
+            color: #8b7a7d;
         }
 
         .auth-content-card .form-control:focus-visible,
         .toggle-password:focus-visible,
         .login-btn:focus-visible {
-            outline: 3px solid rgba(255, 223, 0, 0.82);
+            outline: 3px solid rgba(240, 196, 71, 0.82);
             outline-offset: 3px;
         }
 
@@ -43,12 +43,12 @@ function injectLoginEnhancementStyles() {
             min-height: 54px;
             gap: 0.55rem;
             font-size: 1rem;
-            box-shadow: 0 14px 26px rgba(128, 0, 0, 0.28);
+            box-shadow: 0 14px 26px rgba(122, 15, 30, 0.28);
         }
 
         .login-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 18px 28px rgba(128, 0, 0, 0.32);
+            box-shadow: 0 18px 28px rgba(122, 15, 30, 0.32);
         }
 
         .login-btn-spinner {
@@ -76,9 +76,9 @@ function injectLoginEnhancementStyles() {
         }
 
         .auth-secondary-link {
-            color: #800000 !important;
+            color: #7a0f1e !important;
             text-decoration: underline;
-            text-decoration-color: rgba(128, 0, 0, 0.35);
+            text-decoration-color: rgba(122, 15, 30, 0.35);
             text-underline-offset: 0.18em;
         }
 
@@ -92,13 +92,13 @@ function injectLoginEnhancementStyles() {
             gap: 0.45rem;
             align-items: flex-start;
             margin: 0.9rem 0 0;
-            color: #555555;
+            color: #6b565a;
             font-size: 0.74rem;
             line-height: 1.5;
         }
 
         .security-note i {
-            color: #800000;
+            color: #7a0f1e;
             margin-top: 0.1rem;
         }
 
@@ -133,7 +133,7 @@ function injectLoginEnhancementStyles() {
         }
 
         .login-input-group:hover {
-            border-color: rgba(128, 0, 0, 0.3);
+            border-color: rgba(122, 15, 30, 0.3);
         }
 
         @keyframes login-error-shake {

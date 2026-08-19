@@ -440,7 +440,7 @@
 <div class="modal fade" id="violationDetailModal" tabindex="-1" aria-labelledby="violationDetailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header" style="background: linear-gradient(135deg, #800000 0%, #5f0000 100%); color: #fff;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #7a0f1e 0%, #4a0209 100%); color: #fff;">
                 <h5 class="modal-title fw-bold" id="violationDetailModalLabel">
                     <i class="bi bi-file-earmark-text me-2"></i>Violation Details
                 </h5>

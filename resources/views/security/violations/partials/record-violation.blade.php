@@ -4,14 +4,14 @@
     }
 
     .security-record-modal .modal-content {
-        border: 1px solid rgba(128, 0, 0, 0.12);
+        border: 1px solid rgba(122, 15, 30, 0.12);
         border-radius: var(--portal-radius-lg);
         overflow: hidden;
         max-height: calc(100vh - 2rem);
     }
 
     .security-record-modal .modal-header {
-        background: linear-gradient(120deg, #800000 0%, #5f0000 65%, #daa520 180%);
+        background: linear-gradient(120deg, #7a0f1e 0%, #4a0209 65%, #c9981f 180%);
         border-bottom: 1px solid rgba(255, 255, 255, 0.15);
         color: #fff;
         padding: 1.1rem 1.25rem;
@@ -31,7 +31,7 @@
 
     .security-record-modal .modal-footer {
         background: #fffdf6;
-        border-top: 1px solid rgba(128, 0, 0, 0.12);
+        border-top: 1px solid rgba(122, 15, 30, 0.12);
         padding: 0.8rem 1rem;
     }
 
@@ -43,46 +43,61 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 6px 12px rgba(128, 0, 0, 0.15);
+        box-shadow: 0 6px 12px rgba(122, 15, 30, 0.15);
     }
 
     .security-record-modal .wizard-card {
-        border: 1px solid rgba(128, 0, 0, 0.12);
+        border: 1px solid rgba(122, 15, 30, 0.12);
         border-radius: var(--portal-radius-lg);
         box-shadow: var(--portal-shadow);
     }
 
     .security-record-modal .wizard-card .card-header {
         background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
-        border-bottom: 1px solid rgba(128, 0, 0, 0.12);
-        color: #5f0000;
+        border-bottom: 1px solid rgba(122, 15, 30, 0.12);
+        color: #4a0209;
         padding: 0.9rem 1.1rem;
     }
 
     .security-record-modal .wizard-card .card-header i {
-        color: #800000 !important;
+        color: #7a0f1e !important;
     }
 
     .security-record-modal .form-control,
     .security-record-modal .form-select {
-        border-color: rgba(128, 0, 0, 0.2);
+        border-color: rgba(122, 15, 30, 0.2);
         border-radius: 0.72rem;
     }
 
     .security-record-modal .form-control:focus,
     .security-record-modal .form-select:focus {
-        border-color: rgba(128, 0, 0, 0.5);
-        box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.12);
+        border-color: rgba(122, 15, 30, 0.5);
+        box-shadow: 0 0 0 0.2rem rgba(122, 15, 30, 0.12);
     }
 
     .security-record-modal .preview-box {
-        border: 1px solid rgba(128, 0, 0, 0.1);
+        border: 1px solid rgba(122, 15, 30, 0.1);
         border-radius: 0.9rem;
         background: #fffdf7;
     }
 
     .security-record-modal .preview-box strong {
-        color: #5f0000;
+        color: #4a0209;
+    }
+
+    /* Disabled buttons stay readable — keep the maroon/gold tone visible. */
+    .security-record-modal .modal-footer .btn:disabled,
+    .security-record-modal .modal-footer .btn.disabled {
+        opacity: 0.75;
+        filter: saturate(0.85);
+        cursor: not-allowed;
+    }
+
+    .security-record-modal .modal-footer .portal-btn:disabled {
+        color: #fff;
+        background: linear-gradient(135deg, #a24a55 0%, #8a3a44 100%);
+        border-color: #a24a55;
+        box-shadow: none;
     }
 </style>
 
@@ -128,7 +143,7 @@
                     <div id="studentStep">
                         <div class="card wizard-card">
                             <div class="card-header bg-white">
-                                <h5 class="mb-0"><i class="bi bi-search me-2" style="color:#800000;"></i>Search Student</h5>
+                                <h5 class="mb-0"><i class="bi bi-search me-2" style="color:#7a0f1e;"></i>Search Student</h5>
                             </div>
                             <div class="card-body">
                                 <div class="position-relative">
@@ -141,7 +156,7 @@
 
                         <div class="card wizard-card mt-4">
                             <div class="card-header bg-white">
-                                <h5 class="mb-0"><i class="bi bi-person-badge me-2" style="color:#800000;"></i>Selected Student</h5>
+                                <h5 class="mb-0"><i class="bi bi-person-badge me-2" style="color:#7a0f1e;"></i>Selected Student</h5>
                             </div>
                             <div class="card-body">
                                 <div id="noStudentSelected" class="text-center py-5 text-muted">
@@ -185,7 +200,7 @@
                     <div id="violationStep" class="d-none">
                         <div class="card wizard-card">
                             <div class="card-header bg-white">
-                                <h5 class="mb-0"><i class="bi bi-exclamation-octagon me-2" style="color:#800000;"></i>Violation Information</h5>
+                                <h5 class="mb-0"><i class="bi bi-exclamation-octagon me-2" style="color:#7a0f1e;"></i>Violation Information</h5>
                             </div>
                             <div class="card-body">
                                 <div class="row g-4">

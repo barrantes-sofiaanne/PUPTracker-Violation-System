@@ -7,12 +7,12 @@
     .student-header {
         position: relative;
         overflow: hidden;
-        background: linear-gradient(120deg, rgba(128, 0, 0, 0.96) 0%, rgba(95, 0, 0, 0.96) 70%, rgba(218, 165, 32, 0.94) 175%);
+        background: linear-gradient(120deg, rgba(122, 15, 30, 0.96) 0%, rgba(74, 2, 9, 0.96) 70%, rgba(201, 152, 31, 0.94) 175%);
         color: white;
         padding: 2rem;
         border-radius: 1.15rem;
         margin-bottom: 2rem;
-        box-shadow: 0 18px 34px rgba(95, 0, 0, 0.28);
+        box-shadow: 0 18px 34px rgba(74, 2, 9, 0.28);
         border: 1px solid rgba(255, 255, 255, 0.12);
     }
 
@@ -195,7 +195,7 @@
         margin-bottom: 1rem;
         background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
         border-radius: 0.95rem;
-        border-left: 4px solid #800000;
+        border-left: 4px solid #7a0f1e;
     }
     
     .violation-item::before {
@@ -206,14 +206,14 @@
         width: 20px;
         height: 20px;
         border-radius: 50%;
-        background: #800000;
+        background: #7a0f1e;
         border: 3px solid white;
-        box-shadow: 0 0 0 2px #800000;
+        box-shadow: 0 0 0 2px #7a0f1e;
     }
     
     .violation-title {
         font-weight: 700;
-        color: #5f0000;
+        color: #4a0209;
         margin-bottom: 0.5rem;
     }
     
