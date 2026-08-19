@@ -482,7 +482,7 @@
                 <a id="detailStudentLink" href="#" class="btn portal-btn">
                     <i class="bi bi-person-lines-fill me-1"></i>Open Student Record
                 </a>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn portal-btn-outline" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

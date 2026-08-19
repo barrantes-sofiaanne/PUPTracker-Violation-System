@@ -33,9 +33,5 @@
             </div>
         @endforelse
     </div>
-
-    <div class="mt-4 d-flex justify-content-center">
-        {{ $announcements->links() }}
-    </div>
 </div>
 @endsection

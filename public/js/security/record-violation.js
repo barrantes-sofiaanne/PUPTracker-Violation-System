@@ -46,9 +46,9 @@ document.addEventListener("DOMContentLoaded", function () {
         backBtn.classList.toggle("d-none", isStudentStep);
 
         studentIndicator.classList.toggle("bg-danger", isStudentStep);
-        studentIndicator.classList.toggle("bg-success", !isStudentStep);
+        studentIndicator.classList.toggle("bg-goldenrod", !isStudentStep);
 
-        violationIndicator.classList.toggle("bg-secondary", isStudentStep);
+        violationIndicator.classList.toggle("bg-goldenrod", isStudentStep);
         violationIndicator.classList.toggle("bg-danger", !isStudentStep);
     };
 
@@ -72,6 +72,55 @@ document.addEventListener("DOMContentLoaded", function () {
         continueBtn.disabled = true;
         setStep(1);
     };
+
+    // Set the violation date/time input to the current Philippine time (PHT).
+    const setCurrentPhTime = () => {
+        const violationDateInput = document.getElementById("violationDate");
+        if (!violationDateInput) {
+            return;
+        }
+
+        const now = new Date();
+        const parts = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Manila",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23",
+        }).formatToParts(now);
+
+        const get = (type) =>
+            (parts.find((p) => p.type === type) || {}).value || "00";
+
+        // en-CA gives YYYY-MM-DD style; build a datetime-local value.
+        const value = `${get("year")}-${get("month")}-${get("day")}T${get(
+            "hour",
+        )}:${get("minute")}`;
+
+        if (violationDateInput.value !== value) {
+            violationDateInput.value = value;
+        }
+    };
+
+    let phTimeInterval = null;
+
+    // Start/stop a live clock so the default time stays current while open.
+    modalElement.addEventListener("show.bs.modal", function () {
+        setCurrentPhTime();
+        if (phTimeInterval) {
+            clearInterval(phTimeInterval);
+        }
+        phTimeInterval = setInterval(setCurrentPhTime, 1000);
+    });
+
+    modalElement.addEventListener("hidden.bs.modal", function () {
+        if (phTimeInterval) {
+            clearInterval(phTimeInterval);
+            phTimeInterval = null;
+        }
+    });
 
     continueBtn.addEventListener("click", function () {
         if (!document.getElementById("selectedStudentNumber").value) {

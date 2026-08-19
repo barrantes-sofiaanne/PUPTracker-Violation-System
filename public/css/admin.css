@@ -291,6 +291,11 @@ h6 {
     border-left-color: var(--color-goldenrod);
 }
 
+/* Solid goldenrod utility (used by security wizard bubbles etc.) */
+.bg-goldenrod {
+    background-color: var(--color-goldenrod);
+}
+
 .stat-label {
     font-size: 0.78rem;
     letter-spacing: 0.06em;

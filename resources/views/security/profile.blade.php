@@ -21,8 +21,6 @@
     $securityFullName = trim($securityFirstName . ' ' . $securityMiddleName . ' ' . $securityLastName)
         ?: ($security->email ?? 'Security');
     $securityPosition = optional($security->securityProfile)->position ?? 'Security Personnel';
-    $securityContact = optional($security->securityInfo)->contact_number ?? '—';
-    $securityAddress = optional($security->securityInfo)->address ?? '—';
 @endphp
 
 <div class="container-fluid py-4">
@@ -76,24 +74,6 @@
                         </div>
                         <div class="profile-info-value">
                             {{ $securityPosition }}
-                        </div>
-                    </div>
-
-                    <div class="profile-info-item">
-                        <div class="profile-info-label">
-                            <i class="bi bi-telephone" aria-hidden="true"></i> Contact Number
-                        </div>
-                        <div class="profile-info-value">
-                            {{ $securityContact }}
-                        </div>
-                    </div>
-
-                    <div class="profile-info-item">
-                        <div class="profile-info-label">
-                            <i class="bi bi-geo-alt" aria-hidden="true"></i> Address
-                        </div>
-                        <div class="profile-info-value">
-                            {{ $securityAddress }}
                         </div>
                     </div>
 

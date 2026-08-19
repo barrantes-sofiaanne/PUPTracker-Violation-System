@@ -120,7 +120,7 @@
                             <div class="mt-2 fw-semibold">Student</div>
                         </div>
                         <div class="col">
-                            <div id="violationStepIndicator" class="wizard-bubble bg-secondary text-white mx-auto">2</div>
+                            <div id="violationStepIndicator" class="wizard-bubble bg-goldenrod text-white mx-auto">2</div>
                             <div class="mt-2 fw-semibold">Violation</div>
                         </div>
                     </div>
@@ -249,9 +249,9 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary d-none" id="backStep">Back</button>
-                    <button type="button" class="btn btn-danger" id="continueStep" disabled>Continue</button>
-                    <button type="button" class="btn btn-danger d-none" id="saveViolation">Save Violation</button>
+                    <button type="button" class="btn portal-btn-outline d-none" id="backStep">Back</button>
+                    <button type="button" class="btn portal-btn" id="continueStep" disabled>Continue</button>
+                    <button type="button" class="btn portal-btn d-none" id="saveViolation">Save Violation</button>
                 </div>
             </form>
         </div>

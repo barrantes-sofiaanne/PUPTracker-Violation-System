@@ -9,14 +9,14 @@
             <h2 class="mb-1">Sanction Requests</h2>
             <p class="text-muted mb-0">Review student requests for disciplinary sanctions and act on them.</p>
         </div>
-        <a href="{{ route('security.dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+        <a href="{{ route('security.dashboard') }}" class="btn portal-btn-outline">Back to Dashboard</a>
     </div>
 
-    <div class="card shadow-sm border-0">
+    <div class="card portal-card">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                <table class="table table-hover align-middle mb-0 portal-table">
+                    <thead>
                         <tr>
                             <th>Student</th>
                             <th>Requested Violation</th>
@@ -36,11 +36,15 @@
                                 <td class="text-end">
                                     <form action="{{ route('security.sanction-requests.approve', $request) }}" method="POST" class="d-inline">
                                         @csrf
-                                        <button type="submit" class="btn btn-sm btn-success me-1">Approve</button>
+                                        <button type="submit" class="btn btn-sm portal-btn me-1">
+                                            <i class="bi bi-check-circle me-1"></i>Approve
+                                        </button>
                                     </form>
                                     <form action="{{ route('security.sanction-requests.decline', $request) }}" method="POST" class="d-inline">
                                         @csrf
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Decline</button>
+                                        <button type="submit" class="btn btn-sm portal-btn-outline">
+                                            <i class="bi bi-x-circle me-1"></i>Decline
+                                        </button>
                                     </form>
                                 </td>
                             </tr>

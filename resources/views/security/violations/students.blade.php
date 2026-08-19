@@ -197,7 +197,7 @@
                     </div>
 
                     <div>
-                        <a href="{{ route('security.violations.students') }}" class="btn btn-outline-secondary w-100">Reset</a>
+                        <a href="{{ route('security.violations.students') }}" class="btn portal-btn-outline w-100">Reset</a>
                     </div>
                 </form>
             </div>
@@ -331,7 +331,7 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn portal-btn-outline" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn action-btn-static action-btn-static-primary">
                         <i class="bi bi-printer me-1"></i>Generate
                     </button>
