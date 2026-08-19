@@ -16,10 +16,15 @@
         </div>
 
         <div class="d-flex align-items-center gap-2">
-            <span class="portal-user-chip">
-                <i class="bi bi-person-circle"></i>
-                {{ $studentUser?->first_name ?? 'Student' }}
-            </span>
+            @include('partials.user-menu', [
+                'menuUserName' => trim(($studentUser->first_name ?? '') . ' ' . ($studentUser->last_name ?? '')) ?: 'Student',
+                'menuUserSub' => $studentUser->student_number ?? $studentUser->email ?? '',
+                'menuItems' => [
+                    ['label' => 'Profile', 'url' => route('student.profile'), 'icon' => 'bi-person-vcard'],
+                    ['label' => 'Settings', 'url' => route('student.settings'), 'icon' => 'bi-gear'],
+                ],
+                'menuLogoutUrl' => route('logout'),
+            ])
         </div>
     </div>
 </nav>

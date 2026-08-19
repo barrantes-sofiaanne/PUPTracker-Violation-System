@@ -480,6 +480,9 @@ Route::middleware('auth:admin')
         Route::get('/settings', [AdminSettingsController::class, 'index'])
             ->name('admin.settings');
 
+        Route::get('/profile', [App\Http\Controllers\Admin\AdminProfileController::class, 'index'])
+            ->name('admin.profile');
+
         /*
         |--------------------------------------------------------------------------
         | AI-Assisted Graduation Disciplinary Review
@@ -659,6 +662,9 @@ Route::middleware('auth:security')
 
         Route::get('/notifications', [App\Http\Controllers\Security\NotificationController::class, 'index'])
             ->name('security.notifications');
+
+        Route::get('/profile', [App\Http\Controllers\Security\SecurityProfileController::class, 'index'])
+            ->name('security.profile');
 
     });
 

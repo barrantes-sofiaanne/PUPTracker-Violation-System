@@ -14,14 +14,5 @@
         <li><a href="{{ route('student.record') }}" class="{{ request()->routeIs('student.record') ? 'active' : '' }}"><i class="bi bi-journal-text"></i>My Record</a></li>
         <li><a href="{{ route('student.announcements') }}" class="{{ request()->routeIs('student.announcements') ? 'active' : '' }}"><i class="bi bi-megaphone-fill"></i>Announcements</a></li>
         <li><a href="{{ route('student.notifications') }}" class="{{ request()->routeIs('student.notifications') ? 'active' : '' }}"><i class="bi bi-bell-fill"></i>Notifications</a></li>
-        <li><a href="{{ route('student.profile') }}" class="{{ request()->routeIs('student.profile') ? 'active' : '' }}"><i class="bi bi-person-vcard-fill"></i>Profile</a></li>
-        <li><a href="{{ route('student.settings') }}" class="{{ request()->routeIs('student.settings') ? 'active' : '' }}"><i class="bi bi-gear-fill"></i>Settings</a></li>
     </ul>
-
-    <form action="{{ route('logout') }}" method="POST" class="portal-logout-form">
-        @csrf
-        <button type="submit" class="btn btn-outline-light w-100">
-            <i class="bi bi-box-arrow-right me-2"></i>Logout
-        </button>
-    </form>
 </aside>

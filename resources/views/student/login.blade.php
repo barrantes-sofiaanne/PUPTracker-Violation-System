@@ -7,7 +7,7 @@
         <h2>Student Login</h2>
 
         <p class="subtitle">
-            Sign in using your official PUP account.
+            Sign in using your IDP account.
         </p>
 
         @if($errors->has('login'))

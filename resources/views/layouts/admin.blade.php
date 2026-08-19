@@ -19,6 +19,9 @@
     <link rel="stylesheet"
         href="{{ asset('css/admin.css') }}">
 
+    <link rel="stylesheet"
+        href="{{ asset('css/user-menu.css') }}">
+
     @stack('styles')
 
 </head>

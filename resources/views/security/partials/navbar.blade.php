@@ -1,4 +1,20 @@
-@php($securityUser = auth('security')->user())
+@php
+    $securityUser = auth('security')->user();
+    $securityDisplayName = $securityUser?->email ?? 'Security';
+    $securityDisplaySub = $securityUser?->email ?? '';
+
+    // Guarded lookup: security profile tables may not exist in some environments/tests.
+    try {
+        if ($securityUser && \Illuminate\Support\Facades\Schema::hasTable('security_info')) {
+            $profile = $securityUser->securityProfile;
+            $securityDisplayName = trim(
+                ($profile->firstname ?? '') . ' ' . ($profile->lastname ?? '')
+            ) ?: $securityDisplayName;
+        }
+    } catch (\Throwable $e) {
+        // keep defaults
+    }
+@endphp
 
 <nav class="navbar portal-topbar">
     <div class="container-fluid px-3 px-md-4">
@@ -16,10 +32,14 @@
         </div>
 
         <div class="d-flex align-items-center gap-2">
-            <span class="portal-user-chip">
-                <i class="bi bi-shield-check"></i>
-                {{ $securityUser?->email ?? 'Security' }}
-            </span>
+            @include('partials.user-menu', [
+                'menuUserName' => $securityDisplayName,
+                'menuUserSub' => $securityDisplaySub,
+                'menuItems' => [
+                    ['label' => 'Profile', 'url' => route('security.profile'), 'icon' => 'bi-person-vcard'],
+                ],
+                'menuLogoutUrl' => route('security.logout'),
+            ])
         </div>
     </div>
 </nav>

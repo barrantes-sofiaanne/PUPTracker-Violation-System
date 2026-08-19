@@ -168,18 +168,6 @@
 
         </li>
 
-        <li>
-
-            <a href="{{ route('admin.settings') }}" class="{{ request()->routeIs('admin.settings*') ? 'active' : '' }}">
-
-                <i class="bi bi-gear"></i>
-
-                Settings
-
-            </a>
-
-        </li>
-
         @if($isItAdministrator)
             <li class="mt-2 px-2 text-uppercase text-muted small">Super Admin</li>
 

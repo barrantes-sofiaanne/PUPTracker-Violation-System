@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
     <link rel="stylesheet" href="{{ asset('css/portal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
 
     @stack('styles')
 </head>

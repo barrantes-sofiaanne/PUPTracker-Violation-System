@@ -1,3 +1,21 @@
+@php
+    $adminUser = auth('admin')->user();
+    $adminDisplayName = $adminUser?->name ?? ($adminUser?->username ?? 'Admin');
+    $adminDisplaySub = $adminUser?->email ?? '';
+
+    // Guarded lookup: admin_info_tbl may not exist in some environments/tests.
+    try {
+        if ($adminUser && \Illuminate\Support\Facades\Schema::hasTable('admin_info_tbl')) {
+            $adminInfo = $adminUser->adminInfo;
+            $adminDisplayName = trim(
+                ($adminInfo->firstname ?? '') . ' ' . ($adminInfo->lastname ?? '')
+            ) ?: $adminDisplayName;
+        }
+    } catch (\Throwable $e) {
+        // keep defaults
+    }
+@endphp
+
 <nav class="navbar admin-topbar">
     <div class="container-fluid px-3 px-md-4">
         <div class="d-flex align-items-center gap-2">
@@ -14,13 +32,15 @@
         </div>
 
         <div class="d-flex align-items-center">
-            <form action="{{ route('admin.logout') }}" method="POST" class="mb-0">
-                @csrf
-                <button type="submit" class="btn btn-outline-danger btn-sm">
-                    <i class="bi bi-box-arrow-right me-1"></i>
-                    Logout
-                </button>
-            </form>
+            @include('partials.user-menu', [
+                'menuUserName' => $adminDisplayName,
+                'menuUserSub' => $adminDisplaySub,
+                'menuItems' => [
+                    ['label' => 'Profile', 'url' => route('admin.profile'), 'icon' => 'bi-person-vcard'],
+                    ['label' => 'Settings', 'url' => route('admin.settings'), 'icon' => 'bi-gear'],
+                ],
+                'menuLogoutUrl' => route('admin.logout'),
+            ])
         </div>
     </div>
 </nav>

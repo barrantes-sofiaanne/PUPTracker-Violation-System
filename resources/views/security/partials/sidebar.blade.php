@@ -14,11 +14,4 @@
         <li><a href="{{ route('security.violations.students') }}" class="{{ request()->routeIs('security.violations.*') ? 'active' : '' }}"><i class="bi bi-exclamation-triangle-fill"></i>Violations</a></li>
         <li><a href="{{ route('security.notifications') }}" class="{{ request()->routeIs('security.notifications') ? 'active' : '' }}"><i class="bi bi-bell-fill"></i>Notifications</a></li>
     </ul>
-
-    <form action="{{ route('security.logout') }}" method="POST" class="portal-logout-form">
-        @csrf
-        <button type="submit" class="btn btn-outline-light w-100">
-            <i class="bi bi-box-arrow-right me-2"></i>Logout
-        </button>
-    </form>
 </aside>

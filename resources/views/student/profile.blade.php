@@ -3,218 +3,150 @@
 @section('title', 'Student Profile')
 
 @push('styles')
-<style>
-    .profile-header {
-        background: linear-gradient(120deg, rgba(128, 0, 0, 0.96) 0%, rgba(95, 0, 0, 0.96) 70%, rgba(218, 165, 32, 0.94) 175%);
-        color: white;
-        padding: 2rem;
-        border-radius: 1rem 1rem 0 0;
-        text-align: center;
-    }
-
-    .profile-header h1,
-    .profile-header h2,
-    .profile-header h3,
-    .profile-header h4,
-    .profile-header h5,
-    .profile-header h6,
-    .profile-header p,
-    .profile-header small {
-        color: #fff !important;
-    }
-    
-    .profile-image {
-        width: 150px;
-        height: 150px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 5px solid white;
-        margin-bottom: 1rem;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    }
-    
-    .profile-info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 2rem;
-        padding: 2rem;
-    }
-    
-    .info-card {
-        background: #f8f9fa;
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 4px solid #800000;
-    }
-    
-    .info-label {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #6c757d;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.25rem;
-    }
-    
-    .info-value {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #212529;
-    }
-    
-    .badge-status {
-        display: inline-block;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.85rem;
-    }
-    
-    .status-active {
-        background: rgba(218, 165, 32, 0.18);
-        color: #5f4a00;
-    }
-    
-    .status-inactive {
-        background: rgba(128, 0, 0, 0.12);
-        color: #5f0000;
-    }
-</style>
+<link rel="stylesheet" href="{{ asset('css/profile.css') }}">
 @endpush
 
 @section('content')
 
 <div class="container-fluid py-4">
+    <div class="profile-page">
+        <div class="card profile-card">
 
-    <div class="card portal-card">
-
-        {{-- Profile Header --}}
-        <div class="profile-header">
-            <img
-                src="{{ asset('assets/images/default-profile.png') }}"
-                alt="Student Profile"
-                class="profile-image">
-            <h2 class="fw-bold mb-1">
-                {{ $user->first_name }} {{ $user->last_name }}
-            </h2>
-            <p class="mb-0 opacity-75">
-                Student ID: {{ $user->student_number }}
-            </p>
-        </div>
-
-        {{-- Profile Info --}}
-        <div class="profile-info-grid">
-
-            {{-- Student Number --}}
-            <div class="info-card">
-                <div class="info-label">
-                    <i class="bi bi-person-badge"></i> Student Number
+            {{-- Profile Hero --}}
+            <div class="profile-hero">
+                <div class="profile-avatar-lg">
+                    {{ strtoupper(mb_substr($user->first_name ?? 'S', 0, 1)) }}{{ strtoupper(mb_substr($user->last_name ?? '', 0, 1)) }}
                 </div>
-                <div class="info-value">
-                    {{ $user->student_number }}
+                <h2 class="profile-hero-name">
+                    {{ $user->first_name }} {{ $user->last_name }}
+                </h2>
+                <p class="profile-hero-sub">
+                    Student ID: {{ $user->student_number }}
+                </p>
+                <div class="profile-hero-badges">
+                    <span class="profile-hero-badge">
+                        <i class="bi bi-mortarboard-fill" aria-hidden="true"></i>
+                        {{ optional(optional($user->studentInfo)->program)->program_name ?? 'N/A' }}
+                    </span>
+                    <span class="profile-hero-badge">
+                        <i class="bi bi-calendar-event" aria-hidden="true"></i>
+                        Year {{ optional(optional($user->studentInfo)->year)->year ?? 'N/A' }}
+                    </span>
+                    <span class="profile-hero-badge">
+                        <i class="bi bi-diagram-3" aria-hidden="true"></i>
+                        Section {{ optional(optional($user->studentInfo)->section)->section_name ?? 'N/A' }}
+                    </span>
                 </div>
             </div>
 
-            {{-- Full Name --}}
-            <div class="info-card">
-                <div class="info-label">
-                    <i class="bi bi-person"></i> Full Name
-                </div>
-                <div class="info-value">
-                    {{ $user->first_name }} 
-                    @if($user->middle_name)
-                        {{ $user->middle_name }}
-                    @endif
-                    {{ $user->last_name }}
+            {{-- Profile Info --}}
+            <div class="profile-body">
+                <div class="profile-info-grid">
+
+                    <div class="profile-info-item">
+                        <div class="profile-info-label">
+                            <i class="bi bi-person-badge" aria-hidden="true"></i> Student Number
+                        </div>
+                        <div class="profile-info-value">
+                            {{ $user->student_number }}
+                        </div>
+                    </div>
+
+                    <div class="profile-info-item">
+                        <div class="profile-info-label">
+                            <i class="bi bi-person" aria-hidden="true"></i> Full Name
+                        </div>
+                        <div class="profile-info-value">
+                            {{ $user->first_name }}
+                            @if($user->middle_name)
+                                {{ $user->middle_name }}
+                            @endif
+                            {{ $user->last_name }}
+                        </div>
+                    </div>
+
+                    <div class="profile-info-item">
+                        <div class="profile-info-label">
+                            <i class="bi bi-envelope" aria-hidden="true"></i> Email
+                        </div>
+                        <div class="profile-info-value">
+                            {{ $user->email }}
+                        </div>
+                    </div>
+
+                    <div class="profile-info-item">
+                        <div class="profile-info-label">
+                            <i class="bi bi-book" aria-hidden="true"></i> Course
+                        </div>
+                        <div class="profile-info-value">
+                            {{ optional(optional($user->studentInfo)->program)->program_name ?? 'N/A' }}
+                        </div>
+                    </div>
+
+                    <div class="profile-info-item">
+                        <div class="profile-info-label">
+                            <i class="bi bi-calendar-event" aria-hidden="true"></i> Year Level
+                        </div>
+                        <div class="profile-info-value">
+                            {{ optional(optional($user->studentInfo)->year)->year ?? 'N/A' }}
+                        </div>
+                    </div>
+
+                    <div class="profile-info-item">
+                        <div class="profile-info-label">
+                            <i class="bi bi-diagram-3" aria-hidden="true"></i> Section
+                        </div>
+                        <div class="profile-info-value">
+                            {{ optional(optional($user->studentInfo)->section)->section_name ?? 'N/A' }}
+                        </div>
+                    </div>
+
+                    <div class="profile-info-item">
+                        <div class="profile-info-label">
+                            <i class="bi bi-person-circle" aria-hidden="true"></i> Gender
+                        </div>
+                        <div class="profile-info-value">
+                            {{ optional($user->gender)->gender_name ?? 'N/A' }}
+                        </div>
+                    </div>
+
+                    <div class="profile-info-item">
+                        <div class="profile-info-label">
+                            <i class="bi bi-check-circle" aria-hidden="true"></i> Status
+                        </div>
+                        <div class="profile-info-value">
+                            @if(optional($user->status)->status_name === 'Active')
+                                <span class="profile-status-active">
+                                    <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>
+                                    {{ optional($user->status)->status_name }}
+                                </span>
+                            @else
+                                <span class="profile-status-inactive">
+                                    <i class="bi bi-x-circle-fill me-1" aria-hidden="true"></i>
+                                    {{ optional($user->status)->status_name ?? 'Unknown' }}
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
-            {{-- Email --}}
-            <div class="info-card">
-                <div class="info-label">
-                    <i class="bi bi-envelope"></i> Email
+            {{-- Footer --}}
+            <div class="profile-footer">
+                <div class="profile-footer-note">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
+                    <span>
+                        Only the Administrator or IT Administrator can change student information. Please contact the administrator for any profile updates.
+                    </span>
                 </div>
-                <div class="info-value">
-                    {{ $user->email }}
-                </div>
-            </div>
-
-            {{-- Course --}}
-            <div class="info-card">
-                <div class="info-label">
-                    <i class="bi bi-book"></i> Course
-                </div>
-                <div class="info-value">
-                    {{ optional(optional($user->studentInfo)->program)->program_name ?? 'N/A' }}
-                </div>
-            </div>
-
-            {{-- Year --}}
-            <div class="info-card">
-                <div class="info-label">
-                    <i class="bi bi-calendar-event"></i> Year Level
-                </div>
-                <div class="info-value">
-                    {{ optional(optional($user->studentInfo)->year)->year ?? 'N/A' }}
-                </div>
-            </div>
-
-            {{-- Section --}}
-            <div class="info-card">
-                <div class="info-label">
-                    <i class="bi bi-diagram-3"></i> Section
-                </div>
-                <div class="info-value">
-                    {{ optional(optional($user->studentInfo)->section)->section_name ?? 'N/A' }}
-                </div>
-            </div>
-
-            {{-- Gender --}}
-            <div class="info-card">
-                <div class="info-label">
-                    <i class="bi bi-person-circle"></i> Gender
-                </div>
-                <div class="info-value">
-                    {{ optional($user->gender)->gender_name ?? 'N/A' }}
-                </div>
-            </div>
-
-            {{-- Status --}}
-            <div class="info-card">
-                <div class="info-label">
-                    <i class="bi bi-check-circle"></i> Status
-                </div>
-                <div class="info-value">
-                    @if(optional($user->status)->status_name === 'Active')
-                        <span class="badge-status status-active">
-                            {{ optional($user->status)->status_name }}
-                        </span>
-                    @else
-                        <span class="badge-status status-inactive">
-                            {{ optional($user->status)->status_name ?? 'Unknown' }}
-                        </span>
-                    @endif
-                </div>
-            </div>
-
-        </div>
-
-        {{-- Actions and Notice --}}
-        <div style="padding: 2rem; border-top: 1px solid rgba(128, 0, 0, 0.12);">
-            <div class="alert alert-warning mb-3" role="alert" style="border: 1px solid rgba(128, 0, 0, 0.2);">
-                <i class="bi bi-info-circle me-2"></i>
-                Only the Administrator or IT Administrator can change student information. Please contact the administrator for any profile updates.
-            </div>
-
-            <div class="d-flex gap-2 flex-wrap">
                 <a href="{{ route('student.dashboard') }}" class="btn portal-btn-outline">
-                    <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                    <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back to Dashboard
                 </a>
             </div>
+
         </div>
-
     </div>
-
 </div>
 
 @endsection
