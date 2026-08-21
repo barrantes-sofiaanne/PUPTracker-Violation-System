@@ -121,7 +121,7 @@ $students = User::with([
     );
 }
 
-public function show($student_number)
+public function show(string $student_number)
 {
     /*
     |--------------------------------------------------------------------------
@@ -417,6 +417,17 @@ $previousCount = Violation::where(
                 $offenseLevel
             )
             ->first();
+
+        // Fall back to the first configured sanction for this violation type so
+        // the preview sanction section is always filled when one exists.
+        if (! $sanction) {
+            $sanction = DisciplinarySanction::where(
+                'violation_type_id',
+                $violationType->violation_type_id
+            )
+            ->orderBy('disciplinary_sanction_id')
+            ->first();
+        }
 
         return response()->json([
 

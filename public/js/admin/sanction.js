@@ -7,8 +7,40 @@ document.addEventListener("DOMContentLoaded", function () {
     const sanctionModal = new bootstrap.Modal(modalElement);
     const form = document.getElementById("sanctionForm");
     const submitButton = document.getElementById("saveSanctionBtn");
+    const offenseLevelSelect = document.getElementById("offense_level");
+    const offenseLevelCustomWrap = document.getElementById(
+        "offenseLevelCustomWrap",
+    );
+    const offenseLevelCustom = document.getElementById("offense_level_custom");
 
     let editingId = null;
+
+    function syncOffenseLevelCustomField() {
+        if (
+            !offenseLevelSelect ||
+            !offenseLevelCustomWrap ||
+            !offenseLevelCustom
+        ) {
+            return;
+        }
+
+        const isCustom = offenseLevelSelect.value === "__other__";
+        offenseLevelCustomWrap.classList.toggle("d-none", !isCustom);
+
+        if (isCustom) {
+            offenseLevelCustom.required = true;
+            offenseLevelCustom.focus();
+        } else {
+            offenseLevelCustom.required = false;
+        }
+    }
+
+    if (offenseLevelSelect) {
+        offenseLevelSelect.addEventListener(
+            "change",
+            syncOffenseLevelCustomField,
+        );
+    }
 
     function resetForm() {
         form.reset();
@@ -16,6 +48,10 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("sanctionModalLabel").textContent =
             "Add Disciplinary Sanction";
         editingId = null;
+        if (offenseLevelSelect) {
+            offenseLevelSelect.value = "";
+        }
+        syncOffenseLevelCustomField();
         if (submitButton) {
             submitButton.innerHTML = '<i class="fas fa-save me-2"></i>Save';
         }
@@ -55,10 +91,27 @@ document.addEventListener("DOMContentLoaded", function () {
                         sanction.disciplinary_sanction_id;
                     document.getElementById("violation_type_id").value =
                         sanction.violation_type_id;
-                    document.getElementById("offense_level").value =
-                        sanction.offense_level;
                     document.getElementById("disciplinary_sanction").value =
                         sanction.disciplinary_sanction;
+
+                    // If the saved offense level is not in the preset list,
+                    // put it in the custom input and select "Other".
+                    const presetValues = [
+                        "1st Offense",
+                        "2nd Offense",
+                        "3rd Offense",
+                        "4th Offense",
+                        "5th Offense",
+                    ];
+                    if (presetValues.includes(sanction.offense_level)) {
+                        offenseLevelSelect.value = sanction.offense_level;
+                        offenseLevelCustom.value = "";
+                    } else {
+                        offenseLevelSelect.value = "__other__";
+                        offenseLevelCustom.value = sanction.offense_level || "";
+                    }
+                    syncOffenseLevelCustomField();
+
                     document.getElementById("sanctionModalLabel").textContent =
                         "Edit Disciplinary Sanction";
                     sanctionModal.show();
@@ -143,6 +196,13 @@ document.addEventListener("DOMContentLoaded", function () {
             '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
 
         const formData = new FormData(form);
+
+        // If "Other / Custom" was chosen, use the custom input value as the
+        // offense level before sending.
+        if (offenseLevelSelect && offenseLevelSelect.value === "__other__") {
+            formData.set("offense_level", offenseLevelCustom.value.trim());
+        }
+
         const url = editingId
             ? window.ViolationRoutes.sanctionUpdate.replace(":id", editingId)
             : window.ViolationRoutes.sanctionStore;

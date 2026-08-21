@@ -8,11 +8,15 @@
         <td>{{ optional($report->student?->studentInfo?->program)->program_name ?? '-' }}</td>
         <td>{{ optional($report->violationType)->violation_type ?? '-' }}</td>
         <td>
-            <span class="badge bg-secondary">
+            <span class="badge bg-maroon-soft text-maroon">
                 {{ optional($report->violationType?->violationCategory)->category_name ?? '-' }}
             </span>
         </td>
-        <td>{{ optional($report->violationType)->severity_level ?? '-' }}</td>
+        <td>
+            <span class="badge bg-maroon-soft text-maroon">
+                {{ optional($report->violationType)->severity_level ?? '-' }}
+            </span>
+        </td>
         <td>{{ optional($report->sanction)->disciplinary_sanction ?? '-' }}</td>
         <td>{{ $report->violation_date ? \Carbon\Carbon::parse($report->violation_date)->format('M d, Y') : '-' }}</td>
         <td>{{ $report->recorded_by_display }}</td>

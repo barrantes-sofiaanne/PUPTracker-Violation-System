@@ -117,7 +117,24 @@
                                 5th Offense
                             </option>
 
+                            <option value="__other__">
+                                Other / Custom Offense Level...
+                            </option>
+
                         </select>
+
+                        <div
+                            class="mt-2 d-none"
+                            id="offenseLevelCustomWrap">
+
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="offense_level_custom"
+                                name="offense_level_custom"
+                                placeholder="Enter custom offense level (e.g. Major, Minor, Warning)">
+
+                        </div>
 
                     </div>
 

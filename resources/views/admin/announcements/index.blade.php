@@ -16,7 +16,9 @@
                 <span class="badge bg-danger ms-2">{{ $unreadNotificationCount }}</span>
             @endif
         </a>
-        <a href="{{ route('admin.announcements.create') }}" class="btn announcements-new-btn">New Announcement</a>
+        @if(Auth::guard('admin')->user()?->isItAdministrator())
+            <a href="{{ route('admin.announcements.create') }}" class="btn announcements-new-btn">New Announcement</a>
+        @endif
     </div>
 </div>
 
@@ -86,12 +88,14 @@
                             <td>{{ optional($announcement->created_at)->format('M d, Y h:i A') }}</td>
                             <td class="text-end">
                                 <a href="{{ route('admin.announcements.show', $announcement) }}" class="btn btn-sm btn-outline-primary me-1">View</a>
-                                <a href="{{ route('admin.announcements.edit', $announcement) }}" class="btn btn-sm btn-outline-secondary me-1">Edit</a>
-                                <form action="{{ route('admin.announcements.destroy', $announcement) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Delete this announcement?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                </form>
+                                @if(Auth::guard('admin')->user()?->isItAdministrator())
+                                    <a href="{{ route('admin.announcements.edit', $announcement) }}" class="btn btn-sm btn-outline-secondary me-1">Edit</a>
+                                    <form action="{{ route('admin.announcements.destroy', $announcement) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Delete this announcement?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                    </form>
+                                @endif
                             </td>
                         </tr>
                     @empty

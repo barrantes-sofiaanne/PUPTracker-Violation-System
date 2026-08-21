@@ -8,6 +8,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $user_id
+ * @property string $student_number
+ * @property string $first_name
+ * @property string|null $middle_name
+ * @property string $last_name
+ * @property string $email
+ * @property string|null $idp_subject
+ * @property string|null $idp_email
+ * @property int|null $gender_id
+ * @property int|null $status_id
+ * @property int|null $roles_id
+ * @property string|null $password_hash
+ */
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;

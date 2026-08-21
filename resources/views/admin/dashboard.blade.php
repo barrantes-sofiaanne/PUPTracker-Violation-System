@@ -2,6 +2,47 @@
 
 @section('title', 'Admin Dashboard')
 
+@push('styles')
+<style>
+    .dashboard-time-wrap {
+        text-align: right;
+        min-width: 240px;
+    }
+
+    .dashboard-time-label {
+        font-size: 0.76rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        opacity: 0.8;
+        margin-bottom: 0.2rem;
+    }
+
+    .dashboard-time-value {
+        font-size: 1.05rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 999px;
+        padding: 0.4rem 0.8rem;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 767.98px) {
+        .dashboard-time-wrap {
+            text-align: left;
+            min-width: unset;
+        }
+
+        .dashboard-time-value {
+            font-size: 0.95rem;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 
 <div class="container-fluid">
@@ -12,13 +53,24 @@
             <h1 class="fw-bold mb-1">Dashboard</h1>
             <p class="text-muted mb-0">Welcome back! Here's your system overview.</p>
         </div>
-        <div class="quick-actions">
-            <a href="{{ route('admin.violations.index') }}" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-2"></i>Record Violation
-            </a>
-            <a href="{{ route('admin.announcements.create') }}" class="btn announcements-new-btn">
-                <i class="bi bi-megaphone me-2"></i>New Announcement
-            </a>
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            <div class="dashboard-time-wrap">
+                <div class="dashboard-time-label">Philippine Standard Time</div>
+                <div id="phTimeDisplay" class="dashboard-time-value">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Loading...</span>
+                </div>
+            </div>
+            <div class="quick-actions d-flex flex-wrap gap-2">
+                <a href="{{ route('admin.violations.index') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Record Violation
+                </a>
+                @if(Auth::guard('admin')->user()?->isItAdministrator())
+                    <a href="{{ route('admin.announcements.create') }}" class="btn announcements-new-btn">
+                        <i class="bi bi-megaphone me-2"></i>New Announcement
+                    </a>
+                @endif
+            </div>
         </div>
     </div>
 
@@ -100,7 +152,7 @@
                 <div class="card-header card-header-custom">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="fw-bold mb-0">Recent Violations</h5>
-                        <a href="{{ route('admin.violations.index') }}" class="btn btn-sm btn-outline-primary">
+                        <a href="{{ route('admin.violations.index') }}" class="btn btn-sm btn-primary">
                             View All
                         </a>
                     </div>
@@ -123,7 +175,7 @@
                                         <strong>{{ $violation->student_number }}</strong>
                                     </td>
                                     <td>
-                                        <span class="badge bg-light text-dark">
+                                        <span class="badge bg-maroon-soft text-maroon">
                                             {{ $violation->violationType->violation_type ?? '-' }}
                                         </span>
                                     </td>
@@ -134,7 +186,8 @@
                                     </td>
                                     <td>
                                         <a href="{{ route('admin.violations.show', $violation->student_number) }}" 
-                                           class="btn btn-sm btn-outline-primary">
+                                           class="btn btn-sm btn-primary">
+                                            <i class="bi bi-eye me-1"></i>
                                             View
                                         </a>
                                     </td>
@@ -243,6 +296,35 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Philippine Standard Time live clock
+    const phTimeDisplay = document.getElementById('phTimeDisplay');
+
+    const updatePhilippineTime = function () {
+        if (!phTimeDisplay) {
+            return;
+        }
+
+        const now = new Date();
+        const formatted = new Intl.DateTimeFormat('en-PH', {
+            timeZone: 'Asia/Manila',
+            month: 'short',
+            day: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        }).format(now);
+
+        const span = phTimeDisplay.querySelector('span');
+        if (span) {
+            span.textContent = formatted + ' PHT';
+        }
+    };
+
+    updatePhilippineTime();
+    setInterval(updatePhilippineTime, 1000);
+
     document.querySelectorAll('[data-progress-width]').forEach(function (bar) {
         const width = parseFloat(bar.getAttribute('data-progress-width'));
         if (!Number.isNaN(width)) {

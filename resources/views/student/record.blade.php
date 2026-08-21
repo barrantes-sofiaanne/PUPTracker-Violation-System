@@ -627,6 +627,19 @@
 
 @push('scripts')
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Deep-link support: if the URL contains #sanctionRecord, open the
+    // Sanction Record tab automatically (used by notification links).
+    if (window.location.hash === '#sanctionRecord') {
+        const sanctionTab = document.getElementById('sanction-tab');
+        if (sanctionTab) {
+            bootstrap.Tab.getOrCreateInstance(sanctionTab).show();
+        }
+    }
+});
+</script>
+
 <script src="{{ asset('js/student-record.js') }}"></script>
 
 @endpush

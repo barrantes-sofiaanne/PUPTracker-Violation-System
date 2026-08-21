@@ -5,6 +5,13 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int $id
+ * @property string $email
+ * @property string $password
+ * @property string|null $mfa_totp_secret
+ * @property bool $mfa_totp_enabled
+ */
 class Security extends Authenticatable
 {
     protected $table = 'security';

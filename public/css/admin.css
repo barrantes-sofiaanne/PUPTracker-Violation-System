@@ -385,6 +385,16 @@ h6 {
     background-color: var(--color-maroon) !important;
 }
 
+/* Maroon-tinted badge + text utilities (system color coding) */
+.text-maroon {
+    color: var(--color-maroon) !important;
+}
+
+.bg-maroon-soft {
+    background-color: rgba(128, 0, 0, 0.12) !important;
+    color: var(--color-maroon) !important;
+}
+
 .nav-tabs .nav-link,
 .nav-pills .nav-link {
     color: #6b5d61;

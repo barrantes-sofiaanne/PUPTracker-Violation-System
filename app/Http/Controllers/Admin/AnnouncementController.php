@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use App\Models\Announcement;
 use App\Models\AdminNotification;
 use Illuminate\Http\Request;
@@ -31,11 +32,15 @@ class AnnouncementController extends Controller
 
     public function create()
     {
+        $this->authorizeAnnouncementAdmin();
+
         return view('admin.announcements.create');
     }
 
     public function store(Request $request)
     {
+        $this->authorizeAnnouncementAdmin();
+
         $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string'],
@@ -44,6 +49,8 @@ class AnnouncementController extends Controller
         ]);
 
         $admin = Auth::guard('admin')->user();
+        /** @var \App\Models\Admin|null $admin */
+        $admin = $admin instanceof Admin ? $admin : null;
         $canPublishLoginModal = $admin?->isItAdministrator() ?? false;
 
         $announcement = new Announcement();
@@ -65,11 +72,15 @@ class AnnouncementController extends Controller
 
     public function edit(Announcement $announcement)
     {
+        $this->authorizeAnnouncementAdmin();
+
         return view('admin.announcements.edit', compact('announcement'));
     }
 
     public function update(Request $request, Announcement $announcement)
     {
+        $this->authorizeAnnouncementAdmin();
+
         $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string'],
@@ -79,6 +90,8 @@ class AnnouncementController extends Controller
         ]);
 
         $admin = Auth::guard('admin')->user();
+        /** @var \App\Models\Admin|null $admin */
+        $admin = $admin instanceof Admin ? $admin : null;
         $canPublishLoginModal = $admin?->isItAdministrator() ?? false;
 
         $attachmentPath = $announcement->getAttribute('attachment_path');
@@ -110,6 +123,8 @@ class AnnouncementController extends Controller
 
     public function destroy(Announcement $announcement)
     {
+        $this->authorizeAnnouncementAdmin();
+
         $this->deleteAttachment($announcement->getAttribute('attachment_path'));
         $announcement->delete();
 
@@ -121,6 +136,21 @@ class AnnouncementController extends Controller
     public function show(Announcement $announcement)
     {
         return view('admin.announcements.show', compact('announcement'));
+    }
+
+    /**
+     * Only the IT Administrator (super admin) may create, edit, or delete
+     * announcements. Regular admin users can only view announcements.
+     */
+    protected function authorizeAnnouncementAdmin(): void
+    {
+        $admin = Auth::guard('admin')->user();
+        /** @var \App\Models\Admin|null $admin */
+        $admin = $admin instanceof Admin ? $admin : null;
+
+        if (! $admin || ! $admin->isItAdministrator()) {
+            abort(403, 'Only the IT Administrator can manage announcements.');
+        }
     }
 
     protected function saveAttachment(Request $request)

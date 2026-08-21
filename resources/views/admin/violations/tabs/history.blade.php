@@ -145,7 +145,7 @@
 
                             <button
                                 type="button"
-                                class="btn btn-info btn-sm viewStudent"
+                                class="btn btn-primary btn-sm viewStudent"
                                 data-student="{{ $history->student_number }}"
                                 aria-label="View {{ $history->student?->last_name ?? 'student' }}'s violation record">
 

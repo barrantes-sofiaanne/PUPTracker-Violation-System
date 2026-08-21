@@ -6,7 +6,6 @@
     initializeFilters();
     initializeCharts();
     initializeExportButtons();
-    initializeAiAssistant();
     loadReports();
 });
 
@@ -101,9 +100,11 @@ function initializeCharts() {
                 {
                     label: "Violations",
                     data: [],
+                    borderColor: "#800000",
+                    backgroundColor: "rgba(128, 0, 0, 0.12)",
                     borderWidth: 2,
                     tension: 0.3,
-                    fill: false,
+                    fill: true,
                 },
             ],
         },
@@ -112,13 +113,43 @@ function initializeCharts() {
 
     categoryChart = new Chart(categoryCanvas, {
         type: "doughnut",
-        data: { labels: [], datasets: [{ data: [] }] },
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    data: [],
+                    backgroundColor: [
+                        "#800000",
+                        "#a31515",
+                        "#daa520",
+                        "#f0c447",
+                        "#5f0000",
+                        "#c9981f",
+                        "#7a0f1e",
+                        "#e6c36a",
+                    ],
+                    borderColor: "#ffffff",
+                    borderWidth: 2,
+                },
+            ],
+        },
         options: { responsive: true },
     });
 
     topViolationChart = new Chart(topViolationCanvas, {
         type: "bar",
-        data: { labels: [], datasets: [{ label: "Records", data: [] }] },
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: "Records",
+                    data: [],
+                    backgroundColor: "#800000",
+                    borderColor: "#5f0000",
+                    borderWidth: 1,
+                },
+            ],
+        },
         options: { responsive: true, indexAxis: "y" },
     });
 }
@@ -196,99 +227,6 @@ function initializeExportButtons() {
             );
         });
     }
-}
-
-function initializeAiAssistant() {
-    const promptInput = document.getElementById("aiReportPrompt");
-    const generateButton = document.getElementById("generateAiReport");
-    const resultBox = document.getElementById("aiReportResult");
-
-    if (!promptInput || !generateButton || !resultBox) {
-        return;
-    }
-
-    const title = document.getElementById("aiReportTitle");
-    const meta = document.getElementById("aiReportMeta");
-    const summary = document.getElementById("aiReportSummary");
-    const highlights = document.getElementById("aiReportHighlights");
-    const actions = document.getElementById("aiReportActions");
-
-    const fillList = function (container, items) {
-        container.innerHTML = "";
-
-        if (!items || items.length === 0) {
-            const li = document.createElement("li");
-            li.textContent = "-";
-            container.appendChild(li);
-            return;
-        }
-
-        items.forEach(function (item) {
-            const li = document.createElement("li");
-            li.textContent = item;
-            container.appendChild(li);
-        });
-    };
-
-    generateButton.addEventListener("click", function () {
-        const prompt = promptInput.value.trim();
-
-        if (prompt.length < 6) {
-            Swal.fire({
-                icon: "info",
-                title: "Please add a request",
-                text: "Describe what kind of report you want to generate.",
-            });
-            return;
-        }
-
-        const payload = new FormData(filterForm);
-        payload.append("prompt", prompt);
-
-        generateButton.disabled = true;
-        generateButton.innerHTML =
-            '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
-
-        fetch(window.ReportRoutes.assistant, {
-            method: "POST",
-            headers: {
-                "X-CSRF-TOKEN": document.querySelector(
-                    'meta[name="csrf-token"]',
-                ).content,
-                "X-Requested-With": "XMLHttpRequest",
-            },
-            body: payload,
-        })
-            .then(function (response) {
-                return response.json();
-            })
-            .then(function (data) {
-                resultBox.classList.remove("d-none");
-
-                title.textContent = data.title || "AI Report Summary";
-                meta.textContent =
-                    "Focus: " +
-                    (data.focus || "General") +
-                    " | Generated: " +
-                    (data.generated_at || "-");
-                summary.textContent = data.summary || "-";
-
-                fillList(highlights, data.highlights || []);
-                fillList(actions, data.recommended_actions || []);
-            })
-            .catch(function () {
-                Swal.fire({
-                    icon: "error",
-                    title: "Unable to generate report",
-                    text: "Please try again in a moment.",
-                });
-            })
-            .finally(function () {
-                generateButton.disabled = false;
-                generateButton.innerHTML =
-                    '<i class="bi bi-stars me-1"></i>Generate';
-            });
-    });
 }
 
 document.addEventListener("click", function (e) {

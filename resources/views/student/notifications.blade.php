@@ -169,8 +169,11 @@
                 <p class="mb-0" style="white-space: pre-line;" id="notificationModalMessage"></p>
             </div>
             <div class="modal-footer">
-                <a href="#" class="btn btn-outline-primary d-none" id="notificationModalLink">Open Related Page</a>
-                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                <a href="#" class="btn btn-primary d-none" id="notificationModalLink">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>
+                    <span id="notificationModalLinkLabel">View</span>
+                </a>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -188,6 +191,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const dateEl = document.getElementById('notificationModalDate');
     const messageEl = document.getElementById('notificationModalMessage');
     const linkEl = document.getElementById('notificationModalLink');
+    const linkLabelEl = document.getElementById('notificationModalLinkLabel');
 
     document.querySelectorAll('.notification-trigger').forEach(function (item) {
         item.addEventListener('click', function () {
@@ -197,8 +201,22 @@ document.addEventListener('DOMContentLoaded', function () {
             dateEl.textContent = item.dataset.created || '-';
             messageEl.textContent = item.dataset.message || '';
 
-            if (item.dataset.link) {
-                linkEl.href = item.dataset.link;
+            let link = item.dataset.link || '';
+
+            // Sanction notifications should deep-link to the Sanction Record tab.
+            if (type === 'sanction') {
+                link = "{{ route('student.record') }}#sanctionRecord";
+                linkLabelEl.textContent = 'View Sanction Record';
+            } else if (type === 'violation') {
+                linkLabelEl.textContent = 'View Violation Record';
+            } else if (type === 'announcement') {
+                linkLabelEl.textContent = 'View Announcements';
+            } else {
+                linkLabelEl.textContent = 'View';
+            }
+
+            if (link) {
+                linkEl.href = link;
                 linkEl.classList.remove('d-none');
             } else {
                 linkEl.href = '#';

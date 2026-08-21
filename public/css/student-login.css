@@ -2089,3 +2089,33 @@ html.is-navigating .auth-brand-mark::after {
         padding: 0.5rem;
     }
 }
+
+/* ============================================================
+   Consistent login button color across every auth module.
+   The Bootstrap .btn-success green is overridden everywhere so
+   student/admin/security/recovery/MFA all render the maroon-gold
+   brand button.
+   ============================================================ */
+.auth-portal-content .login-btn,
+.auth-content-card .login-btn,
+.auth-content-card .btn-success.login-btn,
+.auth-portal-page .btn-success.login-btn {
+    color: #ffffff !important;
+    background: linear-gradient(
+        135deg,
+        var(--login-maroon) 0%,
+        var(--login-maroon-dark) 100%
+    ) !important;
+    border: 1px solid var(--login-maroon-dark) !important;
+    box-shadow: 0 12px 20px rgba(128, 0, 0, 0.22);
+}
+
+.auth-portal-content .login-btn:hover,
+.auth-content-card .login-btn:hover,
+.auth-content-card .btn-success.login-btn:hover,
+.auth-portal-page .btn-success.login-btn:hover {
+    color: #ffffff !important;
+    filter: brightness(1.08);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 26px rgba(128, 0, 0, 0.3);
+}

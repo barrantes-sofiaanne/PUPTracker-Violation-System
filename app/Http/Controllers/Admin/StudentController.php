@@ -243,6 +243,7 @@ class StudentController extends Controller
             'middlename' => 'nullable|string|max:50',
             'lastname' => 'required|string|max:50',
             'password' => 'required|string|min:8',
+            'position' => 'nullable|string|max:100',
             'contact_number' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:255',
         ]);
@@ -326,6 +327,7 @@ class StudentController extends Controller
             'middlename' => 'nullable|string|max:50',
             'lastname' => 'required|string|max:50',
             'password' => 'nullable|string|min:8',
+            'position' => 'nullable|string|max:100',
             'contact_number' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:255',
         ]);
@@ -452,9 +454,9 @@ class StudentController extends Controller
                 'admin.user@example.com', 'Ana', 'Santos', 'Reyes', 'Admin', 'Admin', 'Active', 'Temp1234!',
             ]],
             default => [[
-                'email', 'contact_number', 'address', 'password',
+                'email', 'firstname', 'middlename', 'lastname', 'position', 'contact_number', 'address', 'password',
             ], [
-                'security.user@example.com', '09171234567', 'PUP Main Campus', 'Temp1234!',
+                'security.user@example.com', 'Maria', 'Santos', 'Dela Cruz', 'Security Personnel', '09171234567', 'PUP Main Campus', 'Temp1234!',
             ]],
         };
 
@@ -528,7 +530,7 @@ class StudentController extends Controller
         return view('admin.students.show', compact('student'));
     }
 
-    public function edit($student_number)
+    public function edit(string $student_number)
     {
         $student = User::query()
             ->with('studentInfo')
@@ -554,7 +556,7 @@ class StudentController extends Controller
         );
     }
 
-    public function update(Request $request, $student_number)
+    public function update(Request $request, string $student_number)
     {
         $student = User::query()
             ->where('student_number', $student_number)
@@ -702,7 +704,7 @@ class StudentController extends Controller
         return back()->with('success', 'IDP Account unlinked from this student.');
     }
 
-    public function destroy($student_number)
+    public function destroy(string $student_number)
     {
         $student = User::query()
             ->where('student_number', $student_number)
@@ -909,6 +911,10 @@ class StudentController extends Controller
 
         if (Schema::hasColumn('security_info', 'lastname')) {
             $legacyData['lastname'] = $data['lastname'] ?? '';
+        }
+
+        if (Schema::hasColumn('security_info', 'position')) {
+            $legacyData['position'] = $data['position'] ?? null;
         }
 
         if (Schema::hasColumn('security_info', 'updated_at')) {

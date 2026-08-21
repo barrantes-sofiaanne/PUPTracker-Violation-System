@@ -11,7 +11,9 @@
     </div>
     <div class="d-flex flex-wrap gap-2">
         <a href="{{ route('admin.announcements') }}" class="btn btn-outline-secondary">Back to Announcements</a>
-        <a href="{{ route('admin.announcements.edit', $announcement) }}" class="btn btn-primary">Edit Announcement</a>
+        @if(Auth::guard('admin')->user()?->isItAdministrator())
+            <a href="{{ route('admin.announcements.edit', $announcement) }}" class="btn btn-primary">Edit Announcement</a>
+        @endif
     </div>
 </div>
 

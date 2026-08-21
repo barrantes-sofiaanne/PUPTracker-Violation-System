@@ -8,6 +8,14 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * @property int $id
+ * @property string $username
+ * @property string $email
+ * @property string $password
+ * @property string|null $mfa_totp_secret
+ * @property bool $mfa_totp_enabled
+ */
 class Admin extends Authenticatable
 {
     protected $table = 'admins';

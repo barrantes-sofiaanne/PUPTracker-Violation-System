@@ -379,6 +379,7 @@
                                 <tr>
                                     <th>Name</th>
                                     <th>Email</th>
+                                    <th>Position</th>
                                     <th>Contact Number</th>
                                     <th>Address</th>
                                     <th>Status</th>
@@ -402,6 +403,7 @@
                                     <tr>
                                         <td>{{ $securityFullName ?: '—' }}</td>
                                         <td>{{ $security->email }}</td>
+                                        <td>{{ optional($security->securityProfile)->position ?? 'Security Personnel' }}</td>
                                         <td>{{ $security->securityInfo->contact_number ?? '—' }}</td>
                                         <td>{{ $security->securityInfo->address ?? '—' }}</td>
                                         <td><span class="badge bg-success user-status-badge">ACTIVE</span></td>
@@ -414,6 +416,7 @@
                                                     data-firstname="{{ $securityFirstName }}"
                                                     data-middlename="{{ $securityMiddleName }}"
                                                     data-lastname="{{ $securityLastName }}"
+                                                    data-position="{{ optional($security->securityProfile)->position ?? '' }}"
                                                     data-contact="{{ $security->securityInfo->contact_number ?? '' }}"
                                                     data-address="{{ $security->securityInfo->address ?? '' }}">
                                                     <i class="bi bi-pencil-square me-1"></i>Edit
@@ -494,6 +497,7 @@
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" class="form-control"></div>
                 <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" class="form-control" required></div>
+                <div class="col-md-6"><label class="form-label">Position</label><input name="position" class="form-control" value="Security Personnel"></div>
                 <div class="col-md-6"><label class="form-label">Contact Number</label><input name="contact_number" class="form-control"></div>
                 <div class="col-md-6"><label class="form-label">Password</label><input name="password" type="password" class="form-control" required></div>
                 <div class="col-12"><label class="form-label">Address</label><input name="address" class="form-control"></div>
@@ -564,6 +568,7 @@
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="security_firstname" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" id="security_middlename" class="form-control"></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" id="security_lastname" class="form-control" required></div>
+            <div class="col-md-6"><label class="form-label">Position</label><input name="position" id="security_position" class="form-control"></div>
             <div class="col-md-6"><label class="form-label">Contact Number</label><input name="contact_number" id="security_contact" class="form-control"></div>
             <div class="col-md-6"><label class="form-label">New Password (optional)</label><input name="password" type="password" class="form-control"></div>
             <div class="col-12"><label class="form-label">Address</label><input name="address" id="security_address" class="form-control"></div>
@@ -692,6 +697,7 @@ document.querySelectorAll('.editSecurityBtn').forEach(function (button) {
         document.getElementById('security_firstname').value = this.dataset.firstname;
         document.getElementById('security_middlename').value = this.dataset.middlename;
         document.getElementById('security_lastname').value = this.dataset.lastname;
+        document.getElementById('security_position').value = this.dataset.position || '';
         document.getElementById('security_contact').value = this.dataset.contact;
         document.getElementById('security_address').value = this.dataset.address;
         document.getElementById('editSecurityForm').action = "{{ url('/admin/users/security') }}/" + this.dataset.id;
@@ -736,8 +742,8 @@ const importGuides = {
         help: 'Role and status values can use readable names (e.g., Admin, IT Administrator, Active).',
     },
     security_create_activate: {
-        columns: ['email', 'firstname', 'middlename', 'lastname', 'contact_number', 'address', 'password'],
-        help: 'Firstname and lastname are required. Contact number and address are optional but recommended for complete profiles.',
+        columns: ['email', 'firstname', 'middlename', 'lastname', 'position', 'contact_number', 'address', 'password'],
+        help: 'Firstname and lastname are required. Position, contact number, and address are optional but recommended for complete profiles.',
     },
 };
 

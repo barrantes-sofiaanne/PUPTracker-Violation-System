@@ -22,6 +22,14 @@
                             <span class="portal-badge muted">{{ optional($announcement->created_at)->format('M d, Y') }}</span>
                         </div>
                         <p class="mb-0" style="white-space: pre-line; color: #3c3134;">{{ $announcement->content }}</p>
+                        @if($announcement->attachment_path)
+                            <div class="mt-3">
+                                <a href="{{ asset($announcement->attachment_path) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm portal-btn-outline">
+                                    <i class="bi bi-paperclip me-1"></i>
+                                    View Attachment
+                                </a>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
