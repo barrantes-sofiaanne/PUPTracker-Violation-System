@@ -4,6 +4,12 @@
 
 @section('content')
 
+@php
+    $currentAdmin = Auth::guard('admin')->user();
+    $canManage = (bool) $currentAdmin?->isItAdministrator()
+        || (int) $announcement->admin_id === (int) $currentAdmin?->getKey();
+@endphp
+
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
     <div>
         <h2 class="mb-1">Announcement Details</h2>
@@ -11,7 +17,7 @@
     </div>
     <div class="d-flex flex-wrap gap-2">
         <a href="{{ route('admin.announcements') }}" class="btn btn-outline-secondary">Back to Announcements</a>
-        @if(Auth::guard('admin')->user()?->isItAdministrator())
+        @if($canManage)
             <a href="{{ route('admin.announcements.edit', $announcement) }}" class="btn btn-primary">Edit Announcement</a>
         @endif
     </div>

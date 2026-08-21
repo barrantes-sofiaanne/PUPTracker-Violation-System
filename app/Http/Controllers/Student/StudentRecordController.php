@@ -385,7 +385,8 @@ public function requestSanction(Request $request)
                 $user->last_name .
                 ' requested a disciplinary sanction.',
 
-            'link' => route('student.record')
+            'link' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
+            'notification_type' => 'sanction',
 
         ]);
 

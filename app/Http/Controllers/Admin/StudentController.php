@@ -159,6 +159,7 @@ class StudentController extends Controller
             'section_id' => 'required|exists:section_tbl,section_id',
             'gender_id' => 'required|exists:gender_tbl,gender_id',
             'status_id' => 'required|exists:status_tbl,status_id',
+            'ladderized' => 'nullable|in:0,1',
         ]);
 
         DB::transaction(function () use ($validated): void {
@@ -189,7 +190,7 @@ class StudentController extends Controller
                 'year_id' => $validated['year_id'],
                 'section_id' => $validated['section_id'],
                 'student_status_id' => $studentStatusId,
-                'ladderized' => 0,
+                'ladderized' => (int) ($validated['ladderized'] ?? 0),
             ]);
         });
 
@@ -572,6 +573,7 @@ class StudentController extends Controller
             'section_id' => 'required',
             'gender_id' => 'required',
             'status_id' => 'required',
+            'ladderized' => 'nullable|in:0,1',
         ]);
 
         // Student passwords are managed by the PUP Identity Provider (IDP), so
@@ -601,6 +603,7 @@ class StudentController extends Controller
             'year_id' => $request->input('year_id'),
             'section_id' => $request->input('section_id'),
             'student_status_id' => $studentStatusId,
+            'ladderized' => (int) ($request->input('ladderized') ?? 0),
         ]);
         $studentInfo->save();
 

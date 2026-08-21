@@ -1,0 +1,46 @@
+/* Admin dashboard — moved from inline <style> to keep Blade templates clean */
+
+.dashboard-time-wrap {
+    text-align: right;
+    min-width: 240px;
+}
+
+.dashboard-time-label {
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.8;
+    margin-bottom: 0.2rem;
+}
+
+.dashboard-time-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    padding: 0.4rem 0.8rem;
+    white-space: nowrap;
+}
+
+.category-legend-dot {
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    background: #800000;
+}
+
+@media (max-width: 767.98px) {
+    .dashboard-time-wrap {
+        text-align: left;
+        min-width: unset;
+    }
+
+    .dashboard-time-value {
+        font-size: 0.95rem;
+    }
+}

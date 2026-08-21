@@ -229,6 +229,9 @@ Route::middleware('auth:admin')
 
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])
             ->name('admin.dashboard');
+
+        Route::get('/dashboard/chart-data', [AdminDashboardController::class, 'chartData'])
+            ->name('admin.dashboard.chart-data');
         Route::get(
             '/violations/history',
             [ViolationController::class, 'history']
@@ -452,6 +455,15 @@ Route::middleware('auth:admin')
 
         Route::get('/notifications', [AdminNotificationController::class, 'index'])
             ->name('admin.notifications');
+
+        Route::post('/notifications/{notification}/read', [AdminNotificationController::class, 'markAsRead'])
+            ->name('admin.notifications.read');
+
+        Route::post('/notifications/{notification}/unread', [AdminNotificationController::class, 'markAsUnread'])
+            ->name('admin.notifications.unread');
+
+        Route::post('/notifications/mark-all-read', [AdminNotificationController::class, 'markAllRead'])
+            ->name('admin.notifications.mark-all-read');
 
         /*
         |--------------------------------------------------------------------------

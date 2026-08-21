@@ -3,44 +3,7 @@
 @section('title', 'Admin Dashboard')
 
 @push('styles')
-<style>
-    .dashboard-time-wrap {
-        text-align: right;
-        min-width: 240px;
-    }
-
-    .dashboard-time-label {
-        font-size: 0.76rem;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        opacity: 0.8;
-        margin-bottom: 0.2rem;
-    }
-
-    .dashboard-time-value {
-        font-size: 1.05rem;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: rgba(255, 255, 255, 0.14);
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        border-radius: 999px;
-        padding: 0.4rem 0.8rem;
-        white-space: nowrap;
-    }
-
-    @media (max-width: 767.98px) {
-        .dashboard-time-wrap {
-            text-align: left;
-            min-width: unset;
-        }
-
-        .dashboard-time-value {
-            font-size: 0.95rem;
-        }
-    }
-</style>
+<link rel="stylesheet" href="{{ asset('css/admin-dashboard.css') }}">
 @endpush
 
 @section('content')
@@ -185,7 +148,7 @@
                                         </small>
                                     </td>
                                     <td>
-                                        <a href="{{ route('admin.violations.show', $violation->student_number) }}" 
+                                        <a href="{{ route('admin.violations.index', ['search' => $violation->student_number]) }}#management" 
                                            class="btn btn-sm btn-primary">
                                             <i class="bi bi-eye me-1"></i>
                                             View
@@ -227,37 +190,6 @@
                 </div>
             </div>
 
-            {{-- Violations by Severity --}}
-            <div class="card shadow-sm border-0">
-                <div class="card-header card-header-custom">
-                    <h5 class="fw-bold mb-0">Violations by Severity</h5>
-                </div>
-                <div class="card-body">
-                    @forelse($violationsBySeverity as $severity => $count)
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="fw-500 text-capitalize">{{ $severity }}</span>
-                            <span class="badge bg-secondary">{{ $count }}</span>
-                        </div>
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar 
-                                @if(strtolower($severity) == 'major') bg-danger 
-                                @elseif(strtolower($severity) == 'minor') bg-warning 
-                                @else bg-info @endif" 
-                                 role="progressbar"
-                                 aria-valuemin="0"
-                                 aria-valuemax="100"
-                                 aria-valuenow="0"
-                                 data-progress-width="{{ $totalViolations > 0 ? round(($count / $totalViolations) * 100, 1) : 0 }}">
-                            </div>
-                        </div>
-                    </div>
-                    @empty
-                    <p class="text-muted text-center py-3">No severity data</p>
-                    @endforelse
-                </div>
-            </div>
-
         </div>
 
     </div>
@@ -266,25 +198,42 @@
     <div class="row g-3">
         <div class="col-12">
             <div class="card shadow-sm border-0">
-                <div class="card-header card-header-custom">
+                <div class="card-header card-header-custom d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <h5 class="fw-bold mb-0">Violations by Category</h5>
+                    <small class="text-muted"><i class="bi bi-arrow-repeat me-1"></i>Updates automatically</small>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        @forelse($violationsByCategory as $category)
-                        <div class="col-lg-2 col-md-4 col-6 mb-3 text-center">
-                            <div class="p-3 bg-light rounded-3">
-                                <h4 class="fw-bold text-primary mb-1">{{ $category->violations_count }}</h4>
-                                <small class="text-muted d-block">
-                                    {{ $category->category_name }}
-                                </small>
+                    @php
+                        $categoryChartColors = ['#800000', '#a31515', '#daa520', '#f0c447', '#5f0000', '#c9981f', '#7a0f1e', '#e6c36a', '#8e1d29', '#b8860b'];
+                        $categoryLabels = $violationsByCategory->pluck('category_name')->values();
+                        $categoryValues = $violationsByCategory->pluck('violations_count')->values();
+                    @endphp
+                    <div class="row align-items-center">
+                        <div class="col-lg-7">
+                            <canvas
+                                id="categoryChart"
+                                height="260"
+                                data-labels="{{ json_encode($categoryLabels) }}"
+                                data-values="{{ json_encode($categoryValues) }}"
+                                data-chart-data-url="{{ route('admin.dashboard.chart-data') }}"></canvas>
+                        </div>
+                        <div class="col-lg-5">
+                            <div class="row" id="categoryLegend">
+                                @forelse($violationsByCategory as $category)
+                                <div class="col-6 mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="d-inline-block category-legend-dot" data-color="{{ $categoryChartColors[$loop->index % count($categoryChartColors)] }}"></span>
+                                        <small class="text-muted text-truncate">{{ $category->category_name }}</small>
+                                        <strong class="ms-auto">{{ $category->violations_count }}</strong>
+                                    </div>
+                                </div>
+                                @empty
+                                <div class="col-12">
+                                    <p class="text-muted text-center py-4 mb-0">No category data available</p>
+                                </div>
+                                @endforelse
                             </div>
                         </div>
-                        @empty
-                        <div class="col-12">
-                            <p class="text-muted text-center py-4">No category data available</p>
-                        </div>
-                        @endforelse
                     </div>
                 </div>
             </div>
@@ -294,47 +243,8 @@
 </div>
 
 @push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    // Philippine Standard Time live clock
-    const phTimeDisplay = document.getElementById('phTimeDisplay');
-
-    const updatePhilippineTime = function () {
-        if (!phTimeDisplay) {
-            return;
-        }
-
-        const now = new Date();
-        const formatted = new Intl.DateTimeFormat('en-PH', {
-            timeZone: 'Asia/Manila',
-            month: 'short',
-            day: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false,
-        }).format(now);
-
-        const span = phTimeDisplay.querySelector('span');
-        if (span) {
-            span.textContent = formatted + ' PHT';
-        }
-    };
-
-    updatePhilippineTime();
-    setInterval(updatePhilippineTime, 1000);
-
-    document.querySelectorAll('[data-progress-width]').forEach(function (bar) {
-        const width = parseFloat(bar.getAttribute('data-progress-width'));
-        if (!Number.isNaN(width)) {
-            const safeWidth = Math.max(0, Math.min(100, width));
-            bar.style.width = safeWidth + '%';
-            bar.setAttribute('aria-valuenow', safeWidth.toString());
-        }
-    });
-});
-</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ asset('js/admin-dashboard.js') }}"></script>
 <script src="{{ asset('assets/js/admin.js') }}"></script>
 @endpush
 

@@ -56,26 +56,6 @@ class AdminDashboardController extends Controller
         ->orderBy('month')
         ->get();
 
-        // Get violations by severity from violation_type_tbl.
-        // Some rows may have legacy/unmapped violation_type values, so keep them as "Unmapped".
-        $violationsBySeverity = Violation::leftJoin(
-                'violation_type_tbl',
-                'violation_tbl.violation_type',
-                '=',
-                'violation_type_tbl.violation_type_id'
-            )
-            ->selectRaw('COALESCE(violation_type_tbl.severity_level, 0) as severity_level, COUNT(*) as count')
-            ->groupBy('severity_level')
-            ->orderByDesc('count')
-            ->get()
-            ->mapWithKeys(function ($row) {
-                $label = (int) $row->severity_level === 0
-                    ? 'Unmapped'
-                    : 'Level ' . (int) $row->severity_level;
-
-                return [$label => (int) $row->count];
-            });
-
         return view(
             'admin.dashboard',
             compact(
@@ -86,9 +66,27 @@ class AdminDashboardController extends Controller
                 'recentViolations',
                 'violationsByCategory',
                 'topOffenders',
-                'monthlyData',
-                'violationsBySeverity'
+                'monthlyData'
             )
         );
+    }
+
+    /**
+     * JSON endpoint used by the dashboard's real-time category chart.
+     */
+    public function chartData()
+    {
+        $violationsByCategory = ViolationCategory::withCount('violations')
+            ->orderByDesc('violations_count')
+            ->take(10)
+            ->get()
+            ->map(function (ViolationCategory $category) {
+                return [
+                    'category_name' => $category->category_name,
+                    'violations_count' => $category->violations_count,
+                ];
+            });
+
+        return response()->json($violationsByCategory);
     }
 }

@@ -4,6 +4,11 @@
 
 @section('content')
 
+@php
+    $currentAdmin = Auth::guard('admin')->user();
+    $isItAdmin = (bool) $currentAdmin?->isItAdministrator();
+@endphp
+
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
     <div>
         <h2 class="mb-1">Announcements</h2>
@@ -16,9 +21,7 @@
                 <span class="badge bg-danger ms-2">{{ $unreadNotificationCount }}</span>
             @endif
         </a>
-        @if(Auth::guard('admin')->user()?->isItAdministrator())
-            <a href="{{ route('admin.announcements.create') }}" class="btn announcements-new-btn">New Announcement</a>
-        @endif
+        <a href="{{ route('admin.announcements.create') }}" class="btn announcements-new-btn">New Announcement</a>
     </div>
 </div>
 
@@ -55,64 +58,200 @@
     </div>
 </div>
 
-<div class="card shadow-sm mb-4 border-0">
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white">
+        <ul class="nav nav-tabs" id="announcementTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="announcement-tab" data-bs-toggle="tab" data-bs-target="#announcement-pane" type="button" role="tab">
+                    <i class="bi bi-megaphone me-1"></i>
+                    Announcements
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="configure-tab" data-bs-toggle="tab" data-bs-target="#configure-pane" type="button" role="tab">
+                    <i class="bi bi-gear me-1"></i>
+                    Configure Announcements
+                </button>
+            </li>
+        </ul>
+    </div>
+
     <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0 announcements-table">
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Author</th>
-                        <th>Posted</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($announcements as $announcement)
-                        <tr>
-                            <td>
-                                <div class="fw-semibold">{{ $announcement->title }}</div>
-                                @if($announcement->attachment_path)
-                                    <span class="badge bg-secondary mt-2">Attachment</span>
-                                @endif
-                                @if($announcement->show_on_login)
-                                    <span class="badge bg-warning text-dark mt-2">Login Modal</span>
-                                @endif
-                                <div class="text-muted small mt-2">
-                                    {{ Str::limit(strip_tags($announcement->content), 80) }}
-                                </div>
-                            </td>
-                            <td>
-                                {{ optional($announcement->adminInfo)->firstname ? optional($announcement->adminInfo)->firstname . ' ' . optional($announcement->adminInfo)->lastname : 'Admin #' . $announcement->admin_id }}
-                            </td>
-                            <td>{{ optional($announcement->created_at)->format('M d, Y h:i A') }}</td>
-                            <td class="text-end">
-                                <a href="{{ route('admin.announcements.show', $announcement) }}" class="btn btn-sm btn-outline-primary me-1">View</a>
-                                @if(Auth::guard('admin')->user()?->isItAdministrator())
-                                    <a href="{{ route('admin.announcements.edit', $announcement) }}" class="btn btn-sm btn-outline-secondary me-1">Edit</a>
-                                    <form action="{{ route('admin.announcements.destroy', $announcement) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Delete this announcement?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                    </form>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="text-center py-5">
-                                No announcements have been posted yet.
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+        <div class="tab-content">
+            {{-- Announcements tab (all announcements, view enlarges) --}}
+            <div class="tab-pane fade show active" id="announcement-pane" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 announcements-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Author</th>
+                                <th>Posted</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($announcements as $announcement)
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ $announcement->title }}</div>
+                                        @if($announcement->attachment_path)
+                                            <span class="badge bg-secondary mt-2">Attachment</span>
+                                        @endif
+                                        @if($announcement->show_on_login)
+                                            <span class="badge bg-warning text-dark mt-2">Login Modal</span>
+                                        @endif
+                                        <div class="text-muted small mt-2">
+                                            {{ Str::limit(strip_tags($announcement->content), 80) }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {{ optional($announcement->adminInfo)->firstname ? optional($announcement->adminInfo)->firstname . ' ' . optional($announcement->adminInfo)->lastname : 'Admin #' . $announcement->admin_id }}
+                                    </td>
+                                    <td>{{ optional($announcement->created_at)->format('M d, Y h:i A') }}</td>
+                                    <td class="text-end">
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-primary announcement-view-btn"
+                                            data-title="{{ e($announcement->title) }}"
+                                            data-author="{{ optional($announcement->adminInfo)->firstname ? optional($announcement->adminInfo)->firstname . ' ' . optional($announcement->adminInfo)->lastname : 'Admin #' . $announcement->admin_id }}"
+                                            data-created="{{ optional($announcement->created_at)->format('F d, Y h:i A') }}"
+                                            data-content="{{ e($announcement->content) }}"
+                                            data-attachment="{{ $announcement->attachment_path ? asset($announcement->attachment_path) : '' }}"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#announcementViewModal">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="text-center py-5">
+                                        No announcements have been posted yet.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-3 d-flex justify-content-center">
+                    {{ $announcements->links() }}
+                </div>
+            </div>
+
+            {{-- Configure Announcements tab (only own announcements, edit/delete) --}}
+            <div class="tab-pane fade" id="configure-pane" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 announcements-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Posted</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($myAnnouncements as $announcement)
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ $announcement->title }}</div>
+                                        @if($announcement->attachment_path)
+                                            <span class="badge bg-secondary mt-2">Attachment</span>
+                                        @endif
+                                        <div class="text-muted small mt-2">
+                                            {{ Str::limit(strip_tags($announcement->content), 80) }}
+                                        </div>
+                                    </td>
+                                    <td>{{ optional($announcement->created_at)->format('M d, Y h:i A') }}</td>
+                                    <td class="text-end">
+                                        <a href="{{ route('admin.announcements.edit', $announcement) }}" class="btn btn-sm btn-outline-secondary me-1">
+                                            <i class="bi bi-pencil me-1"></i>Edit
+                                        </a>
+                                        <form action="{{ route('admin.announcements.destroy', $announcement) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Delete this announcement?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="bi bi-trash me-1"></i>Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="3" class="text-center py-5">
+                                        You have not posted any announcements yet.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-3 d-flex justify-content-center">
+                    {{ $myAnnouncements->links() }}
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="d-flex justify-content-center">
-    {{ $announcements->links() }}
+{{-- Announcement view modal --}}
+<div class="modal fade" id="announcementViewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="announcementViewTitle">Announcement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-muted small mb-3">
+                    <span id="announcementViewAuthor"></span>
+                    <span class="mx-1">•</span>
+                    <span id="announcementViewCreated"></span>
+                </div>
+                <p class="mb-0" style="white-space: pre-line;" id="announcementViewContent"></p>
+            </div>
+            <div class="modal-footer">
+                <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary d-none" id="announcementViewAttachment">
+                    <i class="bi bi-paperclip me-1"></i>View Attachment
+                </a>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('announcementViewModal');
+    if (!modal) {
+        return;
+    }
+
+    const titleEl = document.getElementById('announcementViewTitle');
+    const authorEl = document.getElementById('announcementViewAuthor');
+    const createdEl = document.getElementById('announcementViewCreated');
+    const contentEl = document.getElementById('announcementViewContent');
+    const attachmentEl = document.getElementById('announcementViewAttachment');
+
+    document.querySelectorAll('.announcement-view-btn').forEach(function (button) {
+        button.addEventListener('click', function () {
+            titleEl.textContent = button.dataset.title || 'Announcement';
+            authorEl.textContent = button.dataset.author ? 'By ' + button.dataset.author : '';
+            createdEl.textContent = button.dataset.created || '';
+            contentEl.textContent = button.dataset.content || '';
+
+            if (button.dataset.attachment) {
+                attachmentEl.href = button.dataset.attachment;
+                attachmentEl.classList.remove('d-none');
+            } else {
+                attachmentEl.href = '#';
+                attachmentEl.classList.add('d-none');
+            }
+        });
+    });
+});
+</script>
+@endpush

@@ -321,21 +321,44 @@
 @endsection
 
 @push('scripts')
+@php
+    $sanctionPageData = [
+        'requested_tab' => (string) request('sanctions_tab'),
+        'routes' => [
+            'sanctionIndex' => route('admin.disciplinary-sanctions.index'),
+            'sanctionStore' => route('admin.disciplinary-sanctions.store'),
+            'sanctionShow' => route('admin.disciplinary-sanctions.show', ':id'),
+            'sanctionUpdate' => route('admin.disciplinary-sanctions.update', ':id'),
+            'sanctionDelete' => route('admin.disciplinary-sanctions.destroy', ':id'),
+            'approveUrlTemplate' => route('admin.sanctions.requests.approve', ['sanctionRequest' => '__REQUEST_ID__']),
+            'declineUrlTemplate' => route('admin.sanctions.requests.decline', ['sanctionRequest' => '__REQUEST_ID__']),
+        ],
+    ];
+@endphp
+<script type="application/json" id="sanctionPageData">
+@json($sanctionPageData)
+</script>
 <script>
-window.ViolationRoutes = {
-    sanctionIndex: "{{ route('admin.disciplinary-sanctions.index') }}",
-    sanctionStore: "{{ route('admin.disciplinary-sanctions.store') }}",
-    sanctionShow: "{{ route('admin.disciplinary-sanctions.show', ':id') }}",
-    sanctionUpdate: "{{ route('admin.disciplinary-sanctions.update', ':id') }}",
-    sanctionDelete: "{{ route('admin.disciplinary-sanctions.destroy', ':id') }}",
-};
-
 document.addEventListener('DOMContentLoaded', function () {
+    const pageDataEl = document.getElementById('sanctionPageData');
+    let pageData = {};
+    if (pageDataEl) {
+        try {
+            pageData = JSON.parse(pageDataEl.textContent) || {};
+        } catch (e) {
+            pageData = {};
+        }
+    }
+
+    window.ViolationRoutes = pageData.routes || {};
+
     const approveForm = document.getElementById('approveSanctionRequestForm');
     const declineForm = document.getElementById('declineSanctionRequestForm');
     const dateInput = document.getElementById('notification_date');
     const today = new Date().toISOString().split('T')[0];
-    const requestedTab = @json(request('sanctions_tab'));
+
+    // Read the requested tab from the JSON data script (set server-side).
+    let requestedTab = pageData.requested_tab || '';
 
     if (dateInput) {
         dateInput.value = today;
@@ -348,11 +371,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    if (requestedTab === 'sanction-requests') {
+        const sanctionRequestsTab = document.getElementById('sanction-request-tab');
+        if (sanctionRequestsTab) {
+            bootstrap.Tab.getOrCreateInstance(sanctionRequestsTab).show();
+        }
+    }
+
     document.querySelectorAll('.review-sanction-request-btn').forEach(function (button) {
         button.addEventListener('click', function () {
             const requestId = button.dataset.requestId;
-            const approveUrlTemplate = "{{ route('admin.sanctions.requests.approve', ['sanctionRequest' => '__REQUEST_ID__']) }}";
-            const declineUrlTemplate = "{{ route('admin.sanctions.requests.decline', ['sanctionRequest' => '__REQUEST_ID__']) }}";
+            const approveUrlTemplate = pageData.routes.approveUrlTemplate;
+            const declineUrlTemplate = pageData.routes.declineUrlTemplate;
 
             approveForm.action = approveUrlTemplate.replace('__REQUEST_ID__', requestId);
             declineForm.action = declineUrlTemplate.replace('__REQUEST_ID__', requestId);

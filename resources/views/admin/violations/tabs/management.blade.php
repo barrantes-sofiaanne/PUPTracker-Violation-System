@@ -2,22 +2,15 @@
 {{-- Management Header --}}
 {{-- ===================================================== --}}
 <div id="managementTableContainer">
-<div class="d-flex justify-content-between align-items-center mb-4">
-
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
     <div>
-
-        <h5 class="mb-1">
-
+        <h5 class="mb-1 fw-bold">
+            <i class="bi bi-people-fill me-1 text-danger"></i>
             Student Violation Management
-
         </h5>
-
         <small class="text-muted">
-
             Search students and record violations.
-
         </small>
-
     </div>
 
     <button

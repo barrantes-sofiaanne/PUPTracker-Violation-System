@@ -18,6 +18,15 @@ class AnnouncementController extends Controller
             ->latest('created_at')
             ->paginate(10);
 
+        $admin = Auth::guard('admin')->user();
+        /** @var \App\Models\Admin|null $admin */
+        $admin = $admin instanceof Admin ? $admin : null;
+
+        $myAnnouncements = Announcement::with('adminInfo')
+            ->where('admin_id', $admin?->getKey())
+            ->latest('created_at')
+            ->paginate(10, ['*'], 'my_page');
+
         $unreadNotificationCount = AdminNotification::where('is_read', false)->count();
         $announcementStats = [
             'total' => Announcement::count(),
@@ -26,21 +35,17 @@ class AnnouncementController extends Controller
 
         return view(
             'admin.announcements.index',
-            compact('announcements', 'unreadNotificationCount', 'announcementStats')
+            compact('announcements', 'myAnnouncements', 'unreadNotificationCount', 'announcementStats')
         );
     }
 
     public function create()
     {
-        $this->authorizeAnnouncementAdmin();
-
         return view('admin.announcements.create');
     }
 
     public function store(Request $request)
     {
-        $this->authorizeAnnouncementAdmin();
-
         $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string'],
@@ -72,14 +77,14 @@ class AnnouncementController extends Controller
 
     public function edit(Announcement $announcement)
     {
-        $this->authorizeAnnouncementAdmin();
+        $this->authorizeAnnouncementOwner($announcement);
 
         return view('admin.announcements.edit', compact('announcement'));
     }
 
     public function update(Request $request, Announcement $announcement)
     {
-        $this->authorizeAnnouncementAdmin();
+        $this->authorizeAnnouncementOwner($announcement);
 
         $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -123,7 +128,7 @@ class AnnouncementController extends Controller
 
     public function destroy(Announcement $announcement)
     {
-        $this->authorizeAnnouncementAdmin();
+        $this->authorizeAnnouncementOwner($announcement);
 
         $this->deleteAttachment($announcement->getAttribute('attachment_path'));
         $announcement->delete();
@@ -139,17 +144,25 @@ class AnnouncementController extends Controller
     }
 
     /**
-     * Only the IT Administrator (super admin) may create, edit, or delete
-     * announcements. Regular admin users can only view announcements.
+     * Any logged-in admin may post a new announcement, but only the admin who
+     * created an announcement (or the IT Administrator) may edit/delete it.
      */
-    protected function authorizeAnnouncementAdmin(): void
+    protected function authorizeAnnouncementOwner(Announcement $announcement): void
     {
         $admin = Auth::guard('admin')->user();
         /** @var \App\Models\Admin|null $admin */
         $admin = $admin instanceof Admin ? $admin : null;
 
-        if (! $admin || ! $admin->isItAdministrator()) {
-            abort(403, 'Only the IT Administrator can manage announcements.');
+        if (! $admin) {
+            abort(403, 'Unauthenticated.');
+        }
+
+        if ($admin->isItAdministrator()) {
+            return;
+        }
+
+        if ((int) $announcement->admin_id !== (int) $admin->getKey()) {
+            abort(403, 'You can only edit or delete announcements you created.');
         }
     }
 

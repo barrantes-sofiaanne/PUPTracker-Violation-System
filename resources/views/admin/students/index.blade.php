@@ -198,7 +198,7 @@
                                         <td>
                                             {{ $student->program?->program_name ?? '—' }}
                                             @if((int) ($student->studentInfo?->ladderized ?? 0) === 1)
-                                                - ladderized program
+                                                <span class="badge bg-maroon-soft text-maroon ms-1">Ladderized</span>
                                             @endif
                                         </td>
                                         <td>{{ $student->year?->year ?? '—' }}</td>
@@ -228,7 +228,8 @@
                                                     data-year="{{ $student->year_id }}"
                                                     data-section="{{ $student->section_id }}"
                                                     data-gender="{{ $student->gender_id }}"
-                                                    data-status="{{ $student->status_id }}">
+                                                    data-status="{{ $student->status_id }}"
+                                                    data-ladderized="{{ $student->studentInfo?->ladderized ?? 0 }}">
                                                     <i class="bi bi-pencil-square me-1"></i>
                                                     Edit
                                                 </button>
@@ -455,11 +456,22 @@
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="first_name" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middle_name" class="form-control"></div>
                 <div class="col-md-4"><label class="form-label">Last Name</label><input name="last_name" class="form-control" required></div>
-                <div class="col-md-6"><label class="form-label">Program</label><select name="program_id" class="form-select" required>@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
+                <div class="col-md-6"><label class="form-label">Program</label><select name="program_id" class="form-select" required onchange="toggleLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
                 <div class="col-md-3"><label class="form-label">Year</label><select name="year_id" class="form-select" required>@foreach($years as $year)<option value="{{ $year->year_id }}">{{ $year->year }}</option>@endforeach</select></div>
                 <div class="col-md-3"><label class="form-label">Section</label><select name="section_id" class="form-select" required>@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
                 <div class="col-md-6"><label class="form-label">Gender</label><select name="gender_id" class="form-select" required>@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
                 <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" class="form-select" required>@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
+                <div class="col-12 d-none" id="createLadderizedWrap">
+                    <label class="form-label d-block">Ladderized</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="ladderized" id="createLadderizedYes" value="1">
+                        <label class="form-check-label" for="createLadderizedYes">Yes</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="ladderized" id="createLadderizedNo" value="0" checked>
+                        <label class="form-check-label" for="createLadderizedNo">No</label>
+                    </div>
+                </div>
                 <div class="col-12"><small class="text-muted">Student passwords are managed by the PUP Identity Provider (IDP).</small></div>
             </div></div>
             <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Create Student</button></div>
@@ -516,11 +528,22 @@
             <div class="col-md-6"><label class="form-label">Middle Name</label><input type="text" name="middle_name" id="middle_name" class="form-control"></div>
             <div class="col-md-6"><label class="form-label">Last Name</label><input type="text" name="last_name" id="last_name" class="form-control"></div>
             <div class="col-md-6"><label class="form-label">Email</label><input type="email" name="email" id="email" class="form-control"></div>
-            <div class="col-md-6"><label class="form-label">Program</label><select name="program_id" id="program_id" class="form-select">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
+            <div class="col-md-6"><label class="form-label">Program</label><select name="program_id" id="program_id" class="form-select" onchange="toggleEditLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Year</label><select name="year_id" id="year_id" class="form-select">@foreach($years as $year)<option value="{{ $year->year_id }}">{{ $year->year }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Section</label><select name="section_id" id="section_id" class="form-select">@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Gender</label><select name="gender_id" id="gender_id" class="form-select">@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" id="status_id" class="form-select">@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
+            <div class="col-12 d-none" id="editLadderizedWrap">
+                <label class="form-label d-block">Ladderized</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="ladderized" id="editLadderizedYes" value="1">
+                    <label class="form-check-label" for="editLadderizedYes">Yes</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="ladderized" id="editLadderizedNo" value="0">
+                    <label class="form-check-label" for="editLadderizedNo">No</label>
+                </div>
+            </div>
             <div class="col-12"><small class="text-muted">Student passwords are managed by the PUP Identity Provider (IDP).</small></div>
         </div></div>
         <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Update Student</button></div>
@@ -656,10 +679,45 @@ document.querySelectorAll('.editStudentBtn').forEach(function (button) {
         document.getElementById('section_id').value = this.dataset.section;
         document.getElementById('gender_id').value = this.dataset.gender;
         document.getElementById('status_id').value = this.dataset.status;
+
+        // Ladderized radio
+        const editWrap = document.getElementById('editLadderizedWrap');
+        if (editWrap) {
+            const ladderized = String(this.dataset.ladderized || '0') === '1';
+            document.getElementById('editLadderizedYes').checked = ladderized;
+            document.getElementById('editLadderizedNo').checked = !ladderized;
+            toggleEditLadderizedField(document.getElementById('program_id'));
+        }
+
         document.getElementById('editStudentForm').action = "{{ url('/admin/students') }}/" + this.dataset.id;
         new bootstrap.Modal(document.getElementById('editStudentModal')).show();
     });
 });
+
+// Show the Ladderized radio group only for BSOA / BSIT programs (create modal).
+function toggleLadderizedField(selectEl) {
+    const wrap = document.getElementById('createLadderizedWrap');
+    if (!wrap || !selectEl) {
+        return;
+    }
+    const label = (selectEl.selectedOptions[0] || {}).textContent || '';
+    const isLadderizable = /BSOA|BSIT/i.test(label);
+    wrap.classList.toggle('d-none', !isLadderizable);
+    if (isLadderizable) {
+        document.getElementById('createLadderizedNo').checked = true;
+    }
+}
+
+// Same for the edit modal.
+function toggleEditLadderizedField(selectEl) {
+    const wrap = document.getElementById('editLadderizedWrap');
+    if (!wrap || !selectEl) {
+        return;
+    }
+    const label = (selectEl.selectedOptions[0] || {}).textContent || '';
+    const isLadderizable = /BSOA|BSIT/i.test(label);
+    wrap.classList.toggle('d-none', !isLadderizable);
+}
 
 document.querySelectorAll('.deleteStudentBtn').forEach(function (button) {
     button.addEventListener('click', function () {
