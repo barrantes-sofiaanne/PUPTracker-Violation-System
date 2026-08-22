@@ -95,6 +95,30 @@ body {
     padding: 0;
     display: grid;
     gap: 0.2rem;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    padding-bottom: 1rem;
+}
+
+/* Subtle scrollbar for the sidebar nav */
+.sidebar ul::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar ul::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar ul::-webkit-scrollbar-thumb {
+    background: rgba(255, 223, 0, 0.4);
+    border-radius: 999px;
+}
+
+.sidebar ul::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 223, 0, 0.65);
 }
 
 .sidebar a {
