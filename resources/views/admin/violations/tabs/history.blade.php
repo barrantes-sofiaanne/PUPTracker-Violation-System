@@ -20,7 +20,7 @@
     </div>
 
     {{-- Search & Filters --}}
-    <form method="GET" action="{{ route('admin.violations.index') }}" class="mb-4">
+    <form method="GET" action="{{ route('admin.violations.index') }}" class="mb-4 admin-filter-form">
 
         <div class="row g-3">
 
@@ -59,7 +59,7 @@
 
                 <button
                     type="submit"
-                    class="btn btn-primary">
+                    class="admin-btn admin-btn-primary">
 
                     <i class="bi bi-search me-1"></i>
 
@@ -145,11 +145,12 @@
 
                             <button
                                 type="button"
-                                class="btn btn-primary btn-sm viewStudent"
+                                class="admin-btn admin-btn-view admin-btn-sm viewStudent"
                                 data-student="{{ $history->student_number }}"
                                 aria-label="View {{ $history->student?->last_name ?? 'student' }}'s violation record">
 
-                                <i class="bi bi-eye"></i>
+                                <i class="bi bi-eye me-1"></i>
+                                View
 
                             </button>
 
@@ -159,21 +160,12 @@
 
                 @empty
 
-                    <tr>
-
-                        <td colspan="7" class="text-center py-5">
-
-                            <i class="bi bi-clock-history display-5 text-muted"></i>
-
-                            <p class="mt-3 mb-0">
-
-                                No violation records found.
-
-                            </p>
-
-                        </td>
-
-                    </tr>
+                    <x-admin.empty-state
+                        :colspan="7"
+                        icon="bi-clock-history"
+                        title="No violation records found"
+                        message="No violation records match your current filters."
+                        :clearUrl="route('admin.violations.index')" />
 
                 @endforelse
 

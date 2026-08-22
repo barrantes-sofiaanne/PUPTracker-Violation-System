@@ -25,11 +25,11 @@
                 </div>
             </div>
             <div class="quick-actions d-flex flex-wrap gap-2">
-                <a href="{{ route('admin.violations.index') }}" class="btn btn-primary">
+                <a href="{{ route('admin.violations.index') }}" class="admin-btn admin-btn-primary">
                     <i class="bi bi-plus-circle me-2"></i>Record Violation
                 </a>
                 @if(Auth::guard('admin')->user()?->isItAdministrator())
-                    <a href="{{ route('admin.announcements.create') }}" class="btn announcements-new-btn">
+                    <a href="{{ route('admin.announcements.create') }}" class="admin-btn admin-btn-secondary">
                         <i class="bi bi-megaphone me-2"></i>New Announcement
                     </a>
                 @endif
@@ -149,19 +149,19 @@
                                     </td>
                                     <td>
                                         <a href="{{ route('admin.violations.index', ['search' => $violation->student_number]) }}#management" 
-                                           class="btn btn-sm btn-primary">
+                                           class="admin-btn admin-btn-view admin-btn-sm">
                                             <i class="bi bi-eye me-1"></i>
                                             View
                                         </a>
                                     </td>
                                 </tr>
                                 @empty
-                                <tr>
-                                    <td colspan="4" class="text-center py-5">
-                                        <i class="bi bi-inbox display-4 text-muted"></i>
-                                        <p class="text-muted mt-3">No recent violations</p>
-                                    </td>
-                                </tr>
+                                    <x-admin.empty-state
+                                        :colspan="4"
+                                        icon="bi-inbox"
+                                        title="No recent violations"
+                                        message="Recent violation records will appear here."
+                                        :clearUrl="null" />
                                 @endforelse
                             </tbody>
                         </table>

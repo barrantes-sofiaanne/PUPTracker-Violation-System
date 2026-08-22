@@ -21,15 +21,16 @@
         <td>{{ $report->violation_date ? \Carbon\Carbon::parse($report->violation_date)->format('M d, Y') : '-' }}</td>
         <td>{{ $report->recorded_by_display }}</td>
         <td>
-            <a href="{{ route('admin.violations.show', $report->student?->student_number) }}" class="btn btn-sm btn-outline-primary">View</a>
+            <a href="{{ route('admin.violations.show', $report->student?->student_number) }}" class="admin-btn admin-btn-view admin-btn-sm">
+                <i class="bi bi-eye me-1"></i>View
+            </a>
         </td>
     </tr>
 @empty
-    <tr>
-        <td colspan="9" class="text-center py-5">
-            <i class="bi bi-file-earmark-x display-4 text-muted"></i>
-            <h5 class="mt-3">No Report Found</h5>
-            <p class="text-muted">Try changing your filter criteria.</p>
-        </td>
-    </tr>
+    <x-admin.empty-state
+        :colspan="9"
+        icon="bi-file-earmark-x"
+        title="No reports found"
+        message="Try changing your filter criteria."
+        :clearUrl="route('admin.reports')" />
 @endforelse

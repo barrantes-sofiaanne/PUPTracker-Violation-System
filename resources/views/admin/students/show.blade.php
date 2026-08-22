@@ -2,12 +2,15 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
-            <h3 class="mb-1">Student Profile</h3>
+            <h3 class="fw-bold mb-1">Student Profile</h3>
             <p class="text-muted mb-0">Review the student’s personal and academic details.</p>
         </div>
-        <a href="{{ route('admin.students') }}" class="btn btn-outline-secondary">Back to Students</a>
+        <a href="{{ route('admin.students') }}" class="admin-btn admin-btn-neutral">
+            <i class="bi bi-arrow-left"></i>
+            Back to Students
+        </a>
     </div>
 
     <div class="row g-4">
@@ -101,9 +104,11 @@
                     </div>
                 </div>
                 <form action="{{ route('admin.students.unlink-idp', $student->student_number) }}" method="POST"
-                      onsubmit="return confirm('Unlink this student from their PUP ID? This will require re-linking before IDP login works again.');">
+                      data-confirm="Unlink this student from their PUP ID? This will require re-linking before IDP login works again."
+                      data-confirm-title="Unlink PUP IDP?"
+                      data-confirm-confirm-label="Unlink">
                     @csrf
-                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                    <button type="submit" class="admin-btn admin-btn-danger admin-btn-sm">
                         <i class="bi bi-link-45deg"></i> Unlink PUP IDP
                     </button>
                 </form>

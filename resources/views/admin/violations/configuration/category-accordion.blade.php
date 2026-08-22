@@ -23,7 +23,7 @@
 
             <button
                 type="button"
-                class="btn btn-warning btn-sm edit-category"
+                class="admin-btn admin-btn-view admin-btn-sm edit-category"
                 data-id="{{ $category->violation_category_id }}"
                 data-name="{{ $category->category_name }}"
                 title="Edit Category">
@@ -36,7 +36,7 @@
 
             <button
                 type="button"
-                class="btn btn-danger btn-sm delete-category"
+                class="admin-btn admin-btn-danger admin-btn-sm delete-category"
                 data-id="{{ $category->violation_category_id }}"
                 data-name="{{ $category->category_name }}"
                 title="Delete Category">

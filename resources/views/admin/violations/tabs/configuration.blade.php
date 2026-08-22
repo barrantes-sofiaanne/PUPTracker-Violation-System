@@ -17,7 +17,7 @@
             </div>
 
             <button
-                class="btn btn-danger add-category"
+                class="admin-btn admin-btn-danger add-category"
                 data-bs-toggle="modal"
                 data-bs-target="#categoryModal">
 

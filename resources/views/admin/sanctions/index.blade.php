@@ -77,7 +77,7 @@
                                         <td class="text-end">
                                             <button
                                                 type="button"
-                                                class="btn btn-sm btn-primary review-sanction-request-btn"
+                                                class="admin-btn admin-btn-secondary admin-btn-sm review-sanction-request-btn"
                                                 data-request-id="{{ $request->request_id }}"
                                                 data-student="{{ optional($request->student)->student_number }}"
                                                 data-violation="{{ optional($request->violationType)->violation_type ?? 'Unknown' }}"
@@ -91,9 +91,12 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center py-5 text-muted">No pending sanction requests found.</td>
-                                    </tr>
+                                    <x-admin.empty-state
+                                        :colspan="5"
+                                        icon="bi-inbox"
+                                        title="No pending sanction requests"
+                                        message="No pending sanction requests were found."
+                                        :clearUrl="route('admin.sanctions.index')" />
                                 @endforelse
                             </tbody>
                         </table>
@@ -107,7 +110,7 @@
                 </div>
 
                 <div class="tab-pane fade" id="student-sanctions" role="tabpanel">
-                    <form method="GET" action="{{ route('admin.sanctions.index') }}" class="mb-4">
+                    <form method="GET" action="{{ route('admin.sanctions.index') }}" class="mb-4 admin-filter-form">
                         <input type="hidden" name="sanctions_tab" value="student-sanctions">
                         <div class="border rounded-3 p-3 bg-light-subtle">
                             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
@@ -186,11 +189,11 @@
 
                                 <div class="col-lg-6">
                                     <div class="d-flex gap-2 justify-content-lg-end">
-                                        <button type="submit" class="btn btn-primary">
+                                        <button type="submit" class="admin-btn admin-btn-primary">
                                             <i class="bi bi-search me-1"></i>
                                             Apply Filters
                                         </button>
-                                        <a href="{{ route('admin.sanctions.index', ['sanctions_tab' => 'student-sanctions']) }}" class="btn btn-outline-secondary">
+                                        <a href="{{ route('admin.sanctions.index', ['sanctions_tab' => 'student-sanctions']) }}" class="admin-btn admin-btn-neutral">
                                             <i class="bi bi-arrow-clockwise me-1"></i>
                                             Reset
                                         </a>
@@ -226,25 +229,25 @@
                                         <td>{{ optional($record->date_assigned)->format('M d, Y') ?? '-' }}</td>
                                         <td>
                                             @if(strcasecmp((string) $record->status, 'Pending') === 0)
-                                                <span class="badge bg-warning text-dark">Pending</span>
+                                                <x-admin.badge status="pending" />
                                             @elseif(strcasecmp((string) $record->status, 'Completed') === 0)
-                                                <span class="badge bg-success">Completed</span>
+                                                <x-admin.badge status="completed" />
                                             @else
-                                                <span class="badge bg-secondary">{{ $record->status }}</span>
+                                                <x-admin.badge status="gray" :label="$record->status" />
                                             @endif
                                         </td>
                                         <td class="text-end">
                                             @if(strcasecmp((string) $record->status, 'Pending') === 0)
                                                 <form action="{{ route('admin.sanctions.records.complete', $record) }}" method="POST" class="d-inline">
                                                     @csrf
-                                                    <button type="submit" class="btn btn-sm btn-success">
+                                                    <button type="submit" class="admin-btn admin-btn-success admin-btn-sm">
                                                         Mark as Completed
                                                     </button>
                                                 </form>
                                             @elseif(strcasecmp((string) $record->status, 'Completed') === 0)
                                                 <form action="{{ route('admin.sanctions.records.revert', $record) }}" method="POST" class="d-inline">
                                                     @csrf
-                                                    <button type="submit" class="btn btn-sm btn-outline-warning">
+                                                    <button type="submit" class="admin-btn admin-btn-view admin-btn-sm">
                                                         Revert to Pending
                                                     </button>
                                                 </form>
@@ -254,9 +257,12 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center py-5 text-muted">No student sanctions found.</td>
-                                    </tr>
+                                    <x-admin.empty-state
+                                        :colspan="6"
+                                        icon="bi-shield-check"
+                                        title="No student sanctions found"
+                                        message="No student sanctions match your current filters."
+                                        :clearUrl="route('admin.sanctions.index', ['sanctions_tab' => 'student-sanctions'])" />
                                 @endforelse
                             </tbody>
                         </table>
@@ -275,14 +281,14 @@
 
 @include('admin.violations.partials.sanction-modal')
 
-<div class="modal fade" id="sanctionRequestReviewModal" tabindex="-1" aria-labelledby="sanctionRequestReviewModalLabel" aria-hidden="true">
+<div class="modal fade admin-modal" id="sanctionRequestReviewModal" tabindex="-1" aria-labelledby="sanctionRequestReviewModalLabel" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="sanctionRequestReviewModalLabel">Sanction Request Review</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content admin-modal-content">
+            <div class="modal-header admin-modal-header">
+                <h5 class="modal-title admin-modal-title" id="sanctionRequestReviewModalLabel">Sanction Request Review</h5>
+                <button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body admin-modal-body">
                 <div class="mb-2"><strong>Student Number:</strong> <span id="requestModalStudent">-</span></div>
                 <div class="mb-2"><strong>Violation Type:</strong> <span id="requestModalViolation">-</span></div>
                 <div class="mb-3"><strong>Offense Level:</strong> <span id="requestModalOffense">-</span></div>
@@ -304,15 +310,15 @@
                     <small class="text-muted">The selected date will be shown in the student's Sanction Record tab.</small>
                 </form>
             </div>
-            <div class="modal-footer d-flex justify-content-between">
+            <div class="modal-footer admin-modal-footer d-flex justify-content-between">
                 <form id="declineSanctionRequestForm" method="POST">
                     @csrf
-                    <button type="submit" class="btn btn-outline-danger">Decline</button>
+                    <button type="submit" class="admin-btn admin-btn-danger">Decline</button>
                 </form>
 
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" form="approveSanctionRequestForm" class="btn btn-success" id="approveSanctionRequestBtn">Approve & Notify</button>
+                    <button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" form="approveSanctionRequestForm" class="admin-btn admin-btn-success" id="approveSanctionRequestBtn">Approve & Notify</button>
                 </div>
             </div>
         </div>

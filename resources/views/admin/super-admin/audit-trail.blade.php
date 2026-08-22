@@ -3,17 +3,20 @@
 @section('title', 'Super Admin Audit Trail')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+<div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <h2 class="mb-1">Audit Trail</h2>
+        <h2 class="fw-bold mb-1">Audit Trail</h2>
         <p class="text-muted mb-0">Search and review administrative and security actions across the platform.</p>
     </div>
-    <a href="{{ route('admin.super-admin.dashboard') }}" class="btn btn-outline-secondary">Back to Super Admin</a>
+    <a href="{{ route('admin.super-admin.dashboard') }}" class="admin-btn admin-btn-neutral">
+        <i class="bi bi-arrow-left"></i>
+        Back to Super Admin
+    </a>
 </div>
 
-<div class="card shadow-sm border-0 mb-4">
+<div class="card shadow-sm border-0 mb-4 admin-filter-card">
     <div class="card-body">
-        <form method="GET" action="{{ route('admin.super-admin.audit-trail') }}" class="row g-3">
+        <form method="GET" action="{{ route('admin.super-admin.audit-trail') }}" class="row g-3 admin-filter-form">
             <div class="col-md-3">
                 <label for="actor_type" class="form-label">Actor Type</label>
                 <select id="actor_type" name="actor_type" class="form-select">
@@ -37,7 +40,7 @@
                 <input id="keyword" name="keyword" value="{{ request('keyword') }}" class="form-control" placeholder="Search action or description">
             </div>
             <div class="col-md-2 d-flex align-items-end">
-                <button class="btn btn-primary w-100" type="submit">Filter</button>
+                <button class="admin-btn admin-btn-primary w-100" type="submit">Filter</button>
             </div>
         </form>
     </div>
@@ -66,9 +69,12 @@
                             <td>{{ optional($log->created_at)->format('M d, Y h:i A') }}</td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="5" class="text-center py-5 text-muted">No audit entries found for your selected filters.</td>
-                        </tr>
+                        <x-admin.empty-state
+                            :colspan="5"
+                            icon="bi-clipboard-x"
+                            title="No audit entries found"
+                            message="No audit entries were found for your selected filters."
+                            :clearUrl="route('admin.super-admin.audit-trail')" />
                     @endforelse
                 </tbody>
             </table>

@@ -161,7 +161,7 @@
 
                     <button
                         type="button"
-                        class="btn btn-secondary"
+                        class="admin-btn admin-btn-neutral"
                         data-bs-dismiss="modal">
 
                         Cancel
@@ -170,7 +170,7 @@
 
                     <button
                         type="submit"
-                        class="btn btn-primary"
+                        class="admin-btn admin-btn-primary"
                         id="saveSanctionBtn">
 
                         <i class="fas fa-save me-2"></i>

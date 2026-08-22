@@ -20,20 +20,31 @@
         <div class="d-flex gap-2">
             <form action="{{ route('admin.graduation-review.retry-failed') }}" method="POST">
                 @csrf
-                <button type="submit" class="btn btn-outline-warning">
+                <button type="submit" class="admin-btn admin-btn-neutral">
                     <i class="bi bi-arrow-repeat"></i>
                     Retry Failed
                 </button>
             </form>
-            <form action="{{ route('admin.graduation-review.generate-batch') }}" method="POST">
+            <form action="{{ route('admin.graduation-review.generate-batch') }}" method="POST" id="aiBatchForm">
                 @csrf
-                <button type="submit" class="btn btn-success">
+                <button type="submit" class="admin-btn admin-btn-secondary" id="aiBatchGenerateBtn">
                     <i class="bi bi-stars"></i>
                     Generate AI Review (Batch)
                 </button>
             </form>
         </div>
 
+    </div>
+
+    {{-- AI loading overlay --}}
+    <div id="aiReviewLoading" class="admin-loading d-none" data-button="aiBatchGenerateBtn" role="status" aria-live="polite">
+        <div class="admin-loading-card">
+            <span class="spinner-border admin-loading-spinner" aria-hidden="true"></span>
+            <div class="admin-loading-text">
+                <strong class="admin-loading-label">Generating AI Review...</strong>
+                <small class="text-muted d-block mt-1">Analyzing disciplinary records. Please wait...</small>
+            </div>
+        </div>
     </div>
 
     {{-- Batch progress (queue) --}}
@@ -81,11 +92,11 @@
     @endif
 
     {{-- Filters --}}
-    <div class="card shadow-sm border-0 mb-4">
+    <div class="card shadow-sm border-0 mb-4 admin-filter-card">
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.graduation-review.index') }}" class="row g-3">
+            <form method="GET" action="{{ route('admin.graduation-review.index') }}" class="row g-3 admin-filter-form">
                 <div class="col-md-5">
-                    <label class="form-label">Program</label>
+                    <label class="admin-filter-label">Program</label>
                     <select name="program_id" class="form-select">
                         <option value="">All Programs</option>
                         @foreach ($programs as $program)
@@ -96,7 +107,7 @@
                     </select>
                 </div>
                 <div class="col-md-5">
-                    <label class="form-label">Year</label>
+                    <label class="admin-filter-label">Year</label>
                     <select name="year_id" class="form-select">
                         <option value="">All Years</option>
                         @foreach ($years as $year)
@@ -106,10 +117,13 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="admin-btn admin-btn-primary w-100">
                         <i class="bi bi-funnel"></i> Filter
                     </button>
+                    <a href="{{ route('admin.graduation-review.index') }}" class="admin-btn admin-btn-neutral" title="Reset filters" aria-label="Reset filters">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </a>
                 </div>
             </form>
         </div>
@@ -211,28 +225,29 @@
                             </td>
                             <td>
                                 @if ((int) $student['total_violations'] === 0)
-                                    <span class="badge bg-success">No Immediate Concern</span>
+                                    <x-admin.badge status="success" label="No Immediate Concern" />
                                 @elseif ((int) $student['outstanding_sanctions'] > 0)
-                                    <span class="badge bg-danger">Outstanding Sanction Review</span>
+                                    <x-admin.badge status="outstanding" label="Outstanding Sanction Review" />
                                 @elseif ($student['repeated_violations_exist'])
-                                    <span class="badge bg-warning text-dark">Manual Review Recommended</span>
+                                    <x-admin.badge status="manual review" label="Manual Review Recommended" />
                                 @else
-                                    <span class="badge bg-success">No Immediate Concern</span>
+                                    <x-admin.badge status="success" label="No Immediate Concern" />
                                 @endif
                             </td>
                             <td class="text-end">
                                 <a href="{{ route('admin.graduation-review.show', $student['student_number']) }}"
-                                   class="btn btn-sm btn-outline-primary">
+                                   class="admin-btn admin-btn-view admin-btn-sm">
                                     <i class="bi bi-eye"></i> Review
                                 </a>
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
-                                No graduating students found for the selected filters.
-                            </td>
-                        </tr>
+                        <x-admin.empty-state
+                            :colspan="6"
+                            icon="bi-stars"
+                            title="No graduating students found"
+                            message="No graduating students were found for the selected filters."
+                            :clearUrl="route('admin.graduation-review.index')" />
                     @endforelse
                 </tbody>
             </table>
@@ -246,6 +261,20 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Prevent duplicate AI batch requests + show loading state.
+        const batchForm = document.getElementById('aiBatchForm');
+        const batchBtn = document.getElementById('aiBatchGenerateBtn');
+        if (batchForm && batchBtn) {
+            batchForm.addEventListener('submit', function (event) {
+                if (batchBtn.disabled) {
+                    event.preventDefault();
+                    return;
+                }
+                window.PUPLoading && window.PUPLoading.start('aiReviewLoading');
+                batchBtn.disabled = true;
+            });
+        }
+
         const panel = document.getElementById('batchProgressPanel');
         if (!panel) {
             return;

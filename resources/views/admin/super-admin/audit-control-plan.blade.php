@@ -37,9 +37,11 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="portal-hero mb-4">
-        <h2 class="fw-bold mb-2">Audit, Control Plan, and Risk Assessment</h2>
-        <p class="mb-0">In-system implementation tracker based on corrective actions and treatment recommendations.</p>
+    <div class="page-header-modern mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Audit, Control Plan, and Risk Assessment</h2>
+            <p class="mb-0">In-system implementation tracker based on corrective actions and treatment recommendations.</p>
+        </div>
     </div>
 
     <div class="card portal-card mb-4">

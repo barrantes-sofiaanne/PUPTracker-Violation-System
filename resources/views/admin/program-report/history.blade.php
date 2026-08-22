@@ -17,7 +17,7 @@
                 @endif
             </p>
         </div>
-        <a href="{{ route('admin.program-report.index') }}" class="btn btn-success">
+        <a href="{{ route('admin.program-report.index') }}" class="admin-btn admin-btn-primary">
             <i class="bi bi-plus-lg"></i> New Report
         </a>
     </div>
@@ -31,7 +31,7 @@
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white">
-            <form method="GET" action="{{ route('admin.program-report.history') }}" class="row g-3">
+            <form method="GET" action="{{ route('admin.program-report.history') }}" class="row g-3 admin-filter-form">
                 <div class="col-md-4">
                     <select name="program_id" class="form-select">
                         <option value="">All Programs</option>
@@ -52,7 +52,7 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel"></i> Filter</button>
+                    <button type="submit" class="admin-btn admin-btn-primary w-100"><i class="bi bi-funnel"></i> Filter</button>
                 </div>
             </form>
         </div>
@@ -79,24 +79,27 @@
                             <td>{{ optional($report->generated_at)->format('M d, Y h:i A') }}</td>
                             <td>
                                 @if ($report->ai_failed)
-                                    <span class="badge bg-warning text-dark">AI Failed</span>
+                                    <x-admin.badge status="ai_failed" label="AI Failed" />
                                 @else
-                                    <span class="badge bg-success">Generated</span>
+                                    <x-admin.badge status="generated" />
                                 @endif
                             </td>
                             <td class="text-end">
-                                <a href="{{ route('admin.program-report.show', $report->report_id) }}" class="btn btn-sm btn-outline-primary">
+                                <a href="{{ route('admin.program-report.show', $report->report_id) }}" class="admin-btn admin-btn-view admin-btn-sm">
                                     <i class="bi bi-eye"></i> View
                                 </a>
-                                <a href="{{ route('admin.program-report.pdf', $report->report_id) }}" class="btn btn-sm btn-outline-danger">
+                                <a href="{{ route('admin.program-report.pdf', $report->report_id) }}" class="admin-btn admin-btn-danger admin-btn-sm">
                                     <i class="bi bi-file-earmark-pdf"></i> PDF
                                 </a>
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="7" class="text-center text-muted py-4">No reports found.</td>
-                        </tr>
+                        <x-admin.empty-state
+                            :colspan="7"
+                            icon="bi-clock-history"
+                            title="No reports found"
+                            message="No reports match your current filters."
+                            :clearUrl="route('admin.program-report.history')" />
                     @endforelse
                 </tbody>
             </table>

@@ -4,20 +4,23 @@
 
 @section('content')
 
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+<div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <h2 class="mb-1">Admin Notifications</h2>
+        <h2 class="fw-bold mb-1">Admin Notifications</h2>
         <p class="text-muted mb-0">View the latest notifications for administrative actions.</p>
     </div>
-    <a href="{{ route('admin.announcements') }}" class="btn btn-outline-secondary">Announcements</a>
+    <a href="{{ route('admin.announcements') }}" class="admin-btn admin-btn-neutral">
+        <i class="bi bi-megaphone" aria-hidden="true"></i>
+        Announcements
+    </a>
 </div>
 
 {{-- Filters --}}
-<div class="card shadow-sm border-0 mb-3">
+<div class="card shadow-sm border-0 mb-3 admin-filter-card">
     <div class="card-body">
-        <form method="GET" action="{{ route('admin.notifications') }}" class="row g-2 align-items-end">
+        <form method="GET" action="{{ route('admin.notifications') }}" class="row g-3 align-items-end admin-filter-form">
             <div class="col-md-3">
-                <label class="form-label mb-1">Status</label>
+                <label class="admin-filter-label">Status</label>
                 <select name="status" class="form-select">
                     <option value="">All Statuses</option>
                     <option value="read" {{ $status === 'read' ? 'selected' : '' }}>Read</option>
@@ -25,7 +28,7 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label mb-1">Type</label>
+                <label class="admin-filter-label">Type</label>
                 <select name="type" class="form-select">
                     <option value="">All Types</option>
                     @foreach($types as $t)
@@ -34,14 +37,14 @@
                 </select>
             </div>
             <div class="col-md-4">
-                <label class="form-label mb-1">Search</label>
+                <label class="admin-filter-label">Search</label>
                 <input type="text" name="search" class="form-control" placeholder="Search message..." value="{{ request('search') }}">
             </div>
             <div class="col-md-2 d-flex gap-2">
-                <button type="submit" class="btn btn-primary w-100">
+                <button type="submit" class="admin-btn admin-btn-primary w-100">
                     <i class="bi bi-funnel me-1"></i>Filter
                 </button>
-                <a href="{{ route('admin.notifications') }}" class="btn btn-outline-secondary">
+                <a href="{{ route('admin.notifications') }}" class="admin-btn admin-btn-neutral" title="Reset filters" aria-label="Reset filters">
                     <i class="bi bi-arrow-repeat"></i>
                 </a>
             </div>
@@ -49,7 +52,7 @@
         <div class="d-flex flex-wrap gap-2 mt-3">
             <form action="{{ route('admin.notifications.mark-all-read') }}" method="POST" class="d-inline">
                 @csrf
-                <button type="submit" class="btn btn-sm btn-outline-primary">
+                <button type="submit" class="admin-btn admin-btn-view admin-btn-sm">
                     <i class="bi bi-check2-all me-1"></i>Mark All as Read
                 </button>
             </form>
@@ -86,20 +89,18 @@
                         </button>
 
                         <div class="d-flex align-items-center gap-2">
-                            <span class="badge rounded-pill {{ $notification->is_read ? 'bg-secondary' : 'bg-primary' }}">
-                                {{ $notification->is_read ? 'Read' : 'Unread' }}
-                            </span>
+                            <x-admin.badge :status="$notification->is_read ? 'read' : 'unread'" />
                             @if(! $notification->is_read)
                                 <form action="{{ route('admin.notifications.read', $notification) }}" method="POST" class="d-inline">
                                     @csrf
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Mark as read">
+                                    <button type="submit" class="admin-btn admin-btn-view admin-btn-sm" title="Mark as read" aria-label="Mark as read">
                                         <i class="bi bi-check2"></i>
                                     </button>
                                 </form>
                             @else
                                 <form action="{{ route('admin.notifications.unread', $notification) }}" method="POST" class="d-inline">
                                     @csrf
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="Mark as unread">
+                                    <button type="submit" class="admin-btn admin-btn-neutral admin-btn-sm" title="Mark as unread" aria-label="Mark as unread">
                                         <i class="bi bi-arrow-counterclockwise"></i>
                                     </button>
                                 </form>
@@ -113,33 +114,33 @@
                 {{ $notifications->appends(request()->query())->links() }}
             </div>
         @else
-            <div class="text-center py-5">
-                <i class="bi bi-bell-slash fs-1 text-muted"></i>
-                <h5 class="mt-3">No notifications found.</h5>
-                <p class="text-muted">Try adjusting your filters, or once notifications are generated they will appear here.</p>
-            </div>
+            <x-admin.empty-state
+                icon="bi-bell-slash"
+                title="No notifications found"
+                message="Try adjusting your filters, or once notifications are generated they will appear here."
+                :clearUrl="route('admin.notifications')" />
         @endif
     </div>
 </div>
 
 {{-- Notification detail modal --}}
-<div class="modal fade" id="adminNotificationModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade admin-modal" id="adminNotificationModal" tabindex="-1" aria-labelledby="adminNotificationModalLabel" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="adminNotificationModalLabel">Notification</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content admin-modal-content">
+            <div class="modal-header admin-modal-header">
+                <h5 class="modal-title admin-modal-title" id="adminNotificationModalLabel">Notification</h5>
+                <button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body admin-modal-body">
                 <small class="text-muted d-block mb-3" id="adminNotificationModalDate"></small>
                 <p class="mb-0" style="white-space: pre-line;" id="adminNotificationModalMessage"></p>
             </div>
-            <div class="modal-footer">
-                <a href="#" class="btn btn-primary d-none" id="adminNotificationModalLink">
+            <div class="modal-footer admin-modal-footer">
+                <a href="#" class="admin-btn admin-btn-primary d-none" id="adminNotificationModalLink">
                     <i class="bi bi-box-arrow-up-right me-1"></i>
                     <span id="adminNotificationModalLinkLabel">Open</span>
                 </a>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

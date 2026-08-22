@@ -80,7 +80,7 @@
             <td>{{ $item['violation_type'] }}</td>
 
             <td>
-                <span class="badge bg-primary">
+                <span class="admin-badge admin-badge-burgundy">
                     {{ $item['offense_level'] }}
                 </span>
             </td>
@@ -93,33 +93,23 @@
 
                 @if($status == 'approved')
 
-                    <span class="badge bg-success">
-                        Approved
-                    </span>
+                    <x-admin.badge status="approved" />
 
                 @elseif($status == 'pending')
 
-                    <span class="badge bg-warning text-dark">
-                        Pending
-                    </span>
+                    <x-admin.badge status="pending" />
 
                 @elseif($status == 'rejected')
 
-                    <span class="badge bg-danger">
-                        Rejected
-                    </span>
+                    <x-admin.badge status="rejected" />
 
                 @elseif($status == 'sanction')
 
-                    <span class="badge bg-info">
-                        Sanction
-                    </span>
+                    <x-admin.badge status="info" label="Sanction" />
 
                 @else
 
-                    <span class="badge bg-secondary">
-                        {{ $item['status'] }}
-                    </span>
+                    <x-admin.badge status="gray" :label="$item['status']" />
 
                 @endif
 

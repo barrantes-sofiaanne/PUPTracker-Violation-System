@@ -4,13 +4,14 @@
 
 @section('content')
 
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
-    <div>
-        <h2 class="mb-1">Create Announcement</h2>
-        <p class="text-muted mb-0">Publish a new announcement with an optional file attachment.</p>
-    </div>
-    <a href="{{ route('admin.announcements') }}" class="btn btn-outline-secondary">Back to Announcements</a>
-</div>
+<x-admin.page-header title="Create Announcement" description="Publish a new announcement with an optional file attachment.">
+    <x-slot name="actions">
+        <a href="{{ route('admin.announcements') }}" class="admin-btn admin-btn-neutral">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Back to Announcements
+        </a>
+    </x-slot>
+</x-admin.page-header>
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-4">
@@ -48,7 +49,10 @@
                 </div>
             @endif
 
-            <button type="submit" class="btn btn-primary">Publish Announcement</button>
+            <button type="submit" class="admin-btn admin-btn-primary">
+    <i class="bi bi-megaphone" aria-hidden="true"></i>
+    Publish Announcement
+</button>
         </form>
     </div>
 </div>

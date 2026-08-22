@@ -35,7 +35,7 @@
         <div>
 
             <button
-                class="btn btn-outline-primary me-2"
+                class="admin-btn admin-btn-neutral me-2"
                 id="printReport">
 
                 <i class="bi bi-printer"></i>
@@ -45,7 +45,7 @@
             </button>
 
             <button
-                class="btn btn-success me-2"
+                class="admin-btn admin-btn-secondary me-2"
                 id="exportExcel">
 
                 <i class="bi bi-file-earmark-excel"></i>
@@ -55,7 +55,7 @@
             </button>
 
             <button
-                class="btn btn-danger"
+                class="admin-btn admin-btn-danger"
                 id="exportPdf">
 
                 <i class="bi bi-file-earmark-pdf"></i>
@@ -175,7 +175,7 @@
 
 </div>  
 
-<div class="card border-0 shadow-sm mb-4">
+<div class="card border-0 shadow-sm mb-4 admin-filter-card">
 
     <div class="card-header bg-white">
 
@@ -189,7 +189,7 @@
 
     <div class="card-body">
 
-        <form method="GET" action="{{ route('admin.reports') }}" id="reportFilterForm">
+        <form method="GET" action="{{ route('admin.reports') }}" id="reportFilterForm" class="admin-filter-form">
 
             <div class="row">
 
@@ -367,7 +367,7 @@
 
     <button
         type="reset"
-        class="btn btn-outline-secondary me-2">
+        class="admin-btn admin-btn-neutral me-2">
 
         Reset
 
@@ -375,7 +375,7 @@
 
     <button
         type="submit"
-        class="btn btn-danger">
+        class="admin-btn admin-btn-primary">
 
         <i class="bi bi-search"></i>
 

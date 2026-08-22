@@ -70,7 +70,7 @@
                             <div class="d-flex flex-wrap gap-2 justify-content-xl-end user-management-actions">
                                 <button
                                     type="button"
-                                    class="btn btn-outline-secondary"
+                                    class="admin-btn admin-btn-neutral"
                                     data-bs-toggle="collapse"
                                     data-bs-target="#studentFiltersCollapse"
                                     aria-expanded="{{ $studentFiltersActive ? 'true' : 'false' }}"
@@ -78,23 +78,23 @@
                                     <i class="bi bi-funnel me-1"></i>
                                     Filter
                                 </button>
-                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importAccountsModal" data-import-account-type="student">
+                                <button type="button" class="admin-btn admin-btn-neutral" data-bs-toggle="modal" data-bs-target="#importAccountsModal" data-import-account-type="student">
                                     <i class="bi bi-box-arrow-in-down-right me-1"></i>
                                     Import
                                 </button>
-                                <a href="{{ route('admin.user-management-history') }}" class="btn btn-outline-secondary">
+                                <a href="{{ route('admin.user-management-history') }}" class="admin-btn admin-btn-neutral">
                                     <i class="bi bi-arrow-counterclockwise me-1"></i>
                                     History
                                 </a>
-                                <a href="{{ route('admin.students', ['tab' => 'students']) }}" class="btn btn-outline-secondary">
+                                <a href="{{ route('admin.students', ['tab' => 'students']) }}" class="admin-btn admin-btn-neutral">
                                     <i class="bi bi-arrow-repeat me-1"></i>
                                     Refresh
                                 </a>
-                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#createStudentModal">
+                                <button type="button" class="admin-btn admin-btn-danger" data-bs-toggle="modal" data-bs-target="#createStudentModal">
                                     <i class="bi bi-plus-lg me-1"></i>
                                     Add Student
                                 </button>
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="admin-btn admin-btn-primary">
                                     Search
                                 </button>
                             </div>
@@ -162,10 +162,10 @@
                                 <div class="d-flex justify-content-end gap-2 mt-3">
                                     <a
                                         href="{{ route('admin.students', array_filter(['tab' => 'students', 'search' => request('search')])) }}"
-                                        class="btn btn-outline-secondary btn-sm">
+                                        class="admin-btn admin-btn-neutral admin-btn-sm">
                                         Clear Filters
                                     </a>
-                                    <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+                                    <button type="submit" class="admin-btn admin-btn-primary admin-btn-sm">Apply Filters</button>
                                 </div>
                             </div>
                         </div>
@@ -205,20 +205,20 @@
                                         <td>{{ $student->section?->section_name ?? '—' }}</td>
                                         <td>
                                             @php
-                                                $statusName = strtoupper((string) optional($student->status)->status_name);
+                                                $statusName = strtolower(trim((string) optional($student->status)->status_name));
                                             @endphp
-                                            @if($statusName === 'ACTIVE')
-                                                <span class="badge bg-success user-status-badge">ACTIVE</span>
-                                            @elseif($statusName === 'INACTIVE')
-                                                <span class="badge bg-secondary user-status-badge">INACTIVE</span>
+                                            @if($statusName === 'active')
+                                                <x-admin.badge status="active" label="Active" />
+                                            @elseif($statusName === 'inactive')
+                                                <x-admin.badge status="inactive" label="Inactive" />
                                             @else
-                                                <span class="badge bg-info text-dark user-status-badge">{{ $statusName !== '' ? $statusName : 'UNKNOWN' }}</span>
+                                                <x-admin.badge status="info" :label="$statusName !== '' ? ucfirst($statusName) : 'Unknown'" />
                                             @endif
                                         </td>
                                         <td class="text-end user-action-cell">
                                             <div class="user-action-group">
                                                 <button
-                                                    class="btn btn-primary btn-sm user-action-btn editStudentBtn"
+                                                    class="admin-btn admin-btn-view admin-btn-sm user-action-btn editStudentBtn"
                                                     data-id="{{ $student->student_number }}"
                                                     data-first="{{ $student->first_name }}"
                                                     data-middle="{{ $student->middle_name }}"
@@ -234,7 +234,7 @@
                                                     Edit
                                                 </button>
                                                 <button
-                                                    class="btn btn-danger btn-sm user-action-btn deleteStudentBtn"
+                                                    class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteStudentBtn"
                                                     data-id="{{ $student->student_number }}"
                                                     data-name="{{ $student->first_name }} {{ $student->last_name }}">
                                                     <i class="bi bi-trash me-1"></i>
@@ -244,9 +244,12 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="10" class="text-center py-4 text-muted user-management-empty">No students found.</td>
-                                    </tr>
+                                    <x-admin.empty-state
+                                        :colspan="10"
+                                        icon="bi-people"
+                                        title="No students found"
+                                        message="No students match your current filters."
+                                        :clearUrl="route('admin.students', ['tab' => 'students'])" />
                                 @endforelse
                             </tbody>
                         </table>
@@ -269,19 +272,19 @@
                                 </div>
                             </div>
                             <div class="d-flex flex-wrap gap-2 justify-content-xl-end user-management-actions">
-                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importAccountsModal" data-import-account-type="admin">
+                                <button type="button" class="admin-btn admin-btn-neutral" data-bs-toggle="modal" data-bs-target="#importAccountsModal" data-import-account-type="admin">
                                     <i class="bi bi-box-arrow-in-down-right me-1"></i>
                                     Import
                                 </button>
-                                <a href="{{ route('admin.students', ['tab' => 'admins']) }}" class="btn btn-outline-secondary">
+                                <a href="{{ route('admin.students', ['tab' => 'admins']) }}" class="admin-btn admin-btn-neutral">
                                     <i class="bi bi-arrow-repeat me-1"></i>
                                     Refresh
                                 </a>
-                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#createAdminModal">
+                                <button type="button" class="admin-btn admin-btn-danger" data-bs-toggle="modal" data-bs-target="#createAdminModal">
                                     <i class="bi bi-plus-lg me-1"></i>
                                     Add Admin
                                 </button>
-                                <button type="submit" class="btn btn-primary">Search</button>
+                                <button type="submit" class="admin-btn admin-btn-primary">Search</button>
                             </div>
                         </div>
                     </form>
@@ -307,14 +310,18 @@
                                         <td>{{ $adminRoles->firstWhere('roles_id', $admin->adminInfo->role_id ?? 1)->roles_name ?? 'Admin' }}</td>
                                         <td>
                                             @php
-                                                $adminStatus = strtoupper((string) optional($statuses->firstWhere('status_id', $admin->adminInfo->status_id ?? 1))->status_name);
+                                                $adminStatus = strtolower(trim((string) optional($statuses->firstWhere('status_id', $admin->adminInfo->status_id ?? 1))->status_name));
                                             @endphp
-                                            <span class="badge user-status-badge {{ $adminStatus === 'ACTIVE' ? 'bg-success' : 'bg-secondary' }}">{{ $adminStatus !== '' ? $adminStatus : 'ACTIVE' }}</span>
+                                            @if($adminStatus === 'active')
+                                                <x-admin.badge status="active" label="Active" />
+                                            @else
+                                                <x-admin.badge status="inactive" label="Inactive" />
+                                            @endif
                                         </td>
                                         <td class="text-end user-action-cell">
                                             <div class="user-action-group">
                                                 <button
-                                                    class="btn btn-primary btn-sm user-action-btn editAdminBtn"
+                                                    class="admin-btn admin-btn-view admin-btn-sm user-action-btn editAdminBtn"
                                                     data-id="{{ $admin->id }}"
                                                     data-email="{{ $admin->email }}"
                                                     data-firstname="{{ $admin->adminInfo->firstname ?? '' }}"
@@ -325,16 +332,19 @@
                                                     data-role="{{ $admin->adminInfo->role_id ?? 1 }}">
                                                     <i class="bi bi-pencil-square me-1"></i>Edit
                                                 </button>
-                                                <button class="btn btn-danger btn-sm user-action-btn deleteAdminBtn" data-id="{{ $admin->id }}" data-name="{{ $admin->email }}">
+                                                <button class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteAdminBtn" data-id="{{ $admin->id }}" data-name="{{ $admin->email }}">
                                                     <i class="bi bi-trash me-1"></i>Delete
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center py-4 text-muted user-management-empty">No admin accounts found.</td>
-                                    </tr>
+                                    <x-admin.empty-state
+                                        :colspan="6"
+                                        icon="bi-person-badge"
+                                        title="No admin accounts found"
+                                        message="No admin accounts match your search."
+                                        :clearUrl="route('admin.students', ['tab' => 'admins'])" />
                                 @endforelse
                             </tbody>
                         </table>
@@ -357,19 +367,19 @@
                                 </div>
                             </div>
                             <div class="d-flex flex-wrap gap-2 justify-content-xl-end user-management-actions">
-                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importAccountsModal" data-import-account-type="security">
+                                <button type="button" class="admin-btn admin-btn-neutral" data-bs-toggle="modal" data-bs-target="#importAccountsModal" data-import-account-type="security">
                                     <i class="bi bi-box-arrow-in-down-right me-1"></i>
                                     Import
                                 </button>
-                                <a href="{{ route('admin.students', ['tab' => 'security']) }}" class="btn btn-outline-secondary">
+                                <a href="{{ route('admin.students', ['tab' => 'security']) }}" class="admin-btn admin-btn-neutral">
                                     <i class="bi bi-arrow-repeat me-1"></i>
                                     Refresh
                                 </a>
-                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#createSecurityModal">
+                                <button type="button" class="admin-btn admin-btn-danger" data-bs-toggle="modal" data-bs-target="#createSecurityModal">
                                     <i class="bi bi-plus-lg me-1"></i>
                                     Add Security
                                 </button>
-                                <button type="submit" class="btn btn-primary">Search</button>
+                                <button type="submit" class="admin-btn admin-btn-primary">Search</button>
                             </div>
                         </div>
                     </form>
@@ -407,11 +417,11 @@
                                         <td>{{ optional($security->securityProfile)->position ?? 'Security Personnel' }}</td>
                                         <td>{{ $security->securityInfo->contact_number ?? '—' }}</td>
                                         <td>{{ $security->securityInfo->address ?? '—' }}</td>
-                                        <td><span class="badge bg-success user-status-badge">ACTIVE</span></td>
+                                        <td><x-admin.badge status="active" label="Active" /></td>
                                         <td class="text-end user-action-cell">
                                             <div class="user-action-group">
                                                 <button
-                                                    class="btn btn-primary btn-sm user-action-btn editSecurityBtn"
+                                                    class="admin-btn admin-btn-view admin-btn-sm user-action-btn editSecurityBtn"
                                                     data-id="{{ $security->id }}"
                                                     data-email="{{ $security->email }}"
                                                     data-firstname="{{ $securityFirstName }}"
@@ -422,16 +432,19 @@
                                                     data-address="{{ $security->securityInfo->address ?? '' }}">
                                                     <i class="bi bi-pencil-square me-1"></i>Edit
                                                 </button>
-                                                <button class="btn btn-danger btn-sm user-action-btn deleteSecurityBtn" data-id="{{ $security->id }}" data-name="{{ $security->email }}">
+                                                <button class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteSecurityBtn" data-id="{{ $security->id }}" data-name="{{ $security->email }}">
                                                     <i class="bi bi-trash me-1"></i>Delete
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center py-4 text-muted user-management-empty">No security accounts found.</td>
-                                    </tr>
+                                    <x-admin.empty-state
+                                        :colspan="7"
+                                        icon="bi-person-workspace"
+                                        title="No security accounts found"
+                                        message="No security accounts match your search."
+                                        :clearUrl="route('admin.students', ['tab' => 'security'])" />
                                 @endforelse
                             </tbody>
                         </table>
@@ -445,12 +458,12 @@
     </div>
 </div>
 
-<div class="modal fade" id="createStudentModal" tabindex="-1">
-    <div class="modal-dialog modal-lg"><div class="modal-content">
+<div class="modal fade admin-modal" id="createStudentModal" tabindex="-1" aria-labelledby="createStudentModalLabel" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-lg"><div class="modal-content admin-modal-content">
         <form method="POST" action="{{ route('admin.students.store') }}">
             @csrf
-            <div class="modal-header"><h5 class="modal-title">Create Student Account</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body"><div class="row g-3">
+            <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createStudentModalLabel">Create Student Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body admin-modal-body"><div class="row g-3">
                 <div class="col-md-6"><label class="form-label">Student Number</label><input name="student_number" class="form-control" required></div>
                 <div class="col-md-6"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="first_name" class="form-control" required></div>
@@ -474,17 +487,17 @@
                 </div>
                 <div class="col-12"><small class="text-muted">Student passwords are managed by the PUP Identity Provider (IDP).</small></div>
             </div></div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Create Student</button></div>
+            <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Create Student</button></div>
         </form>
     </div></div>
 </div>
 
-<div class="modal fade" id="createAdminModal" tabindex="-1">
-    <div class="modal-dialog"><div class="modal-content">
+<div class="modal fade admin-modal" id="createAdminModal" tabindex="-1" aria-labelledby="createAdminModalLabel" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-dialog"><div class="modal-content admin-modal-content">
         <form method="POST" action="{{ route('admin.users.admins.store') }}">
             @csrf
-            <div class="modal-header"><h5 class="modal-title">Create Admin Account</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body"><div class="row g-3">
+            <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createAdminModalLabel">Create Admin Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body admin-modal-body"><div class="row g-3">
                 <div class="col-12"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" class="form-control"></div>
@@ -494,17 +507,17 @@
                 <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" class="form-select" required>@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
                 <div class="col-md-6"><label class="form-label">Password</label><input name="password" type="password" class="form-control" required></div>
             </div></div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Create Admin</button></div>
+            <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Create Admin</button></div>
         </form>
     </div></div>
 </div>
 
-<div class="modal fade" id="createSecurityModal" tabindex="-1">
-    <div class="modal-dialog"><div class="modal-content">
+<div class="modal fade admin-modal" id="createSecurityModal" tabindex="-1" aria-labelledby="createSecurityModalLabel" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-dialog"><div class="modal-content admin-modal-content">
         <form method="POST" action="{{ route('admin.users.security.store') }}">
             @csrf
-            <div class="modal-header"><h5 class="modal-title">Create Security Account</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body"><div class="row g-3">
+            <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createSecurityModalLabel">Create Security Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body admin-modal-body"><div class="row g-3">
                 <div class="col-12"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" class="form-control"></div>
@@ -514,15 +527,15 @@
                 <div class="col-md-6"><label class="form-label">Password</label><input name="password" type="password" class="form-control" required></div>
                 <div class="col-12"><label class="form-label">Address</label><input name="address" class="form-control"></div>
             </div></div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Create Security</button></div>
+            <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Create Security</button></div>
         </form>
     </div></div>
 </div>
 
-<div class="modal fade" id="editStudentModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+<div class="modal fade admin-modal" id="editStudentModal" tabindex="-1" aria-labelledby="editStudentModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog modal-lg"><div class="modal-content admin-modal-content">
     <form id="editStudentForm" method="POST">@csrf @method('PUT')
-        <div class="modal-header"><h5 class="modal-title">Edit Student</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body"><div class="row g-3">
+        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="editStudentModalLabel">Edit Student</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body admin-modal-body"><div class="row g-3">
             <div class="col-md-6"><label class="form-label">Student Number</label><input id="student_number" class="form-control" readonly></div>
             <div class="col-md-6"><label class="form-label">First Name</label><input type="text" name="first_name" id="first_name" class="form-control"></div>
             <div class="col-md-6"><label class="form-label">Middle Name</label><input type="text" name="middle_name" id="middle_name" class="form-control"></div>
@@ -546,19 +559,19 @@
             </div>
             <div class="col-12"><small class="text-muted">Student passwords are managed by the PUP Identity Provider (IDP).</small></div>
         </div></div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Update Student</button></div>
+        <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Update Student</button></div>
     </form>
 </div></div></div>
 
-<div class="modal fade" id="deleteStudentModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+<div class="modal fade admin-modal" id="deleteStudentModal" tabindex="-1" aria-labelledby="deleteStudentModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog"><div class="modal-content admin-modal-content">
     <form method="POST" id="deleteStudentForm">@csrf @method('DELETE')
-        <div class="modal-header"><h5 class="modal-title">Delete Student</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body"><p>Are you sure you want to delete <strong id="studentDeleteName"></strong>?</p></div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-danger">Delete</button></div>
+        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="deleteStudentModalLabel">Delete Student</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body admin-modal-body"><p>Are you sure you want to delete <strong id="studentDeleteName"></strong>?</p></div>
+        <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-danger">Delete</button></div>
     </form>
 </div></div></div>
 
-<div class="modal fade" id="editAdminModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+<div class="modal fade admin-modal" id="editAdminModal" tabindex="-1" aria-labelledby="editAdminModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog"><div class="modal-content admin-modal-content">
     <form method="POST" id="editAdminForm">@csrf @method('PUT')
         <div class="modal-header"><h5 class="modal-title">Edit Admin</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body"><div class="row g-3">
@@ -571,22 +584,22 @@
             <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" id="admin_status_id" class="form-select">@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">New Password (optional)</label><input name="password" type="password" class="form-control"></div>
         </div></div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Update Admin</button></div>
+        <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Update Admin</button></div>
     </form>
 </div></div></div>
 
-<div class="modal fade" id="deleteAdminModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+<div class="modal fade admin-modal" id="deleteAdminModal" tabindex="-1" aria-labelledby="deleteAdminModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog"><div class="modal-content admin-modal-content">
     <form method="POST" id="deleteAdminForm">@csrf @method('DELETE')
-        <div class="modal-header"><h5 class="modal-title">Delete Admin</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body"><p>Are you sure you want to delete <strong id="adminDeleteName"></strong>?</p></div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-danger">Delete</button></div>
+        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="deleteAdminModalLabel">Delete Admin</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body admin-modal-body"><p>Are you sure you want to delete <strong id="adminDeleteName"></strong>?</p></div>
+        <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-danger">Delete</button></div>
     </form>
 </div></div></div>
 
-<div class="modal fade" id="editSecurityModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+<div class="modal fade admin-modal" id="editSecurityModal" tabindex="-1" aria-labelledby="editSecurityModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog"><div class="modal-content admin-modal-content">
     <form method="POST" id="editSecurityForm">@csrf @method('PUT')
-        <div class="modal-header"><h5 class="modal-title">Edit Security</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body"><div class="row g-3">
+        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="editSecurityModalLabel">Edit Security</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body admin-modal-body"><div class="row g-3">
             <div class="col-12"><label class="form-label">Email</label><input name="email" id="security_email" type="email" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="security_firstname" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" id="security_middlename" class="form-control"></div>
@@ -596,15 +609,15 @@
             <div class="col-md-6"><label class="form-label">New Password (optional)</label><input name="password" type="password" class="form-control"></div>
             <div class="col-12"><label class="form-label">Address</label><input name="address" id="security_address" class="form-control"></div>
         </div></div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary">Update Security</button></div>
+        <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Update Security</button></div>
     </form>
 </div></div></div>
 
-<div class="modal fade" id="deleteSecurityModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+<div class="modal fade admin-modal" id="deleteSecurityModal" tabindex="-1" aria-labelledby="deleteSecurityModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog"><div class="modal-content admin-modal-content">
     <form method="POST" id="deleteSecurityForm">@csrf @method('DELETE')
-        <div class="modal-header"><h5 class="modal-title">Delete Security</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body"><p>Are you sure you want to delete <strong id="securityDeleteName"></strong>?</p></div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-danger">Delete</button></div>
+        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="deleteSecurityModalLabel">Delete Security</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body admin-modal-body"><p>Are you sure you want to delete <strong id="securityDeleteName"></strong>?</p></div>
+        <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-danger">Delete</button></div>
     </form>
 </div></div></div>
 
@@ -661,7 +674,7 @@
             </div>
         </div>
         <div class="modal-footer import-modal-footer">
-            <button type="submit" id="importSubmitButton" class="btn btn-primary w-100" disabled>Import Data</button>
+            <button type="submit" id="importSubmitButton" class="admin-btn admin-btn-primary w-100" disabled>Import Data</button>
         </div>
     </form>
 </div></div></div>

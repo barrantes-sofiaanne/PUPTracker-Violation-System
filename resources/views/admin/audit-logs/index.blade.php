@@ -3,12 +3,15 @@
 @section('title', 'Audit Logs')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+<div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <h2 class="mb-1">Audit Logs</h2>
+        <h2 class="fw-bold mb-1">Audit Logs</h2>
         <p class="text-muted mb-0">Track administrative actions and historical changes across the system.</p>
     </div>
-    <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+    <a href="{{ route('admin.dashboard') }}" class="admin-btn admin-btn-neutral">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i>
+        Back to Dashboard
+    </a>
 </div>
 
 <div class="card shadow-sm border-0">
@@ -32,9 +35,12 @@
                             <td>{{ optional($log->created_at)->format('M d, Y h:i A') }}</td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="4" class="text-center py-5 text-muted">No audit entries have been recorded yet.</td>
-                        </tr>
+                        <x-admin.empty-state
+                            :colspan="4"
+                            icon="bi-journal-x"
+                            title="No audit logs found"
+                            message="No audit entries have been recorded yet."
+                            :clearUrl="null" />
                     @endforelse
                 </tbody>
             </table>

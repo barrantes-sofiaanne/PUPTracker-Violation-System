@@ -15,7 +15,7 @@
 
     <button
         type="button"
-        class="btn btn-danger"
+        class="admin-btn admin-btn-danger"
         data-bs-toggle="modal"
         data-bs-target="#addViolationModal">
 
@@ -29,7 +29,7 @@
 <form
     method="GET"
     action="{{ route('admin.violations.index') }}"
-    class="mb-4">
+    class="mb-4 admin-filter-form">
 
     <div class="row g-3">
 
@@ -188,7 +188,7 @@
 
             <button
                 type="submit"
-                class="btn btn-primary w-100">
+                class="admin-btn admin-btn-primary w-100">
 
                 <i class="bi bi-search me-1"></i>
 
@@ -203,7 +203,7 @@
 
             <a
                 href="{{ route('admin.violations.index') }}"
-                class="btn btn-secondary w-100">
+                class="admin-btn admin-btn-neutral w-100">
 
                 <i class="bi bi-arrow-clockwise me-1"></i>
 
@@ -275,7 +275,7 @@
 
                     <td>
 
-                        <span class="badge bg-danger">
+                        <span class="admin-badge admin-badge-red">
 
                             {{ $student->violations->count() }}
 
@@ -286,7 +286,7 @@
                     <td>
                         <button
                             type="button"
-                            class="btn btn-primary btn-sm viewStudent"
+                            class="admin-btn admin-btn-view admin-btn-sm viewStudent"
                             data-student="{{ $student->student_number }}">
 
                             <i class="bi bi-eye me-1"></i>
@@ -300,17 +300,12 @@
 
             @empty
 
-                <tr>
-
-                    <td
-                        colspan="5"
-                        class="text-center py-5">
-
-                        No students found.
-
-                    </td>
-
-                </tr>
+                <x-admin.empty-state
+                    :colspan="5"
+                    icon="bi-people"
+                    title="No students found"
+                    message="No students match your current filters."
+                    :clearUrl="route('admin.violations.index')" />
 
             @endforelse
 

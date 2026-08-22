@@ -15,7 +15,7 @@
         </div>
 
         <button
-            class="btn btn-primary"
+            class="admin-btn admin-btn-primary"
             id="addSanctionBtn">
 
             <i class="fas fa-plus me-2"></i>
@@ -66,7 +66,7 @@
 
                     <td>
 
-                        <span class="badge bg-primary">
+                        <span class="admin-badge admin-badge-burgundy">
 
                             {{ $sanction->offense_level }}
 
@@ -83,18 +83,20 @@
                     <td>
 
                         <button
-                            class="btn btn-warning btn-sm editSanctionBtn"
+                            class="admin-btn admin-btn-view admin-btn-sm editSanctionBtn"
                             data-id="{{ $sanction->disciplinary_sanction_id }}">
 
-                            <i class="fas fa-edit"></i>
+                            <i class="bi bi-pencil-square me-1"></i>
+                            Edit
 
                         </button>
 
                         <button
-                            class="btn btn-danger btn-sm deleteSanctionBtn"
+                            class="admin-btn admin-btn-danger admin-btn-sm deleteSanctionBtn"
                             data-id="{{ $sanction->disciplinary_sanction_id }}">
 
-                            <i class="fas fa-trash"></i>
+                            <i class="bi bi-trash me-1"></i>
+                            Delete
 
                         </button>
 

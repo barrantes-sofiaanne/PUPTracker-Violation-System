@@ -21,7 +21,7 @@
 
         <button
             type="button"
-            class="btn btn-danger"
+            class="admin-btn admin-btn-primary"
             id="btnAddViolationType"
             data-bs-toggle="modal"
             data-bs-target="#violationTypeModal">
@@ -74,7 +74,7 @@
                         </td>
 
                       <td>
-    <span class="badge bg-primary">
+    <span class="admin-badge admin-badge-burgundy">
         {{ $type->violationCategory->category_name ?? '-' }}
     </span>
 </td>
@@ -94,7 +94,7 @@
 </td>
 
 <td>
-    <span class="badge bg-secondary">
+    <span class="admin-badge admin-badge-gray">
         {{ $type->severity_level }}
     </span>
 </td>
@@ -102,18 +102,20 @@
 <td>
 
     <button
-        class="btn btn-warning btn-sm edit-type"
+        class="admin-btn admin-btn-view admin-btn-sm edit-type"
         data-id="{{ $type->violation_type_id }}">
 
-        <i class="bi bi-pencil-square"></i>
+        <i class="bi bi-pencil-square me-1"></i>
+        Edit
 
     </button>
 
     <button
-        class="btn btn-danger btn-sm delete-type"
+        class="admin-btn admin-btn-danger admin-btn-sm delete-type"
         data-id="{{ $type->violation_type_id }}">
 
-        <i class="bi bi-trash"></i>
+        <i class="bi bi-trash me-1"></i>
+        Delete
 
     </button>
 

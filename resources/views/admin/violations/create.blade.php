@@ -262,7 +262,9 @@ Sanction
 
 <button
 type="submit"
-class="btn btn-primary">
+class="admin-btn admin-btn-primary">
+
+<i class="bi bi-check2-circle me-1"></i>
 
 Save Violation
 

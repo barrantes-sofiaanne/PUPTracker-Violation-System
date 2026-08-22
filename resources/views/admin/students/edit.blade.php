@@ -5,13 +5,14 @@
 @section('content')
 
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3>Edit Student</h3>
-            <p class="text-muted">Update the student profile and enrollment details.</p>
-        </div>
-        <a href="{{ route('admin.students') }}" class="btn btn-outline-secondary">Back to Students</a>
-    </div>
+    <x-admin.page-header title="Edit Student" description="Update the student profile and enrollment details.">
+        <x-slot name="actions">
+            <a href="{{ route('admin.students') }}" class="admin-btn admin-btn-neutral">
+                <i class="bi bi-arrow-left"></i>
+                Back to Students
+            </a>
+        </x-slot>
+    </x-admin.page-header>
 
     <div class="card shadow-sm">
         <div class="card-body">
@@ -98,8 +99,10 @@
                 </div>
 
                 <div class="mt-4">
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                    <a href="{{ route('admin.students') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+                    <button type="submit" class="admin-btn admin-btn-primary">
+                        <i class="bi bi-check2" aria-hidden="true"></i> Save Changes
+                    </button>
+                    <a href="{{ route('admin.students') }}" class="admin-btn admin-btn-neutral ms-2">Cancel</a>
                 </div>
             </form>
         </div>

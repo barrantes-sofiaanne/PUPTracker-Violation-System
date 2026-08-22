@@ -11,7 +11,7 @@
             <h2 class="fw-bold mb-1">Program Sanction Summary Report</h2>
             <p class="mb-0">Generate an AI-assisted disciplinary summary for a whole graduating program.</p>
         </div>
-        <a href="{{ route('admin.program-report.history') }}" class="btn btn-outline-secondary">
+        <a href="{{ route('admin.program-report.history') }}" class="admin-btn admin-btn-neutral">
             <i class="bi bi-clock-history"></i> Report History
         </a>
     </div>
@@ -67,7 +67,7 @@
                 </div>
 
                 <div class="col-12">
-                    <button type="submit" class="btn btn-success">
+                    <button type="submit" class="admin-btn admin-btn-primary">
                         <i class="bi bi-stars"></i> Generate Program Report
                     </button>
                 </div>

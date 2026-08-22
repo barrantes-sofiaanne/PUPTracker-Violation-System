@@ -6,17 +6,17 @@
 
 <div class="container-fluid">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
 
         <div>
-            <h3 class="mb-0">Student Violation Record</h3>
+            <h3 class="fw-bold mb-0">Student Violation Record</h3>
             <small class="text-muted">
                 View student's violation history and summary
             </small>
         </div>
 
         <a href="{{ route('admin.violations.index') }}"
-           class="btn btn-secondary">
+           class="admin-btn admin-btn-neutral">
             <i class="bi bi-arrow-left"></i>
             Back
         </a>
@@ -125,13 +125,13 @@
                     <td>{{ $item['violation_type'] }}</td>
 
                     <td>
-                        <span class="badge bg-primary">
+                        <span class="admin-badge admin-badge-burgundy">
                             {{ $item['total'] }}
                         </span>
                     </td>
 
                     <td>
-                        <span class="badge bg-warning text-dark">
+                        <span class="admin-badge admin-badge-gold">
                             {{ $item['offense_level'] }}
                         </span>
                     </td>

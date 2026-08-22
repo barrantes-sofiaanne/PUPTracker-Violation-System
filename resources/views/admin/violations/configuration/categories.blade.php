@@ -4,7 +4,7 @@
             <h5 class="mb-0">Violation Categories</h5>
             <small class="text-muted">Manage violation categories used across the system.</small>
         </div>
-        <button class="btn btn-primary add-category" data-bs-toggle="modal" data-bs-target="#categoryModal">
+        <button class="admin-btn admin-btn-primary add-category" data-bs-toggle="modal" data-bs-target="#categoryModal">
             <i class="bi bi-plus-circle me-2"></i>
             Add Category
         </button>

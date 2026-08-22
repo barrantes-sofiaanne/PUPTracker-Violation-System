@@ -5,22 +5,24 @@
 @section('content')
 
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
-            <h3>Violation History</h3>
-            <p class="text-muted">Review all student violations recorded in the system.</p>
+            <h3 class="fw-bold mb-1">Violation History</h3>
+            <p class="text-muted mb-0">Review all student violations recorded in the system.</p>
         </div>
-        <a href="{{ route('admin.violations.index') }}" class="btn btn-outline-secondary">Back to Violations</a>
+        <a href="{{ route('admin.violations.index') }}" class="admin-btn admin-btn-neutral">
+            <i class="bi bi-arrow-left"></i> Back to Violations
+        </a>
     </div>
 
     <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <form method="GET" class="row g-3">
+            <form method="GET" class="row g-3 admin-filter-form">
                 <div class="col-md-4">
                     <input type="text" name="student" class="form-control" placeholder="Search by student number or name" value="{{ request('student') }}">
                 </div>
                 <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary">Search</button>
+                    <button type="submit" class="admin-btn admin-btn-primary">Search</button>
                 </div>
             </form>
         </div>

@@ -27,6 +27,8 @@
     <ul>
 
         @unless($isItAdministrator)
+        <li class="sidebar-section-label">Overview</li>
+
         <li>
 
             <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
@@ -39,6 +41,8 @@
 
         </li>
         @endunless
+
+        <li class="sidebar-section-label">Accounts</li>
 
         <li>
 
@@ -53,6 +57,8 @@
         </li>
 
         @unless($isItAdministrator)
+        <li class="sidebar-section-label">Discipline</li>
+
         <li>
 
             <a href="{{ route('admin.violations.index') }}" class="{{ request()->routeIs('admin.violations*') ? 'active' : '' }}">
@@ -64,9 +70,7 @@
             </a>
 
         </li>
-        @endunless
 
-        @unless($isItAdministrator)
         <li>
 
             <a href="{{ route('admin.sanctions.index') }}" class="{{ request()->routeIs('admin.sanctions*') || request()->routeIs('admin.disciplinary-sanctions*') ? 'active' : '' }}">
@@ -79,6 +83,8 @@
 
         </li>
         @endunless
+
+        <li class="sidebar-section-label">Communication</li>
 
         <li>
 
@@ -93,6 +99,8 @@
         </li>
 
         @unless($isItAdministrator)
+        <li class="sidebar-section-label">Reporting</li>
+
         <li>
 
             <a href="{{ route('admin.reports') }}" class="{{ request()->routeIs('admin.reports*') ? 'active' : '' }}">
@@ -104,9 +112,7 @@
             </a>
 
         </li>
-        @endunless
 
-        @unless($isItAdministrator)
         <li>
 
             <a href="{{ route('admin.graduation-review.index') }}" class="{{ request()->routeIs('admin.graduation-review*') ? 'active' : '' }}">
@@ -122,7 +128,7 @@
 
         <li>
 
-            <a href="{{ route('admin.program-report.index') }}" class="{{ request()->routeIs('admin.program-report*') ? 'active' : '' }}">
+            <a href="{{ route('admin.program-report.index') }}" class="{{ request()->routeIs('admin.program-report.index') ? 'active' : '' }}">
 
                 <i class="bi bi-file-earmark-bar-graph"></i>
 
@@ -143,6 +149,8 @@
             </a>
 
         </li>
+
+        <li class="sidebar-section-label">Records & Security</li>
 
         <li>
 
@@ -168,8 +176,22 @@
 
         </li>
 
+        <li class="sidebar-section-label">Account</li>
+
+        <li>
+
+            <a href="{{ route('admin.settings') }}" class="{{ request()->routeIs('admin.settings') ? 'active' : '' }}">
+
+                <i class="bi bi-gear"></i>
+
+                Settings
+
+            </a>
+
+        </li>
+
         @if($isItAdministrator)
-            <li class="mt-2 px-2 text-uppercase text-muted small">Super Admin</li>
+            <li class="sidebar-section-label">Super Admin</li>
 
             <li>
                 <a href="{{ route('admin.super-admin.dashboard') }}" class="{{ request()->routeIs('admin.super-admin.dashboard') ? 'active' : '' }}">

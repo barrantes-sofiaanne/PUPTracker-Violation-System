@@ -6,12 +6,7 @@
 
 <div class="container-fluid">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3>Settings</h3>
-            <p class="text-muted">Manage your administrator account and application preferences.</p>
-        </div>
-    </div>
+    <x-admin.page-header title="Settings" description="Manage your administrator account and application preferences." />
 
     <div class="row gy-4">
         <div class="col-lg-6">

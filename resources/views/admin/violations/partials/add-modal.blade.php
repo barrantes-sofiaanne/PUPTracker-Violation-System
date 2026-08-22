@@ -400,7 +400,7 @@
     <button
         type="button"
         id="backStep"
-        class="btn btn-outline-secondary d-none">
+        class="admin-btn admin-btn-neutral d-none">
 
         <i class="bi bi-arrow-left"></i>
 
@@ -410,7 +410,7 @@
 
     <button
         type="button"
-        class="btn btn-secondary"
+        class="admin-btn admin-btn-neutral"
         data-bs-dismiss="modal">
 
         Cancel
@@ -420,7 +420,7 @@
     <button
         type="button"
         id="continueStep"
-        class="btn btn-primary"
+        class="admin-btn admin-btn-primary"
         disabled>
 
         Continue
@@ -432,7 +432,7 @@
     <button
         type="submit"
         id="saveViolation"
-        class="btn btn-danger d-none">
+        class="admin-btn admin-btn-danger d-none">
 
         <i class="bi bi-save"></i>
 

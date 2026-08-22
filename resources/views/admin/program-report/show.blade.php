@@ -8,22 +8,16 @@
 
     @php $stats = $report->statistics_json ?? []; @endphp
 
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div>
-            <h3 class="mb-1">Program Sanction Summary Report</h3>
-            <p class="text-muted mb-0">
-                {{ $report->program?->program_name }} · Cohort {{ $report->academic_year }}
-            </p>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="{{ route('admin.program-report.history') }}" class="btn btn-outline-secondary">
+    <x-admin.page-header title="Program Sanction Summary Report" :description="$report->program?->program_name . ' · Cohort ' . $report->academic_year">
+        <x-slot name="actions">
+            <a href="{{ route('admin.program-report.history') }}" class="admin-btn admin-btn-neutral">
                 <i class="bi bi-clock-history"></i> History
             </a>
-            <a href="{{ route('admin.program-report.pdf', $report->report_id) }}" class="btn btn-danger">
+            <a href="{{ route('admin.program-report.pdf', $report->report_id) }}" class="admin-btn admin-btn-danger">
                 <i class="bi bi-file-earmark-pdf"></i> Download PDF
             </a>
-        </div>
-    </div>
+        </x-slot>
+    </x-admin.page-header>
 
     @if ($report->ai_failed)
         <div class="alert alert-warning" role="alert">

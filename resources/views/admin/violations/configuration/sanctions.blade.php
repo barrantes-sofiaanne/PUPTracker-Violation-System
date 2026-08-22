@@ -16,13 +16,13 @@
         <div class="d-flex align-items-center gap-2">
             <button
                 type="button"
-                class="btn btn-success addSanctionBtn"
+                class="admin-btn admin-btn-secondary addSanctionBtn"
                 data-bs-toggle="modal"
                 data-bs-target="#sanctionModal">
                 <i class="bi bi-plus-lg me-1"></i>
                 Add Sanction
             </button>
-            <a href="{{ route('admin.audit-logs') }}" class="btn btn-outline-secondary">
+            <a href="{{ route('admin.audit-logs') }}" class="admin-btn admin-btn-neutral">
                 <i class="bi bi-arrow-counterclockwise me-1"></i>
                 View History
             </a>
@@ -34,10 +34,11 @@
     @endphp
 
     @if($sanctionsByType->isEmpty())
-        <div class="text-center py-5">
-            <i class="bi bi-shield-x display-5 text-muted"></i>
-            <p class="mt-3 mb-0">No disciplinary sanctions found.</p>
-        </div>
+        <x-admin.empty-state
+            icon="bi-shield-x"
+            title="No disciplinary sanctions found"
+            message="No disciplinary sanctions have been configured yet."
+            :clearUrl="null" />
     @else
         <div class="accordion" id="sanctionAccordionList">
             @foreach($sanctionsByType as $violationTypeId => $typeSanctions)
@@ -69,7 +70,7 @@
                                 <h5 class="mb-0">Disciplinary Sanctions</h5>
                                 <button
                                     type="button"
-                                    class="btn btn-success btn-sm addSanctionBtn"
+                                    class="admin-btn admin-btn-secondary admin-btn-sm addSanctionBtn"
                                     data-bs-toggle="modal"
                                     data-bs-target="#sanctionModal"
                                     data-violation-type-id="{{ $violationTypeId }}">
@@ -94,13 +95,13 @@
                                                 <td>{{ $sanction->disciplinary_sanction }}</td>
                                                 <td>
                                                     <button
-                                                        class="btn btn-primary btn-sm edit-sanction-btn"
+                                                        class="admin-btn admin-btn-view admin-btn-sm edit-sanction-btn"
                                                         data-id="{{ $sanction->disciplinary_sanction_id }}">
                                                         <i class="bi bi-pencil-square me-1"></i>
                                                         Update
                                                     </button>
                                                     <button
-                                                        class="btn btn-danger btn-sm delete-sanction-btn"
+                                                        class="admin-btn admin-btn-danger admin-btn-sm delete-sanction-btn"
                                                         data-id="{{ $sanction->disciplinary_sanction_id }}">
                                                         <i class="bi bi-trash me-1"></i>
                                                         Delete

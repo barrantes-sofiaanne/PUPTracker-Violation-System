@@ -3,9 +3,9 @@
 @section('title', 'Super Admin Dashboard')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-start mb-4">
+<div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <h2 class="mb-1">Super Admin</h2>
+        <h2 class="fw-bold mb-1">Super Admin Dashboard</h2>
         <p class="text-muted mb-0">Exclusive controls for the IT Administrator.</p>
     </div>
 </div>
@@ -48,7 +48,7 @@
                     Status:
                     <strong>{{ auth('admin')->user()?->mfa_totp_enabled ? 'Enabled' : 'Not Enabled' }}</strong>
                 </p>
-                <a href="{{ route('totp.setup', ['guard' => 'admin']) }}" class="btn btn-primary btn-sm">
+                <a href="{{ route('totp.setup', ['guard' => 'admin']) }}" class="admin-btn admin-btn-primary admin-btn-sm">
                     {{ auth('admin')->user()?->mfa_totp_enabled ? 'Manage Authenticator Setup' : 'Enable Authenticator App' }}
                 </a>
             </div>
@@ -59,7 +59,7 @@
             <div class="card-body">
                 <h5>Audit Trail</h5>
                 <p class="text-muted">Monitor and search all recorded system activity.</p>
-                <a href="{{ route('admin.super-admin.audit-trail') }}" class="btn btn-primary btn-sm">Open Audit Trail</a>
+                <a href="{{ route('admin.super-admin.audit-trail') }}" class="admin-btn admin-btn-primary admin-btn-sm">Open Audit Trail</a>
             </div>
         </div>
     </div>
@@ -68,7 +68,7 @@
             <div class="card-body">
                 <h5>Maintenance Configuration</h5>
                 <p class="text-muted">Toggle system maintenance mode when needed.</p>
-                <a href="{{ route('admin.super-admin.maintenance') }}" class="btn btn-primary btn-sm">Open Maintenance Configuration</a>
+                <a href="{{ route('admin.super-admin.maintenance') }}" class="admin-btn admin-btn-primary admin-btn-sm">Open Maintenance Configuration</a>
             </div>
         </div>
     </div>
@@ -77,7 +77,7 @@
             <div class="card-body">
                 <h5>Maintenance History</h5>
                 <p class="text-muted">Record and review quarterly maintenance activities (Risk No. 6).</p>
-                <a href="{{ route('admin.super-admin.maintenance-records.index') }}" class="btn btn-primary btn-sm">Open Maintenance History</a>
+                <a href="{{ route('admin.super-admin.maintenance-records.index') }}" class="admin-btn admin-btn-primary admin-btn-sm">Open Maintenance History</a>
             </div>
         </div>
     </div>

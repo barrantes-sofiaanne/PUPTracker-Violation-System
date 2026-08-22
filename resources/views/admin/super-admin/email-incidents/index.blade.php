@@ -14,7 +14,7 @@
         <div class="d-flex gap-2">
             <form action="{{ route('admin.super-admin.email-incidents.simulate-failure') }}" method="POST">
                 @csrf
-                <button type="submit" class="btn btn-outline-warning" title="DEVELOPMENT / TEST ONLY — does not touch production SMTP">
+                <button type="submit" class="admin-btn admin-btn-neutral" title="DEVELOPMENT / TEST ONLY — does not touch production SMTP">
                     <i class="bi bi-exclamation-triangle"></i>
                     Simulate Email Failure
                 </button>
@@ -87,11 +87,11 @@
     </div>
 
     {{-- Filters --}}
-    <div class="card shadow-sm border-0 mb-4">
+    <div class="card shadow-sm border-0 mb-4 admin-filter-card">
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.super-admin.email-incidents.index') }}" class="row g-3">
+            <form method="GET" action="{{ route('admin.super-admin.email-incidents.index') }}" class="row g-3 admin-filter-form">
                 <div class="col-md-5">
-                    <label class="form-label">Status</label>
+                    <label class="admin-filter-label">Status</label>
                     <select name="status" class="form-select">
                         <option value="">All Statuses</option>
                         @foreach (\App\Models\EmailIncident::STATUSES as $status)
@@ -100,11 +100,12 @@
                     </select>
                 </div>
                 <div class="col-md-5">
-                    <label class="form-label">Email Type</label>
+                    <label class="admin-filter-label">Email Type</label>
                     <input type="text" name="email_type" class="form-control" value="{{ request('email_type') }}" placeholder="e.g. OTP, Password Reset">
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel"></i> Filter</button>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="admin-btn admin-btn-primary w-100"><i class="bi bi-funnel"></i> Filter</button>
+                    <a href="{{ route('admin.super-admin.email-incidents.index') }}" class="admin-btn admin-btn-neutral" title="Reset filters" aria-label="Reset filters"><i class="bi bi-arrow-repeat"></i></a>
                 </div>
             </form>
         </div>
@@ -140,27 +141,30 @@
                                 @endif
                             </td>
                             <td>
-                                @php
-                                    $badge = match ($incident->status) {
-                                        'failed' => 'danger',
-                                        'acknowledged' => 'warning',
-                                        'resolved' => 'success',
-                                        default => 'secondary',
-                                    };
-                                @endphp
-                                <span class="badge bg-{{ $badge }}">{{ ucfirst($incident->status) }}</span>
+                                @if (strtolower((string) $incident->status) === 'failed')
+                                    <x-admin.badge status="error" label="Failed" />
+                                @elseif (strtolower((string) $incident->status) === 'acknowledged')
+                                    <x-admin.badge status="warning" label="Acknowledged" />
+                                @elseif (strtolower((string) $incident->status) === 'resolved')
+                                    <x-admin.badge status="resolved" />
+                                @else
+                                    <x-admin.badge status="gray" :label="$incident->status" />
+                                @endif
                             </td>
                             <td>{{ optional($incident->occurred_at)->format('M d, Y h:i A') }}</td>
                             <td class="text-end">
-                                <a href="{{ route('admin.super-admin.email-incidents.show', $incident->incident_id) }}" class="btn btn-sm btn-outline-primary">
+                                <a href="{{ route('admin.super-admin.email-incidents.show', $incident->incident_id) }}" class="admin-btn admin-btn-view admin-btn-sm">
                                     <i class="bi bi-eye"></i> View
                                 </a>
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">No email incidents recorded.</td>
-                        </tr>
+                        <x-admin.empty-state
+                            :colspan="6"
+                            icon="bi-envelope-exclamation"
+                            title="No email incidents recorded"
+                            message="No email dispatch incidents have been recorded yet."
+                            :clearUrl="route('admin.super-admin.email-incidents.index')" />
                     @endforelse
                 </tbody>
             </table>

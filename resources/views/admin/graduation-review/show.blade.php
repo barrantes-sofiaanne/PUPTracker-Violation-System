@@ -6,24 +6,28 @@
 
 <div class="container-fluid">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3 class="mb-1">Graduation Disciplinary Review</h3>
-            <p class="text-muted mb-0">
-                {{ $student->last_name }}, {{ $student->first_name }} {{ $student->middle_name }}
-                · {{ $student->student_number }}
-            </p>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="{{ route('admin.graduation-review.index') }}" class="btn btn-outline-secondary">
+    <x-admin.page-header title="Graduation Disciplinary Review" :description="$student->last_name . ', ' . $student->first_name . ' ' . $student->middle_name . ' · ' . $student->student_number">
+        <x-slot name="actions">
+            <a href="{{ route('admin.graduation-review.index') }}" class="admin-btn admin-btn-neutral">
                 <i class="bi bi-arrow-left"></i> Back
             </a>
-            <form action="{{ route('admin.graduation-review.generate', $student->student_number) }}" method="POST">
+            <form action="{{ route('admin.graduation-review.generate', $student->student_number) }}" method="POST" id="aiGenerateForm">
                 @csrf
-                <button type="submit" class="btn btn-success">
+                <button type="submit" class="admin-btn admin-btn-secondary" id="aiGenerateBtn">
                     <i class="bi bi-stars"></i> Generate AI Review
                 </button>
             </form>
+        </x-slot>
+    </x-admin.page-header>
+
+    {{-- AI loading state --}}
+    <div id="aiReviewLoading" class="admin-loading d-none" data-button="aiGenerateBtn" role="status" aria-live="polite">
+        <div class="admin-loading-card">
+            <span class="spinner-border admin-loading-spinner" aria-hidden="true"></span>
+            <div class="admin-loading-text">
+                <strong class="admin-loading-label">Generating AI Review...</strong>
+                <small class="text-muted d-block mt-1">Analyzing disciplinary records. Please wait...</small>
+            </div>
         </div>
     </div>
 
@@ -155,7 +159,7 @@
                                 AI review is outdated because the student's disciplinary record has changed.
                                 <form action="{{ route('admin.graduation-review.generate', $student->student_number) }}" method="POST" class="d-inline">
                                     @csrf
-                                    <button type="submit" class="btn btn-sm btn-warning">
+                                    <button type="submit" class="admin-btn admin-btn-secondary admin-btn-sm">
                                         <i class="bi bi-arrow-repeat"></i> Regenerate AI Review
                                     </button>
                                 </form>
@@ -310,7 +314,7 @@
                         <textarea id="decisionRemarks" name="decision_remarks" class="form-control" rows="3" placeholder="Final decision and remarks...">{{ $savedReview->decision_remarks }}</textarea>
                     </div>
 
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="admin-btn admin-btn-primary">
                         <i class="bi bi-check2-circle"></i> Record Decision
                     </button>
                 </form>
@@ -363,20 +367,21 @@
                                     <td>{{ $record['sanction'] }}</td>
                                     <td>
                                         @if (strtolower((string) $record['status']) === 'completed')
-                                            <span class="badge bg-success">Completed</span>
+                                            <x-admin.badge status="completed" />
                                         @else
-                                            <span class="badge bg-warning text-dark">{{ $record['status'] }}</span>
+                                            <x-admin.badge status="pending" :label="$record['status']" />
                                         @endif
                                     </td>
                                 </tr>
                             @endforeach
                         @endif
                     @empty
-                        <tr>
-                            <td colspan="4" class="text-center text-muted py-4">
-                                No disciplinary records on file.
-                            </td>
-                        </tr>
+                        <x-admin.empty-state
+                            :colspan="4"
+                            icon="bi-journal-text"
+                            title="No disciplinary records"
+                            message="No disciplinary records are on file for this student."
+                            :clearUrl="null" />
                     @endforelse
                 </tbody>
             </table>
@@ -386,3 +391,23 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Prevent duplicate AI review requests + show loading state.
+        const aiForm = document.getElementById('aiGenerateForm');
+        const aiBtn = document.getElementById('aiGenerateBtn');
+        if (aiForm && aiBtn) {
+            aiForm.addEventListener('submit', function (event) {
+                if (aiBtn.disabled) {
+                    event.preventDefault();
+                    return;
+                }
+                window.PUPLoading && window.PUPLoading.start('aiReviewLoading');
+                aiBtn.disabled = true;
+            });
+        }
+    });
+</script>
+@endpush

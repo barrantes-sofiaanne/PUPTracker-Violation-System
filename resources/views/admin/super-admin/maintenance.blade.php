@@ -3,12 +3,15 @@
 @section('title', 'Super Admin Maintenance Configuration')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+<div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <h2 class="mb-1">Maintenance Configuration</h2>
+        <h2 class="fw-bold mb-1">Maintenance Configuration</h2>
         <p class="text-muted mb-0">Control application availability during maintenance windows.</p>
     </div>
-    <a href="{{ route('admin.super-admin.dashboard') }}" class="btn btn-outline-secondary">Back to Super Admin</a>
+    <a href="{{ route('admin.super-admin.dashboard') }}" class="admin-btn admin-btn-neutral">
+        <i class="bi bi-arrow-left"></i>
+        Back to Super Admin
+    </a>
 </div>
 
 <div class="card shadow-sm border-0 mb-4">
@@ -26,7 +29,7 @@
                 name="action"
                 value="enable"
                 type="submit"
-                class="btn btn-danger"
+                class="admin-btn admin-btn-danger"
                 @disabled($maintenanceStatus)
             >
                 Enable Maintenance Mode
@@ -36,7 +39,7 @@
                 name="action"
                 value="disable"
                 type="submit"
-                class="btn btn-success"
+                class="admin-btn admin-btn-success"
                 @disabled(!$maintenanceStatus)
             >
                 Disable Maintenance Mode

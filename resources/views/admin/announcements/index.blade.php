@@ -9,19 +9,22 @@
     $isItAdmin = (bool) $currentAdmin?->isItAdministrator();
 @endphp
 
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+<div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <h2 class="mb-1">Announcements</h2>
+        <h2 class="fw-bold mb-1">Announcements</h2>
         <p class="text-muted mb-0">Publish and manage announcements for students and staff.</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <a href="{{ route('admin.notifications') }}" class="btn btn-outline-secondary">
+        <a href="{{ route('admin.notifications') }}" class="admin-btn admin-btn-neutral">
             Notifications
             @if($unreadNotificationCount > 0)
                 <span class="badge bg-danger ms-2">{{ $unreadNotificationCount }}</span>
             @endif
         </a>
-        <a href="{{ route('admin.announcements.create') }}" class="btn announcements-new-btn">New Announcement</a>
+        <a href="{{ route('admin.announcements.create') }}" class="admin-btn admin-btn-primary">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            New Announcement
+        </a>
     </div>
 </div>
 
@@ -125,11 +128,12 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="4" class="text-center py-5">
-                                        No announcements have been posted yet.
-                                    </td>
-                                </tr>
+                                <x-admin.empty-state
+                                    :colspan="4"
+                                    icon="bi-megaphone"
+                                    title="No announcements yet"
+                                    message="No announcements have been posted. Create the first one to keep students informed."
+                                    :clearUrl="null" />
                             @endforelse
                         </tbody>
                     </table>
@@ -167,21 +171,23 @@
                                         <a href="{{ route('admin.announcements.edit', $announcement) }}" class="btn btn-sm btn-outline-secondary me-1">
                                             <i class="bi bi-pencil me-1"></i>Edit
                                         </a>
-                                        <form action="{{ route('admin.announcements.destroy', $announcement) }}" method="POST" class="d-inline-block" onsubmit="return confirm('Delete this announcement?');">
+                                        <form action="{{ route('admin.announcements.destroy', $announcement) }}" method="POST" class="d-inline-block" data-confirm="This will permanently delete the announcement. This action cannot be undone."
+                                              data-confirm-title="Delete Announcement?" data-confirm-confirm-label="Delete">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-danger">
+                                            <button type="submit" class="btn btn-sm btn-danger admin-btn admin-btn-danger">
                                                 <i class="bi bi-trash me-1"></i>Delete
                                             </button>
                                         </form>
                                     </td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="3" class="text-center py-5">
-                                        You have not posted any announcements yet.
-                                    </td>
-                                </tr>
+                                <x-admin.empty-state
+                                    :colspan="3"
+                                    icon="bi-megaphone"
+                                    title="No announcements by you"
+                                    message="You have not posted any announcements yet."
+                                    :clearUrl="null" />
                             @endforelse
                         </tbody>
                     </table>

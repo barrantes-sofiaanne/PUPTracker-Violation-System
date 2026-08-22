@@ -154,7 +154,7 @@
 
     <button
         type="button"
-        class="btn btn-secondary"
+        class="admin-btn admin-btn-neutral"
         data-bs-dismiss="modal">
 
         Cancel
@@ -163,7 +163,7 @@
 
     <button
         type="submit"
-        class="btn btn-danger"
+        class="admin-btn admin-btn-primary"
         id="saveViolationTypeBtn">
 
         <i class="bi bi-save me-1"></i>

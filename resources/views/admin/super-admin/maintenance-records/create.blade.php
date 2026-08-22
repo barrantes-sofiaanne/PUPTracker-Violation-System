@@ -11,15 +11,13 @@
         $checklist = $record?->checklist_json ?? [];
     @endphp
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3 class="mb-1">{{ isset($record) ? 'Edit Maintenance Record' : 'New Maintenance Record' }}</h3>
-            <p class="text-muted mb-0">Record quarterly maintenance performed (Risk No. 6).</p>
-        </div>
-        <a href="{{ route('admin.super-admin.maintenance-records.index') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Back to History
-        </a>
-    </div>
+    <x-admin.page-header title="{{ isset($record) ? 'Edit Maintenance Record' : 'New Maintenance Record' }}" description="Record quarterly maintenance performed (Risk No. 6).">
+        <x-slot name="actions">
+            <a href="{{ route('admin.super-admin.maintenance-records.index') }}" class="admin-btn admin-btn-neutral">
+                <i class="bi bi-arrow-left"></i> Back to History
+            </a>
+        </x-slot>
+    </x-admin.page-header>
 
     @if ($errors->any())
         <div class="alert alert-danger">
@@ -164,7 +162,7 @@
         </div>
 
         <div class="col-12">
-            <button type="submit" class="btn btn-success">
+            <button type="submit" class="admin-btn admin-btn-primary">
                 <i class="bi bi-check2-circle"></i> {{ isset($record) ? 'Update Maintenance Record' : 'Save Maintenance Record' }}
             </button>
         </div>

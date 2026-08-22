@@ -10,18 +10,14 @@
         || (int) $announcement->admin_id === (int) $currentAdmin?->getKey();
 @endphp
 
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
-    <div>
-        <h2 class="mb-1">Announcement Details</h2>
-        <p class="text-muted mb-0">Review the announcement content and attachments.</p>
-    </div>
-    <div class="d-flex flex-wrap gap-2">
-        <a href="{{ route('admin.announcements') }}" class="btn btn-outline-secondary">Back to Announcements</a>
+<x-admin.page-header title="Announcement Details" description="Review the announcement content and attachments.">
+    <x-slot name="actions">
+        <a href="{{ route('admin.announcements') }}" class="admin-btn admin-btn-neutral">Back to Announcements</a>
         @if($canManage)
-            <a href="{{ route('admin.announcements.edit', $announcement) }}" class="btn btn-primary">Edit Announcement</a>
+            <a href="{{ route('admin.announcements.edit', $announcement) }}" class="admin-btn admin-btn-primary">Edit Announcement</a>
         @endif
-    </div>
-</div>
+    </x-slot>
+</x-admin.page-header>
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-4">

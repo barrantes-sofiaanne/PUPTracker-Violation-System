@@ -13,7 +13,7 @@
         </div>
 
         <button
-            class="btn btn-primary add-category"
+            class="admin-btn admin-btn-primary add-category"
             data-bs-toggle="modal"
             data-bs-target="#addCategoryModal">
 
