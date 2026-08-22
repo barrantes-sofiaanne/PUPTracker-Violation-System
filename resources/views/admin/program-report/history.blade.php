@@ -31,8 +31,9 @@
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white">
-            <form method="GET" action="{{ route('admin.program-report.history') }}" class="row g-3 admin-filter-form">
+            <form method="GET" action="{{ route('admin.program-report.history') }}" class="row g-3 align-items-end admin-filter-form">
                 <div class="col-md-4">
+                    <label class="admin-filter-label">Program</label>
                     <select name="program_id" class="form-select">
                         <option value="">All Programs</option>
                         @foreach ($programs as $program)
@@ -43,6 +44,7 @@
                     </select>
                 </div>
                 <div class="col-md-4">
+                    <label class="admin-filter-label">Report Type</label>
                     <select name="report_type" class="form-select">
                         <option value="">All Report Types</option>
                         <option value="full" @selected(request('report_type') === 'full')>Entire Program</option>

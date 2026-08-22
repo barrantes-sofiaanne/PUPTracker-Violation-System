@@ -6,7 +6,7 @@
 <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
         <h2 class="fw-bold mb-1">User Management History</h2>
-        <p class="text-muted mb-0">Review student and account changes performed by administrators.</p>
+        <p class="text-muted mb-0">Review activity associated with a specific user account.</p>
     </div>
     <a href="{{ route('admin.dashboard') }}" class="admin-btn admin-btn-neutral">
         <i class="bi bi-arrow-left" aria-hidden="true"></i>
@@ -21,7 +21,7 @@
                 <thead class="table-light">
                     <tr>
                         <th>Action</th>
-                        <th>User</th>
+                        <th>User Account</th>
                         <th>Performed By</th>
                         <th>Recorded</th>
                     </tr>
@@ -38,8 +38,8 @@
                         <x-admin.empty-state
                             :colspan="4"
                             icon="bi-person-x"
-                            title="No history found"
-                            message="No history entries have been recorded yet."
+                            title="No user activity found"
+                            message="No account activity has been recorded for any user yet."
                             :clearUrl="null" />
                     @endforelse
                 </tbody>

@@ -18,7 +18,7 @@
     <div class="card-body">
         <form method="GET" action="{{ route('admin.super-admin.audit-trail') }}" class="row g-3 admin-filter-form">
             <div class="col-md-3">
-                <label for="actor_type" class="form-label">Actor Type</label>
+                <label for="actor_type" class="admin-filter-label">Actor Type</label>
                 <select id="actor_type" name="actor_type" class="form-select">
                     <option value="">All</option>
                     @foreach($actorTypes as $actorType)
@@ -27,7 +27,7 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <label for="module" class="form-label">Module</label>
+                <label for="module" class="admin-filter-label">Module</label>
                 <select id="module" name="module" class="form-select">
                     <option value="">All</option>
                     @foreach($modules as $module)
@@ -36,7 +36,7 @@
                 </select>
             </div>
             <div class="col-md-4">
-                <label for="keyword" class="form-label">Keyword</label>
+                <label for="keyword" class="admin-filter-label">Keyword</label>
                 <input id="keyword" name="keyword" value="{{ request('keyword') }}" class="form-control" placeholder="Search action or description">
             </div>
             <div class="col-md-2 d-flex align-items-end">

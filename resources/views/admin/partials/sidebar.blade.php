@@ -98,6 +98,18 @@
 
         </li>
 
+        <li>
+
+            <a href="{{ route('admin.notifications') }}" class="{{ request()->routeIs('admin.notifications*') ? 'active' : '' }}">
+
+                <i class="bi bi-bell"></i>
+
+                Notifications
+
+            </a>
+
+        </li>
+
         @unless($isItAdministrator)
         <li class="sidebar-section-label">Reporting</li>
 
@@ -107,24 +119,11 @@
 
                 <i class="bi bi-file-earmark-text"></i>
 
-                Reports
+                Violation Reports
 
             </a>
 
         </li>
-
-        <li>
-
-            <a href="{{ route('admin.graduation-review.index') }}" class="{{ request()->routeIs('admin.graduation-review*') ? 'active' : '' }}">
-
-                <i class="bi bi-stars"></i>
-
-                AI Graduation Review
-
-            </a>
-
-        </li>
-        @endunless
 
         <li>
 
@@ -132,7 +131,7 @@
 
                 <i class="bi bi-file-earmark-bar-graph"></i>
 
-                Program Sanction Report
+                Program Sanction Reports
 
             </a>
 
@@ -149,6 +148,21 @@
             </a>
 
         </li>
+
+        <li class="sidebar-section-label">AI Assistance</li>
+
+        <li>
+
+            <a href="{{ route('admin.graduation-review.index') }}" class="{{ request()->routeIs('admin.graduation-review*') ? 'active' : '' }}">
+
+                <i class="bi bi-stars"></i>
+
+                AI Graduation Review
+
+            </a>
+
+        </li>
+        @endunless
 
         <li class="sidebar-section-label">Records & Security</li>
 

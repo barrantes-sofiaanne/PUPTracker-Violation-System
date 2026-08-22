@@ -52,7 +52,7 @@
                         <div class="text-uppercase small text-muted fw-semibold">With attachments</div>
                         <div class="display-6 fw-bold">{{ $announcementStats['with_attachments'] }}</div>
                     </div>
-                    <div class="rounded-circle bg-success bg-opacity-10 p-3 text-success">
+                    <div class="rounded-circle bg-maroon-soft p-3 text-maroon">
                         <i class="bi bi-paperclip fs-4"></i>
                     </div>
                 </div>
@@ -102,7 +102,7 @@
                                             <span class="badge bg-secondary mt-2">Attachment</span>
                                         @endif
                                         @if($announcement->show_on_login)
-                                            <span class="badge bg-warning text-dark mt-2">Login Modal</span>
+                                            <span class="badge bg-info text-dark mt-2">Login Modal</span>
                                         @endif
                                         <div class="text-muted small mt-2">
                                             {{ Str::limit(strip_tags($announcement->content), 80) }}
@@ -115,7 +115,7 @@
                                     <td class="text-end">
                                         <button
                                             type="button"
-                                            class="btn btn-sm btn-primary announcement-view-btn"
+                                            class="admin-btn admin-btn-view admin-btn-sm announcement-view-btn"
                                             data-title="{{ e($announcement->title) }}"
                                             data-author="{{ optional($announcement->adminInfo)->firstname ? optional($announcement->adminInfo)->firstname . ' ' . optional($announcement->adminInfo)->lastname : 'Admin #' . $announcement->admin_id }}"
                                             data-created="{{ optional($announcement->created_at)->format('F d, Y h:i A') }}"
@@ -168,14 +168,14 @@
                                     </td>
                                     <td>{{ optional($announcement->created_at)->format('M d, Y h:i A') }}</td>
                                     <td class="text-end">
-                                        <a href="{{ route('admin.announcements.edit', $announcement) }}" class="btn btn-sm btn-outline-secondary me-1">
+                                        <a href="{{ route('admin.announcements.edit', $announcement) }}" class="admin-btn admin-btn-view admin-btn-sm me-1">
                                             <i class="bi bi-pencil me-1"></i>Edit
                                         </a>
                                         <form action="{{ route('admin.announcements.destroy', $announcement) }}" method="POST" class="d-inline-block" data-confirm="This will permanently delete the announcement. This action cannot be undone."
                                               data-confirm-title="Delete Announcement?" data-confirm-confirm-label="Delete">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-danger admin-btn admin-btn-danger">
+                                            <button type="submit" class="admin-btn admin-btn-danger admin-btn-sm">
                                                 <i class="bi bi-trash me-1"></i>Delete
                                             </button>
                                         </form>
@@ -217,10 +217,10 @@
                 <p class="mb-0" style="white-space: pre-line;" id="announcementViewContent"></p>
             </div>
             <div class="modal-footer">
-                <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary d-none" id="announcementViewAttachment">
+                <a href="#" target="_blank" rel="noopener noreferrer" class="admin-btn admin-btn-view d-none" id="announcementViewAttachment">
                     <i class="bi bi-paperclip me-1"></i>View Attachment
                 </a>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

@@ -89,14 +89,14 @@
         </div>
 
         <div class="col-lg-3 col-md-6">
-            <div class="card stat-card shadow-sm bg-success-light">
+            <div class="card stat-card shadow-sm bg-primary-light">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <p class="stat-label text-muted mb-2">Announcements</p>
-                            <h2 class="stat-value text-success mb-0">{{ $announcementCount }}</h2>
+                            <h2 class="stat-value text-primary mb-0">{{ $announcementCount }}</h2>
                         </div>
-                        <div class="icon-badge success">
+                        <div class="icon-badge primary">
                             <i class="bi bi-megaphone-fill"></i>
                         </div>
                     </div>
@@ -115,7 +115,7 @@
                 <div class="card-header card-header-custom">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="fw-bold mb-0">Recent Violations</h5>
-                        <a href="{{ route('admin.violations.index') }}" class="btn btn-sm btn-primary">
+                        <a href="{{ route('admin.violations.index') }}" class="admin-btn admin-btn-view admin-btn-sm">
                             View All
                         </a>
                     </div>

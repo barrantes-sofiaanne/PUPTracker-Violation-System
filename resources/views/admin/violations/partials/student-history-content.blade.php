@@ -49,7 +49,7 @@
 
 <table class="table table-bordered table-hover align-middle">
 
-    <thead class="table-danger">
+    <thead class="table-light">
 
         <tr>
 

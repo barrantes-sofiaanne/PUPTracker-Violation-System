@@ -6,7 +6,7 @@
 <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
         <h2 class="fw-bold mb-1">Audit Logs</h2>
-        <p class="text-muted mb-0">Track administrative actions and historical changes across the system.</p>
+        <p class="text-muted mb-0">Review system-wide administrative actions and security activity.</p>
     </div>
     <a href="{{ route('admin.dashboard') }}" class="admin-btn admin-btn-neutral">
         <i class="bi bi-arrow-left" aria-hidden="true"></i>
@@ -38,8 +38,8 @@
                         <x-admin.empty-state
                             :colspan="4"
                             icon="bi-journal-x"
-                            title="No audit logs found"
-                            message="No audit entries have been recorded yet."
+                            title="No audit activity found"
+                            message="No system-wide administrative or security actions have been recorded yet."
                             :clearUrl="null" />
                     @endforelse
                 </tbody>

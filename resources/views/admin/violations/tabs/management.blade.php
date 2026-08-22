@@ -31,10 +31,12 @@
     action="{{ route('admin.violations.index') }}"
     class="mb-4 admin-filter-form">
 
-    <div class="row g-3">
+    <div class="row g-3 align-items-end">
 
         {{-- Search --}}
         <div class="col-lg-4">
+
+            <label class="admin-filter-label">Search</label>
 
             <input
                 type="text"
@@ -48,13 +50,15 @@
         {{-- Program --}}
         <div class="col-lg-2">
 
+            <label class="admin-filter-label">Program</label>
+
             <select
                 name="program"
                 class="form-select">
 
                 <option value="">
 
-                    Program
+                    All Programs
 
                 </option>
 
@@ -77,13 +81,15 @@
         {{-- Year --}}
         <div class="col-lg-2">
 
+            <label class="admin-filter-label">Year</label>
+
             <select
                 name="year"
                 class="form-select">
 
                 <option value="">
 
-                    Year
+                    All Years
 
                 </option>
 
@@ -106,13 +112,15 @@
         {{-- Section --}}
         <div class="col-lg-2">
 
+            <label class="admin-filter-label">Section</label>
+
             <select
                 name="section"
                 class="form-select">
 
                 <option value="">
 
-                    Section
+                    All Sections
 
                 </option>
 
@@ -135,13 +143,15 @@
         {{-- Student Status --}}
         <div class="col-lg-2">
 
+            <label class="admin-filter-label">Status</label>
+
             <select
                 name="student_status"
                 class="form-select">
 
                 <option value="">
 
-                    Status
+                    All Statuses
 
                 </option>
 
@@ -164,6 +174,8 @@
         {{-- From --}}
         <div class="col-lg-2">
 
+            <label class="admin-filter-label">From Date</label>
+
             <input
                 type="date"
                 class="form-control"
@@ -174,6 +186,8 @@
 
         {{-- To --}}
         <div class="col-lg-2">
+
+            <label class="admin-filter-label">To Date</label>
 
             <input
                 type="date"

@@ -79,7 +79,7 @@
     </div>
 
     <button
-        class="btn btn-primary addTypeBtn"
+        class="admin-btn admin-btn-primary addTypeBtn"
         data-id="{{ $category->violation_category_id }}"
         data-name="{{ $category->category_name }}">
 
@@ -95,7 +95,7 @@
 
     <table class="table table-hover align-middle mb-0">
 
-                    <thead class="secondary-light">
+                    <thead class="table-light">
 
                     <tr>
 
@@ -152,7 +152,7 @@
                                 <div class="d-flex align-items-center gap-2 flex-nowrap">
 
                                 <button
-                                    class="btn btn-warning btn-sm editTypeBtn"
+                                    class="admin-btn admin-btn-view admin-btn-sm editTypeBtn"
                                     data-id="{{ $type->violation_type_id }}">
 
                                     <i class="bi bi-pencil-square me-1"></i>
@@ -162,7 +162,7 @@
                                 </button>
 
                                 <button
-                                    class="btn btn-danger btn-sm deleteTypeBtn"
+                                    class="admin-btn admin-btn-danger admin-btn-sm deleteTypeBtn"
                                     data-id="{{ $type->violation_type_id }}">
 
                                     <i class="bi bi-trash me-1"></i>

@@ -45,7 +45,7 @@
             </button>
 
             <button
-                class="admin-btn admin-btn-secondary me-2"
+                class="admin-btn admin-btn-neutral me-2"
                 id="exportExcel">
 
                 <i class="bi bi-file-earmark-excel"></i>
@@ -55,7 +55,7 @@
             </button>
 
             <button
-                class="admin-btn admin-btn-danger"
+                class="admin-btn admin-btn-neutral"
                 id="exportPdf">
 
                 <i class="bi bi-file-earmark-pdf"></i>
@@ -195,7 +195,7 @@
 
                 <div class="col-lg-3 mb-3">
 
-                    <label class="form-label">
+                    <label class="admin-filter-label">
 
                         Course
 
@@ -224,7 +224,7 @@
 
                 <div class="col-lg-3 mb-3">
 
-                    <label class="form-label">
+                    <label class="admin-filter-label">
 
                         Year
 
@@ -253,7 +253,7 @@
 
                 <div class="col-lg-3 mb-3">
 
-                    <label class="form-label">
+                    <label class="admin-filter-label">
 
                         Category
 
@@ -282,7 +282,7 @@
 
                 <div class="col-lg-3 mb-3">
 
-                    <label class="form-label">
+                    <label class="admin-filter-label">
 
                         Violation Type
 
@@ -314,7 +314,7 @@
 
     <div class="col-lg-3 mb-3">
 
-        <label class="form-label">
+        <label class="admin-filter-label">
 
             Start Date
 
@@ -330,7 +330,7 @@
 
     <div class="col-lg-3 mb-3">
 
-        <label class="form-label">
+        <label class="admin-filter-label">
 
             End Date
 
@@ -346,7 +346,7 @@
 
     <div class="col-lg-6 mb-3">
 
-        <label class="form-label">
+        <label class="admin-filter-label">
 
             Search Student
 

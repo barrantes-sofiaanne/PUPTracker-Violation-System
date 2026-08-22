@@ -51,7 +51,7 @@
                                 <td>{{ optional($violation->violationType)->violation_type ?? $violation->violation_type }}</td>
                                 <td>{{ $violation->recorded_by_display }}</td>
                                 <td>
-                                    <a href="{{ route('admin.violations.show', $violation->student_number) }}" class="btn btn-sm btn-primary">
+                                    <a href="{{ route('admin.violations.show', $violation->student_number) }}" class="admin-btn admin-btn-view admin-btn-sm">
                                         <i class="bi bi-eye me-1"></i>View
                                     </a>
                                 </td>

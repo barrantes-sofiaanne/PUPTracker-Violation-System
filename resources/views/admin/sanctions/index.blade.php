@@ -120,7 +120,7 @@
 
                             <div class="row g-3 align-items-end">
                                 <div class="col-lg-4">
-                                    <label class="form-label mb-1">Search</label>
+                                    <label class="admin-filter-label">Search</label>
                                     <input
                                         type="text"
                                         name="record_search"
@@ -130,7 +130,7 @@
                                 </div>
 
                                 <div class="col-lg-3">
-                                    <label class="form-label mb-1">Violation Type</label>
+                                    <label class="admin-filter-label">Violation Type</label>
                                     <select name="record_violation_type" class="form-select">
                                         <option value="">All Violation Types</option>
                                         @foreach($violationTypes as $type)
@@ -142,7 +142,7 @@
                                 </div>
 
                                 <div class="col-lg-2">
-                                    <label class="form-label mb-1">From Date</label>
+                                    <label class="admin-filter-label">From Date</label>
                                     <input
                                         type="date"
                                         class="form-control"
@@ -151,7 +151,7 @@
                                 </div>
 
                                 <div class="col-lg-2">
-                                    <label class="form-label mb-1">To Date</label>
+                                    <label class="admin-filter-label">To Date</label>
                                     <input
                                         type="date"
                                         class="form-control"
@@ -162,7 +162,7 @@
                                 <div class="col-lg-1 d-none d-lg-block"></div>
 
                                 <div class="col-lg-6">
-                                    <label class="form-label mb-1 d-block">Status</label>
+                                    <label class="admin-filter-label d-block">Status</label>
                                     <div class="d-flex gap-3 flex-wrap pt-1">
                                         <div class="form-check">
                                             <input

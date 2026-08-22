@@ -104,7 +104,7 @@
                             <div class="student-filter-panel">
                                 <div class="row g-2">
                                     <div class="col-md-4">
-                                        <label class="form-label mb-1">Program</label>
+                                        <label class="admin-filter-label">Program</label>
                                         <select name="filter_program_id" class="form-select">
                                             <option value="">All Programs</option>
                                             @foreach($programs as $program)
@@ -115,7 +115,7 @@
                                         </select>
                                     </div>
                                     <div class="col-md-2">
-                                        <label class="form-label mb-1">Year</label>
+                                        <label class="admin-filter-label">Year</label>
                                         <select name="filter_year_id" class="form-select">
                                             <option value="">All Years</option>
                                             @foreach($years as $year)
@@ -126,7 +126,7 @@
                                         </select>
                                     </div>
                                     <div class="col-md-2">
-                                        <label class="form-label mb-1">Section</label>
+                                        <label class="admin-filter-label">Section</label>
                                         <select name="filter_section_id" class="form-select">
                                             <option value="">All Sections</option>
                                             @foreach($sections as $section)
@@ -137,7 +137,7 @@
                                         </select>
                                     </div>
                                     <div class="col-md-2">
-                                        <label class="form-label mb-1">Gender</label>
+                                        <label class="admin-filter-label">Gender</label>
                                         <select name="filter_gender_id" class="form-select">
                                             <option value="">All Genders</option>
                                             @foreach($genders as $gender)
@@ -148,7 +148,7 @@
                                         </select>
                                     </div>
                                     <div class="col-md-2">
-                                        <label class="form-label mb-1">Status</label>
+                                        <label class="admin-filter-label">Status</label>
                                         <select name="filter_status_id" class="form-select">
                                             <option value="">All Statuses</option>
                                             @foreach($statuses as $status)

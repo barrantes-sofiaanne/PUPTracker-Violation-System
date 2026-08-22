@@ -146,18 +146,18 @@ body {
 }
 
 .sidebar-section-label {
-    margin: 0.9rem 0.55rem 0.25rem;
+    margin: 0.85rem 0.6rem 0.2rem;
     padding: 0;
-    font-size: 0.66rem;
-    font-weight: 800;
-    letter-spacing: 0.12em;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: rgba(255, 223, 0, 0.75);
+    color: rgba(255, 223, 0, 0.62);
     list-style: none;
 }
 
 .sidebar-section-label:first-child {
-    margin-top: 0.5rem;
+    margin-top: 0.4rem;
 }
 
 .main-content {
@@ -358,6 +358,32 @@ h6 {
     color: var(--color-maroon);
 }
 
+/* Icon badge semantic modifiers — mirror the global color system */
+.icon-badge.primary {
+    background: rgba(128, 0, 0, 0.12);
+    color: var(--color-maroon);
+}
+
+.icon-badge.danger {
+    background: rgba(185, 28, 28, 0.12);
+    color: #b91c1c;
+}
+
+.icon-badge.warning {
+    background: rgba(154, 106, 0, 0.14);
+    color: #9a6a00;
+}
+
+.icon-badge.success {
+    background: rgba(30, 125, 60, 0.12);
+    color: #1e7d3c;
+}
+
+.icon-badge.info {
+    background: rgba(29, 95, 168, 0.12);
+    color: #1d5fa8;
+}
+
 .table {
     --bs-table-hover-bg: rgba(218, 165, 32, 0.12);
 }
@@ -369,6 +395,15 @@ h6 {
     font-size: 0.84rem;
     letter-spacing: 0.03em;
     text-transform: uppercase;
+    font-weight: 800;
+    padding: 0.85rem 0.8rem;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.table tbody td {
+    padding: 0.75rem 0.8rem;
+    vertical-align: middle;
 }
 
 .table td,
@@ -1084,9 +1119,45 @@ h6 {
 }
 
 .announcements-table thead th {
-    background-color: var(--color-maroon) !important;
-    color: #fff !important;
-    border-bottom-color: var(--color-maroon) !important;
+    background: #fff7de !important;
+    color: #5f0000 !important;
+    border-bottom-color: rgba(128, 0, 0, 0.15) !important;
+    font-size: 0.84rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    font-weight: 800;
+    padding: 0.85rem 0.8rem;
+    white-space: nowrap;
+}
+
+/* Normalize any residual non-standard table headers to the PUPTracker
+   cream + burgundy administrative table style. */
+.table-danger thead th,
+.thead-danger th,
+thead.secondary-light th,
+.thead.secondary-light th {
+    background: #fff7de !important;
+    color: #5f0000 !important;
+    border-bottom-color: rgba(128, 0, 0, 0.15) !important;
+    font-size: 0.84rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    font-weight: 800;
+}
+
+/* Keep card tables (used inside white cards) consistent with the standard */
+.table-bordered {
+    border-color: rgba(128, 0, 0, 0.14);
+}
+
+.table-bordered thead th,
+.table-bordered thead td {
+    border-bottom-width: 1px;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: rgba(255, 223, 0, 0.06);
+    --bs-table-striped-bg: rgba(255, 223, 0, 0.06);
 }
 
 @media (max-width: 767.98px) {

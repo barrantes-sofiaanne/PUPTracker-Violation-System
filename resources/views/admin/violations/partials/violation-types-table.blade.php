@@ -29,12 +29,14 @@
                     <td>{{ $type->resolution_number ?: '-' }}</td>
                     <td>{{ $type->severity_level }}</td>
                     <td>
-                        <button class="btn btn-sm btn-warning edit-type" data-id="{{ $type->violation_type_id }}">
-                            <i class="bi bi-pencil-square"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger delete-type" data-id="{{ $type->violation_type_id }}">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                        <div class="admin-actions">
+                            <button class="admin-btn admin-btn-view admin-btn-sm edit-type" data-id="{{ $type->violation_type_id }}">
+                                <i class="bi bi-pencil-square me-1"></i>Edit
+                            </button>
+                            <button class="admin-btn admin-btn-danger admin-btn-sm delete-type" data-id="{{ $type->violation_type_id }}">
+                                <i class="bi bi-trash me-1"></i>Delete
+                            </button>
+                        </div>
                     </td>
 
                 </tr>
