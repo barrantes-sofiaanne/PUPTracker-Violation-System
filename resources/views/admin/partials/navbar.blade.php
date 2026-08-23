@@ -63,30 +63,33 @@
                     @endif
                 </button>
 
-                <div class="dropdown-menu dropdown-menu-end admin-notif-dropdown shadow">
+                <div class="dropdown-menu dropdown-menu-end admin-notif-dropdown">
                     <div class="admin-notif-head">
                         <div>
-                            <strong>Notifications</strong>
+                            <div class="admin-notif-title"><i class="bi bi-bell-fill" aria-hidden="true"></i>Notifications</div>
                             @if($adminUnreadCount > 0)
-                                <span class="badge bg-danger ms-1 notif-dropdown-count">{{ $adminUnreadCount > 9 ? '9+' : $adminUnreadCount }} unread</span>
+                                <span class="admin-notif-count notif-dropdown-count">{{ $adminUnreadCount > 9 ? '9+' : $adminUnreadCount }} unread</span>
                             @endif
                         </div>
-                        <a href="{{ route('admin.notifications') }}" class="small">View All</a>
+                        <a href="{{ route('admin.notifications') }}" class="admin-notif-view-all">View all <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>
                     </div>
                     <div class="admin-notif-list">
                         @forelse($adminRecentNotifications as $notif)
                             <a href="{{ $notif->link ?: route('admin.notifications') }}" class="admin-notif-item {{ $notif->is_read ? '' : 'unread' }}" data-notif-id="{{ $notif->admin_notification_id }}" data-notif-unread="{{ $notif->is_read ? '0' : '1' }}">
-                                <div class="admin-notif-msg">
+                                <span class="admin-notif-icon {{ $notif->notification_type === 'system_email_failure' ? 'danger' : ($notif->notification_type === 'sanction' ? 'warning' : 'default') }}" aria-hidden="true">
                                     @if($notif->notification_type === 'system_email_failure')
-                                        <i class="bi bi-exclamation-octagon-fill text-danger me-1"></i>
+                                        <i class="bi bi-exclamation-octagon-fill"></i>
                                     @elseif($notif->notification_type === 'sanction')
-                                        <i class="bi bi-shield-check text-primary me-1"></i>
+                                        <i class="bi bi-shield-check"></i>
                                     @else
-                                        <i class="bi bi-bell-fill text-muted me-1"></i>
+                                        <i class="bi bi-bell-fill"></i>
                                     @endif
-                                    {{ \Illuminate\Support\Str::limit($notif->message, 70) }}
-                                </div>
-                                <small class="text-muted">{{ optional($notif->created_at)->diffForHumans() }}</small>
+                                </span>
+                                <span class="admin-notif-content">
+                                    <span class="admin-notif-msg">{{ \Illuminate\Support\Str::limit($notif->message, 85) }}</span>
+                                    <small>{{ optional($notif->created_at)->diffForHumans() }}</small>
+                                </span>
+                                @if(! $notif->is_read)<span class="admin-notif-unread-dot" aria-label="Unread"></span>@endif
                             </a>
                         @empty
                             <div class="text-center text-muted py-4 small">No notifications yet.</div>
@@ -107,76 +110,6 @@
         </div>
     </div>
 </nav>
-
-@push('styles')
-<style>
-    .admin-notif-bell-btn {
-        width: 38px;
-        height: 38px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-color: rgba(128, 0, 0, 0.3);
-        color: var(--color-maroon);
-    }
-
-    .notif-bell-badge {
-        font-size: 0.6rem;
-    }
-
-    .admin-notif-dropdown {
-        width: 380px;
-        max-width: calc(100vw - 2rem);
-        padding: 0;
-        border: 1px solid rgba(128, 0, 0, 0.14);
-        border-radius: 0.9rem;
-    }
-
-    .admin-notif-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.7rem 0.9rem;
-        border-bottom: 1px solid rgba(128, 0, 0, 0.1);
-        color: #1f1620;
-    }
-
-    .admin-notif-list {
-        max-height: 360px;
-        overflow-y: auto;
-    }
-
-    .admin-notif-item {
-        display: block;
-        padding: 0.65rem 0.9rem;
-        text-decoration: none;
-        color: #1f1620;
-        border-bottom: 1px solid rgba(128, 0, 0, 0.06);
-    }
-
-    .admin-notif-item:last-child {
-        border-bottom: none;
-    }
-
-    .admin-notif-item:hover {
-        background: rgba(255, 223, 0, 0.15);
-    }
-
-    .admin-notif-item.unread {
-        background: #fff6d6;
-    }
-
-    .admin-notif-msg {
-        font-size: 0.85rem;
-        font-weight: 600;
-        line-height: 1.4;
-    }
-
-    .admin-notif-item small {
-        font-size: 0.72rem;
-    }
-</style>
-@endpush
 
 @push('scripts')
 <script>
@@ -210,6 +143,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Mark an unread notification as read when it is clicked in the dropdown.
     const notifUrl = "{{ route('admin.notifications.unread-count') }}";
+    let unreadCount = {{ $adminUnreadCount }};
 
     document.querySelectorAll('.admin-notif-item[data-notif-unread="1"]').forEach(function (item) {
         item.addEventListener('click', function () {
@@ -219,8 +153,10 @@ document.addEventListener('DOMContentLoaded', function () {
             // Optimistic UI: clear the unread styling immediately.
             item.classList.remove('unread');
             item.dataset.notifUnread = '0';
+            item.querySelector('.admin-notif-unread-dot')?.remove();
+            unreadCount = Math.max(0, unreadCount - 1);
             document.dispatchEvent(new CustomEvent('puptracker:unread-updated', {
-                detail: { unread: Math.max(0, parseInt(item.dataset.notifUnread || '0', 10) - 1) },
+                detail: { unread: unreadCount },
             }));
 
             fetch(notifUrl.replace(/unread-count$/, '') + id + '/read', {

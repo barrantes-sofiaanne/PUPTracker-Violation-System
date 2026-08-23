@@ -637,6 +637,197 @@
 }
 
 /* --------------------------------------------------------------------------
+   Admin Notification Dropdown
+   -------------------------------------------------------------------------- */
+.admin-notif-bell-btn {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-color: rgba(128, 0, 0, 0.25);
+    color: var(--admin-burgundy);
+    background: #fff;
+}
+
+.admin-notif-bell-btn:hover,
+.admin-notif-bell-btn:focus {
+    color: var(--admin-burgundy-dark);
+    background: var(--admin-warning-bg);
+    border-color: var(--admin-goldenrod);
+}
+
+.notif-bell-badge {
+    min-width: 1.15rem;
+    padding: 0.2rem 0.32rem;
+    font-size: 0.62rem;
+    line-height: 1;
+    border: 2px solid #fff;
+}
+
+.admin-notif-dropdown {
+    width: min(390px, calc(100vw - 1.5rem));
+    margin-top: 0.55rem !important;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(128, 0, 0, 0.16);
+    border-radius: var(--admin-radius-lg);
+    background: #fff;
+    box-shadow: 0 16px 36px rgba(31, 22, 32, 0.2);
+}
+
+.admin-notif-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    background: linear-gradient(135deg, #fffdf6 0%, #fff7df 100%);
+    border-bottom: 1px solid rgba(128, 0, 0, 0.12);
+}
+
+.admin-notif-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--admin-ink);
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.admin-notif-title i {
+    color: var(--admin-burgundy);
+}
+
+.admin-notif-count {
+    display: inline-block;
+    margin-top: 0.2rem;
+    color: var(--admin-danger);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.admin-notif-view-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--admin-burgundy) !important;
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-decoration: none !important;
+    white-space: nowrap;
+}
+
+.admin-notif-view-all:hover {
+    color: var(--admin-burgundy-dark) !important;
+    text-decoration: underline !important;
+}
+
+.admin-notif-list {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.admin-notif-item {
+    position: relative;
+    display: flex !important;
+    align-items: flex-start;
+    gap: 0.7rem;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    color: var(--admin-ink) !important;
+    background: #fff;
+    border-bottom: 1px solid rgba(128, 0, 0, 0.08);
+    text-decoration: none !important;
+    white-space: normal !important;
+    transition: background-color 0.15s ease;
+}
+
+.admin-notif-item:last-child {
+    border-bottom: none;
+}
+
+.admin-notif-item:hover,
+.admin-notif-item:focus {
+    color: var(--admin-ink) !important;
+    background: #fff9e8;
+}
+
+.admin-notif-item.unread {
+    background: #fffaf0;
+}
+
+.admin-notif-icon {
+    display: inline-flex;
+    flex: 0 0 30px;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    margin-top: 0.05rem;
+    border-radius: 0.55rem;
+    font-size: 0.82rem;
+}
+
+.admin-notif-icon.default {
+    color: var(--admin-burgundy);
+    background: rgba(128, 0, 0, 0.1);
+}
+
+.admin-notif-icon.warning {
+    color: var(--admin-warning);
+    background: var(--admin-warning-bg);
+}
+
+.admin-notif-icon.danger {
+    color: var(--admin-danger);
+    background: var(--admin-danger-bg);
+}
+
+.admin-notif-content {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.admin-notif-msg {
+    color: var(--admin-ink);
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.admin-notif-item small {
+    color: var(--admin-gray);
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.admin-notif-unread-dot {
+    flex: 0 0 7px;
+    width: 7px;
+    height: 7px;
+    margin-top: 0.35rem;
+    border-radius: 50%;
+    background: var(--admin-burgundy);
+    box-shadow: 0 0 0 3px rgba(128, 0, 0, 0.1);
+}
+
+@media (max-width: 575.98px) {
+    .admin-notif-dropdown {
+        position: fixed !important;
+        top: 4.2rem !important;
+        right: 0.75rem !important;
+        left: 0.75rem !important;
+        width: auto;
+        margin: 0 !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
    Tables
    -------------------------------------------------------------------------- */
 .admin-table-card {
