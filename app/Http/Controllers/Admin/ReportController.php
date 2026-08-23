@@ -20,9 +20,14 @@ class ReportController extends Controller
     {
         $statistics = $this->getStatistics($request);
 
+        $perPage = in_array((int) $request->input('per_page'), [25, 50, 100], true)
+            ? (int) $request->input('per_page')
+            : 25;
+
         $reports = $this->buildQuery($request)
             ->latest('violation_date')
-            ->paginate(15);
+            ->paginate($perPage)
+            ->withQueryString();
 
         $courses = Course::orderBy('program_name')->get();
         $years = Year::orderBy('year')->get();
@@ -126,7 +131,8 @@ class ReportController extends Controller
         if ($request->expectsJson() || $request->ajax()) {
             $reports = $this->buildQuery($request)
                 ->latest('violation_date')
-                ->paginate(15);
+                ->paginate(15)
+                ->withQueryString();
 
             $statistics = $this->getStatistics($request);
             $charts = $this->buildCharts($request);
@@ -141,7 +147,8 @@ class ReportController extends Controller
 
         $reports = $this->buildQuery($request)
             ->latest('violation_date')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         $statistics = $this->getStatistics($request);
 

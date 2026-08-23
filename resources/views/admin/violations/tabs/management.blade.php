@@ -230,6 +230,11 @@
     </div>
 
 </form>
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+    <span class="text-muted small">
+        Showing {{ $students->firstItem() ?? 0 }}–{{ $students->lastItem() ?? 0 }} of {{ $students->total() }} students
+    </span>
+</div>
 <div class="table-responsive">
 
     <table class="table table-hover align-middle">

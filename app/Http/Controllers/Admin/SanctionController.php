@@ -33,7 +33,8 @@ class SanctionController extends Controller
         $requests = SanctionRequest::with(['student', 'violationType.violationCategory'])
             ->where('is_active', true)
             ->latest('request_date')
-            ->paginate(15, ['*'], 'requests_page');
+            ->paginate(15, ['*'], 'requests_page')
+            ->withQueryString();
 
         $studentSanctionsQuery = StudentSanctionRecord::with([
             'violation.violationType',
@@ -92,7 +93,8 @@ class SanctionController extends Controller
 
         $studentSanctions = $studentSanctionsQuery
             ->latest('date_assigned')
-            ->paginate(15, ['*'], 'records_page');
+            ->paginate(15, ['*'], 'records_page')
+            ->withQueryString();
 
         $requests->getCollection()->transform(function (SanctionRequest $request) {
             $offenseCount = Violation::where('student_number', $request->student_number)

@@ -51,6 +51,11 @@
                 </div>
 
                 <div class="tab-pane fade" id="sanction-requests" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <span class="text-muted small">
+                            Showing {{ $requests->firstItem() ?? 0 }}–{{ $requests->lastItem() ?? 0 }} of {{ $requests->total() }} pending requests
+                        </span>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
                             <thead class="table-light">
@@ -203,6 +208,11 @@
                         </div>
                     </form>
 
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <span class="text-muted small">
+                            Showing {{ $studentSanctions->firstItem() ?? 0 }}–{{ $studentSanctions->lastItem() ?? 0 }} of {{ $studentSanctions->total() }} student sanctions
+                        </span>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
                             <thead class="table-light">

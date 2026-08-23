@@ -456,6 +456,9 @@ Route::middleware('auth:admin')
         Route::get('/notifications', [AdminNotificationController::class, 'index'])
             ->name('admin.notifications');
 
+        Route::get('/notifications/unread-count', [AdminNotificationController::class, 'unreadCount'])
+            ->name('admin.notifications.unread-count');
+
         Route::post('/notifications/{notification}/read', [AdminNotificationController::class, 'markAsRead'])
             ->name('admin.notifications.read');
 

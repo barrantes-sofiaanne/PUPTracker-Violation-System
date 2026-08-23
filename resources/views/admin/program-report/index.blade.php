@@ -32,7 +32,7 @@
 
     <div class="card shadow-sm border-0">
         <div class="card-body">
-            <form method="POST" action="{{ route('admin.program-report.generate') }}" class="row g-3">
+            <form method="POST" action="{{ route('admin.program-report.generate') }}" class="row g-3" data-submit-guard="Generating...">
                 @csrf
 
                 <div class="col-md-4">

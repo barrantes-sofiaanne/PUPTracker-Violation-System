@@ -16,7 +16,7 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <form method="POST" action="{{ route('admin.students.update', $student->student_number) }}">
+            <form method="POST" action="{{ route('admin.students.update', $student->student_number) }}" data-submit-guard="Saving...">
                 @csrf
                 @method('PUT')
 

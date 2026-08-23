@@ -74,6 +74,11 @@
     </form>
 
     {{-- History Table --}}
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+        <span class="text-muted small">
+            Showing {{ $violationHistory->firstItem() ?? 0 }}–{{ $violationHistory->lastItem() ?? 0 }} of {{ $violationHistory->total() }} violations
+        </span>
+    </div>
     <div class="table-responsive">
 
         <table class="table table-hover align-middle">

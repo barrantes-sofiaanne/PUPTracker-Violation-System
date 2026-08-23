@@ -15,6 +15,11 @@
 </div>
 
 <div class="card shadow-sm border-0">
+    <div class="card-header bg-white">
+        <span class="text-muted small">
+            Showing {{ $history->firstItem() ?? 0 }}–{{ $history->lastItem() ?? 0 }} of {{ $history->total() }} history entries
+        </span>
+    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">

@@ -31,7 +31,7 @@ class NotificationController extends Controller
             $query->where('message', 'like', '%' . trim($request->input('search')) . '%');
         }
 
-        $notifications = $query->orderBy('created_at', 'desc')->paginate(15);
+        $notifications = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
         $unreadCount = AdminNotification::where('is_read', false)->count();
         $types = AdminNotification::query()
             ->distinct()
@@ -72,5 +72,16 @@ class NotificationController extends Controller
         AdminNotification::where('is_read', false)->update(['is_read' => true]);
 
         return back()->with('success', 'All notifications marked as read.');
+    }
+
+    /**
+     * Lightweight unread-count endpoint used to refresh the header bell
+     * without reloading the page or polling aggressively.
+     */
+    public function unreadCount()
+    {
+        return response()->json([
+            'unread_count' => AdminNotification::where('is_read', false)->count(),
+        ]);
     }
 }

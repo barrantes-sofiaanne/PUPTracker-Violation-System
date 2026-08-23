@@ -32,7 +32,8 @@
     <form
         method="POST"
         action="{{ isset($record) ? route('admin.super-admin.maintenance-records.update', $record->maintenance_id) : route('admin.super-admin.maintenance-records.store') }}"
-        class="row g-4">
+        class="row g-4"
+        data-submit-guard="Saving...">
         @csrf
         @if (isset($record))
             @method('PUT')

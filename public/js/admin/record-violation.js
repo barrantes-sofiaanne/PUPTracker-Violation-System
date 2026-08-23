@@ -229,6 +229,16 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     saveBtn.addEventListener("click", function () {
+        if (saveBtn.disabled) {
+            return;
+        }
+
+        // Prevent duplicate submissions while the request is in flight.
+        saveBtn.disabled = true;
+        const originalHtml = saveBtn.innerHTML;
+        saveBtn.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Recording...';
+
         fetch(window.ViolationRoutes.store, {
             method: "POST",
             headers: {
@@ -260,6 +270,9 @@ document.addEventListener("DOMContentLoaded", function () {
                         title: "Unable to save violation",
                         text: data.message || "Unable to save violation.",
                     });
+                    // Restore the button so the admin can retry.
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalHtml;
                     return;
                 }
                 const modal = bootstrap.Modal.getInstance(
@@ -270,7 +283,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 loadManagementTable();
             })
-            .catch(console.error);
+            .catch((error) => {
+                console.error(error);
+                Swal.fire({
+                    icon: "error",
+                    title: "Unable to save violation",
+                    text: "Unable to save violation. Please try again.",
+                });
+                // Restore the button so the admin can retry.
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalHtml;
+            });
     });
 });
 function loadManagementTable() {

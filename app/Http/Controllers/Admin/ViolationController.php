@@ -20,6 +20,7 @@ use App\Models\Year;
 use App\Models\Section;
 use App\Models\StudentStatus;
 use App\Models\SanctionRequest;
+use App\Models\StudentSanctionRecord;
 
 
 class ViolationController extends Controller
@@ -29,7 +30,7 @@ public function create()
     return redirect()->route('admin.violations.index');
 }
 
-public function index()
+public function index(Request $request)
 {
     /*
     |--------------------------------------------------------------------------
@@ -54,8 +55,42 @@ $students = User::with([
 ->whereHas('role', function ($query) {
     $query->where('roles_name', 'Student');
 })
+->when($request->filled('search'), function ($query) use ($request) {
+    $search = '%' . trim($request->input('search')) . '%';
+    $query->where(function ($q) use ($search) {
+        $q->where('student_number', 'like', $search)
+            ->orWhere('first_name', 'like', $search)
+            ->orWhere('last_name', 'like', $search)
+            ->orWhere('email', 'like', $search)
+            ->orWhereHas('studentInfo.program', fn ($p) => $p->where('program_name', 'like', $search));
+    });
+})
+->when($request->filled('program'), function ($query) use ($request) {
+    $query->whereHas('studentInfo', fn ($q) => $q->where('program_id', $request->input('program')));
+})
+->when($request->filled('year'), function ($query) use ($request) {
+    $query->whereHas('studentInfo', fn ($q) => $q->where('year_id', $request->input('year')));
+})
+->when($request->filled('section'), function ($query) use ($request) {
+    $query->whereHas('studentInfo', fn ($q) => $q->where('section_id', $request->input('section')));
+})
+->when($request->filled('student_status'), function ($query) use ($request) {
+    $query->whereHas('studentInfo', fn ($q) => $q->where('student_status_id', $request->input('student_status')));
+})
+->when($request->filled('from_date') || $request->filled('to_date'), function ($query) use ($request) {
+    $query->whereHas('violations', function ($q) use ($request) {
+        if ($request->filled('from_date')) {
+            $q->whereDate('violation_date', '>=', $request->input('from_date'));
+        }
+        if ($request->filled('to_date')) {
+            $q->whereDate('violation_date', '<=', $request->input('to_date'));
+        }
+    });
+})
 ->orderBy('last_name')
-->paginate(10, ['*'], 'students_page');
+->orderBy('first_name')
+->paginate(10, ['*'], 'students_page')
+->withQueryString();
 
     /*
     |--------------------------------------------------------------------------
@@ -103,7 +138,18 @@ $students = User::with([
         'recorder.adminInfo'
     ])
     ->latest('violation_date')
-    ->paginate(15, ['*'], 'history_page');
+    ->when($request->filled('history_search'), function ($query) use ($request) {
+        $search = '%' . trim($request->input('history_search')) . '%';
+        $query->where(function ($q) use ($search) {
+            $q->where('student_number', 'like', $search)
+                ->orWhereHas('student', fn ($s) => $s->where('first_name', 'like', $search)->orWhere('last_name', 'like', $search))
+                ->orWhereHas('violationType', fn ($v) => $v->where('violation_type', 'like', $search));
+        });
+    })
+    ->when($request->filled('history_from'), fn ($query) => $query->whereDate('violation_date', '>=', $request->input('history_from')))
+    ->when($request->filled('history_to'), fn ($query) => $query->whereDate('violation_date', '<=', $request->input('history_to')))
+    ->paginate(15, ['*'], 'history_page')
+    ->withQueryString();
 
     return view(
         'admin.violations.index',
@@ -165,6 +211,31 @@ public function show(string $student_number)
     ->where('student_number', $student_number)
     ->latest('violation_date')
     ->paginate(10);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Summary Stats (Compact Cards)
+    |--------------------------------------------------------------------------
+    */
+
+    $totalViolations = $allViolations->count();
+
+    $majorViolations = $allViolations
+        ->filter(fn ($v) => strcasecmp(
+            optional(optional($v->violationType)->violationCategory)->category_name ?? '',
+            'Major'
+        ) === 0)
+        ->count();
+
+    $sanctionRecords = StudentSanctionRecord::where('student_number', $student_number)->get();
+
+    $outstandingSanctions = $sanctionRecords
+        ->filter(fn ($r) => strcasecmp((string) $r->status, 'Completed') !== 0)
+        ->count();
+
+    $completedSanctions = $sanctionRecords
+        ->filter(fn ($r) => strcasecmp((string) $r->status, 'Completed') === 0)
+        ->count();
 
     /*
     |--------------------------------------------------------------------------
@@ -252,7 +323,11 @@ public function show(string $student_number)
         compact(
             'student',
             'summary',
-            'individualViolations'
+            'individualViolations',
+            'totalViolations',
+            'majorViolations',
+            'outstandingSanctions',
+            'completedSanctions'
         )
     );
 }
@@ -642,7 +717,8 @@ public function store(Request $request): JsonResponse
         });
     })
     ->latest('violation_date')
-    ->paginate(15, ['*'], 'history_page');
+    ->paginate(15, ['*'], 'history_page')
+    ->withQueryString();
 
     return view(
         'admin.violations.history',

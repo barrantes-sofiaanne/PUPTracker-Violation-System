@@ -41,6 +41,43 @@
     </div>
 
 </div>
+
+{{-- Disciplinary Summary Cards --}}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center py-3">
+                <div class="stat-label text-muted text-uppercase">Total Violations</div>
+                <div class="stat-value text-danger">{{ $totalViolations ?? 0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center py-3">
+                <div class="stat-label text-muted text-uppercase">Major Violations</div>
+                <div class="stat-value text-maroon">{{ $majorViolations ?? 0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center py-3">
+                <div class="stat-label text-muted text-uppercase">Outstanding</div>
+                <div class="stat-value text-warning">{{ $outstandingSanctions ?? 0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center py-3">
+                <div class="stat-label text-muted text-uppercase">Completed</div>
+                <div class="stat-value text-success">{{ $completedSanctions ?? 0 }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <h5 class="border-bottom pb-2">
     Summary by Violation
 </h5>

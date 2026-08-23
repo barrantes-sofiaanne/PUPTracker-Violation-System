@@ -148,10 +148,10 @@
                                         </small>
                                     </td>
                                     <td>
-                                        <a href="{{ route('admin.violations.index', ['search' => $violation->student_number]) }}#management" 
+                                        <a href="{{ route('admin.violations.show', $violation->student_number) }}" 
                                            class="admin-btn admin-btn-view admin-btn-sm">
                                             <i class="bi bi-eye me-1"></i>
-                                            View
+                                            View Record
                                         </a>
                                     </td>
                                 </tr>
@@ -180,10 +180,10 @@
                 </div>
                 <div class="card-body">
                     @forelse($topOffenders as $offender)
-                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <span class="fw-500">{{ $offender->student_number }}</span>
+                    <a href="{{ route('admin.violations.show', $offender->student_number) }}" class="d-flex justify-content-between align-items-center py-2 border-bottom text-decoration-none">
+                        <span class="fw-500 text-maroon">{{ $offender->student_number }}</span>
                         <span class="badge bg-danger">{{ $offender->violation_count }} violations</span>
-                    </div>
+                    </a>
                     @empty
                     <p class="text-muted text-center py-3">No violation records</p>
                     @endforelse

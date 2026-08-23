@@ -189,7 +189,7 @@
 
     <div class="card-body">
 
-        <form method="GET" action="{{ route('admin.reports') }}" id="reportFilterForm" class="admin-filter-form">
+        <form method="GET" action="{{ route('admin.reports') }}" id="reportFilterForm" class="admin-filter-form" data-submit-guard="Generating...">
 
             <div class="row">
 
@@ -476,7 +476,7 @@
     <div class="card-header bg-white">
 
         <div
-            class="d-flex justify-content-between align-items-center">
+            class="d-flex justify-content-between align-items-center flex-wrap gap-2">
 
             <div>
 
@@ -494,15 +494,23 @@
 
             </div>
 
-            <span
-                class="badge bg-primary"
-                id="recordCount">
+            <div class="text-end">
 
-                {{ $reports->total() }}
+                <span
+                    class="badge bg-primary"
+                    id="recordCount">
 
-                Record(s)
+                    {{ $reports->total() }}
 
-            </span>
+                    Record(s)
+
+                </span>
+
+                <div class="small text-muted mt-1">
+                    Showing {{ $reports->firstItem() ?? 0 }}–{{ $reports->lastItem() ?? 0 }} of {{ $reports->total() }}
+                </div>
+
+            </div>
 
         </div>
 
@@ -551,7 +559,19 @@
 </table>
 <div class="card-footer bg-white">
 
-    {{ $reports->links() }}
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <label for="reportPerPage" class="text-muted small mb-0">Rows per page:</label>
+            <select id="reportPerPage" class="form-select form-select-sm" style="width:auto;" onchange="if(this.value){ const u=new URL(window.location.href); u.searchParams.set('per_page', this.value); u.searchParams.delete('page'); window.location.href=u.toString(); }">
+                <option value="25" @selected((int) request('per_page', 25) === 25)>25</option>
+                <option value="50" @selected((int) request('per_page') === 50)>50</option>
+                <option value="100" @selected((int) request('per_page') === 100)>100</option>
+            </select>
+        </div>
+        <div>
+            {{ $reports->links() }}
+        </div>
+    </div>
 
 </div>
 

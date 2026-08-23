@@ -246,8 +246,61 @@
         },
     };
 
+    /* ------------------------------------------------------------------ *
+     * Duplicate-submission protection
+     * Any <form data-submit-guard="Busy label"> disables its submit button
+     * while the request is in flight and restores it if the request fails
+     * (so the user can retry). Applies to normal (non-AJAX) form submits.
+     * ------------------------------------------------------------------ */
+    function initSubmitGuards() {
+        document.addEventListener("submit", function (event) {
+            const form = event.target.closest("form[data-submit-guard]");
+            if (!form) {
+                return;
+            }
+
+            const submitter =
+                event.submitter || form.querySelector('[type="submit"]');
+            if (!submitter || submitter.disabled) {
+                return;
+            }
+
+            const busyLabel =
+                form.getAttribute("data-submit-guard") || "Submitting...";
+            submitter.dataset.pupOriginalHtml = submitter.innerHTML;
+            submitter.dataset.pupOriginalText = submitter.textContent.trim();
+            submitter.disabled = true;
+            submitter.innerHTML =
+                '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>' +
+                busyLabel;
+
+            // If the browser aborts navigation (e.g. validation errors), restore the button.
+            // Listen for invalid events to re-enable on client-side validation failure.
+            const restore = function () {
+                submitter.disabled = false;
+                if (submitter.dataset.pupOriginalHtml) {
+                    submitter.innerHTML = submitter.dataset.pupOriginalHtml;
+                    delete submitter.dataset.pupOriginalHtml;
+                }
+            };
+
+            form.addEventListener(
+                "invalid",
+                function () {
+                    restore();
+                },
+                { once: true },
+            );
+
+            // Re-enable shortly after submit in case the server redirects back
+            // with validation errors (best-effort; full page load resets anyway).
+            window.setTimeout(restore, 8000);
+        });
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
         initConfirmModals();
         initDataConfirmForms();
+        initSubmitGuards();
     });
 })();

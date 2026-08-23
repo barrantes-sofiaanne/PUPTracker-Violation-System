@@ -65,15 +65,22 @@
 
                 <div class="dropdown-menu dropdown-menu-end admin-notif-dropdown shadow">
                     <div class="admin-notif-head">
-                        <strong>Notifications</strong>
+                        <div>
+                            <strong>Notifications</strong>
+                            @if($adminUnreadCount > 0)
+                                <span class="badge bg-danger ms-1 notif-dropdown-count">{{ $adminUnreadCount > 9 ? '9+' : $adminUnreadCount }} unread</span>
+                            @endif
+                        </div>
                         <a href="{{ route('admin.notifications') }}" class="small">View All</a>
                     </div>
                     <div class="admin-notif-list">
                         @forelse($adminRecentNotifications as $notif)
-                            <a href="{{ $notif->link ?: route('admin.notifications') }}" class="admin-notif-item {{ $notif->is_read ? '' : 'unread' }}">
+                            <a href="{{ $notif->link ?: route('admin.notifications') }}" class="admin-notif-item {{ $notif->is_read ? '' : 'unread' }}" data-notif-id="{{ $notif->admin_notification_id }}" data-notif-unread="{{ $notif->is_read ? '0' : '1' }}">
                                 <div class="admin-notif-msg">
                                     @if($notif->notification_type === 'system_email_failure')
                                         <i class="bi bi-exclamation-octagon-fill text-danger me-1"></i>
+                                    @elseif($notif->notification_type === 'sanction')
+                                        <i class="bi bi-shield-check text-primary me-1"></i>
                                     @else
                                         <i class="bi bi-bell-fill text-muted me-1"></i>
                                     @endif
@@ -118,7 +125,8 @@
     }
 
     .admin-notif-dropdown {
-        width: 340px;
+        width: 380px;
+        max-width: calc(100vw - 2rem);
         padding: 0;
         border: 1px solid rgba(128, 0, 0, 0.14);
         border-radius: 0.9rem;
@@ -168,4 +176,69 @@
         font-size: 0.72rem;
     }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Refresh the header bell unread badge + dropdown unread label.
+    function renderUnreadCount(unread) {
+        const bell = document.querySelector('.notif-bell-badge');
+        const badge = document.querySelector('.notif-dropdown-count');
+
+        if (unread > 0) {
+            if (bell) {
+                bell.textContent = unread > 9 ? '9+' : unread;
+                bell.classList.remove('d-none');
+            }
+            if (badge) {
+                badge.textContent = (unread > 9 ? '9+' : unread) + ' unread';
+                badge.classList.remove('d-none');
+            }
+        } else {
+            if (bell) { bell.classList.add('d-none'); }
+            if (badge) { badge.classList.add('d-none'); }
+        }
+    }
+
+    // Listen for unread-count changes (e.g. from the notifications page).
+    document.addEventListener('puptracker:unread-updated', function (event) {
+        if (event.detail && typeof event.detail.unread === 'number') {
+            renderUnreadCount(event.detail.unread);
+        }
+    });
+
+    // Mark an unread notification as read when it is clicked in the dropdown.
+    const notifUrl = "{{ route('admin.notifications.unread-count') }}";
+
+    document.querySelectorAll('.admin-notif-item[data-notif-unread="1"]').forEach(function (item) {
+        item.addEventListener('click', function () {
+            const id = item.dataset.notifId;
+            if (!id) { return; }
+
+            // Optimistic UI: clear the unread styling immediately.
+            item.classList.remove('unread');
+            item.dataset.notifUnread = '0';
+            document.dispatchEvent(new CustomEvent('puptracker:unread-updated', {
+                detail: { unread: Math.max(0, parseInt(item.dataset.notifUnread || '0', 10) - 1) },
+            }));
+
+            fetch(notifUrl.replace(/unread-count$/, '') + id + '/read', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+            }).then(function (res) { return res.json(); }).then(function (data) {
+                // Re-fetch the true unread count for accuracy.
+                return fetch(notifUrl).then(function (r) { return r.json(); });
+            }).then(function (data) {
+                if (data && typeof data.unread_count === 'number') {
+                    renderUnreadCount(data.unread_count);
+                }
+            }).catch(function () { /* ignore transient errors */ });
+        });
+    });
+});
+</script>
 @endpush

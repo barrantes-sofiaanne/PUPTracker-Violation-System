@@ -9,10 +9,19 @@
         <h2 class="fw-bold mb-1">Admin Notifications</h2>
         <p class="text-muted mb-0">View the latest notifications for administrative actions.</p>
     </div>
-    <a href="{{ route('admin.announcements') }}" class="admin-btn admin-btn-neutral">
-        <i class="bi bi-megaphone" aria-hidden="true"></i>
-        Announcements
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('admin.announcements') }}" class="admin-btn admin-btn-neutral">
+            <i class="bi bi-megaphone" aria-hidden="true"></i>
+            Announcements
+        </a>
+    </div>
+</div>
+
+{{-- Result count --}}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+    <span class="text-muted small">
+        Showing {{ $notifications->firstItem() ?? 0 }}–{{ $notifications->lastItem() ?? 0 }} of {{ $notifications->total() }} notifications
+    </span>
 </div>
 
 {{-- Filters --}}
@@ -132,8 +141,14 @@
                 <button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body admin-modal-body">
-                <small class="text-muted d-block mb-3" id="adminNotificationModalDate"></small>
-                <p class="mb-0" style="white-space: pre-line;" id="adminNotificationModalMessage"></p>
+                <div class="mb-3">
+                    <span class="admin-filter-label d-block">Received</span>
+                    <strong id="adminNotificationModalDate"></strong>
+                </div>
+                <div class="mb-0">
+                    <span class="admin-filter-label d-block">Message</span>
+                    <p class="mb-0" style="white-space: pre-line;" id="adminNotificationModalMessage"></p>
+                </div>
             </div>
             <div class="modal-footer admin-modal-footer">
                 <a href="#" class="admin-btn admin-btn-primary d-none" id="adminNotificationModalLink">
@@ -150,6 +165,9 @@
 
 @push('scripts')
 <script>
+    window.NotificationUnreadCountUrl = "{{ route('admin.notifications.unread-count') }}";
+</script>
+<script>
 document.addEventListener('DOMContentLoaded', function () {
     const modalElement = document.getElementById('adminNotificationModal');
     if (!modalElement) {
@@ -163,23 +181,51 @@ document.addEventListener('DOMContentLoaded', function () {
     const linkEl = document.getElementById('adminNotificationModalLink');
     const linkLabelEl = document.getElementById('adminNotificationModalLinkLabel');
 
+    // Map notification types to meaningful modal titles + action labels.
+    const TYPE_TITLES = {
+        sanction: 'Disciplinary Sanction Request',
+        system_email_failure: 'System Email Failure',
+        violation: 'Violation Recorded',
+        announcement: 'Announcement',
+        report: 'Report Generated',
+        ai_review: 'AI Graduation Review',
+        security: 'Security Event',
+    };
+
+    const TYPE_ACTIONS = {
+        sanction: 'Open Request',
+        system_email_failure: 'View Details',
+        violation: 'View Violation',
+        announcement: 'View Announcement',
+        report: 'View Report',
+        ai_review: 'View AI Review',
+        security: 'View Audit Log',
+    };
+
+    function refreshUnreadBadge() {
+        // Refresh the header bell badge via the lightweight endpoint.
+        fetch(document.querySelector('meta[name="csrf-token"]')
+            ? window.NotificationUnreadCountUrl || ''
+            : '')
+            .then(function (res) { return res.ok ? res.json() : null; })
+            .then(function (data) {
+                if (!data) { return; }
+                document.dispatchEvent(new CustomEvent('puptracker:unread-updated', {
+                    detail: { unread: data.unread_count },
+                }));
+            })
+            .catch(function () { /* ignore */ });
+    }
+
     document.querySelectorAll('.admin-notif-trigger').forEach(function (item) {
         item.addEventListener('click', function () {
             const type = item.dataset.type || 'notification';
-            const readableType = type.charAt(0).toUpperCase() + type.replace(/_/g, ' ');
-            titleEl.textContent = readableType + ' Notification';
-            dateEl.textContent = item.dataset.created || '-';
+            titleEl.textContent = TYPE_TITLES[type] || 'Notification';
+            dateEl.textContent = item.dataset.created || '';
             messageEl.textContent = item.dataset.message || '';
+            linkLabelEl.textContent = TYPE_ACTIONS[type] || 'Open';
 
             const link = item.dataset.link || '';
-            if (type === 'sanction') {
-                linkLabelEl.textContent = 'View Sanction';
-            } else if (type === 'system_email_failure') {
-                linkLabelEl.textContent = 'View Details';
-            } else {
-                linkLabelEl.textContent = 'Open';
-            }
-
             if (link) {
                 linkEl.href = link;
                 linkEl.classList.remove('d-none');
