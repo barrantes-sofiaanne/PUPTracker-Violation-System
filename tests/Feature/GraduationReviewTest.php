@@ -228,26 +228,23 @@ class GraduationReviewTest extends TestCase
         $vA = $this->createViolation($studentA->student_number, '2024-01-01');
         $this->createSanctionRecord($studentA->student_number, $vA, 'Pending');
 
-        Http::fake([
-            'https://ai.test/v1/chat/completions' => Http::response([
-                'choices' => [['message' => ['content' => json_encode([
-                    'summary' => 'Summary.',
-                    'review_status' => 'no_immediate_concern',
-                    'outstanding_sanctions' => [],
-                    'disciplinary_pattern' => '',
-                    'reason_for_review' => '',
-                    'recommended_action' => '',
-                ])]]],
-            ], 200),
-        ]);
+        // Batch generation now dispatches queue jobs (one per student).
+        \Illuminate\Support\Facades\Bus::fake();
 
         $this->actingAs($admin, 'admin');
 
         $this->post(route('admin.graduation-review.generate-batch'))
             ->assertRedirect(route('admin.graduation-review.index'));
 
-        $this->assertDatabaseHas('ai_graduation_reviews', ['student_number' => $studentA->student_number]);
-        $this->assertDatabaseHas('ai_graduation_reviews', ['student_number' => $studentB->student_number]);
+        \Illuminate\Support\Facades\Bus::assertBatched(function ($batch) {
+            $numbers = collect($batch->jobs)
+                ->filter(fn ($job) => $job instanceof \App\Jobs\GenerateStudentAIReview)
+                ->map(fn ($job) => $job->studentNumber)
+                ->all();
+
+            return in_array('2026-0008', $numbers, true)
+                && in_array('2026-0009', $numbers, true);
+        });
     }
 
     protected function createAdmin(): Admin

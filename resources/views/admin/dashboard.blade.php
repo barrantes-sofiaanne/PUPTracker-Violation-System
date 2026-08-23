@@ -28,6 +28,12 @@
                 <a href="{{ route('admin.violations.index') }}" class="admin-btn admin-btn-primary">
                     <i class="bi bi-plus-circle me-2"></i>Record Violation
                 </a>
+                <a href="{{ route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']) }}" class="admin-btn admin-btn-secondary">
+                    <i class="bi bi-shield-check me-2"></i>View Pending Sanctions
+                </a>
+                <a href="{{ route('admin.reports') }}" class="admin-btn admin-btn-neutral">
+                    <i class="bi bi-file-earmark-bar-graph me-2"></i>View Reports
+                </a>
                 @if(Auth::guard('admin')->user()?->isItAdministrator())
                     <a href="{{ route('admin.announcements.create') }}" class="admin-btn admin-btn-secondary">
                         <i class="bi bi-megaphone me-2"></i>New Announcement
@@ -148,7 +154,7 @@
                                         </small>
                                     </td>
                                     <td>
-                                        <a href="{{ route('admin.violations.show', $violation->student_number) }}" 
+                                        <a href="{{ route('admin.violations.show', ['student_number' => $violation->student_number, 'source' => 'dashboard']) }}" 
                                            class="admin-btn admin-btn-view admin-btn-sm">
                                             <i class="bi bi-eye me-1"></i>
                                             View Record
@@ -180,7 +186,7 @@
                 </div>
                 <div class="card-body">
                     @forelse($topOffenders as $offender)
-                    <a href="{{ route('admin.violations.show', $offender->student_number) }}" class="d-flex justify-content-between align-items-center py-2 border-bottom text-decoration-none">
+                    <a href="{{ route('admin.violations.show', ['student_number' => $offender->student_number, 'source' => 'dashboard']) }}" class="d-flex justify-content-between align-items-center py-2 border-bottom text-decoration-none">
                         <span class="fw-500 text-maroon">{{ $offender->student_number }}</span>
                         <span class="badge bg-danger">{{ $offender->violation_count }} violations</span>
                     </a>

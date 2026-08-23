@@ -18,7 +18,24 @@ return [
         'base_url' => env('AI_GRADUATION_REVIEW_BASE_URL', ''),
         'api_key' => env('AI_GRADUATION_REVIEW_API_KEY', ''),
         'model' => env('AI_GRADUATION_REVIEW_MODEL', ''),
-        'timeout' => (int) env('AI_GRADUATION_REVIEW_TIMEOUT', 20),
+        'timeout' => (int) env('AI_GRADUATION_REVIEW_TIMEOUT', 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Queue Processing
+    |--------------------------------------------------------------------------
+    |
+    | Individual student AI reviews are dispatched as queue jobs (one per
+    | student) so 1,000+ students can be processed without holding the browser
+    | open or issuing thousands of synchronous API calls in one request.
+    |
+    */
+
+    'queue' => [
+        'connection' => env('QUEUE_CONNECTION', 'database'),
+        'name' => env('GRADUATION_REVIEW_QUEUE', 'graduation-review'),
+        'chunk' => (int) env('GRADUATION_REVIEW_QUEUE_CHUNK', 500),
     ],
 
     /*

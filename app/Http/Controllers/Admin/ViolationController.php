@@ -167,14 +167,8 @@ $students = User::with([
     );
 }
 
-public function show(string $student_number)
+public function show(Request $request, string $student_number)
 {
-    /*
-    |--------------------------------------------------------------------------
-    | Student Information
-    |--------------------------------------------------------------------------
-    */
-
     $student = User::with([
         'studentInfo.program',
         'studentInfo.year',
@@ -184,12 +178,6 @@ public function show(string $student_number)
     ->where('student_number', $student_number)
     ->firstOrFail();
 
-    /*
-    |--------------------------------------------------------------------------
-    | All Violations (Used for Summary)
-    |--------------------------------------------------------------------------
-    */
-
     $allViolations = Violation::with([
         'violationType.violationCategory',
         'recorder.adminInfo'
@@ -198,25 +186,14 @@ public function show(string $student_number)
     ->latest('violation_date')
     ->get();
 
-    /*
-    |--------------------------------------------------------------------------
-    | Individual Violations Log (Paginated)
-    |--------------------------------------------------------------------------
-    */
-
     $individualViolations = Violation::with([
         'violationType.violationCategory',
         'recorder.adminInfo'
     ])
     ->where('student_number', $student_number)
     ->latest('violation_date')
-    ->paginate(10);
-
-    /*
-    |--------------------------------------------------------------------------
-    | Summary Stats (Compact Cards)
-    |--------------------------------------------------------------------------
-    */
+    ->paginate(10)
+    ->appends($request->query());
 
     $totalViolations = $allViolations->count();
 
@@ -237,43 +214,18 @@ public function show(string $student_number)
         ->filter(fn ($r) => strcasecmp((string) $r->status, 'Completed') === 0)
         ->count();
 
-    /*
-    |--------------------------------------------------------------------------
-    | Summary by Violation
-    |--------------------------------------------------------------------------
-    */
-
     $summary = $allViolations
         ->groupBy('violation_type')
         ->map(function ($records) {
-
             $latest = $records->first();
-
-            $offenseLevel = $this->formatOffenseLevel(
-                $records->count()
-            );
-
-            /*
-            |--------------------------------------------------------------------------
-            | Disciplinary Sanction
-            |--------------------------------------------------------------------------
-            */
+            $offenseLevel = $this->formatOffenseLevel($records->count());
 
             $disciplinarySanction = DisciplinarySanction::where(
                     'violation_type_id',
                     optional($latest->violationType)->violation_type_id
                 )
-                ->where(
-                    'offense_level',
-                    $offenseLevel
-                )
+                ->where('offense_level', $offenseLevel)
                 ->first();
-
-            /*
-            |--------------------------------------------------------------------------
-            | Latest Sanction Request
-            |--------------------------------------------------------------------------
-            */
 
             $sanctionRequest = SanctionRequest::where(
                     'student_number',
@@ -287,39 +239,28 @@ public function show(string $student_number)
                 ->first();
 
             return [
-
-                'category' => optional(
-                    optional($latest->violationType)->violationCategory
-                )->category_name,
-
+                'category' => optional(optional($latest->violationType)->violationCategory)->category_name,
                 'violation_type' => $latest->violation_type,
-
                 'offense_level' => $offenseLevel,
-
                 'status' => $sanctionRequest?->status ?? 'No Request',
-
                 'remarks' => $records->count() > 1
                     ? '(Multiple instances - see log)'
                     : ($latest->description ?: '-'),
-
-                'sanction' => $disciplinarySanction?->disciplinary_sanction
-                    ?? '-',
-
+                'sanction' => $disciplinarySanction?->disciplinary_sanction ?? '-',
                 'total' => $records->count(),
-
             ];
-
         })
         ->values();
 
-    /*
-    |--------------------------------------------------------------------------
-    | Return View
-    |--------------------------------------------------------------------------
-    */
+    $backRoute = route('admin.violations.index', $request->except(['student_number', 'source']));
+    $backLabel = match ((string) ($request->input('source') ?: 'results')) {
+        'dashboard' => 'Back to Dashboard',
+        'reports' => 'Back to Reports',
+        default => 'Back to Results',
+    };
 
     return view(
-        'admin.violations.partials.student-history-content',
+        'admin.violations.show',
         compact(
             'student',
             'summary',
@@ -327,7 +268,9 @@ public function show(string $student_number)
             'totalViolations',
             'majorViolations',
             'outstandingSanctions',
-            'completedSanctions'
+            'completedSanctions',
+            'backRoute',
+            'backLabel'
         )
     );
 }
@@ -529,7 +472,7 @@ $previousCount = Violation::where(
     |--------------------------------------------------------------------------
     */
 
-    private function formatOffenseLevel(int $count): string
+    public static function formatOffenseLevelStatic(int $count): string
     {
         if ($count === 1) {
             return '1st Offense';
@@ -544,21 +487,19 @@ $previousCount = Violation::where(
         }
 
         $suffix = match (true) {
-
-            $count % 100 >= 11 &&
-            $count % 100 <= 13 => 'th',
-
+            $count % 100 >= 11 && $count % 100 <= 13 => 'th',
             $count % 10 === 1 => 'st',
-
             $count % 10 === 2 => 'nd',
-
             $count % 10 === 3 => 'rd',
-
             default => 'th',
-
         };
 
         return "{$count}{$suffix} Offense";
+    }
+
+    private function formatOffenseLevel(int $count): string
+    {
+        return self::formatOffenseLevelStatic($count);
     }
 
     /*

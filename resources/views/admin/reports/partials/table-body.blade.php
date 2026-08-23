@@ -21,8 +21,11 @@
         <td>{{ $report->violation_date ? \Carbon\Carbon::parse($report->violation_date)->format('M d, Y') : '-' }}</td>
         <td>{{ $report->recorded_by_display }}</td>
         <td>
-            <a href="{{ route('admin.violations.show', $report->student?->student_number) }}" class="admin-btn admin-btn-view admin-btn-sm">
-                <i class="bi bi-eye me-1"></i>View
+            @php
+                $reportContext = array_merge(['student_number' => $report->student?->student_number], request()->query(), ['source' => 'reports']);
+            @endphp
+            <a href="{{ route('admin.violations.show', $reportContext) }}" class="admin-btn admin-btn-view admin-btn-sm">
+                <i class="bi bi-eye me-1"></i>View Record
             </a>
         </td>
     </tr>

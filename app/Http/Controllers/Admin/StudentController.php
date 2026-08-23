@@ -85,7 +85,8 @@ class StudentController extends Controller
         $students = $students
             ->orderBy('last_name')
             ->orderBy('first_name')
-            ->paginate(15, ['*'], 'students_page');
+            ->paginate(15, ['*'], 'students_page')
+            ->withQueryString();
 
         $admins = Admin::query()
             ->with('adminInfo')
@@ -101,7 +102,8 @@ class StudentController extends Controller
                 });
             })
             ->orderBy('id')
-            ->paginate(15, ['*'], 'admins_page');
+            ->paginate(15, ['*'], 'admins_page')
+            ->withQueryString();
 
         $securities = Security::query()
             ->with(['securityInfo', 'securityProfile'])
@@ -121,7 +123,8 @@ class StudentController extends Controller
                 });
             })
             ->orderBy('id')
-            ->paginate(15, ['*'], 'security_page');
+            ->paginate(15, ['*'], 'security_page')
+            ->withQueryString();
 
         $programs = Program::orderBy('program_name')->get();
         $years = Year::orderBy('year')->get();

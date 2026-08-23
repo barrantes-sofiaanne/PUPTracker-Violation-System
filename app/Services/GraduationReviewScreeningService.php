@@ -58,15 +58,20 @@ class GraduationReviewScreeningService
      */
     public function screenStudent(User $student): array
     {
+        // Chronological ascending (oldest → newest) so the AI can analyze
+        // frequency, gaps between incidents, escalation, and improvement.
         $violations = Violation::query()
             ->with(['violationType.violationCategory'])
             ->where('student_number', $student->student_number)
-            ->orderByDesc('violation_date')
+            ->orderBy('violation_date')
+            ->orderBy('violation_id')
             ->get();
 
         $sanctionRecords = StudentSanctionRecord::query()
             ->with(['violation.violationType', 'assignedSanction'])
             ->where('student_number', $student->student_number)
+            ->orderBy('date_assigned')
+            ->orderBy('record_id')
             ->get();
 
         $sanctionsByStatus = $sanctionRecords->groupBy(function ($record) {
@@ -77,7 +82,7 @@ class GraduationReviewScreeningService
         $pending = $sanctionsByStatus->get('pending', collect())->count();
         $outstanding = $pending; // Pending sanction = outstanding/not yet completed.
 
-        $mostRecentViolation = $violations->first();
+        $mostRecentViolation = $violations->last();
 
         $patternCounts = $violations
             ->map(function ($violation) {
@@ -91,7 +96,20 @@ class GraduationReviewScreeningService
 
         $repeatedViolations = $patternCounts->filter(fn ($count) => $count > 1)->isNotEmpty();
 
+        $categoryCounts = $violations
+            ->map(fn ($violation) => strtolower((string) ($violation->violationType?->violationCategory?->category_name ?? $violation->getViolationCategoryDisplayAttribute() ?? 'uncategorized')))
+            ->countBy();
+
+        $repeatedCategories = $categoryCounts->filter(fn ($count) => $count > 1)->isNotEmpty();
+
         $requiresReview = $outstanding > 0 || $repeatedViolations;
+
+        // Data fingerprint = deterministic hash of the student's disciplinary
+        // state. If it changes, any existing AI review is "outdated".
+        $fingerprint = $this->fingerprint($violations, $sanctionRecords);
+
+        // Contradiction detection: screening summary vs raw records.
+        $contradictions = $this->detectContradictions($completed, $pending, $sanctionRecords);
 
         return [
             'student_number' => $student->student_number,
@@ -113,10 +131,79 @@ class GraduationReviewScreeningService
                 ? ($mostRecentViolation->violationTypeDisplay ?? $mostRecentViolation->violation_type)
                 : null,
             'repeated_violations_exist' => $repeatedViolations,
+            'repeated_categories_exist' => $repeatedCategories,
+            'violation_periods' => $this->academicPeriods($violations),
+            'data_fingerprint' => $fingerprint,
+            'data_contradictions' => $contradictions,
             'requires_factual_review' => $requiresReview,
             'violations' => $this->violationsForPrompt($violations),
             'sanction_records' => $this->sanctionsForPrompt($sanctionRecords),
         ];
+    }
+
+    /**
+     * Deterministic hash of the disciplinary state (for change detection).
+     */
+    protected function fingerprint($violations, $sanctionRecords): string
+    {
+        $payload = [
+            'violations' => $violations->map(fn ($v) => [
+                $v->violation_id,
+                (string) $v->violation_type,
+                $v->violation_date?->toDateString(),
+                (string) $v->description,
+            ])->all(),
+            'sanctions' => $sanctionRecords->map(fn ($r) => [
+                $r->record_id,
+                $r->violation_id,
+                $r->assigned_sanction_id,
+                (string) $r->status,
+                $r->date_assigned?->toDateString(),
+                $r->date_completed?->toDateString(),
+                $r->deadline_date?->toDateString(),
+            ])->all(),
+        ];
+
+        return hash('sha256', json_encode($payload));
+    }
+
+    /**
+     * Detect factual contradictions between the screening summary and records.
+     */
+    protected function detectContradictions(int $completed, int $pending, $sanctionRecords): array
+    {
+        $contradictions = [];
+
+        $rawCompleted = $sanctionRecords->filter(
+            fn ($r) => strtolower(trim((string) $r->status)) === 'completed'
+        )->count();
+        $rawPending = $sanctionRecords->filter(
+            fn ($r) => strtolower(trim((string) $r->status)) === 'pending'
+        )->count();
+
+        if ($completed !== $rawCompleted) {
+            $contradictions[] = "Screening reports {$completed} completed sanction(s), but {$rawCompleted} record(s) are marked completed.";
+        }
+
+        if ($pending !== $rawPending) {
+            $contradictions[] = "Screening reports {$pending} pending sanction(s), but {$rawPending} record(s) are marked pending.";
+        }
+
+        return $contradictions;
+    }
+
+    /**
+     * Distribute violation dates across academic periods (year buckets).
+     */
+    protected function academicPeriods($violations): array
+    {
+        return $violations
+            ->map(fn ($v) => $v->violation_date?->year ? (string) $v->violation_date->year : 'unknown')
+            ->countBy()
+            ->sortKeys()
+            ->map(fn ($count, $year) => ['period' => $year, 'count' => $count])
+            ->values()
+            ->all();
     }
 
     /**

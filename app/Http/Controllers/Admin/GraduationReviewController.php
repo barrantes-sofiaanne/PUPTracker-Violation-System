@@ -161,20 +161,13 @@ class GraduationReviewController extends Controller
     }
 
     /**
-     * Generate AI reviews for the whole cohort in a controlled batch.
+     * Generate AI reviews for the whole cohort via the queue.
+     *
+     * One job per student is dispatched into a job batch so 1,000+ students can
+     * be processed independently without holding the browser open.
      */
     public function generateBatch(Request $request): RedirectResponse
     {
-        $students = $this->screening->graduatingStudentsQuery()
-            ->orderBy('last_name')
-            ->get();
-
-        $limit = (int) config('graduation_review.batch_limit', 25);
-
-        if ($limit > 0) {
-            $students = $students->take($limit);
-        }
-
         if (! $this->ai->isAvailable()) {
             return redirect()
                 ->route('admin.graduation-review.index')
@@ -184,64 +177,164 @@ class GraduationReviewController extends Controller
         }
 
         $adminId = Auth::guard('admin')->id();
-        $model = (string) config('graduation_review.ai.model');
-        $generated = 0;
-        $reused = 0;
-        $failed = 0;
 
-        foreach ($students as $student) {
-            $studentNumber = $student->student_number;
+        // Collect the student numbers we still need to review (respects the
+        // fingerprint/change-detection so we don't regenerate unchanged records).
+        $studentNumbers = $this->studentsNeedingReview();
 
-            $saved = AIGraduationReview::latestFor($studentNumber);
-            if ($saved && $saved->ai_generated_at?->isToday()) {
-                $reused++;
-                continue;
-            }
-
-            try {
-                $screening = $this->screening->screenStudent($student);
-                $result = $this->ai->generate($screening);
-
-                AIGraduationReview::create([
-                    'student_number' => $studentNumber,
-                    'generated_by_admin_id' => $adminId,
-                    'review_status' => $result['review_status'],
-                    'summary' => $result['summary'],
-                    'disciplinary_pattern' => $result['disciplinary_pattern'],
-                    'reason_for_review' => $result['reason_for_review'],
-                    'recommended_action' => $result['recommended_action'],
-                    'outstanding_sanctions' => $result['outstanding_sanctions'],
-                    'total_violations' => $screening['total_violations'],
-                    'completed_sanctions' => $screening['completed_sanctions'],
-                    'pending_sanctions' => $screening['pending_sanctions'],
-                    'outstanding_sanctions_count' => $screening['outstanding_sanctions'],
-                    'ai_model' => $model,
-                    'ai_generated_at' => now(),
-                ]);
-
-                $generated++;
-            } catch (\Throwable $e) {
-                Log::warning('Batch AI graduation review failed for a student.', [
-                    'student_number' => $studentNumber,
-                    'error' => $e->getMessage(),
-                ]);
-
-                $failed++;
-            }
-        }
-
-        $message = "Batch AI review complete: {$generated} generated, {$reused} reused (from today), {$failed} failed.";
-
-        if ($failed > 0) {
+        if ($studentNumbers->isEmpty()) {
             return redirect()
                 ->route('admin.graduation-review.index')
-                ->with('success', $message)
-                ->withErrors(['ai' => 'Some AI analyses were unavailable. The factual disciplinary screening remains available for manual review.']);
+                ->with('info', 'No students need a new AI review. Existing reviews are still current.');
         }
+
+        $batch = \Illuminate\Support\Facades\Bus::batch(
+            $studentNumbers
+                ->map(fn (string $number) => new \App\Jobs\GenerateStudentAIReview($number, $adminId))
+                ->all()
+        )
+            ->name('graduation-review-batch')
+            ->onConnection(config('graduation_review.queue.connection', 'database'))
+            ->onQueue(config('graduation_review.queue.name', 'graduation-review'))
+            ->dispatch();
+
+        session(['graduation_review.batch_id' => $batch->id]);
 
         return redirect()
             ->route('admin.graduation-review.index')
-            ->with('success', $message);
+            ->with('success', "AI review jobs dispatched for {$studentNumbers->count()} student(s). Progress is shown below.");
+    }
+
+    /**
+     * Retrieve the current batch progress as JSON for the progress bar.
+     */
+    public function batchProgress(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $batchId = (string) $request->string('batch_id', session('graduation_review.batch_id', ''));
+
+        if ($batchId === '') {
+            return response()->json(['available' => false]);
+        }
+
+        $batch = \Illuminate\Support\Facades\Bus::findBatch($batchId);
+
+        if (! $batch) {
+            return response()->json(['available' => false]);
+        }
+
+        $total = (int) $batch->totalJobs;
+        $pending = (int) $batch->pendingJobs;
+        $failed = (int) $batch->failedJobs;
+        $processed = $total - $pending;
+        $percent = $total > 0 ? (int) round(($processed / $total) * 100) : 0;
+
+        return response()->json([
+            'available' => true,
+            'batch_id' => $batch->id,
+            'total' => $total,
+            'pending' => $pending,
+            'processed' => $processed,
+            'failed' => $failed,
+            'remaining' => $pending,
+            'percent' => $percent,
+            'finished' => $batch->finished(),
+        ]);
+    }
+
+    /**
+     * Re-dispatch only failed/outdated reviews (never regenerates successes).
+     */
+    public function retryFailed(Request $request): RedirectResponse
+    {
+        $adminId = Auth::guard('admin')->id();
+
+        // Students whose review is outdated (records changed) OR that have no
+        // fresh review are candidates for retry.
+        $numbers = \App\Models\AIGraduationReview::query()
+            ->where(function ($q) {
+                $q->whereNull('data_fingerprint')
+                    ->orWhere('is_outdated', true);
+            })
+            ->where('student_number', '!=', '')
+            ->pluck('student_number')
+            ->unique()
+            ->values();
+
+        if ($numbers->isEmpty()) {
+            return redirect()
+                ->route('admin.graduation-review.index')
+                ->with('info', 'No failed reviews to retry.');
+        }
+
+        $batch = \Illuminate\Support\Facades\Bus::batch(
+            $numbers
+                ->map(fn (string $number) => new \App\Jobs\GenerateStudentAIReview($number, $adminId))
+                ->all()
+        )
+            ->name('graduation-review-retry')
+            ->onConnection(config('graduation_review.queue.connection', 'database'))
+            ->onQueue(config('graduation_review.queue.name', 'graduation-review'))
+            ->dispatch();
+
+        session(['graduation_review.batch_id' => $batch->id]);
+
+        return redirect()
+            ->route('admin.graduation-review.index')
+            ->with('success', "Retry jobs dispatched for {$numbers->count()} student(s).");
+    }
+
+    /**
+     * Record the human-in-the-loop decision for a student's AI review.
+     *
+     * The AI never makes the final decision — the authorized admin does.
+     */
+    public function storeDecision(Request $request, string $student_number): RedirectResponse
+    {
+        $review = AIGraduationReview::latestFor($student_number);
+
+        if (! $review) {
+            return redirect()
+                ->route('admin.graduation-review.show', $student_number)
+                ->withErrors(['decision' => 'No AI review exists for this student yet.']);
+        }
+
+        $validated = $request->validate([
+            'decision_status' => ['required', 'in:agreed,modified,rejected'],
+            'decision_remarks' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $review->update([
+            'decision_status' => $validated['decision_status'],
+            'decision_remarks' => trim((string) ($validated['decision_remarks'] ?? '')),
+            'decision_by_admin_id' => Auth::guard('admin')->id(),
+            'decision_at' => now(),
+        ]);
+
+        return redirect()
+            ->route('admin.graduation-review.show', $student_number)
+            ->with('success', 'Administrator decision recorded.');
+    }
+
+    /**
+     * Student numbers that still need a review, based on the data fingerprint.
+     */
+    protected function studentsNeedingReview(): \Illuminate\Support\Collection
+    {
+        $students = $this->screening->graduatingStudentsQuery()
+            ->orderBy('last_name')
+            ->get(['student_number']);
+
+        return $students
+            ->filter(function (User $student) {
+                $data = $this->screening->screenStudent($student);
+
+                return AIGraduationReview::latestFreshFor(
+                    $student->student_number,
+                    $data['data_fingerprint'],
+                ) === null;
+            })
+            ->pluck('student_number')
+            ->values();
     }
 
     /**

@@ -9,7 +9,7 @@ class UserManagementHistoryController extends Controller
 {
     public function index()
     {
-        $history = UserManagementHistory::latest('created_at')->paginate(15);
+        $history = UserManagementHistory::latest('created_at')->paginate(15)->withQueryString();
 
         return view('admin.user-management-history.index', compact('history'));
     }

@@ -51,8 +51,11 @@
                                 <td>{{ optional($violation->violationType)->violation_type ?? $violation->violation_type }}</td>
                                 <td>{{ $violation->recorded_by_display }}</td>
                                 <td>
-                                    <a href="{{ route('admin.violations.show', $violation->student_number) }}" class="admin-btn admin-btn-view admin-btn-sm">
-                                        <i class="bi bi-eye me-1"></i>View
+                                    @php
+                                        $historyContext = array_merge(['student_number' => $violation->student_number], request()->query(), ['source' => 'history']);
+                                    @endphp
+                                    <a href="{{ route('admin.violations.show', $historyContext) }}" class="admin-btn admin-btn-view admin-btn-sm">
+                                        <i class="bi bi-eye me-1"></i>View Record
                                     </a>
                                 </td>
                             </tr>

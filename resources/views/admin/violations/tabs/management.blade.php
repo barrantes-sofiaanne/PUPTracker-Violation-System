@@ -303,16 +303,13 @@
                     </td>
 
                     <td>
-                        <button
-                            type="button"
-                            class="admin-btn admin-btn-view admin-btn-sm viewStudent"
-                            data-student="{{ $student->student_number }}">
-
+                        @php
+                            $contextRoute = route('admin.violations.show', array_merge(['student_number' => $student->student_number], request()->query()));
+                        @endphp
+                        <a href="{{ $contextRoute }}" class="admin-btn admin-btn-view admin-btn-sm">
                             <i class="bi bi-eye me-1"></i>
-
-                            View
-
-                        </button>
+                            View Record
+                        </a>
                     </td>
 
                 </tr>
