@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 
 use App\Models\User;
 use App\Models\Violation;
@@ -33,12 +34,6 @@ class AdminDashboardController extends Controller
         ->take(10)
         ->get();
 
-        // Get violation statistics by category
-        $violationsByCategory = ViolationCategory::withCount('violations')
-            ->orderByDesc('violations_count')
-            ->take(5)
-            ->get();
-
         // Get top students with most violations
         $topOffenders = Violation::select('student_number', DB::raw('COUNT(*) as violation_count'))
             ->groupBy('student_number')
@@ -46,15 +41,7 @@ class AdminDashboardController extends Controller
             ->take(5)
             ->get();
 
-        // Get monthly violation trend (last 6 months)
-        $monthlyData = Violation::select(
-            DB::raw('MONTH(violation_date) as month'),
-            DB::raw('COUNT(*) as count')
-        )
-        ->where('violation_date', '>=', now()->subMonths(6))
-        ->groupBy(DB::raw('MONTH(violation_date)'))
-        ->orderBy('month')
-        ->get();
+        $weeklyTrend = $this->weeklyViolationTrend();
 
         return view(
             'admin.dashboard',
@@ -64,29 +51,59 @@ class AdminDashboardController extends Controller
                 'pendingRequests',
                 'announcementCount',
                 'recentViolations',
-                'violationsByCategory',
                 'topOffenders',
-                'monthlyData'
+                'weeklyTrend'
             )
         );
     }
 
     /**
-     * JSON endpoint used by the dashboard's real-time category chart.
+     * JSON endpoint used by the dashboard's weekly trend chart.
      */
     public function chartData()
     {
-        $violationsByCategory = ViolationCategory::withCount('violations')
-            ->orderByDesc('violations_count')
-            ->take(10)
-            ->get()
-            ->map(function (ViolationCategory $category) {
-                return [
-                    'category_name' => $category->category_name,
-                    'violations_count' => $category->violations_count,
-                ];
-            });
+        $trend = $this->weeklyViolationTrend();
 
-        return response()->json($violationsByCategory);
+        return response()->json([
+            'labels' => $trend['labels'],
+            'values' => $trend['values'],
+        ]);
+    }
+
+    private function weeklyViolationTrend(): array
+    {
+        $start = now()->subWeeks(7)->startOfWeek();
+        $period = collect(range(0, 7))->map(function ($offset) use ($start) {
+            $weekStart = $start->copy()->addWeeks($offset);
+
+            return [
+                'key' => $weekStart->format('Y-m-d'),
+                'label' => $weekStart->format('M d'),
+            ];
+        });
+
+        $violations = Violation::query()
+            ->whereNotNull('violation_date')
+            ->where('violation_date', '>=', $start)
+            ->get();
+
+        $counts = $violations->groupBy(function ($violation) {
+            $date = Carbon::parse($violation->violation_date);
+
+            return $date->startOfWeek()->format('Y-m-d');
+        })->map->count();
+
+        $labels = [];
+        $values = [];
+
+        foreach ($period as $week) {
+            $labels[] = $week['label'];
+            $values[] = (int) ($counts[$week['key']] ?? 0);
+        }
+
+        return [
+            'labels' => $labels,
+            'values' => $values,
+        ];
     }
 }

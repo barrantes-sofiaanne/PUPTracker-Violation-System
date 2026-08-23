@@ -208,7 +208,6 @@ class StudentController extends Controller
             'firstname' => 'required|string|max:50',
             'middlename' => 'nullable|string|max:50',
             'lastname' => 'required|string|max:50',
-            'position' => 'nullable|string|max:100',
             'status_id' => 'required|exists:status_tbl,status_id',
             'role_id' => 'required|exists:roles_tbl,roles_id',
             'password' => 'required|string|min:8',
@@ -225,7 +224,7 @@ class StudentController extends Controller
             AdminInfo::updateOrCreate(
                 ['admin_id' => $admin->id],
                 [
-                    'Position' => $validated['position'] ?? 'Admin',
+                    'Position' => 'Admin',
                     'firstname' => $validated['firstname'],
                     'middlename' => $validated['middlename'] ?? null,
                     'lastname' => $validated['lastname'],
@@ -247,9 +246,6 @@ class StudentController extends Controller
             'middlename' => 'nullable|string|max:50',
             'lastname' => 'required|string|max:50',
             'password' => 'required|string|min:8',
-            'position' => 'nullable|string|max:100',
-            'contact_number' => 'nullable|string|max:50',
-            'address' => 'nullable|string|max:255',
         ]);
 
         DB::transaction(function () use ($validated): void {
@@ -278,7 +274,6 @@ class StudentController extends Controller
             'firstname' => 'required|string|max:50',
             'middlename' => 'nullable|string|max:50',
             'lastname' => 'required|string|max:50',
-            'position' => 'nullable|string|max:100',
             'status_id' => 'required|exists:status_tbl,status_id',
             'role_id' => 'required|exists:roles_tbl,roles_id',
             'password' => 'nullable|string|min:8',
@@ -297,7 +292,7 @@ class StudentController extends Controller
             AdminInfo::updateOrCreate(
                 ['admin_id' => $admin->id],
                 [
-                    'Position' => $validated['position'] ?? 'Admin',
+                    'Position' => 'Admin',
                     'firstname' => $validated['firstname'],
                     'middlename' => $validated['middlename'] ?? null,
                     'lastname' => $validated['lastname'],
@@ -331,9 +326,6 @@ class StudentController extends Controller
             'middlename' => 'nullable|string|max:50',
             'lastname' => 'required|string|max:50',
             'password' => 'nullable|string|min:8',
-            'position' => 'nullable|string|max:100',
-            'contact_number' => 'nullable|string|max:50',
-            'address' => 'nullable|string|max:255',
         ]);
 
         DB::transaction(function () use ($security, $validated): void {
@@ -879,8 +871,8 @@ class StudentController extends Controller
     private function buildSecurityInfoData(array $data): array
     {
         $securityInfoData = [
-            'contact_number' => $data['contact_number'] ?? '',
-            'address' => $data['address'] ?? '',
+            'contact_number' => '',
+            'address' => '',
         ];
 
         // Some environments may still be pending the name-fields migration.

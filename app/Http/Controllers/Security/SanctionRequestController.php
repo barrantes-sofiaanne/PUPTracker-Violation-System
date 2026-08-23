@@ -99,7 +99,7 @@ class SanctionRequestController extends Controller
                     ? 'Your sanction request was approved by the security office.'
                     : 'Your sanction request was declined by the security office.',
                 'is_read' => false,
-                'link' => route('student.record'),
+                'link' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
                 'notification_type' => 'sanction',
                 'recipient_type' => 'student',
             ]);

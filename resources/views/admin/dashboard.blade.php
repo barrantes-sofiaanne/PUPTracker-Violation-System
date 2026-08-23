@@ -178,8 +178,6 @@
 
         {{-- Sidebar Widgets --}}
         <div class="col-lg-4">
-            
-            {{-- Top Offenders --}}
             <div class="card shadow-sm border-0 mb-3">
                 <div class="card-header card-header-custom">
                     <h5 class="fw-bold mb-0">Top Offenders</h5>
@@ -195,51 +193,30 @@
                     @endforelse
                 </div>
             </div>
-
         </div>
 
     </div>
 
-    {{-- Bottom Row: Category Breakdown --}}
+    {{-- Bottom Row: Weekly Trend --}}
     <div class="row g-3">
         <div class="col-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header card-header-custom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <h5 class="fw-bold mb-0">Violations by Category</h5>
+                    <h5 class="fw-bold mb-0">Weekly Violation Trend</h5>
                     <small class="text-muted"><i class="bi bi-arrow-repeat me-1"></i>Updates automatically</small>
                 </div>
                 <div class="card-body">
                     @php
-                        $categoryChartColors = ['#800000', '#a31515', '#daa520', '#f0c447', '#5f0000', '#c9981f', '#7a0f1e', '#e6c36a', '#8e1d29', '#b8860b'];
-                        $categoryLabels = $violationsByCategory->pluck('category_name')->values();
-                        $categoryValues = $violationsByCategory->pluck('violations_count')->values();
+                        $trendLabels = $weeklyTrend['labels'];
+                        $trendValues = $weeklyTrend['values'];
                     @endphp
-                    <div class="row align-items-center">
-                        <div class="col-lg-7">
-                            <canvas
-                                id="categoryChart"
-                                height="260"
-                                data-labels="{{ json_encode($categoryLabels) }}"
-                                data-values="{{ json_encode($categoryValues) }}"
-                                data-chart-data-url="{{ route('admin.dashboard.chart-data') }}"></canvas>
-                        </div>
-                        <div class="col-lg-5">
-                            <div class="row" id="categoryLegend">
-                                @forelse($violationsByCategory as $category)
-                                <div class="col-6 mb-2">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="d-inline-block category-legend-dot" data-color="{{ $categoryChartColors[$loop->index % count($categoryChartColors)] }}"></span>
-                                        <small class="text-muted text-truncate">{{ $category->category_name }}</small>
-                                        <strong class="ms-auto">{{ $category->violations_count }}</strong>
-                                    </div>
-                                </div>
-                                @empty
-                                <div class="col-12">
-                                    <p class="text-muted text-center py-4 mb-0">No category data available</p>
-                                </div>
-                                @endforelse
-                            </div>
-                        </div>
+                    <div class="col-12">
+                        <canvas
+                            id="weeklyChart"
+                            height="260"
+                            data-labels="{{ json_encode($trendLabels) }}"
+                            data-values="{{ json_encode($trendValues) }}"
+                            data-chart-data-url="{{ route('admin.dashboard.chart-data') }}"></canvas>
                     </div>
                 </div>
             </div>

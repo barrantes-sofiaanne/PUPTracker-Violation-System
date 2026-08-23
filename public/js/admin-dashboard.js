@@ -31,10 +31,10 @@ document.addEventListener("DOMContentLoaded", function () {
     updatePhilippineTime();
     setInterval(updatePhilippineTime, 1000);
 
-    // Violations by Category chart (distinct colors per category)
-    var categoryCanvas = document.getElementById("categoryChart");
-    if (categoryCanvas) {
-        var categoryColors = [
+    // Weekly violation trend chart
+    var weeklyCanvas = document.getElementById("weeklyChart");
+    if (weeklyCanvas) {
+        var trendColors = [
             "#800000",
             "#a31515",
             "#daa520",
@@ -50,28 +50,28 @@ document.addEventListener("DOMContentLoaded", function () {
         var initialLabels = [];
         var initialData = [];
         try {
-            initialLabels = JSON.parse(categoryCanvas.dataset.labels || "[]");
-            initialData = JSON.parse(categoryCanvas.dataset.values || "[]");
+            initialLabels = JSON.parse(weeklyCanvas.dataset.labels || "[]");
+            initialData = JSON.parse(weeklyCanvas.dataset.values || "[]");
         } catch (e) {
             initialLabels = [];
             initialData = [];
         }
 
-        var chartDataUrl = categoryCanvas.dataset.chartDataUrl || "";
+        var chartDataUrl = weeklyCanvas.dataset.chartDataUrl || "";
 
-        window.categoryChart = new Chart(categoryCanvas, {
+        window.weeklyViolationChart = new Chart(weeklyCanvas, {
             type: "bar",
             data: {
                 labels: initialLabels,
                 datasets: [
                     {
-                        label: "Violations",
+                        label: "Violations this week",
                         data: initialData,
                         backgroundColor: initialLabels.map(function (_, i) {
-                            return categoryColors[i % categoryColors.length];
+                            return trendColors[i % trendColors.length];
                         }),
                         borderColor: initialLabels.map(function (_, i) {
-                            return categoryColors[i % categoryColors.length];
+                            return trendColors[i % trendColors.length];
                         }),
                         borderWidth: 1,
                     },
@@ -105,23 +105,25 @@ document.addEventListener("DOMContentLoaded", function () {
                         if (!data || !Array.isArray(data)) {
                             return;
                         }
-                        window.categoryChart.data.labels = data.map(
-                            function (d) {
-                                return d.category_name;
-                            },
-                        );
-                        window.categoryChart.data.datasets[0].data = data.map(
-                            function (d) {
-                                return d.violations_count;
-                            },
-                        );
-                        window.categoryChart.data.datasets[0].backgroundColor =
-                            data.map(function (_, i) {
-                                return categoryColors[
-                                    i % categoryColors.length
-                                ];
+                        if (
+                            !Array.isArray(data.labels) ||
+                            !Array.isArray(data.values)
+                        ) {
+                            return;
+                        }
+
+                        window.weeklyViolationChart.data.labels = data.labels;
+                        window.weeklyViolationChart.data.datasets[0].data =
+                            data.values;
+                        window.weeklyViolationChart.data.datasets[0].backgroundColor =
+                            data.values.map(function (_, i) {
+                                return trendColors[i % trendColors.length];
                             });
-                        window.categoryChart.update();
+                        window.weeklyViolationChart.data.datasets[0].borderColor =
+                            data.values.map(function (_, i) {
+                                return trendColors[i % trendColors.length];
+                            });
+                        window.weeklyViolationChart.update();
                     })
                     .catch(function () {
                         /* keep last data on transient errors */
@@ -129,17 +131,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }, 60000);
         }
     }
-
-    // Apply the legend dot colors from the data-color attribute
-    // (set server-side so no Blade directives live in inline CSS).
-    document
-        .querySelectorAll(".category-legend-dot[data-color]")
-        .forEach(function (dot) {
-            dot.style.backgroundColor = dot.dataset.color;
-            dot.style.width = "12px";
-            dot.style.height = "12px";
-            dot.style.borderRadius = "3px";
-        });
 
     document.querySelectorAll("[data-progress-width]").forEach(function (bar) {
         var width = parseFloat(bar.getAttribute("data-progress-width"));

@@ -502,7 +502,6 @@
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" class="form-control"></div>
                 <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" class="form-control" required></div>
-                <div class="col-md-6"><label class="form-label">Position</label><input name="position" class="form-control" value="Admin"></div>
                 <div class="col-md-6"><label class="form-label">Role</label><select name="role_id" class="form-select" required>@foreach($adminRoles as $role)<option value="{{ $role->roles_id }}">{{ $role->roles_name }}</option>@endforeach</select></div>
                 <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" class="form-select" required>@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
                 <div class="col-md-6"><label class="form-label">Password</label><input name="password" type="password" class="form-control" required></div>
@@ -522,10 +521,8 @@
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" class="form-control"></div>
                 <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" class="form-control" required></div>
-                <div class="col-md-6"><label class="form-label">Position</label><input name="position" class="form-control" value="Security Personnel"></div>
-                <div class="col-md-6"><label class="form-label">Contact Number</label><input name="contact_number" class="form-control"></div>
+                <div class="col-md-6"><label class="form-label">Position</label><input name="position" id="create_security_position" class="form-control" value="Security Personnel" readonly tabindex="-1"></div>
                 <div class="col-md-6"><label class="form-label">Password</label><input name="password" type="password" class="form-control" required></div>
-                <div class="col-12"><label class="form-label">Address</label><input name="address" class="form-control"></div>
             </div></div>
             <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Create Security</button></div>
         </form>
@@ -579,7 +576,6 @@
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="admin_firstname" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" id="admin_middlename" class="form-control"></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" id="admin_lastname" class="form-control" required></div>
-            <div class="col-md-6"><label class="form-label">Position</label><input name="position" id="admin_position" class="form-control"></div>
             <div class="col-md-6"><label class="form-label">Role</label><select name="role_id" id="admin_role_id" class="form-select">@foreach($adminRoles as $role)<option value="{{ $role->roles_id }}">{{ $role->roles_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" id="admin_status_id" class="form-select">@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">New Password (optional)</label><input name="password" type="password" class="form-control"></div>
@@ -604,10 +600,8 @@
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="security_firstname" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" id="security_middlename" class="form-control"></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" id="security_lastname" class="form-control" required></div>
-            <div class="col-md-6"><label class="form-label">Position</label><input name="position" id="security_position" class="form-control"></div>
-            <div class="col-md-6"><label class="form-label">Contact Number</label><input name="contact_number" id="security_contact" class="form-control"></div>
+            <div class="col-md-6"><label class="form-label">Position</label><input name="position" id="security_position" class="form-control" value="Security Personnel" readonly tabindex="-1"></div>
             <div class="col-md-6"><label class="form-label">New Password (optional)</label><input name="password" type="password" class="form-control"></div>
-            <div class="col-12"><label class="form-label">Address</label><input name="address" id="security_address" class="form-control"></div>
         </div></div>
         <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Update Security</button></div>
     </form>
@@ -746,7 +740,6 @@ document.querySelectorAll('.editAdminBtn').forEach(function (button) {
         document.getElementById('admin_firstname').value = this.dataset.firstname;
         document.getElementById('admin_middlename').value = this.dataset.middlename;
         document.getElementById('admin_lastname').value = this.dataset.lastname;
-        document.getElementById('admin_position').value = this.dataset.position;
         document.getElementById('admin_status_id').value = this.dataset.status;
         document.getElementById('admin_role_id').value = this.dataset.role;
         document.getElementById('editAdminForm').action = "{{ url('/admin/users/admins') }}/" + this.dataset.id;

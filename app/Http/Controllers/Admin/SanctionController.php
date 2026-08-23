@@ -215,7 +215,7 @@ class SanctionController extends Controller
                 'student_number' => $student->student_number,
                 'message' => 'Your sanction request was approved. Please check your Sanction Record tab. Scheduled date: ' . $scheduledDate->format('M d, Y') . '.',
                 'is_read' => false,
-                'link' => route('student.record'),
+                'link' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
                 'notification_type' => 'sanction',
                 'recipient_type' => 'student',
             ]);
@@ -257,7 +257,7 @@ class SanctionController extends Controller
                     'student_number' => $student->student_number,
                     'message' => 'Your sanction request was declined by the administration.',
                     'is_read' => false,
-                    'link' => route('student.record'),
+                    'link' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
                     'notification_type' => 'sanction',
                     'recipient_type' => 'student',
                 ]);
@@ -295,7 +295,7 @@ class SanctionController extends Controller
                 'student_number' => $studentSanctionRecord->student_number,
                 'message' => 'Your sanction status has been marked as completed by the administration.',
                 'is_read' => false,
-                'link' => route('student.record'),
+                'link' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
                 'notification_type' => 'sanction',
                 'recipient_type' => 'student',
             ]);
@@ -332,7 +332,7 @@ class SanctionController extends Controller
                 'student_number' => $studentSanctionRecord->student_number,
                 'message' => 'Your sanction status was reverted to pending by the administration.',
                 'is_read' => false,
-                'link' => route('student.record'),
+                'link' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
                 'notification_type' => 'sanction',
                 'recipient_type' => 'student',
             ]);
