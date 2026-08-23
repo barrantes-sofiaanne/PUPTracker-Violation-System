@@ -110,7 +110,6 @@
 
         </li>
 
-        @unless($isItAdministrator)
         <li class="sidebar-section-label">Reporting</li>
 
         <li>
@@ -149,20 +148,6 @@
 
         </li>
 
-        <li class="sidebar-section-label">AI Assistance</li>
-
-        <li>
-
-            <a href="{{ route('admin.graduation-review.index') }}" class="{{ request()->routeIs('admin.graduation-review*') ? 'active' : '' }}">
-
-                <i class="bi bi-stars"></i>
-
-                AI Graduation Review
-
-            </a>
-
-        </li>
-        @endunless
 
         <li class="sidebar-section-label">Records & Security</li>
 

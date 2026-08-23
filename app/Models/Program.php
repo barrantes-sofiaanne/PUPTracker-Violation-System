@@ -15,7 +15,26 @@ class Program extends Model
 
     protected $fillable = [
         'program_name',
+        'degree_type',
     ];
+
+    public function normalizedDegreeType(): ?string
+    {
+        return match (strtolower(trim((string) ($this->degree_type ?? '')))) {
+            'bachelor', "bachelor's", 'bachelors', 'bachelor degree', "bachelor's degree" => "Bachelor's",
+            'diploma', 'diploma degree' => 'Diploma',
+            default => null,
+        };
+    }
+
+    public function graduatingYear(): ?int
+    {
+        return match ($this->normalizedDegreeType()) {
+            "Bachelor's" => 4,
+            'Diploma' => 3,
+            default => null,
+        };
+    }
 
     public function students(): HasMany
     {

@@ -216,6 +216,32 @@ class GraduationReviewEnhancementTest extends TestCase
         $this->assertGreaterThan(0, $stats['students_with_outstanding_sanctions']);
     }
 
+    public function test_graduating_program_report_uses_classification_derived_year(): void
+    {
+        $program = Program::orderBy('program_id')->first();
+        $program->update(['degree_type' => "Bachelor's"]);
+        $fourthYear = Year::where('year', 'like', '%4th%')->first();
+        $firstYear = Year::where('year', 'like', '%1st%')->first();
+
+        $eligible = $this->createStudent('2026-eligible', 'Eligible', 'Student', $fourthYear->year_id);
+        $ineligible = $this->createStudent('2026-ineligible', 'Ineligible', 'Student', $firstYear->year_id);
+
+        $students = app(ProgramReportService::class)->studentsFor($program, null, 'graduating');
+
+        $this->assertTrue($students->contains('student_number', $eligible->student_number));
+        $this->assertFalse($students->contains('student_number', $ineligible->student_number));
+    }
+
+    public function test_graduating_program_report_rejects_unclassified_program(): void
+    {
+        $program = Program::orderBy('program_id')->first();
+        $program->update(['degree_type' => null]);
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        app(ProgramReportService::class)->studentsFor($program, null, 'graduating');
+    }
+
     public function test_program_report_ai_narrative_fails_gracefully(): void
     {
         $program = Program::orderBy('program_id')->first();
@@ -385,6 +411,7 @@ class GraduationReviewEnhancementTest extends TestCase
             'program_tbl' => function (Blueprint $table) {
                 $table->id('program_id');
                 $table->string('program_name')->nullable();
+                $table->string('degree_type')->nullable();
             },
             'year_tbl' => function (Blueprint $table) {
                 $table->id('year_id');
@@ -539,8 +566,8 @@ class GraduationReviewEnhancementTest extends TestCase
 
         if (DB::table('program_tbl')->count() === 0) {
             DB::table('program_tbl')->insert([
-                ['program_id' => 1, 'program_name' => 'BSIT'],
-                ['program_id' => 2, 'program_name' => 'BSCS'],
+                ['program_id' => 1, 'program_name' => 'BSIT', 'degree_type' => "Bachelor's"],
+                ['program_id' => 2, 'program_name' => 'BSCS', 'degree_type' => "Bachelor's"],
             ]);
         }
 

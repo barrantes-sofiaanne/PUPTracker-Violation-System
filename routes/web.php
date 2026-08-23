@@ -506,36 +506,6 @@ Route::middleware('auth:admin')
 
         /*
         |--------------------------------------------------------------------------
-        | AI-Assisted Graduation Disciplinary Review
-        |--------------------------------------------------------------------------
-        */
-
-        Route::get('/graduation-review', [App\Http\Controllers\Admin\GraduationReviewController::class, 'index'])
-            ->name('admin.graduation-review.index');
-
-        Route::get('/graduation-review/{student_number}', [App\Http\Controllers\Admin\GraduationReviewController::class, 'show'])
-            ->where('student_number', '[A-Za-z0-9\-]+')
-            ->name('admin.graduation-review.show');
-
-        Route::post('/graduation-review/{student_number}/generate', [App\Http\Controllers\Admin\GraduationReviewController::class, 'generate'])
-            ->where('student_number', '[A-Za-z0-9\-]+')
-            ->name('admin.graduation-review.generate');
-
-        Route::post('/graduation-review/generate-batch', [App\Http\Controllers\Admin\GraduationReviewController::class, 'generateBatch'])
-            ->name('admin.graduation-review.generate-batch');
-
-        Route::get('/graduation-review/batch-progress', [App\Http\Controllers\Admin\GraduationReviewController::class, 'batchProgress'])
-            ->name('admin.graduation-review.batch-progress');
-
-        Route::post('/graduation-review/retry-failed', [App\Http\Controllers\Admin\GraduationReviewController::class, 'retryFailed'])
-            ->name('admin.graduation-review.retry-failed');
-
-        Route::post('/graduation-review/{student_number}/decision', [App\Http\Controllers\Admin\GraduationReviewController::class, 'storeDecision'])
-            ->where('student_number', '[A-Za-z0-9\-]+')
-            ->name('admin.graduation-review.decision');
-
-        /*
-        |--------------------------------------------------------------------------
         | Program Sanction Summary Report
         |--------------------------------------------------------------------------
         */
@@ -545,6 +515,10 @@ Route::middleware('auth:admin')
 
         Route::post('/program-report', [App\Http\Controllers\Admin\ProgramReportController::class, 'generate'])
             ->name('admin.program-report.generate');
+
+        Route::post('/program-report/{reportId}/ai-summary', [App\Http\Controllers\Admin\ProgramReportController::class, 'generateAi'])
+            ->whereNumber('reportId')
+            ->name('admin.program-report.ai-summary');
 
         Route::get('/program-report/{reportId}', [App\Http\Controllers\Admin\ProgramReportController::class, 'show'])
             ->whereNumber('reportId')

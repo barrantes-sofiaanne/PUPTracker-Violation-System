@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Violation;
 use App\Models\ViolationCategory;
 use Illuminate\Support\Collection;
+use InvalidArgumentException;
 
 /**
  * Laravel-only aggregation for the Program Sanction Summary Report.
@@ -25,9 +26,9 @@ class ProgramReportService
     /**
      * All graduating students for a program + academic year (no limit).
      */
-    public function studentsFor(Program $program, string $academicYear): Collection
+    public function studentsFor(Program $program, ?string $academicYear = null, string $reportMode = 'regular'): Collection
     {
-        return User::query()
+        $query = User::query()
             ->with([
                 'studentInfo.program',
                 'studentInfo.year',
@@ -36,21 +37,41 @@ class ProgramReportService
                 'status',
             ])
             ->where('roles_id', 2)
-            ->whereHas('studentInfo', fn ($q) => $q->where('program_id', $program->program_id))
-            ->whereHas('studentInfo.year', function ($q) use ($academicYear) {
+            ->whereHas('studentInfo', fn ($q) => $q->where('program_id', $program->program_id));
+
+        if ($reportMode === 'graduating') {
+            $graduatingYear = $program->graduatingYear();
+            if ($graduatingYear === null) {
+                throw new InvalidArgumentException('This program has no valid degree-type classification. Update the program configuration before generating a graduating report.');
+            }
+
+            $yearLabels = match ($graduatingYear) {
+                3 => ['3', '3rd Year', 'Third Year'],
+                4 => ['4', '4th Year', 'Fourth Year'],
+                default => [(string) $graduatingYear, $graduatingYear . 'th Year'],
+            };
+
+            $query->whereHas('studentInfo.year', fn ($q) => $q->whereIn('year', $yearLabels));
+        } else {
+            if ($academicYear === null || trim($academicYear) === '') {
+                throw new InvalidArgumentException('An academic year is required for a regular program report.');
+            }
+
+            $query->whereHas('studentInfo.year', function ($q) use ($academicYear) {
                 $q->where('year', 'like', '%' . $academicYear . '%')
                     ->orWhereRaw('LOWER(year) LIKE ?', ['%' . strtolower($academicYear) . '%']);
-            })
-            ->orderBy('last_name')
-            ->get();
+            });
+        }
+
+        return $query->orderBy('last_name')->get();
     }
 
     /**
      * Aggregate factual statistics for the selected program cohort.
      */
-    public function aggregate(Program $program, string $academicYear, string $reportType = 'full'): array
+    public function aggregate(Program $program, ?string $academicYear, string $reportType = 'full', string $reportMode = 'regular'): array
     {
-        $students = $this->studentsFor($program, $academicYear);
+        $students = $this->studentsFor($program, $academicYear, $reportMode);
 
         $screened = $students
             ->map(fn (User $student) => $this->screening->screenStudent($student))
@@ -87,6 +108,11 @@ class ProgramReportService
             'program' => $program->program_name,
             'academic_year' => $academicYear,
             'report_type' => $reportType,
+            'report_mode' => $reportMode,
+            'degree_type' => $program->normalizedDegreeType(),
+            'graduating_year' => $program->graduatingYear(),
+            'students_with_violations' => $filtered->filter(fn ($s) => (int) $s['total_violations'] > 0)->count(),
+            'students' => $filtered->all(),
             'total_students' => $filtered->count(),
             'cohort_total' => $students->count(),
             'students_with_no_violations' => $noHistory,

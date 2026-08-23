@@ -8,21 +8,29 @@
 
     @php $stats = $report->statistics_json ?? []; @endphp
 
-    <x-admin.page-header title="Program Sanction Summary Report" :description="$report->program?->program_name . ' · Cohort ' . $report->academic_year">
+    <x-admin.page-header title="Program Sanction Report" :description="$report->program?->program_name . ($report->report_mode === 'graduating' ? ' · Graduating Students' : ' · Cohort ' . $report->academic_year)">
         <x-slot name="actions">
             <a href="{{ route('admin.program-report.history') }}" class="admin-btn admin-btn-neutral">
                 <i class="bi bi-clock-history"></i> History
             </a>
+            @if(empty($report->ai_narrative))
+                <form action="{{ route('admin.program-report.ai-summary', $report->report_id) }}" method="POST" class="d-inline" data-submit-guard="Generating AI summary...">
+                    @csrf
+                    <button type="submit" class="admin-btn admin-btn-secondary">
+                        <i class="bi bi-stars"></i> Generate AI Summary
+                    </button>
+                </form>
+            @endif
             <a href="{{ route('admin.program-report.pdf', $report->report_id) }}" class="admin-btn admin-btn-danger">
                 <i class="bi bi-file-earmark-pdf"></i> Download PDF
             </a>
         </x-slot>
     </x-admin.page-header>
 
-    @if ($report->ai_failed)
+    @if (session('warning') || $report->ai_failed)
         <div class="alert alert-warning" role="alert">
             <i class="bi bi-exclamation-triangle"></i>
-            The AI narrative could not be generated. The factual Laravel statistics below are complete and available for manual review.
+            {{ session('warning') ?: 'AI-assisted summary is temporarily unavailable. The factual disciplinary report is still available for review.' }}
         </div>
     @endif
 
@@ -35,8 +43,16 @@
                     <strong>{{ $report->program?->program_name }}</strong>
                 </div>
                 <div class="col-md-3">
-                    <small class="text-muted d-block">Academic Year</small>
-                    <strong>{{ $report->academic_year }}</strong>
+                    <small class="text-muted d-block">Report Mode</small>
+                    <strong>{{ $report->report_mode === 'graduating' ? 'Graduating Students' : 'Program Sanction Report' }}</strong>
+                </div>
+                <div class="col-md-3">
+                    <small class="text-muted d-block">Degree Type</small>
+                    <strong>{{ $report->degree_type ?: 'Not classified' }}</strong>
+                </div>
+                <div class="col-md-3">
+                    <small class="text-muted d-block">Applied Year</small>
+                    <strong>{{ $report->graduating_year ? $report->graduating_year . ($report->graduating_year === 3 ? 'rd' : 'th') . ' Year' : ($report->academic_year ?: 'All configured years') }}</strong>
                 </div>
                 <div class="col-md-3">
                     <small class="text-muted d-block">Generated</small>
@@ -66,6 +82,12 @@
         </div>
         <div class="col-lg-2 col-md-4 col-6 mb-3">
             <div class="card shadow-sm border-0"><div class="card-body text-center">
+                <small class="text-muted">With Violations</small>
+                <h2 class="fw-bold text-danger mb-0">{{ $stats['students_with_violations'] ?? 0 }}</h2>
+            </div></div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <div class="card shadow-sm border-0"><div class="card-body text-center">
                 <small class="text-muted">Completed</small>
                 <h2 class="fw-bold text-primary mb-0">{{ $stats['students_with_completed_sanctions'] ?? 0 }}</h2>
             </div></div>
@@ -90,19 +112,60 @@
         </div>
     </div>
 
-    {{-- AI narrative --}}
+    {{-- Optional AI assistance --}}
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white">
-            <i class="bi bi-stars text-warning"></i> <strong>AI-Assisted Program Analysis</strong>
+            <i class="bi bi-stars text-warning"></i> <strong>AI-Assisted Summary</strong>
             <span class="badge bg-warning text-dark ms-2">Advisory Only</span>
         </div>
         <div class="card-body">
             @if ($report->ai_narrative)
-                <p class="mb-0">{{ $report->ai_narrative }}</p>
+                <div style="white-space: pre-line;">{{ $report->ai_narrative }}</div>
             @else
-                <p class="text-muted mb-0">No AI narrative was generated for this report.</p>
+                <p class="text-muted mb-0">Generate an optional AI-assisted summary after reviewing the factual records.</p>
             @endif
         </div>
+    </div>
+
+    @if($report->report_mode === 'graduating')
+        <div class="alert alert-info mb-4">
+            <strong>Applied eligibility:</strong>
+            {{ $report->degree_type }} programs include only {{ $report->graduating_year }}{{ $report->graduating_year === 3 ? 'rd' : 'th' }} Year students. Eligibility is determined by the system records, not AI.
+        </div>
+    @endif
+
+    {{-- Factual student-level results --}}
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white"><strong>Student Disciplinary Summaries</strong></div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr><th>Student</th><th>Student Number</th><th>Violations</th><th>Sanctions</th><th>Outstanding</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    @forelse($studentPage as $student)
+                        @php
+                            $studentStatus = (int) ($student['outstanding_sanctions'] ?? 0) > 0
+                                ? 'Outstanding Sanction Review'
+                                : ((int) ($student['total_violations'] ?? 0) > 0 ? 'Completed / Historical' : 'No Immediate Concern');
+                        @endphp
+                        <tr>
+                            <td>{{ $student['student_name'] ?? 'Student record unavailable' }}</td>
+                            <td>{{ $student['student_number'] ?? 'Unavailable' }}</td>
+                            <td>{{ $student['total_violations'] ?? 0 }}</td>
+                            <td>{{ $student['total_sanction_records'] ?? 0 }}</td>
+                            <td>{{ $student['outstanding_sanctions'] ?? 0 }}</td>
+                            <td><x-admin.badge :status="(int) ($student['outstanding_sanctions'] ?? 0) > 0 ? 'outstanding' : 'success'" :label="$studentStatus" /></td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="6" class="text-center text-muted py-4">No eligible students were found for this report.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if($studentPage->hasPages())
+            <div class="card-footer bg-white">{{ $studentPage->links() }}</div>
+        @endif
     </div>
 
     {{-- Violation summary --}}

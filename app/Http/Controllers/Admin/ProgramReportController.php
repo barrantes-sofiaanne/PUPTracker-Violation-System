@@ -7,10 +7,14 @@ use App\Models\Program;
 use App\Models\ProgramReport;
 use App\Services\AIGraduationReviewService;
 use App\Services\ProgramReportService;
+use App\Models\AuditLog;
+use Illuminate\Support\Facades\Schema;
+use InvalidArgumentException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ProgramReportController extends Controller
 {
@@ -38,45 +42,39 @@ class ProgramReportController extends Controller
      */
     public function generate(Request $request): \Illuminate\Http\RedirectResponse
     {
+        // Preserve the existing regular-report POST contract while the UI
+        // introduces the explicit report mode selector.
+        $request->merge(['report_mode' => $request->input('report_mode', 'regular')]);
+
         $validated = $request->validate([
             'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
-            'academic_year' => ['required', 'string', 'max:20'],
+            'report_mode' => ['required', 'in:regular,graduating'],
+            'academic_year' => ['nullable', 'string', 'max:20', 'required_if:report_mode,regular'],
             'report_type' => ['required', 'in:full,violations,outstanding,manual_review'],
         ]);
 
         $program = Program::findOrFail((int) $validated['program_id']);
-        $academicYear = trim($validated['academic_year']);
+        $reportMode = $validated['report_mode'];
+        $academicYear = $reportMode === 'graduating' ? null : trim((string) $validated['academic_year']);
         $reportType = $validated['report_type'];
 
-        $statistics = $this->programReport->aggregate($program, $academicYear, $reportType);
-
-        $adminId = Auth::guard('admin')->id();
-        $model = (string) config('graduation_review.ai.model');
-        $aiFailed = false;
-        $narrative = null;
-
-        if ($this->ai->isAvailable()) {
-            try {
-                $result = $this->ai->generateProgramAnalysis($this->aiDataset($statistics));
-                $narrative = $result['narrative'];
-            } catch (\Throwable $e) {
-                Log::warning('AI program narrative failed; keeping Laravel statistics.', [
-                    'program_id' => $program->program_id,
-                    'error' => $e->getMessage(),
-                ]);
-                $aiFailed = true;
-            }
-        } else {
-            $aiFailed = true;
+        try {
+            $statistics = $this->programReport->aggregate($program, $academicYear, $reportType, $reportMode);
+        } catch (InvalidArgumentException $exception) {
+            return back()->withInput()->withErrors(['program_id' => $exception->getMessage()]);
         }
 
-        $report = ProgramReport::create([
+        $adminId = Auth::guard('admin')->id();
+        $reportData = [
             'program_id' => $program->program_id,
             'academic_year' => $academicYear,
             'report_type' => $reportType,
+            'report_mode' => $reportMode,
+            'degree_type' => $statistics['degree_type'],
+            'graduating_year' => $statistics['graduating_year'],
             'generated_by_admin_id' => $adminId,
             'generated_at' => now(),
-            'report_status' => $aiFailed ? 'ai_failed' : 'generated',
+            'report_status' => 'generated',
             'statistics_json' => $statistics,
             'violation_breakdown' => [
                 'categories' => $statistics['violation_categories'],
@@ -85,16 +83,75 @@ class ProgramReportController extends Controller
             'repeated_violations' => $statistics['repeated_violations'],
             'outstanding_students' => $statistics['outstanding_students'],
             'manual_review_students' => $statistics['manual_review_students'],
-            'ai_narrative' => $narrative,
-            'ai_model' => $model,
-            'ai_failed' => $aiFailed,
-        ]);
+            'ai_failed' => ! $this->ai->isAvailable(),
+        ];
+
+        foreach (['report_mode', 'degree_type', 'graduating_year'] as $column) {
+            if (! Schema::hasColumn('program_reports', $column)) {
+                unset($reportData[$column]);
+            }
+        }
+
+        $report = ProgramReport::create($reportData);
+
+        $this->audit(
+            $adminId,
+            'Generated Program Report',
+            ucfirst($reportMode) . ' report for program #' . $program->program_id . '.'
+        );
 
         return redirect()
             ->route('admin.program-report.show', $report->report_id)
-            ->with($aiFailed ? 'warning' : 'success', $aiFailed
-                ? 'Report generated. The AI narrative was unavailable, but the factual statistics are complete.'
-                : 'Report generated successfully.');
+            ->with('success', 'Factual program report generated successfully.');
+    }
+
+    public function generateAi(Request $request, int $reportId): \Illuminate\Http\RedirectResponse
+    {
+        $report = ProgramReport::with('program')->findOrFail($reportId);
+        $this->authorizeReport($report);
+
+        if (! $this->ai->isAvailable()) {
+            return back()->with('warning', 'AI-assisted summary is temporarily unavailable. The factual disciplinary report is still available for review.');
+        }
+
+        $statistics = $report->statistics_json ?? [];
+        $students = collect($statistics['students'] ?? []);
+        if ($students->isEmpty()) {
+            return back()->with('warning', 'No factual student records are available for AI analysis.');
+        }
+
+        $narratives = [];
+        $chunkSize = max(1, (int) config('graduation_review.ai.batch_size', 50));
+
+        try {
+            foreach ($students->chunk($chunkSize) as $chunk) {
+                $dataset = $this->aiDataset($statistics);
+                $dataset['students'] = $chunk->values()->all();
+                $narratives[] = $this->ai->generateProgramAnalysis($dataset)['narrative'];
+            }
+        } catch (\Throwable $exception) {
+            Log::warning('AI program summary failed; factual report remains available.', [
+                'report_id' => $report->report_id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return back()->with('warning', 'AI-assisted summary is temporarily unavailable. The factual disciplinary report is still available for review.');
+        }
+
+        $report->update([
+            'ai_narrative' => implode("\n\n", $narratives),
+            'ai_model' => (string) config('graduation_review.ai.model'),
+            'ai_failed' => false,
+            'report_status' => 'generated',
+        ]);
+
+        $this->audit(
+            Auth::guard('admin')->id(),
+            'Generated AI Program Summary',
+            'Generated AI-assisted summary for program report #' . $report->report_id . '.'
+        );
+
+        return back()->with('success', 'AI-assisted summary generated from the factual report.');
     }
 
     /**
@@ -107,7 +164,18 @@ class ProgramReportController extends Controller
 
         $this->authorizeReport($report);
 
-        return view('admin.program-report.show', compact('report'));
+        $stats = $report->statistics_json ?? [];
+        $students = collect($stats['students'] ?? []);
+        $page = max(1, (int) $request->input('students_page', 1));
+        $studentPage = new LengthAwarePaginator(
+            $students->forPage($page, 50)->values(),
+            $students->count(),
+            50,
+            $page,
+            ['path' => route('admin.program-report.show', $report->report_id), 'query' => $request->query()]
+        );
+
+        return view('admin.program-report.show', compact('report', 'studentPage'));
     }
 
     /**
@@ -119,6 +187,12 @@ class ProgramReportController extends Controller
             ->findOrFail($reportId);
 
         $this->authorizeReport($report);
+
+        $this->audit(
+            Auth::guard('admin')->id(),
+            'Exported Program Report',
+            'Exported program report #' . $report->report_id . ' as PDF.'
+        );
 
         $html = view('admin.program-report.pdf', compact('report'))->render();
 
@@ -153,7 +227,7 @@ class ProgramReportController extends Controller
 
         // Non-super admins only see their own generated reports.
         if ($admin && method_exists($admin, 'isItAdministrator') && ! $admin->isItAdministrator()) {
-            $query->where('generated_by_admin_id', $admin->getKey());
+            $query->where('generated_by_admin_id', $admin->id);
         }
 
         if ($request->filled('program_id')) {
@@ -162,6 +236,10 @@ class ProgramReportController extends Controller
 
         if ($request->filled('report_type')) {
             $query->where('report_type', $request->string('report_type')->toString());
+        }
+
+        if ($request->filled('report_mode') && Schema::hasColumn('program_reports', 'report_mode')) {
+            $query->where('report_mode', $request->string('report_mode')->toString());
         }
 
         $reports = $query->paginate(15)->withQueryString();
@@ -180,6 +258,9 @@ class ProgramReportController extends Controller
         return [
             'program' => $statistics['program'],
             'academic_year' => $statistics['academic_year'],
+            'report_mode' => $statistics['report_mode'],
+            'degree_type' => $statistics['degree_type'],
+            'graduating_year' => $statistics['graduating_year'],
             'graduating_students' => $statistics['cohort_total'],
             'students_with_no_violations' => $statistics['students_with_no_violations'],
             'students_with_completed_sanctions' => $statistics['students_with_completed_sanctions'],
@@ -190,6 +271,7 @@ class ProgramReportController extends Controller
             'total_violation_records' => $statistics['total_violation_records'],
             'violation_categories' => $statistics['violation_categories'],
             'violation_types' => $statistics['violation_types'],
+            'students' => $statistics['students'],
         ];
     }
 
@@ -204,6 +286,19 @@ class ProgramReportController extends Controller
             return;
         }
 
-        abort_unless($admin && (int) $report->generated_by_admin_id === (int) $admin->getKey(), 403);
+        abort_unless($admin && (int) $report->generated_by_admin_id === (int) $admin->id, 403);
+    }
+
+    protected function audit(?int $adminId, string $action, string $description): void
+    {
+        if (Schema::hasTable('audit_logs')) {
+            AuditLog::create([
+                'actor_type' => 'admin',
+                'actor_id' => $adminId,
+                'action' => $action,
+                'module' => 'Program Reports',
+                'description' => $description,
+            ]);
+        }
     }
 }

@@ -291,9 +291,10 @@ class AIGraduationReviewService
             'You are an AI assistant supporting a university Discipline Office reviewer.',
             'You analyze ONLY the aggregated program statistics provided to you. Never invent counts, categories, or data.',
             'You must NEVER make any graduation eligibility decision. That decision belongs exclusively to the Discipline Office.',
-            'Produce a professional, neutral narrative covering: overall disciplinary situation, common patterns, significant trends, areas requiring administrative attention, and general observations.',
+            'Produce structured observations with exactly these keys: overall_observation, recurring_patterns, outstanding_concerns, notable_records, summary.',
+            'Each value must be a concise string based only on the supplied facts. Do not make graduation or clearance decisions.',
             'Base every statement strictly on the supplied statistics. If data is insufficient, say so.',
-            'Return ONLY a single valid JSON object with exactly this key: narrative (a string).',
+            'Return ONLY a single valid JSON object with exactly these keys: overall_observation, recurring_patterns, outstanding_concerns, notable_records, summary.',
         ]);
 
         try {
@@ -335,11 +336,23 @@ class AIGraduationReviewService
             }
         }
 
-        $narrative = trim((string) ($decoded['narrative'] ?? ''));
+        $sections = [
+            'Overall Observation' => $decoded['overall_observation'] ?? '',
+            'Recurring Patterns' => $decoded['recurring_patterns'] ?? '',
+            'Outstanding Concerns' => $decoded['outstanding_concerns'] ?? '',
+            'Notable Records' => $decoded['notable_records'] ?? '',
+            'Summary' => $decoded['summary'] ?? '',
+        ];
+        $sections = array_map(fn ($value): string => trim((string) $value), $sections);
 
-        if ($narrative === '') {
+        if (implode('', $sections) === '') {
             throw new RuntimeException('AI returned an invalid program analysis.');
         }
+
+        $narrative = collect($sections)
+            ->filter()
+            ->map(fn ($value, $label): string => $label . ":\n" . $value)
+            ->implode("\n\n");
 
         return ['narrative' => mb_substr($narrative, 0, 10000)];
     }

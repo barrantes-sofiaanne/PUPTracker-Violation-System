@@ -18,6 +18,9 @@ class ProgramReport extends Model
         'program_id',
         'academic_year',
         'report_type',
+        'report_mode',
+        'degree_type',
+        'graduating_year',
         'generated_by_admin_id',
         'generated_at',
         'report_status',
@@ -39,6 +42,7 @@ class ProgramReport extends Model
         'manual_review_students' => 'array',
         'generated_at' => 'datetime',
         'ai_failed' => 'boolean',
+        'graduating_year' => 'integer',
     ];
 
     public function program(): BelongsTo

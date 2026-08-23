@@ -19,6 +19,7 @@ return [
         'api_key' => env('AI_GRADUATION_REVIEW_API_KEY', ''),
         'model' => env('AI_GRADUATION_REVIEW_MODEL', ''),
         'timeout' => (int) env('AI_GRADUATION_REVIEW_TIMEOUT', 30),
+        'batch_size' => (int) env('AI_GRADUATION_REVIEW_BATCH_SIZE', 50),
     ],
 
     /*
