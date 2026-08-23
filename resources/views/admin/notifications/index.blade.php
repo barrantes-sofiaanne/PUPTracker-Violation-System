@@ -82,12 +82,13 @@
                             data-message="{{ e($notification->message) }}"
                             data-created="{{ optional($notification->created_at)->format('F d, Y h:i A') }}"
                             data-type="{{ $notification->notification_type }}"
-                            data-link="{{ $notification->link ?: '' }}"
+                            data-link="{{ $notification->target_type ? route('admin.notifications.open', $notification) : '' }}"
+                            data-title="{{ $notification->title ?: '' }}"
                             data-id="{{ $notification->admin_notification_id }}">
                             <div class="fw-semibold">
                                 @if ($notification->notification_type === 'system_email_failure')
                                     <i class="bi bi-exclamation-octagon-fill text-danger me-1"></i>
-                                @elseif ($notification->notification_type === 'sanction')
+                                @elseif (in_array($notification->notification_type, ['sanction', 'disciplinary_sanction_request'], true))
                                     <i class="bi bi-shield-check text-primary me-1"></i>
                                 @else
                                     <i class="bi bi-bell-fill text-muted me-1"></i>
@@ -184,6 +185,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Map notification types to meaningful modal titles + action labels.
     const TYPE_TITLES = {
         sanction: 'Disciplinary Sanction Request',
+        disciplinary_sanction_request: 'Disciplinary Sanction Request',
         system_email_failure: 'System Email Failure',
         violation: 'Violation Recorded',
         announcement: 'Announcement',
@@ -194,6 +196,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const TYPE_ACTIONS = {
         sanction: 'Open Request',
+        disciplinary_sanction_request: 'Open Request',
         system_email_failure: 'View Details',
         violation: 'View Violation',
         announcement: 'View Announcement',
@@ -220,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.admin-notif-trigger').forEach(function (item) {
         item.addEventListener('click', function () {
             const type = item.dataset.type || 'notification';
-            titleEl.textContent = TYPE_TITLES[type] || 'Notification';
+            titleEl.textContent = item.dataset.title || TYPE_TITLES[type] || 'Notification';
             dateEl.textContent = item.dataset.created || '';
             messageEl.textContent = item.dataset.message || '';
             linkLabelEl.textContent = TYPE_ACTIONS[type] || 'Open';

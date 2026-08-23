@@ -125,6 +125,34 @@ class SanctionController extends Controller
         return view('admin.sanctions.index', compact('sanctions', 'violationTypes', 'requests', 'studentSanctions'));
     }
 
+    public function showRequest(SanctionRequest $sanctionRequest)
+    {
+        $sanctionRequest->load(['student', 'violationType.violationCategory']);
+
+        $latestViolation = Violation::where('student_number', $sanctionRequest->student_number)
+            ->where('violation_type', $sanctionRequest->violation_type_id)
+            ->latest('violation_date')
+            ->first();
+
+        $offenseCount = Violation::where('student_number', $sanctionRequest->student_number)
+            ->where('violation_type', $sanctionRequest->violation_type_id)
+            ->count();
+        $offenseLevel = $this->formatOffenseLevel($offenseCount);
+        $assignedSanction = DisciplinarySanction::where('violation_type_id', $sanctionRequest->violation_type_id)
+            ->where('offense_level', $offenseLevel)
+            ->first()
+            ?? DisciplinarySanction::where('violation_type_id', $sanctionRequest->violation_type_id)
+                ->orderBy('disciplinary_sanction_id')
+                ->first();
+
+        return view('admin.sanctions.request', compact(
+            'sanctionRequest',
+            'latestViolation',
+            'offenseLevel',
+            'assignedSanction'
+        ));
+    }
+
     public function approveRequest(Request $request, SanctionRequest $sanctionRequest): RedirectResponse
     {
         if (!$sanctionRequest->is_active) {

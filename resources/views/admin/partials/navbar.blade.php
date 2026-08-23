@@ -39,8 +39,16 @@
                 $adminUnreadCount = 0;
                 try {
                     if (\Illuminate\Support\Facades\Schema::hasTable('admin_notifications_tbl')) {
-                        $adminRecentNotifications = \App\Models\AdminNotification::orderBy('created_at', 'desc')->take(5)->get();
-                        $adminUnreadCount = \App\Models\AdminNotification::where('is_read', false)->count();
+                        $notificationQuery = \App\Models\AdminNotification::query();
+                        if (\Illuminate\Support\Facades\Schema::hasColumn('admin_notifications_tbl', 'recipient_type')) {
+                            $notificationQuery->where(function ($query): void {
+                                $query->whereNull('recipient_type')->orWhere('recipient_type', 'admin');
+                            })->where(function ($query) use ($adminUser): void {
+                                $query->whereNull('recipient_id')->orWhere('recipient_id', $adminUser?->id);
+                            });
+                        }
+                        $adminRecentNotifications = (clone $notificationQuery)->orderBy('created_at', 'desc')->take(5)->get();
+                        $adminUnreadCount = (clone $notificationQuery)->where('is_read', false)->count();
                     }
                 } catch (\Throwable $e) {
                     // keep empty defaults
@@ -63,7 +71,7 @@
                     @endif
                 </button>
 
-                <div class="dropdown-menu dropdown-menu-end admin-notif-dropdown">
+                <div class="dropdown-menu dropdown-menu-end admin-notif-dropdown" data-unread-count="{{ $adminUnreadCount }}">
                     <div class="admin-notif-head">
                         <div>
                             <div class="admin-notif-title"><i class="bi bi-bell-fill" aria-hidden="true"></i>Notifications</div>
@@ -75,11 +83,11 @@
                     </div>
                     <div class="admin-notif-list">
                         @forelse($adminRecentNotifications as $notif)
-                            <a href="{{ $notif->link ?: route('admin.notifications') }}" class="admin-notif-item {{ $notif->is_read ? '' : 'unread' }}" data-notif-id="{{ $notif->admin_notification_id }}" data-notif-unread="{{ $notif->is_read ? '0' : '1' }}">
+                            <a href="{{ $notif->target_type ? route('admin.notifications.open', $notif) : route('admin.notifications') }}" class="admin-notif-item {{ $notif->is_read ? '' : 'unread' }}" data-notif-id="{{ $notif->admin_notification_id }}" data-notif-unread="{{ $notif->is_read ? '0' : '1' }}">
                                 <span class="admin-notif-icon {{ $notif->notification_type === 'system_email_failure' ? 'danger' : ($notif->notification_type === 'sanction' ? 'warning' : 'default') }}" aria-hidden="true">
                                     @if($notif->notification_type === 'system_email_failure')
                                         <i class="bi bi-exclamation-octagon-fill"></i>
-                                    @elseif($notif->notification_type === 'sanction')
+                                    @elseif(in_array($notif->notification_type, ['sanction', 'disciplinary_sanction_request'], true))
                                         <i class="bi bi-shield-check"></i>
                                     @else
                                         <i class="bi bi-bell-fill"></i>
@@ -143,7 +151,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Mark an unread notification as read when it is clicked in the dropdown.
     const notifUrl = "{{ route('admin.notifications.unread-count') }}";
-    let unreadCount = {{ $adminUnreadCount }};
+    let unreadCount = Number(document.querySelector('.admin-notif-dropdown')?.dataset.unreadCount || 0);
 
     document.querySelectorAll('.admin-notif-item[data-notif-unread="1"]').forEach(function (item) {
         item.addEventListener('click', function () {

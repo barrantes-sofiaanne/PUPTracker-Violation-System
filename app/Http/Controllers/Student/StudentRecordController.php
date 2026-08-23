@@ -12,7 +12,7 @@ use App\Models\SanctionRequest;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\AdminNotification;
+use App\Services\AdminNotificationService;
 class StudentRecordController extends Controller
 {
     public function index()
@@ -378,17 +378,13 @@ public function requestSanction(Request $request)
             ]);
         }
 
-        AdminNotification::create([
-
-            'message' => $user->first_name .
-                ' ' .
-                $user->last_name .
-                ' requested a disciplinary sanction.',
-
-            'link' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
-            'notification_type' => 'sanction',
-
-        ]);
+        app(AdminNotificationService::class)->create(
+            type: 'disciplinary_sanction_request',
+            title: 'Disciplinary Sanction Request',
+            message: $user->first_name . ' ' . $user->last_name . ' requested a disciplinary sanction.',
+            targetType: 'sanction_request',
+            targetId: (int) $sanctionRequest->request_id,
+        );
 
         DB::commit();
 

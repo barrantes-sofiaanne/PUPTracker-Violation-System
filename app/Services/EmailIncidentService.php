@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\AdminNotification;
 use App\Models\EmailIncident;
+use App\Services\AdminNotificationService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -105,15 +105,13 @@ class EmailIncidentService
      */
     protected function notifySuperAdmin(EmailIncident $incident): void
     {
-        $link = $this->incidentUrl($incident);
-
-        AdminNotification::create([
-            'message' => 'Email Dispatch Failed — ' . ($incident->email_type ?: 'System Email'),
-            'link' => $link,
-            'notification_type' => 'system_email_failure',
-            'is_read' => false,
-            'created_at' => now(),
-        ]);
+        app(AdminNotificationService::class)->create(
+            type: 'system_email_failure',
+            title: 'System Email Failure',
+            message: 'Email Dispatch Failed — ' . ($incident->email_type ?: 'System Email'),
+            targetType: 'email_incident',
+            targetId: (int) $incident->incident_id,
+        );
     }
 
     protected function incidentUrl(EmailIncident $incident): ?string

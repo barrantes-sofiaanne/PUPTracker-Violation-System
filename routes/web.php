@@ -355,6 +355,9 @@ Route::middleware('auth:admin')
         Route::get('/sanctions', [SanctionController::class, 'index'])
             ->name('admin.sanctions.index');
 
+        Route::get('/sanctions/requests/{sanctionRequest}', [SanctionController::class, 'showRequest'])
+            ->name('admin.sanctions.requests.show');
+
         Route::post('/sanctions/requests/{sanctionRequest}/approve', [SanctionController::class, 'approveRequest'])
             ->name('admin.sanctions.requests.approve');
 
@@ -458,6 +461,9 @@ Route::middleware('auth:admin')
 
         Route::get('/notifications/unread-count', [AdminNotificationController::class, 'unreadCount'])
             ->name('admin.notifications.unread-count');
+
+        Route::get('/notifications/{notification}/open', [AdminNotificationController::class, 'open'])
+            ->name('admin.notifications.open');
 
         Route::post('/notifications/{notification}/read', [AdminNotificationController::class, 'markAsRead'])
             ->name('admin.notifications.read');

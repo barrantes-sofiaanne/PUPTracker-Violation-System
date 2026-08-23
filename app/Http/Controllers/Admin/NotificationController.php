@@ -3,14 +3,26 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use App\Models\AdminNotification;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class NotificationController extends Controller
 {
     public function index(Request $request)
     {
-        $query = AdminNotification::query();
+        $adminId = auth('admin')->id();
+        $query = AdminNotification::query()
+            ->where(function ($recipientQuery) use ($adminId): void {
+                $recipientQuery->whereNull('recipient_type')
+                    ->orWhere('recipient_type', 'admin');
+            })
+            ->where(function ($recipientQuery) use ($adminId): void {
+                $recipientQuery->whereNull('recipient_id')
+                    ->orWhere('recipient_id', $adminId);
+            });
 
         // Status filter (read/unread/all)
         $status = $request->input('status', '');
@@ -32,7 +44,7 @@ class NotificationController extends Controller
         }
 
         $notifications = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
-        $unreadCount = AdminNotification::where('is_read', false)->count();
+        $unreadCount = $this->accessibleNotifications($adminId)->where('is_read', false)->count();
         $types = AdminNotification::query()
             ->distinct()
             ->pluck('notification_type')
@@ -47,6 +59,7 @@ class NotificationController extends Controller
 
     public function markAsRead(Request $request, AdminNotification $notification)
     {
+        $this->authorizeNotification($notification);
         $notification->update(['is_read' => true]);
 
         if ($request->expectsJson()) {
@@ -58,6 +71,7 @@ class NotificationController extends Controller
 
     public function markAsUnread(Request $request, AdminNotification $notification)
     {
+        $this->authorizeNotification($notification);
         $notification->update(['is_read' => false]);
 
         if ($request->expectsJson()) {
@@ -69,7 +83,9 @@ class NotificationController extends Controller
 
     public function markAllRead()
     {
-        AdminNotification::where('is_read', false)->update(['is_read' => true]);
+        $this->accessibleNotifications(auth('admin')->id())
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
 
         return back()->with('success', 'All notifications marked as read.');
     }
@@ -81,7 +97,50 @@ class NotificationController extends Controller
     public function unreadCount()
     {
         return response()->json([
-            'unread_count' => AdminNotification::where('is_read', false)->count(),
+            'unread_count' => $this->accessibleNotifications(auth('admin')->id())
+                ->where('is_read', false)
+                ->count(),
         ]);
+    }
+
+    public function open(AdminNotification $notification, AdminNotificationService $service): Response
+    {
+        $this->authorizeNotification($notification);
+
+        $admin = auth('admin')->user();
+        if ($notification->target_type === 'email_incident'
+            && $admin instanceof Admin
+            && ! $admin->isItAdministrator()) {
+            abort(403);
+        }
+
+        $url = $service->openUrl($notification);
+        if ($url === null) {
+            return response('This notification\'s associated record is no longer available.', 404);
+        }
+
+        $notification->update(['is_read' => true]);
+
+        return redirect()->to($url);
+    }
+
+    private function accessibleNotifications(?int $adminId)
+    {
+        return AdminNotification::query()
+            ->where(function ($query): void {
+                $query->whereNull('recipient_type')->orWhere('recipient_type', 'admin');
+            })
+            ->where(function ($query) use ($adminId): void {
+                $query->whereNull('recipient_id')->orWhere('recipient_id', $adminId);
+            });
+    }
+
+    private function authorizeNotification(AdminNotification $notification): void
+    {
+        $adminId = auth('admin')->id();
+        $accessible = ($notification->recipient_type === null || $notification->recipient_type === 'admin')
+            && ($notification->recipient_id === null || (int) $notification->recipient_id === (int) $adminId);
+
+        abort_unless($accessible, 403);
     }
 }

@@ -16,9 +16,21 @@ protected $primaryKey = 'admin_notification_id';
 
     protected $fillable = [
         'message',
+        'title',
         'link',
         'notification_type',
+        'target_type',
+        'target_id',
+        'recipient_type',
+        'recipient_id',
         'is_read',
         'created_at',
+    ];
+
+    protected $casts = [
+        'is_read' => 'boolean',
+        'target_id' => 'integer',
+        'recipient_id' => 'integer',
+        'created_at' => 'datetime',
     ];
 }
