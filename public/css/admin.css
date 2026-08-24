@@ -828,6 +828,12 @@ h6 {
     color: #97a0ad;
 }
 
+.user-management-search-submit {
+    min-height: 40px;
+    align-self: stretch;
+    white-space: nowrap;
+}
+
 .user-management-actions .btn {
     min-height: 40px;
 }

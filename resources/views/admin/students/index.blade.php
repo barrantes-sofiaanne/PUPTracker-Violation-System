@@ -284,7 +284,7 @@
                                     <i class="bi bi-plus-lg me-1"></i>
                                     Add Admin
                                 </button>
-                                <button type="submit" class="admin-btn admin-btn-primary">Search</button>
+                                <button type="submit" class="admin-btn admin-btn-primary user-management-search-submit">Search</button>
                             </div>
                         </div>
                     </form>
@@ -358,13 +358,14 @@
                     <form method="GET" action="{{ route('admin.students') }}" class="mb-4 user-management-toolbar">
                         <input type="hidden" name="tab" value="security">
                         <div class="d-flex flex-column flex-xl-row gap-3 align-items-stretch align-items-xl-center">
-                            <div class="flex-grow-1">
-                                <div class="input-group user-management-search">
+                            <div class="flex-grow-1 d-flex gap-2 align-items-stretch">
+                                <div class="input-group user-management-search flex-grow-1">
                                     <span class="input-group-text bg-white">
                                         <i class="bi bi-search"></i>
                                     </span>
-                                    <input type="text" name="security_search" class="form-control" placeholder="Search security by name, email, contact, or address..." value="{{ request('security_search') }}">
+                                    <input type="text" name="security_search" class="form-control" placeholder="Search security by name or email..." value="{{ request('security_search') }}">
                                 </div>
+                                <button type="submit" class="admin-btn admin-btn-primary">Search</button>
                             </div>
                             <div class="d-flex flex-wrap gap-2 justify-content-xl-end user-management-actions">
                                 <button type="button" class="admin-btn admin-btn-neutral" data-bs-toggle="modal" data-bs-target="#importAccountsModal" data-import-account-type="security">
@@ -379,7 +380,6 @@
                                     <i class="bi bi-plus-lg me-1"></i>
                                     Add Security
                                 </button>
-                                <button type="submit" class="admin-btn admin-btn-primary">Search</button>
                             </div>
                         </div>
                     </form>
@@ -391,8 +391,6 @@
                                     <th>Name</th>
                                     <th>Email</th>
                                     <th>Position</th>
-                                    <th>Contact Number</th>
-                                    <th>Address</th>
                                     <th>Status</th>
                                     <th>Action</th>
                                 </tr>
@@ -415,8 +413,6 @@
                                         <td>{{ $securityFullName ?: '—' }}</td>
                                         <td>{{ $security->email }}</td>
                                         <td>{{ optional($security->securityProfile)->position ?? 'Security Personnel' }}</td>
-                                        <td>{{ $security->securityInfo->contact_number ?? '—' }}</td>
-                                        <td>{{ $security->securityInfo->address ?? '—' }}</td>
                                         <td><x-admin.badge status="active" label="Active" /></td>
                                         <td class="text-end user-action-cell">
                                             <div class="user-action-group">
@@ -427,9 +423,7 @@
                                                     data-firstname="{{ $securityFirstName }}"
                                                     data-middlename="{{ $securityMiddleName }}"
                                                     data-lastname="{{ $securityLastName }}"
-                                                    data-position="{{ optional($security->securityProfile)->position ?? '' }}"
-                                                    data-contact="{{ $security->securityInfo->contact_number ?? '' }}"
-                                                    data-address="{{ $security->securityInfo->address ?? '' }}">
+                                                    data-position="{{ optional($security->securityProfile)->position ?? '' }}">
                                                     <i class="bi bi-pencil-square me-1"></i>Edit
                                                 </button>
                                                 <button class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteSecurityBtn" data-id="{{ $security->id }}" data-name="{{ $security->email }}">
@@ -440,7 +434,7 @@
                                     </tr>
                                 @empty
                                     <x-admin.empty-state
-                                        :colspan="7"
+                                        :colspan="5"
                                         icon="bi-person-workspace"
                                         title="No security accounts found"
                                         message="No security accounts match your search."
@@ -762,8 +756,6 @@ document.querySelectorAll('.editSecurityBtn').forEach(function (button) {
         document.getElementById('security_middlename').value = this.dataset.middlename;
         document.getElementById('security_lastname').value = this.dataset.lastname;
         document.getElementById('security_position').value = this.dataset.position || '';
-        document.getElementById('security_contact').value = this.dataset.contact;
-        document.getElementById('security_address').value = this.dataset.address;
         document.getElementById('editSecurityForm').action = "{{ url('/admin/users/security') }}/" + this.dataset.id;
         new bootstrap.Modal(document.getElementById('editSecurityModal')).show();
     });
