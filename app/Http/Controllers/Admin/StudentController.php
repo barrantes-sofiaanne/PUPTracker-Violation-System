@@ -15,6 +15,7 @@ use App\Models\Section;
 use App\Models\Status;
 use App\Models\StudentStatus;
 use App\Models\User;
+use App\Models\UserManagementHistory;
 use App\Models\Year;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -165,7 +166,9 @@ class StudentController extends Controller
             'ladderized' => 'nullable|in:0,1',
         ]);
 
-        DB::transaction(function () use ($validated): void {
+        $student = null;
+
+        DB::transaction(function () use ($validated, &$student): void {
             $studentStatusId = $this->resolveStudentStatusIdFromUserStatusId((int) $validated['status_id']);
 
             if (!$studentStatusId) {
@@ -197,6 +200,15 @@ class StudentController extends Controller
             ]);
         });
 
+        // The transaction always assigns $student before committing; the
+        // null assertion keeps static analysis aware the model is available.
+        $this->logUserManagementAction(
+            'student',
+            'Create',
+            $student?->user_id,
+            $validated['email']
+        );
+
         return redirect()->route('admin.students', ['tab' => 'students'])
             ->with('success', 'Student account created successfully.');
     }
@@ -213,7 +225,9 @@ class StudentController extends Controller
             'password' => 'required|string|min:8',
         ]);
 
-        DB::transaction(function () use ($validated): void {
+        $admin = null;
+
+        DB::transaction(function () use ($validated, &$admin): void {
             $admin = Admin::create([
                 'username' => $validated['email'],
                 'email' => $validated['email'],
@@ -234,6 +248,15 @@ class StudentController extends Controller
             );
         });
 
+        // The transaction always assigns $admin before committing; the
+        // null-safe access keeps static analysis aware the model is available.
+        $this->logUserManagementAction(
+            'admin',
+            'Create',
+            $admin?->id,
+            $validated['email']
+        );
+
         return redirect()->route('admin.students', ['tab' => 'admins'])
             ->with('success', 'Admin account created successfully.');
     }
@@ -248,7 +271,9 @@ class StudentController extends Controller
             'password' => 'required|string|min:8',
         ]);
 
-        DB::transaction(function () use ($validated): void {
+        $security = null;
+
+        DB::transaction(function () use ($validated, &$security): void {
             $security = Security::create([
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
@@ -262,6 +287,15 @@ class StudentController extends Controller
 
             $this->syncLegacySecurityNameData($security->id, $validated);
         });
+
+        // The transaction always assigns $security before committing; the
+        // null-safe access keeps static analysis aware the model is available.
+        $this->logUserManagementAction(
+            'security',
+            'Create',
+            $security?->id,
+            $validated['email']
+        );
 
         return redirect()->route('admin.students', ['tab' => 'security'])
             ->with('success', 'Security account created successfully.');
@@ -278,6 +312,15 @@ class StudentController extends Controller
             'role_id' => 'required|exists:roles_tbl,roles_id',
             'password' => 'nullable|string|min:8',
         ]);
+
+        $adminEmailBefore = $admin->email;
+        $adminInfoBefore = $admin->adminInfo ? [
+            'firstname' => $admin->adminInfo->firstname,
+            'middlename' => $admin->adminInfo->middlename,
+            'lastname' => $admin->adminInfo->lastname,
+            'status_id' => $admin->adminInfo->status_id,
+            'role_id' => $admin->adminInfo->role_id,
+        ] : [];
 
         DB::transaction(function () use ($admin, $validated): void {
             $admin->email = $validated['email'];
@@ -302,20 +345,83 @@ class StudentController extends Controller
             );
         });
 
+        $this->logUserManagementAction(
+            'admin',
+            'Update',
+            $admin->id,
+            $admin->email,
+            $this->collectAdminChanges($adminEmailBefore, $adminInfoBefore, $admin, $validated)
+        );
+
         return redirect()->route('admin.students', ['tab' => 'admins'])
             ->with('success', 'Admin account updated successfully.');
     }
 
     public function destroyAdmin(Admin $admin)
     {
+        $adminEmail = $admin->email;
+
         if ($admin->adminInfo) {
             $admin->adminInfo->delete();
         }
 
         $admin->delete();
 
+        $this->logUserManagementAction(
+            'admin',
+            'Delete',
+            $admin->id,
+            $adminEmail
+        );
+
         return redirect()->route('admin.students', ['tab' => 'admins'])
             ->with('success', 'Admin account deleted successfully.');
+    }
+
+    /**
+     * Build the list of changed fields for an admin update, capturing
+     * before/after values (e.g. First Name from "Sofia" to "Mika").
+     */
+    private function collectAdminChanges(
+        string $emailBefore,
+        array $infoBefore,
+        Admin $admin,
+        array $validated
+    ): array {
+        $changes = [];
+
+        if ((string) $admin->email !== $emailBefore) {
+            $changes[] = [
+                'field' => 'Email',
+                'from' => $emailBefore,
+                'to' => (string) $admin->email,
+            ];
+        }
+
+        $fieldMap = [
+            'firstname' => 'First Name',
+            'middlename' => 'Middle Name',
+            'lastname' => 'Last Name',
+            'status_id' => 'Status',
+            'role_id' => 'Role',
+        ];
+
+        $infoAfter = $admin->fresh()?->adminInfo;
+
+        foreach ($fieldMap as $key => $label) {
+            $from = (string) ($infoBefore[$key] ?? '');
+            $to = (string) ($infoAfter->{$key} ?? $validated[$key] ?? '');
+
+            if ($from !== $to) {
+                $changes[] = [
+                    'field' => $label,
+                    'from' => $from,
+                    'to' => $to,
+                ];
+            }
+        }
+
+        return $changes;
     }
 
     public function updateSecurity(Request $request, Security $security)
@@ -327,6 +433,13 @@ class StudentController extends Controller
             'lastname' => 'required|string|max:50',
             'password' => 'nullable|string|min:8',
         ]);
+
+        $securityEmailBefore = $security->email;
+        $securityNameBefore = [
+            'firstname' => $security->securityInfo->firstname ?? $security->securityProfile->firstname ?? '',
+            'middlename' => $security->securityInfo->middlename ?? $security->securityProfile->middlename ?? '',
+            'lastname' => $security->securityInfo->lastname ?? $security->securityProfile->lastname ?? '',
+        ];
 
         DB::transaction(function () use ($security, $validated): void {
             $security->email = $validated['email'];
@@ -345,12 +458,22 @@ class StudentController extends Controller
             $this->syncLegacySecurityNameData($security->id, $validated);
         });
 
+        $this->logUserManagementAction(
+            'security',
+            'Update',
+            $security->id,
+            $security->email,
+            $this->collectSecurityChanges($securityEmailBefore, $securityNameBefore, $security, $validated)
+        );
+
         return redirect()->route('admin.students', ['tab' => 'security'])
             ->with('success', 'Security account updated successfully.');
     }
 
     public function destroySecurity(Security $security)
     {
+        $securityEmail = $security->email;
+
         if ($security->securityInfo) {
             $security->securityInfo->delete();
         }
@@ -361,8 +484,64 @@ class StudentController extends Controller
 
         $security->delete();
 
+        $this->logUserManagementAction(
+            'security',
+            'Delete',
+            $security->id,
+            $securityEmail
+        );
+
         return redirect()->route('admin.students', ['tab' => 'security'])
             ->with('success', 'Security account deleted successfully.');
+    }
+
+    /**
+     * Build the list of changed fields for a security update, capturing
+     * before/after values (e.g. First Name from "Sofia" to "Mika").
+     */
+    private function collectSecurityChanges(
+        string $emailBefore,
+        array $nameBefore,
+        Security $security,
+        array $validated
+    ): array {
+        $changes = [];
+
+        if ((string) $security->email !== $emailBefore) {
+            $changes[] = [
+                'field' => 'Email',
+                'from' => $emailBefore,
+                'to' => (string) $security->email,
+            ];
+        }
+
+        $fieldMap = [
+            'firstname' => 'First Name',
+            'middlename' => 'Middle Name',
+            'lastname' => 'Last Name',
+        ];
+
+        $fresh = $security->fresh();
+        $nameAfter = [
+            'firstname' => $fresh?->securityInfo?->firstname ?? $fresh?->securityProfile?->firstname ?? '',
+            'middlename' => $fresh?->securityInfo?->middlename ?? $fresh?->securityProfile?->middlename ?? '',
+            'lastname' => $fresh?->securityInfo?->lastname ?? $fresh?->securityProfile?->lastname ?? '',
+        ];
+
+        foreach ($fieldMap as $key => $label) {
+            $from = (string) ($nameBefore[$key] ?? '');
+            $to = (string) ($nameAfter[$key] ?? $validated[$key] ?? '');
+
+            if ($from !== $to) {
+                $changes[] = [
+                    'field' => $label,
+                    'from' => $from,
+                    'to' => $to,
+                ];
+            }
+        }
+
+        return $changes;
     }
 
     public function importAccounts(Request $request)
@@ -573,6 +752,15 @@ class StudentController extends Controller
 
         // Student passwords are managed by the PUP Identity Provider (IDP), so
         // the local password is never updated here.
+        $studentEmailBefore = $student->email;
+        $studentInfoBefore = $student->studentInfo ? [
+            'program_id' => $student->studentInfo->program_id,
+            'year_id' => $student->studentInfo->year_id,
+            'section_id' => $student->studentInfo->section_id,
+            'student_status_id' => $student->studentInfo->student_status_id,
+            'ladderized' => $student->studentInfo->ladderized,
+        ] : [];
+
         $student->update([
             'first_name' => $request->input('first_name'),
             'middle_name' => $request->input('middle_name'),
@@ -602,9 +790,76 @@ class StudentController extends Controller
         ]);
         $studentInfo->save();
 
+        $this->logUserManagementAction(
+            'student',
+            'Update',
+            $student->getKey(),
+            $student->email,
+            $this->collectStudentChanges($studentEmailBefore, $studentInfoBefore, $student, $studentInfo, $request)
+        );
+
         return redirect()
             ->route('admin.students', ['tab' => 'students'])
             ->with('success', 'Student updated successfully.');
+    }
+
+    /**
+     * Build the list of changed fields for a student update, capturing
+     * before/after values (e.g. First Name from "Sofia" to "Mika").
+     */
+    private function collectStudentChanges(
+        string $emailBefore,
+        array $infoBefore,
+        User $student,
+        $studentInfo,
+        Request $request
+    ): array {
+        $changes = [];
+
+        $studentFieldMap = [
+            'first_name' => 'First Name',
+            'middle_name' => 'Middle Name',
+            'last_name' => 'Last Name',
+            'email' => 'Email',
+            'gender_id' => 'Gender',
+            'status_id' => 'Status',
+        ];
+
+        foreach ($studentFieldMap as $key => $label) {
+            $from = (string) $student->getOriginal($key);
+            $to = (string) $student->{$key};
+
+            if ($from !== $to) {
+                $changes[] = [
+                    'field' => $label,
+                    'from' => $from,
+                    'to' => $to,
+                ];
+            }
+        }
+
+        $infoFieldMap = [
+            'program_id' => 'Program',
+            'year_id' => 'Year',
+            'section_id' => 'Section',
+            'student_status_id' => 'Student Status',
+            'ladderized' => 'Ladderized',
+        ];
+
+        foreach ($infoFieldMap as $key => $label) {
+            $from = (string) ($infoBefore[$key] ?? '');
+            $to = (string) ($studentInfo->{$key} ?? $request->input($key, ''));
+
+            if ($from !== $to) {
+                $changes[] = [
+                    'field' => $label,
+                    'from' => $from,
+                    'to' => $to,
+                ];
+            }
+        }
+
+        return $changes;
     }
 
     /**
@@ -713,6 +968,13 @@ class StudentController extends Controller
         }
 
         $student->delete();
+
+        $this->logUserManagementAction(
+            'student',
+            'Delete',
+            $student->getKey(),
+            $student->email
+        );
 
         return redirect()
             ->route('admin.students', ['tab' => 'students'])
@@ -994,5 +1256,133 @@ class StudentController extends Controller
         return in_array($normalized, ['1', 'yes', 'y', 'true', 'ladderized'], true)
             ? 1
             : 0;
+    }
+
+    /**
+     * Resolve a human-readable account identifier (student number, admin ID,
+     * or security ID) for history/user-facing messages.
+     */
+    private function resolveUserDisplayName(string $accountType, mixed $userId, ?string $email = null): string
+    {
+        if ($accountType === 'student') {
+            $student = User::query()->find($userId);
+
+            if ($student && $student->student_number) {
+                return $student->student_number . ($email ? ' (' . $email . ')' : '');
+            }
+
+            return $email ?: ('Student #' . $userId);
+        }
+
+        if ($accountType === 'admin') {
+            $admin = Admin::query()->with('adminInfo')->find($userId);
+
+            if ($admin && $admin->adminInfo) {
+                $name = trim(($admin->adminInfo->firstname ?? '') . ' ' . ($admin->adminInfo->lastname ?? ''));
+
+                return $name ?: $admin->email;
+            }
+
+            return $email ?: ('Admin #' . $userId);
+        }
+
+        if ($accountType === 'security') {
+            $security = Security::query()->with(['securityProfile', 'securityInfo'])->find($userId);
+
+            if ($security) {
+                $profile = $security->securityProfile;
+                $name = trim(($profile->firstname ?? '') . ' ' . ($profile->lastname ?? ''));
+
+                return $name ?: $security->email;
+            }
+
+            return $email ?: ('Security #' . $userId);
+        }
+
+        return $email ?: ('User #' . $userId);
+    }
+
+    /**
+     * Persist a User Management History entry and an Audit Log entry for
+     * user-management actions (create/edit/delete).
+     *
+     * $changes is a list of associative arrays:
+     *   ['field' => 'First Name', 'from' => 'Sofia', 'to' => 'Mika']
+     */
+    private function logUserManagementAction(
+        string $accountType,
+        string $action,
+        mixed $userId,
+        ?string $userEmail,
+        array $changes = []
+    ): void {
+        $admin = Auth::guard('admin')->user();
+        $adminId = $admin instanceof Admin ? $admin->id : null;
+        $userDisplayName = $this->resolveUserDisplayName($accountType, $userId, $userEmail);
+
+        $historyDetails = $action . ' ' . $accountType . ' account ' . $userDisplayName . '.';
+
+        if (Schema::hasTable('user_management_histories')) {
+            try {
+                UserManagementHistory::create([
+                    'user_id' => $userId,
+                    'performed_by' => $adminId,
+                    'action' => $action . ' ' . ucfirst($accountType) . ' Account',
+                    'details' => $historyDetails,
+                    'changes' => $changes,
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable $e) {
+                // Never block account operations because history recording failed.
+            }
+        }
+
+        $description = $historyDetails;
+        if (! empty($changes)) {
+            $parts = array_map(function (array $change): string {
+                return $change['field'] . ' from "' . $change['from'] . '" to "' . $change['to'] . '"';
+            }, $changes);
+
+            $description .= ' Changes: ' . implode('; ', $parts) . '.';
+        }
+
+        if (Schema::hasTable('audit_logs')) {
+            try {
+                AuditLog::create([
+                    'actor_type' => 'admin',
+                    'actor_id' => $adminId,
+                    'action' => $action . ' ' . ucfirst($accountType) . ' Account',
+                    'module' => 'User Management',
+                    'description' => $description,
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable $e) {
+                // Never block account operations because audit recording failed.
+            }
+        }
+    }
+
+    /**
+     * Write an audit log entry for user-management actions (create/edit/delete).
+     *
+     * Writes are skipped when the audit_logs table is not present (e.g. some
+     * test/minimal environments) so account operations never fail because of
+     * an unavailable audit table.
+     */
+    private function auditUserAction(string $action, string $description): void
+    {
+        if (! Schema::hasTable('audit_logs')) {
+            return;
+        }
+
+        $admin = Auth::guard('admin')->user();
+
+        AuditLog::create([
+            'actor_type' => 'admin',
+            'actor_id' => $admin instanceof Admin ? $admin->id : null,
+            'action' => $action,
+            'module' => 'User Management',
+            'description' => $description,
+        ]);
     }
 }

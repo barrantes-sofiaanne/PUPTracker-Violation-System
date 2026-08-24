@@ -20,10 +20,12 @@ class UserManagementHistory extends Model
         'performed_by',
         'action',
         'details',
+        'changes',
         'created_at',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
+        'changes' => 'array',
     ];
 }

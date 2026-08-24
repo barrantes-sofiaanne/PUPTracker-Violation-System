@@ -28,6 +28,7 @@
                         <th>Action</th>
                         <th>User Account</th>
                         <th>Performed By</th>
+                        <th>Changes</th>
                         <th>Recorded</th>
                     </tr>
                 </thead>
@@ -35,13 +36,28 @@
                     @forelse($history as $entry)
                         <tr>
                             <td><strong>{{ $entry->action }}</strong></td>
-                            <td>{{ $entry->user_id ?? '-' }}</td>
-                            <td>{{ $entry->performed_by ?? '-' }}</td>
+                            <td>{{ \App\Http\Controllers\Admin\UserManagementHistoryController::resolveUserIdLabel($entry->user_id) }}</td>
+                            <td>{{ \App\Http\Controllers\Admin\UserManagementHistoryController::resolvePerformedByLabel($entry->performed_by) }}</td>
+                            <td>
+                                @if(! empty($entry->changes) && is_array($entry->changes))
+                                    <ul class="mb-0 ps-3 change-list">
+                                        @foreach($entry->changes as $change)
+                                            <li>
+                                                <strong>{{ $change['field'] ?? 'Field' }}</strong>:
+                                                from <span class="text-danger text-decoration-line-through">{{ $change['from'] ?? '' }}</span>
+                                                to <span class="text-success">{{ $change['to'] ?? '' }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    <span class="text-muted small">—</span>
+                                @endif
+                            </td>
                             <td>{{ optional($entry->created_at)->format('M d, Y h:i A') }}</td>
                         </tr>
                     @empty
                         <x-admin.empty-state
-                            :colspan="4"
+                            :colspan="5"
                             icon="bi-person-x"
                             title="No user activity found"
                             message="No account activity has been recorded for any user yet."
