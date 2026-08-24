@@ -252,8 +252,13 @@ public function show(Request $request, string $student_number)
         })
         ->values();
 
-    $backRoute = route('admin.violations.index', $request->except(['student_number', 'source']));
-    $backLabel = match ((string) ($request->input('source') ?: 'results')) {
+    $source = (string) ($request->input('source') ?: 'results');
+    $backRoute = match ($source) {
+        'dashboard' => route('admin.dashboard'),
+        'reports' => route('admin.reports'),
+        default => route('admin.violations.index', $request->except(['student_number', 'source'])),
+    };
+    $backLabel = match ($source) {
         'dashboard' => 'Back to Dashboard',
         'reports' => 'Back to Reports',
         default => 'Back to Results',

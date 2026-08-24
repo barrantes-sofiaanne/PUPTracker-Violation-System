@@ -31,11 +31,11 @@
 
     <div class="card-header bg-white">
 
-        <h5 class="mb-1">
+        <h5 class="mb-1 admin-section-title">
             Violation Configuration
         </h5>
 
-        <small class="text-muted">
+        <small class="admin-section-subtitle">
             Manage categories, violation types, and disciplinary sanctions.
         </small>
 

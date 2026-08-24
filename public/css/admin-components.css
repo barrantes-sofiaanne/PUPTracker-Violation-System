@@ -618,9 +618,19 @@
     font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: #6b5d61;
+    color: #524449;
     margin-bottom: 0.3rem;
     display: block;
+}
+
+.admin-section-title {
+    color: #5f0000;
+    font-weight: 800;
+}
+
+.admin-section-subtitle {
+    color: #4e4247 !important;
+    font-weight: 500;
 }
 
 .admin-filter-form .form-control,

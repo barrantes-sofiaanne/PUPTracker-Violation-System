@@ -6,18 +6,18 @@
 
             <div>
 
-                <h5 class="mb-1">
+                <h5 class="mb-1 admin-section-title">
                     Violation Configuration
                 </h5>
 
-                <small class="text-muted">
+                <small class="admin-section-subtitle">
                     Configure violation categories, violation types, and sanctions.
                 </small>
 
             </div>
 
             <button
-                class="admin-btn admin-btn-danger add-category"
+                class="admin-btn admin-btn-primary add-category"
                 data-bs-toggle="modal"
                 data-bs-target="#categoryModal">
 

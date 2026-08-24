@@ -24,7 +24,7 @@
                     <span>Loading...</span>
                 </div>
             </div>
-            <div class="quick-actions d-flex flex-wrap gap-2">
+            <div class="quick-actions dashboard-quick-actions d-flex flex-wrap gap-2">
                 <a href="{{ route('admin.violations.index') }}" class="admin-btn admin-btn-primary">
                     <i class="bi bi-plus-circle me-2"></i>Record Violation
                 </a>

@@ -4,18 +4,18 @@
 <div id="managementTableContainer">
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
     <div>
-        <h5 class="mb-1 fw-bold">
+        <h5 class="mb-1 fw-bold admin-section-title">
             <i class="bi bi-people-fill me-1 text-danger"></i>
             Student Violation Management
         </h5>
-        <small class="text-muted">
+        <small class="admin-section-subtitle">
             Search students and record violations.
         </small>
     </div>
 
     <button
         type="button"
-        class="admin-btn admin-btn-danger"
+        class="admin-btn admin-btn-primary"
         data-bs-toggle="modal"
         data-bs-target="#addViolationModal">
 
@@ -31,10 +31,11 @@
     action="{{ route('admin.violations.index') }}"
     class="mb-4 admin-filter-form">
 
+    <div class="border rounded-3 p-3 bg-light-subtle">
     <div class="row g-3 align-items-end">
 
         {{-- Search --}}
-        <div class="col-lg-4">
+        <div class="col-lg-6 col-xl-5">
 
             <label class="admin-filter-label">Search</label>
 
@@ -48,7 +49,7 @@
         </div>
 
         {{-- Program --}}
-        <div class="col-lg-2">
+        <div class="col-lg-3 col-xl-2">
 
             <label class="admin-filter-label">Program</label>
 
@@ -79,7 +80,7 @@
         </div>
 
         {{-- Year --}}
-        <div class="col-lg-2">
+        <div class="col-lg-3 col-xl-2">
 
             <label class="admin-filter-label">Year</label>
 
@@ -110,7 +111,7 @@
         </div>
 
         {{-- Section --}}
-        <div class="col-lg-2">
+        <div class="col-lg-3 col-xl-2">
 
             <label class="admin-filter-label">Section</label>
 
@@ -141,7 +142,7 @@
         </div>
 
         {{-- Student Status --}}
-        <div class="col-lg-2">
+        <div class="col-lg-3 col-xl-1">
 
             <label class="admin-filter-label">Status</label>
 
@@ -149,13 +150,9 @@
                 name="student_status"
                 class="form-select">
 
-                <option value="">
+                <option value="">All Statuses</option>
 
-                    All Statuses
-
-                </option>
-
-                @foreach($studentStatuses as $status)
+                @foreach($studentStatuses->filter(fn($status) => in_array(strtolower((string) $status->status_name), ['active', 'inactive'], true)) as $status)
 
                     <option
                         value="{{ $status->student_status_id }}"
@@ -172,7 +169,7 @@
         </div>
 
         {{-- From --}}
-        <div class="col-lg-2">
+        <div class="col-lg-3 col-xl-2">
 
             <label class="admin-filter-label">From Date</label>
 
@@ -185,7 +182,7 @@
         </div>
 
         {{-- To --}}
-        <div class="col-lg-2">
+        <div class="col-lg-3 col-xl-2">
 
             <label class="admin-filter-label">To Date</label>
 
@@ -198,7 +195,7 @@
         </div>
 
         {{-- Search --}}
-        <div class="col-lg-2">
+        <div class="col-lg-3 col-xl-2 ms-xl-auto">
 
             <button
                 type="submit"
@@ -213,7 +210,7 @@
         </div>
 
         {{-- Reset --}}
-        <div class="col-lg-2">
+        <div class="col-lg-3 col-xl-2">
 
             <a
                 href="{{ route('admin.violations.index') }}"
@@ -227,6 +224,7 @@
 
         </div>
 
+    </div>
     </div>
 
 </form>

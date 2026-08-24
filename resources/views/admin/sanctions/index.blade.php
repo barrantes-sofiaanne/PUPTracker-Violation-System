@@ -119,12 +119,12 @@
                         <input type="hidden" name="sanctions_tab" value="student-sanctions">
                         <div class="border rounded-3 p-3 bg-light-subtle">
                             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                                <h6 class="mb-0 fw-semibold">Filter Student Sanctions</h6>
-                                <small class="text-muted">Use one or more filters to narrow records.</small>
+                                <h6 class="mb-0 fw-semibold admin-section-title">Filter Student Sanctions</h6>
+                                <small class="admin-section-subtitle">Use one or more filters to narrow records.</small>
                             </div>
 
                             <div class="row g-3 align-items-end">
-                                <div class="col-lg-4">
+                                <div class="col-lg-6 col-xl-4">
                                     <label class="admin-filter-label">Search</label>
                                     <input
                                         type="text"
@@ -134,7 +134,7 @@
                                         value="{{ request('record_search') }}">
                                 </div>
 
-                                <div class="col-lg-3">
+                                <div class="col-lg-3 col-xl-3">
                                     <label class="admin-filter-label">Violation Type</label>
                                     <select name="record_violation_type" class="form-select">
                                         <option value="">All Violation Types</option>
@@ -146,7 +146,7 @@
                                     </select>
                                 </div>
 
-                                <div class="col-lg-2">
+                                <div class="col-lg-3 col-xl-2">
                                     <label class="admin-filter-label">From Date</label>
                                     <input
                                         type="date"
@@ -155,7 +155,7 @@
                                         value="{{ request('record_from_date') }}">
                                 </div>
 
-                                <div class="col-lg-2">
+                                <div class="col-lg-3 col-xl-2">
                                     <label class="admin-filter-label">To Date</label>
                                     <input
                                         type="date"
@@ -164,9 +164,7 @@
                                         value="{{ request('record_to_date') }}">
                                 </div>
 
-                                <div class="col-lg-1 d-none d-lg-block"></div>
-
-                                <div class="col-lg-6">
+                                <div class="col-lg-12 col-xl-6">
                                     <label class="admin-filter-label d-block">Status</label>
                                     <div class="d-flex gap-3 flex-wrap pt-1">
                                         <div class="form-check">
@@ -192,8 +190,8 @@
                                     </div>
                                 </div>
 
-                                <div class="col-lg-6">
-                                    <div class="d-flex gap-2 justify-content-lg-end">
+                                <div class="col-lg-12 col-xl-6">
+                                    <div class="d-flex gap-2 justify-content-xl-end">
                                         <button type="submit" class="admin-btn admin-btn-primary">
                                             <i class="bi bi-search me-1"></i>
                                             Apply Filters
