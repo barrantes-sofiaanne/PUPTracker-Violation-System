@@ -48,15 +48,50 @@ class AdminNotificationService
     public function openUrl(AdminNotification $notification): ?string
     {
         return match ($notification->target_type) {
-            'sanction_request' => SanctionRequest::find($notification->target_id)
-                && Route::has('admin.sanctions.requests.show')
-                ? route('admin.sanctions.requests.show', $notification->target_id)
-                : null,
-            'email_incident' => EmailIncident::find($notification->target_id)
-                && Route::has('admin.super-admin.email-incidents.show')
-                ? route('admin.super-admin.email-incidents.show', $notification->target_id)
-                : null,
+            'sanction_request' => $this->sanctionRequestUrl((int) $notification->target_id),
+            'email_incident' => $this->emailIncidentUrl((int) $notification->target_id),
             default => null,
         };
+    }
+
+    /**
+     * Resolve an admin sanction-request target to its exact review page.
+     *
+     * The admin must remain in the Admin module and land on the specific
+     * sanction request (never the generic list, student route, or student
+     * login). Returns null when the record no longer exists or the route is
+     * not available, in which case the caller reports the record unavailable.
+     */
+    private function sanctionRequestUrl(int $targetId): ?string
+    {
+        if (! Route::has('admin.sanctions.requests.show')) {
+            return null;
+        }
+
+        $request = SanctionRequest::query()->find($targetId);
+
+        if (! $request) {
+            return null;
+        }
+
+        return route('admin.sanctions.requests.show', $request->request_id);
+    }
+
+    /**
+     * Resolve an email-incident target to its super-admin detail page.
+     */
+    private function emailIncidentUrl(int $targetId): ?string
+    {
+        if (! Route::has('admin.super-admin.email-incidents.show')) {
+            return null;
+        }
+
+        $incident = EmailIncident::query()->find($targetId);
+
+        if (! $incident) {
+            return null;
+        }
+
+        return route('admin.super-admin.email-incidents.show', $incident->incident_id);
     }
 }
