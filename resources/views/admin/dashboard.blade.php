@@ -18,11 +18,10 @@
         </div>
         <div class="d-flex flex-wrap align-items-center gap-3">
             <div class="dashboard-time-wrap">
-                <div class="dashboard-time-label">Philippine Standard Time</div>
-                <div id="phTimeDisplay" class="dashboard-time-value">
+                <span id="phTimeDisplay" class="dashboard-time-value" title="Philippine Standard Time">
                     <i class="bi bi-clock-history"></i>
                     <span>Loading...</span>
-                </div>
+                </span>
             </div>
             <div class="quick-actions dashboard-quick-actions d-flex flex-wrap gap-2">
                 <a href="{{ route('admin.violations.index') }}" class="admin-btn admin-btn-primary">

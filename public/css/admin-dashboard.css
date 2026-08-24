@@ -1,32 +1,23 @@
 /* Admin dashboard — moved from inline <style> to keep Blade templates clean */
 
 .dashboard-time-wrap {
-    text-align: right;
-    min-width: 150px;
+    display: inline-flex;
+    align-items: center;
     align-self: center;
 }
 
-.dashboard-time-label {
-    font-size: 0.66rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    opacity: 0.75;
-    margin-bottom: 0.15rem;
-    text-align: left;
-}
-
 .dashboard-time-value {
-    font-size: 0.82rem;
-    font-weight: 600;
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 999px;
-    padding: 0.3rem 0.65rem;
-    white-space: nowrap;
+    gap: 0.45rem;
+    font-size: 0.9rem;
+    font-weight: 600;
     color: rgba(255, 255, 255, 0.95);
+    white-space: nowrap;
+}
+
+.dashboard-time-value i {
+    font-size: 0.95rem;
 }
 
 .dashboard-quick-actions {
@@ -48,11 +39,10 @@
 @media (max-width: 767.98px) {
     .dashboard-time-wrap {
         text-align: left;
-        min-width: unset;
     }
 
     .dashboard-time-value {
-        font-size: 0.78rem;
+        font-size: 0.8rem;
     }
 
     .dashboard-quick-actions {
