@@ -3,6 +3,7 @@
 .dashboard-time-wrap {
     text-align: right;
     min-width: 150px;
+    align-self: center;
 }
 
 .dashboard-time-label {
@@ -11,6 +12,7 @@
     text-transform: uppercase;
     opacity: 0.75;
     margin-bottom: 0.15rem;
+    text-align: left;
 }
 
 .dashboard-time-value {

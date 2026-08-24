@@ -175,20 +175,6 @@
 
         </li>
 
-        <li class="sidebar-section-label">Account</li>
-
-        <li>
-
-            <a href="{{ route('admin.settings') }}" class="{{ request()->routeIs('admin.settings') ? 'active' : '' }}">
-
-                <i class="bi bi-gear"></i>
-
-                Settings
-
-            </a>
-
-        </li>
-
         @if($isItAdministrator)
             <li class="sidebar-section-label">Super Admin</li>
 

@@ -53,8 +53,8 @@
                     <form method="GET" action="{{ route('admin.students') }}" class="mb-4 user-management-toolbar">
                         <input type="hidden" name="tab" value="students">
                         <div class="d-flex flex-column flex-xl-row gap-3 align-items-stretch align-items-xl-center">
-                            <div class="flex-grow-1">
-                                <div class="input-group user-management-search">
+                            <div class="flex-grow-1 d-flex gap-2 align-items-stretch">
+                                <div class="input-group user-management-search flex-grow-1">
                                     <span class="input-group-text bg-white">
                                         <i class="bi bi-search"></i>
                                     </span>
@@ -65,6 +65,9 @@
                                         placeholder="Search by Student Number or Name..."
                                         value="{{ request('search') }}">
                                 </div>
+                                <button type="submit" class="admin-btn admin-btn-primary user-management-search-submit">
+                                    Search
+                                </button>
                             </div>
 
                             <div class="d-flex flex-wrap gap-2 justify-content-xl-end user-management-actions">
@@ -93,9 +96,6 @@
                                 <button type="button" class="admin-btn admin-btn-danger" data-bs-toggle="modal" data-bs-target="#createStudentModal">
                                     <i class="bi bi-plus-lg me-1"></i>
                                     Add Student
-                                </button>
-                                <button type="submit" class="admin-btn admin-btn-primary">
-                                    Search
                                 </button>
                             </div>
                         </div>
@@ -263,13 +263,14 @@
                     <form method="GET" action="{{ route('admin.students') }}" class="mb-4 user-management-toolbar">
                         <input type="hidden" name="tab" value="admins">
                         <div class="d-flex flex-column flex-xl-row gap-3 align-items-stretch align-items-xl-center">
-                            <div class="flex-grow-1">
-                                <div class="input-group user-management-search">
+                            <div class="flex-grow-1 d-flex gap-2 align-items-stretch">
+                                <div class="input-group user-management-search flex-grow-1">
                                     <span class="input-group-text bg-white">
                                         <i class="bi bi-search"></i>
                                     </span>
                                     <input type="text" name="admin_search" class="form-control" placeholder="Search admin by name or email..." value="{{ request('admin_search') }}">
                                 </div>
+                                <button type="submit" class="admin-btn admin-btn-primary user-management-search-submit">Search</button>
                             </div>
                             <div class="d-flex flex-wrap gap-2 justify-content-xl-end user-management-actions">
                                 <button type="button" class="admin-btn admin-btn-neutral" data-bs-toggle="modal" data-bs-target="#importAccountsModal" data-import-account-type="admin">
@@ -284,7 +285,6 @@
                                     <i class="bi bi-plus-lg me-1"></i>
                                     Add Admin
                                 </button>
-                                <button type="submit" class="admin-btn admin-btn-primary user-management-search-submit">Search</button>
                             </div>
                         </div>
                     </form>
@@ -572,7 +572,6 @@
             <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" id="admin_lastname" class="form-control" required></div>
             <div class="col-md-6"><label class="form-label">Role</label><select name="role_id" id="admin_role_id" class="form-select">@foreach($adminRoles as $role)<option value="{{ $role->roles_id }}">{{ $role->roles_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" id="admin_status_id" class="form-select">@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
-            <div class="col-md-6"><label class="form-label">New Password (optional)</label><input name="password" type="password" class="form-control"></div>
         </div></div>
         <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Update Admin</button></div>
     </form>
@@ -595,7 +594,6 @@
             <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" id="security_middlename" class="form-control"></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" id="security_lastname" class="form-control" required></div>
             <div class="col-md-6"><label class="form-label">Position</label><input name="position" id="security_position" class="form-control" value="Security Personnel" readonly tabindex="-1"></div>
-            <div class="col-md-6"><label class="form-label">New Password (optional)</label><input name="password" type="password" class="form-control"></div>
         </div></div>
         <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Update Security</button></div>
     </form>
