@@ -1,11 +1,11 @@
 @extends('layouts.admin')
 
-@section('title', 'Super Admin Maintenance Configuration')
+@section('title', 'Super Admin Maintenance Settings')
 
 @section('content')
 <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <h2 class="fw-bold mb-1">Maintenance Configuration</h2>
+        <h2 class="fw-bold mb-1">Maintenance Settings</h2>
         <p class="text-muted mb-0">Control application availability during maintenance windows.</p>
     </div>
     <a href="{{ route('admin.super-admin.dashboard') }}" class="admin-btn admin-btn-neutral">

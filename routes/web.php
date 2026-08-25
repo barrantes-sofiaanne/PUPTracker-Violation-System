@@ -544,8 +544,9 @@ Route::middleware('auth:admin')
                 Route::get('/', [SuperAdminController::class, 'dashboard'])
                     ->name('dashboard');
 
-                Route::get('/audit-trail', [SuperAdminController::class, 'auditTrail'])
-                    ->name('audit-trail');
+                Route::get('/audit-trail', function () {
+                    return redirect()->route('admin.audit-logs');
+                })->name('audit-trail');
 
                 Route::get('/maintenance-configuration', [SuperAdminController::class, 'maintenanceConfiguration'])
                     ->name('maintenance');

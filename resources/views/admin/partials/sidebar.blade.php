@@ -138,34 +138,6 @@
 
         @if($isItAdministrator)
             <li>
-                <a href="{{ route('admin.super-admin.dashboard') }}" class="{{ request()->routeIs('admin.super-admin.dashboard') ? 'active' : '' }}">
-                    <i class="bi bi-shield-lock"></i>
-                    Dashboard
-                </a>
-            </li>
-
-            <li>
-                <a href="{{ route('admin.super-admin.audit-trail') }}" class="{{ request()->routeIs('admin.super-admin.audit-trail') ? 'active' : '' }}">
-                    <i class="bi bi-clipboard-data"></i>
-                    Audit Trail
-                </a>
-            </li>
-
-            <li>
-                <a href="{{ route('admin.super-admin.maintenance') }}" class="{{ request()->routeIs('admin.super-admin.maintenance*') ? 'active' : '' }}">
-                    <i class="bi bi-tools"></i>
-                    Maintenance Config
-                </a>
-            </li>
-
-            <li>
-                <a href="{{ route('admin.super-admin.maintenance-records.index') }}" class="{{ request()->routeIs('admin.super-admin.maintenance-records*') ? 'active' : '' }}">
-                    <i class="bi bi-calendar-check"></i>
-                    Maintenance History
-                </a>
-            </li>
-
-            <li>
                 <a href="{{ route('admin.super-admin.email-incidents.index') }}" class="{{ request()->routeIs('admin.super-admin.email-incidents*') ? 'active' : '' }}">
                     <i class="bi bi-exclamation-octagon"></i>
                     System Logs
@@ -175,9 +147,27 @@
             <li>
                 <a href="{{ route('admin.super-admin.audit-control-plan') }}" class="{{ request()->routeIs('admin.super-admin.audit-control-plan') ? 'active' : '' }}">
                     <i class="bi bi-shield-check"></i>
-                    Audit & Risk Plan
+                    Audit &amp; Risk Management
                 </a>
             </li>
+        @endif
+
+        @if($isItAdministrator)
+        <li class="sidebar-section-label">System Maintenance</li>
+
+        <li>
+            <a href="{{ route('admin.super-admin.maintenance') }}" class="{{ request()->routeIs('admin.super-admin.maintenance') ? 'active' : '' }}">
+                <i class="bi bi-tools"></i>
+                Maintenance Settings
+            </a>
+        </li>
+
+        <li>
+            <a href="{{ route('admin.super-admin.maintenance-records.index') }}" class="{{ request()->routeIs('admin.super-admin.maintenance-records*') ? 'active' : '' }}">
+                <i class="bi bi-calendar-check"></i>
+                Maintenance History
+            </a>
+        </li>
         @endif
 
     </ul>

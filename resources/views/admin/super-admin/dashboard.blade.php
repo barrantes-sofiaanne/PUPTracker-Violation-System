@@ -57,18 +57,18 @@
     <div class="col-lg-6">
         <div class="card shadow-sm border-0 h-100">
             <div class="card-body">
-                <h5>Audit Trail</h5>
+                <h5>Audit Logs</h5>
                 <p class="text-muted">Monitor and search all recorded system activity.</p>
-                <a href="{{ route('admin.super-admin.audit-trail') }}" class="admin-btn admin-btn-primary admin-btn-sm">Open Audit Trail</a>
+                <a href="{{ route('admin.audit-logs') }}" class="admin-btn admin-btn-primary admin-btn-sm">Open Audit Logs</a>
             </div>
         </div>
     </div>
     <div class="col-lg-6">
         <div class="card shadow-sm border-0 h-100">
             <div class="card-body">
-                <h5>Maintenance Configuration</h5>
+                <h5>Maintenance Settings</h5>
                 <p class="text-muted">Toggle system maintenance mode when needed.</p>
-                <a href="{{ route('admin.super-admin.maintenance') }}" class="admin-btn admin-btn-primary admin-btn-sm">Open Maintenance Configuration</a>
+                <a href="{{ route('admin.super-admin.maintenance') }}" class="admin-btn admin-btn-primary admin-btn-sm">Open Maintenance Settings</a>
             </div>
         </div>
     </div>

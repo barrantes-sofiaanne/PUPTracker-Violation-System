@@ -14,6 +14,38 @@
     </a>
 </div>
 
+<div class="card shadow-sm border-0 mb-4 admin-filter-card">
+    <div class="card-body">
+        <form method="GET" action="{{ route('admin.audit-logs') }}" class="row g-3 admin-filter-form">
+            <div class="col-md-3">
+                <label for="actor_type" class="admin-filter-label">Actor Type</label>
+                <select id="actor_type" name="actor_type" class="form-select">
+                    <option value="">All</option>
+                    @foreach($actorTypes as $actorType)
+                        <option value="{{ $actorType }}" @selected(request('actor_type') === $actorType)>{{ $actorType }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="module" class="admin-filter-label">Module</label>
+                <select id="module" name="module" class="form-select">
+                    <option value="">All</option>
+                    @foreach($modules as $module)
+                        <option value="{{ $module }}" @selected(request('module') === $module)>{{ $module }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="keyword" class="admin-filter-label">Keyword</label>
+                <input id="keyword" name="keyword" value="{{ request('keyword') }}" class="form-control" placeholder="Search action or description">
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+                <button class="admin-btn admin-btn-primary w-100" type="submit"><i class="bi bi-funnel"></i> Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white">
         <span class="text-muted small">
@@ -28,6 +60,7 @@
                         <th>Action</th>
                         <th>Module</th>
                         <th>Actor</th>
+                        <th>Description</th>
                         <th>Recorded</th>
                     </tr>
                 </thead>
@@ -37,15 +70,16 @@
                             <td><strong>{{ $log->action }}</strong></td>
                             <td>{{ $log->module ?? '-' }}</td>
                             <td>{{ $log->actor_type ?? 'System' }} #{{ $log->actor_id ?? '-' }}</td>
+                            <td>{{ $log->description ?? '-' }}</td>
                             <td>{{ optional($log->created_at)->format('M d, Y h:i A') }}</td>
                         </tr>
                     @empty
                         <x-admin.empty-state
-                            :colspan="4"
+                            :colspan="5"
                             icon="bi-journal-x"
                             title="No audit activity found"
-                            message="No system-wide administrative or security actions have been recorded yet."
-                            :clearUrl="null" />
+                            message="No audit entries match your filters."
+                            :clearUrl="route('admin.audit-logs')" />
                     @endforelse
                 </tbody>
             </table>
