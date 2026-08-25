@@ -51,6 +51,8 @@ class AnnouncementController extends Controller
             'content' => ['required', 'string'],
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,pdf', 'max:5120'],
             'show_on_login' => ['nullable', 'boolean'],
+            'login_modal_duration' => ['nullable', 'in:1_week,1_month,custom'],
+            'login_modal_expires_at' => ['nullable', 'date', 'after_or_equal:today'],
         ]);
 
         $admin = Auth::guard('admin')->user();
@@ -58,15 +60,18 @@ class AnnouncementController extends Controller
         $admin = $admin instanceof Admin ? $admin : null;
         $canPublishLoginModal = $admin?->isItAdministrator() ?? false;
 
+        $showOnLogin = $canPublishLoginModal && $request->boolean('show_on_login');
+
         $announcement = new Announcement();
         $announcement->forceFill([
             'admin_id' => $admin?->getKey(),
             'title' => $request->input('title'),
             'content' => $request->input('content'),
             'attachment_path' => $this->saveAttachment($request),
-            'show_on_login' => $canPublishLoginModal
-                ? $request->boolean('show_on_login')
-                : false,
+            'show_on_login' => $showOnLogin,
+            'login_modal_expires_at' => $showOnLogin
+                ? $this->resolveLoginModalExpiry($request)
+                : null,
         ]);
         $announcement->save();
 
@@ -92,12 +97,16 @@ class AnnouncementController extends Controller
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,pdf', 'max:5120'],
             'remove_attachment' => ['nullable', 'boolean'],
             'show_on_login' => ['nullable', 'boolean'],
+            'login_modal_duration' => ['nullable', 'in:1_week,1_month,custom'],
+            'login_modal_expires_at' => ['nullable', 'date', 'after_or_equal:today'],
         ]);
 
         $admin = Auth::guard('admin')->user();
         /** @var \App\Models\Admin|null $admin */
         $admin = $admin instanceof Admin ? $admin : null;
         $canPublishLoginModal = $admin?->isItAdministrator() ?? false;
+
+        $showOnLogin = $canPublishLoginModal && $request->boolean('show_on_login');
 
         $attachmentPath = $announcement->getAttribute('attachment_path');
 
@@ -115,9 +124,10 @@ class AnnouncementController extends Controller
             'title' => $request->input('title'),
             'content' => $request->input('content'),
             'attachment_path' => $attachmentPath,
-            'show_on_login' => $canPublishLoginModal
-                ? $request->boolean('show_on_login')
-                : false,
+            'show_on_login' => $showOnLogin,
+            'login_modal_expires_at' => $showOnLogin
+                ? $this->resolveLoginModalExpiry($request, $announcement)
+                : null,
         ]);
         $announcement->save();
 
@@ -183,6 +193,37 @@ class AnnouncementController extends Controller
         $file->move($directory, $filename);
 
         return "uploads/announcements/{$filename}";
+    }
+
+    /**
+     * Resolve the expiry timestamp for a login-modal announcement.
+     *
+     * Duration choices: 1 Week, 1 Month, or a custom date.
+     * When no expiry is supplied (e.g. legacy records with only show_on_login),
+     * defaults to 1 week so the modal never stays up indefinitely.
+     */
+    protected function resolveLoginModalExpiry(Request $request, ?Announcement $current = null): \Illuminate\Support\Carbon
+    {
+        $duration = (string) $request->input('login_modal_duration');
+
+        if ($duration === 'custom' && $request->filled('login_modal_expires_at')) {
+            return \Illuminate\Support\Carbon::parse($request->input('login_modal_expires_at'))->endOfDay();
+        }
+
+        if ($duration === '1_month') {
+            return \Illuminate\Support\Carbon::now()->addMonth()->endOfDay();
+        }
+
+        if ($duration === '1_week') {
+            return \Illuminate\Support\Carbon::now()->addWeek()->endOfDay();
+        }
+
+        // Fallback: preserve the existing expiry if one is set.
+        if ($current && $current->login_modal_expires_at) {
+            return $current->login_modal_expires_at;
+        }
+
+        return \Illuminate\Support\Carbon::now()->addWeek()->endOfDay();
     }
 
     protected function deleteAttachment(?string $path)

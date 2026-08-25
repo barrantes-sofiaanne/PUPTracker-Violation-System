@@ -47,6 +47,29 @@
                         Show this announcement as a login modal across modules
                     </label>
                 </div>
+
+                <div class="mb-4 {{ old('show_on_login') ? '' : 'd-none' }}" id="loginModalDurationWrap">
+                    <label class="form-label">Duration shown as login modal</label>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <select class="form-select" id="login_modal_duration" name="login_modal_duration">
+                                <option value="1_week" {{ old('login_modal_duration') === '1_week' ? 'selected' : '' }}>1 Week</option>
+                                <option value="1_month" {{ old('login_modal_duration') === '1_month' ? 'selected' : '' }}>1 Month</option>
+                                <option value="custom" {{ old('login_modal_duration') === 'custom' ? 'selected' : '' }}>Custom Date</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-none" id="loginModalCustomDateWrap">
+                            <input
+                                type="date"
+                                class="form-control"
+                                id="login_modal_expires_at"
+                                name="login_modal_expires_at"
+                                value="{{ old('login_modal_expires_at') }}"
+                                min="{{ now()->toDateString() }}">
+                            <div class="form-text">Select the date until this login modal is shown.</div>
+                        </div>
+                    </div>
+                </div>
             @endif
 
             <button type="submit" class="admin-btn admin-btn-primary">
@@ -58,3 +81,33 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const checkbox = document.getElementById('show_on_login');
+    const wrap = document.getElementById('loginModalDurationWrap');
+    const duration = document.getElementById('login_modal_duration');
+    const customWrap = document.getElementById('loginModalCustomDateWrap');
+
+    if (!checkbox || !wrap) {
+        return;
+    }
+
+    function toggleDuration() {
+        wrap.classList.toggle('d-none', !checkbox.checked);
+    }
+
+    function toggleCustom() {
+        if (!customWrap) { return; }
+        customWrap.classList.toggle('d-none', !duration || duration.value !== 'custom');
+    }
+
+    checkbox.addEventListener('change', toggleDuration);
+    if (duration) { duration.addEventListener('change', toggleCustom); }
+
+    toggleDuration();
+    toggleCustom();
+});
+</script>
+@endpush

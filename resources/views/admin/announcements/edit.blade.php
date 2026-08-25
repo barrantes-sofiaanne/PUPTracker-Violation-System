@@ -61,6 +61,33 @@
                         Show this announcement as a login modal across modules
                     </label>
                 </div>
+
+                @php
+                    $existingExpiry = old('login_modal_expires_at', $announcement->login_modal_expires_at?->toDateString());
+                    $existingDuration = old('login_modal_duration', $announcement->show_on_login ? ($existingExpiry ? 'custom' : '1_week') : '');
+                @endphp
+                <div class="mb-4 {{ (old('show_on_login', $announcement->show_on_login)) ? '' : 'd-none' }}" id="loginModalDurationWrap">
+                    <label class="form-label">Duration shown as login modal</label>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <select class="form-select" id="login_modal_duration" name="login_modal_duration">
+                                <option value="1_week" {{ $existingDuration === '1_week' ? 'selected' : '' }}>1 Week</option>
+                                <option value="1_month" {{ $existingDuration === '1_month' ? 'selected' : '' }}>1 Month</option>
+                                <option value="custom" {{ $existingDuration === 'custom' ? 'selected' : '' }}>Custom Date</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 {{ $existingDuration === 'custom' ? '' : 'd-none' }}" id="loginModalCustomDateWrap">
+                            <input
+                                type="date"
+                                class="form-control"
+                                id="login_modal_expires_at"
+                                name="login_modal_expires_at"
+                                value="{{ $existingExpiry }}"
+                                min="{{ now()->toDateString() }}">
+                            <div class="form-text">Select the date until this login modal is shown.</div>
+                        </div>
+                    </div>
+                </div>
             @endif
 
             <button type="submit" class="admin-btn admin-btn-primary">
@@ -72,3 +99,33 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const checkbox = document.getElementById('show_on_login');
+    const wrap = document.getElementById('loginModalDurationWrap');
+    const duration = document.getElementById('login_modal_duration');
+    const customWrap = document.getElementById('loginModalCustomDateWrap');
+
+    if (!checkbox || !wrap) {
+        return;
+    }
+
+    function toggleDuration() {
+        wrap.classList.toggle('d-none', !checkbox.checked);
+    }
+
+    function toggleCustom() {
+        if (!customWrap) { return; }
+        customWrap.classList.toggle('d-none', !duration || duration.value !== 'custom');
+    }
+
+    checkbox.addEventListener('change', toggleDuration);
+    if (duration) { duration.addEventListener('change', toggleCustom); }
+
+    toggleDuration();
+    toggleCustom();
+});
+</script>
+@endpush

@@ -33,10 +33,12 @@ class Announcement extends Model
         'content',
         'attachment_path',
         'show_on_login',
+        'login_modal_expires_at',
     ];
 
     protected $casts = [
         'show_on_login' => 'boolean',
+        'login_modal_expires_at' => 'datetime',
     ];
 
     public function admin(): BelongsTo

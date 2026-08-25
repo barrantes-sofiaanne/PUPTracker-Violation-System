@@ -15,7 +15,7 @@
         </h5>
 
         <small>
-            Administrator
+            System Administrator
         </small>
 
     </div>
@@ -110,45 +110,6 @@
 
         </li>
 
-        <li class="sidebar-section-label">Reporting</li>
-
-        <li>
-
-            <a href="{{ route('admin.reports') }}" class="{{ request()->routeIs('admin.reports*') ? 'active' : '' }}">
-
-                <i class="bi bi-file-earmark-text"></i>
-
-                Violation Reports
-
-            </a>
-
-        </li>
-
-        <li>
-
-            <a href="{{ route('admin.program-report.index') }}" class="{{ request()->routeIs('admin.program-report.index') ? 'active' : '' }}">
-
-                <i class="bi bi-file-earmark-bar-graph"></i>
-
-                Program Sanction Reports
-
-            </a>
-
-        </li>
-
-        <li>
-
-            <a href="{{ route('admin.program-report.history') }}" class="{{ request()->routeIs('admin.program-report.history') ? 'active' : '' }}">
-
-                <i class="bi bi-clock-history"></i>
-
-                Report History
-
-            </a>
-
-        </li>
-
-
         <li class="sidebar-section-label">Records & Security</li>
 
         <li>
@@ -176,8 +137,6 @@
         </li>
 
         @if($isItAdministrator)
-            <li class="sidebar-section-label">Super Admin</li>
-
             <li>
                 <a href="{{ route('admin.super-admin.dashboard') }}" class="{{ request()->routeIs('admin.super-admin.dashboard') ? 'active' : '' }}">
                     <i class="bi bi-shield-lock"></i>

@@ -44,13 +44,17 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 $admin = Auth::guard('admin')->user();
-                if ($admin && $admin->isItAdministrator()) {
+                if ($admin && method_exists($admin, 'isItAdministrator') && $admin->isItAdministrator()) {
                     $view->with('loginAnnouncementModal', null);
                     return;
                 }
 
                 $announcement = Announcement::query()
                     ->where('show_on_login', true)
+                    ->where(function ($query): void {
+                        $query->whereNull('login_modal_expires_at')
+                            ->orWhere('login_modal_expires_at', '>', now());
+                    })
                     ->latest('created_at')
                     ->first();
 
