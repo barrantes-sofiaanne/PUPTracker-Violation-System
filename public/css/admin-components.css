@@ -763,8 +763,18 @@
     background: #fff9e8;
 }
 
-.admin-notif-item.unread {
-    background: #fffaf0;
+.admin-notif-unread-row {
+    background: #fff;
+}
+
+.admin-notif-unread-row .admin-notif-center-msg {
+    font-weight: 800;
+    color: var(--admin-ink);
+}
+
+.admin-notif-center-msg {
+    color: var(--admin-ink);
+    font-weight: 400;
 }
 
 .admin-notif-icon {
@@ -805,7 +815,7 @@
 .admin-notif-msg {
     color: var(--admin-ink);
     font-size: 0.82rem;
-    font-weight: 700;
+    font-weight: 400;
     line-height: 1.4;
     overflow-wrap: anywhere;
 }

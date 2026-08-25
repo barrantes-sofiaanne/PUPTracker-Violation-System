@@ -116,7 +116,19 @@ class NotificationController extends Controller
 
         $url = $service->openUrl($notification);
         if ($url === null) {
-            return response('This notification\'s associated record is no longer available.', 404);
+            // The underlying record no longer exists (e.g. the sanction request
+            // was removed). Never dead-end the admin on a raw 404 — take them
+            // to the relevant list so they can still act on what remains.
+            $fallback = match ($notification->target_type) {
+                'sanction_request' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
+                'email_incident' => route('admin.super-admin.email-incidents.index'),
+                default => route('admin.notifications'),
+            };
+
+            $notification->update(['is_read' => true]);
+
+            return redirect($fallback)
+                ->with('warning', 'This notification\'s associated record is no longer available. You were taken to the nearest list.');
         }
 
         $notification->update(['is_read' => true]);

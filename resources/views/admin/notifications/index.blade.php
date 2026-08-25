@@ -75,7 +75,7 @@
         @if($notifications->count())
             <div class="list-group list-group-flush">
                 @foreach($notifications as $notification)
-                    <div class="list-group-item d-flex justify-content-between align-items-start gap-2 {{ $notification->is_read ? '' : 'list-group-item-warning' }}">
+                    <div class="list-group-item d-flex justify-content-between align-items-start gap-2 {{ $notification->is_read ? '' : 'admin-notif-unread-row' }}">
                         <button
                             type="button"
                             class="btn btn-link text-decoration-none p-0 text-start flex-grow-1 admin-notif-trigger"
@@ -85,7 +85,7 @@
                             data-link="{{ $notification->target_type ? route('admin.notifications.open', $notification) : '' }}"
                             data-title="{{ $notification->title ?: '' }}"
                             data-id="{{ $notification->admin_notification_id }}">
-                            <div class="fw-semibold">
+                            <div class="{{ $notification->is_read ? 'admin-notif-center-msg' : 'admin-notif-center-msg fw-bold' }}">
                                 @if ($notification->notification_type === 'system_email_failure')
                                     <i class="bi bi-exclamation-octagon-fill text-danger me-1"></i>
                                 @elseif (in_array($notification->notification_type, ['sanction', 'disciplinary_sanction_request'], true))
