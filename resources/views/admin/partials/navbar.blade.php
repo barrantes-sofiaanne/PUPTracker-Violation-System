@@ -23,7 +23,7 @@
                 <i class="bi bi-list"></i>
             </button>
             <div class="topbar-brand">
-                <img src="{{ asset('assets/images/Tracker-logo.png') }}" alt="Tracker logo">
+                <img src="{{ asset('assets/images/SystemLogo_w/name.png') }}" alt="PUPTracker logo">
                 <div class="topbar-brand-text">
                     <p class="title">PUPTracker</p>
                     <p class="subtitle">{{ request()->routeIs('admin.super-admin.*') ? 'Super Admin Module' : 'Admin Module' }}</p>

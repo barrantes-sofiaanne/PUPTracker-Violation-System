@@ -7,7 +7,7 @@
     <div class="sidebar-logo">
 
         <img
-            src="{{ asset('assets/images/Tracker-logo.png') }}"
+            src="{{ asset('assets/images/SystemLogo_w/name.png') }}"
             width="60">
 
         <h5 class="mt-2">
