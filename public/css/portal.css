@@ -57,23 +57,6 @@ body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.portal-logo-main {
-    width: 96px;
-    height: auto;
-    object-fit: contain;
-    border-radius: 0.6rem;
-    display: block;
-    margin: 0 auto 0.25rem;
-}
-
-.portal-logo-name {
-    width: 128px;
-    height: auto;
-    object-fit: contain;
-    display: block;
-    margin: 0 auto;
-}
-
 .portal-logo {
     width: 64px;
     height: 64px;
@@ -127,75 +110,6 @@ body {
 
 .portal-nav-list a.active {
     box-shadow: inset 0 0 0 1px rgba(255, 223, 0, 0.48);
-}
-
-/* Collapsible sidebar groups shared with admin.css */
-.portal-nav-list .sidebar-group {
-    list-style: none;
-    margin: 0.15rem 0;
-}
-
-.portal-nav-list .sidebar-group-toggle {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0.58rem 0.75rem;
-    border: none;
-    border-radius: 0.75rem;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.92);
-    font-size: 0.9rem;
-    font-weight: 700;
-    text-align: left;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.portal-nav-list .sidebar-group-toggle span {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-}
-
-.portal-nav-list .sidebar-group-toggle:hover,
-.portal-nav-list .sidebar-group-toggle.collapsed {
-    background: rgba(255, 223, 0, 0.12);
-    color: #fff;
-}
-
-.portal-nav-list .sidebar-group-caret {
-    font-size: 0.75rem;
-    transition: transform 0.2s ease;
-}
-
-.portal-nav-list .sidebar-group-toggle.collapsed .sidebar-group-caret {
-    transform: rotate(-90deg);
-}
-
-.portal-nav-list .sidebar-group-items {
-    display: grid;
-    grid-template-rows: 1fr;
-    gap: 0.15rem;
-    padding-left: 0.75rem;
-    margin-left: 0.45rem;
-    border-left: 1px solid rgba(255, 223, 0, 0.28);
-    overflow: hidden;
-    transition: grid-template-rows 0.2s ease;
-}
-
-.portal-nav-list .sidebar-group-items:not(.open) {
-    grid-template-rows: 0fr;
-}
-
-.portal-nav-list .sidebar-group-items:not(.open) > * {
-    min-height: 0;
-}
-
-.portal-nav-list .sidebar-group-items a {
-    padding-left: 0.6rem;
-    font-weight: 600;
 }
 
 .portal-logout-form {

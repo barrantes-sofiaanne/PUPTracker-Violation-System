@@ -74,30 +74,6 @@ body {
     padding: 0.35rem;
 }
 
-.sidebar-logo-main {
-    width: 96px !important;
-    height: auto !important;
-    border-radius: 0.6rem !important;
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    object-fit: contain !important;
-    display: block;
-    margin: 0 auto 0.25rem;
-}
-
-.sidebar-logo-name {
-    width: 128px !important;
-    height: auto !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    object-fit: contain !important;
-    display: block;
-    margin: 0 auto;
-}
-
 .sidebar-logo h5 {
     margin: 0.5rem 0 0;
     font-family: "Cinzel", serif;
@@ -182,75 +158,6 @@ body {
 
 .sidebar-section-label:first-child {
     margin-top: 0.4rem;
-}
-
-/* Collapsible sidebar groups (admin + portal sidebars) */
-.sidebar-group {
-    list-style: none;
-    margin: 0.15rem 0;
-}
-
-.sidebar-group-toggle {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0.58rem 0.75rem;
-    border: none;
-    border-radius: 0.75rem;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.92);
-    font-size: 0.9rem;
-    font-weight: 700;
-    text-align: left;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.sidebar-group-toggle span {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-}
-
-.sidebar-group-toggle:hover,
-.sidebar-group-toggle.collapsed {
-    background: rgba(255, 223, 0, 0.12);
-    color: #fff;
-}
-
-.sidebar-group-caret {
-    font-size: 0.75rem;
-    transition: transform 0.2s ease;
-}
-
-.sidebar-group-toggle.collapsed .sidebar-group-caret {
-    transform: rotate(-90deg);
-}
-
-.sidebar-group-items {
-    display: grid;
-    grid-template-rows: 1fr;
-    gap: 0.15rem;
-    padding-left: 0.75rem;
-    margin-left: 0.45rem;
-    border-left: 1px solid rgba(255, 223, 0, 0.28);
-    overflow: hidden;
-    transition: grid-template-rows 0.2s ease;
-}
-
-.sidebar-group-items:not(.open) {
-    grid-template-rows: 0fr;
-}
-
-.sidebar-group-items:not(.open) > * {
-    min-height: 0;
-}
-
-.sidebar-group-items a {
-    padding-left: 0.6rem;
-    font-weight: 600;
 }
 
 .main-content {
