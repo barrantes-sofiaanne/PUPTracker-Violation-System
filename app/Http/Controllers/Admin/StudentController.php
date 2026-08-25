@@ -83,6 +83,12 @@ class StudentController extends Controller
             $students->where('status_id', $request->input('filter_status_id'));
         }
 
+        if ($request->filled('filter_ladderized')) {
+            $students->whereHas('studentInfo', function ($query) use ($request) {
+                $query->where('ladderized', (int) $request->input('filter_ladderized'));
+            });
+        }
+
         $students = $students
             ->orderBy('last_name')
             ->orderBy('first_name')
@@ -360,6 +366,9 @@ class StudentController extends Controller
     public function destroyAdmin(Admin $admin)
     {
         $adminEmail = $admin->email;
+        $adminName = trim(
+            ($admin->adminInfo?->firstname ?? '') . ' ' . ($admin->adminInfo?->lastname ?? '')
+        ) ?: $adminEmail;
 
         if ($admin->adminInfo) {
             $admin->adminInfo->delete();
@@ -371,7 +380,11 @@ class StudentController extends Controller
             'admin',
             'Delete',
             $admin->id,
-            $adminEmail
+            $adminEmail,
+            [
+                ['field' => 'Name', 'from' => $adminName, 'to' => '— (deleted)'],
+                ['field' => 'Email', 'from' => $adminEmail, 'to' => '— (deleted)'],
+            ]
         );
 
         return redirect()->route('admin.students', ['tab' => 'admins'])
@@ -473,6 +486,11 @@ class StudentController extends Controller
     public function destroySecurity(Security $security)
     {
         $securityEmail = $security->email;
+        $securityName = trim(
+            ($security->securityInfo?->firstname ?? $security->securityProfile?->firstname ?? '')
+            . ' '
+            . ($security->securityInfo?->lastname ?? $security->securityProfile?->lastname ?? '')
+        ) ?: $securityEmail;
 
         if ($security->securityInfo) {
             $security->securityInfo->delete();
@@ -488,7 +506,11 @@ class StudentController extends Controller
             'security',
             'Delete',
             $security->id,
-            $securityEmail
+            $securityEmail,
+            [
+                ['field' => 'Name', 'from' => $securityName, 'to' => '— (deleted)'],
+                ['field' => 'Email', 'from' => $securityEmail, 'to' => '— (deleted)'],
+            ]
         );
 
         return redirect()->route('admin.students', ['tab' => 'security'])
@@ -954,14 +976,12 @@ class StudentController extends Controller
             'created_at' => now(),
         ]);
 
-        return back()->with('success', 'IDP Account unlinked from this student.');
-    }
+        $studentName = trim(
+            ($student->first_name ?? '') . ' ' . ($student->middle_name ?? '') . ' ' . ($student->last_name ?? '')
+        ) ?: $student_number;
 
-    public function destroy(string $student_number)
-    {
-        $student = User::query()
-            ->where('student_number', $student_number)
-            ->firstOrFail();
+        $program = optional($student->studentInfo)->program?->program_name ?? '—';
+        $section = optional($student->studentInfo)->section?->section_name ?? '—';
 
         if ($student->studentInfo) {
             $student->studentInfo->delete();
@@ -973,7 +993,13 @@ class StudentController extends Controller
             'student',
             'Delete',
             $student->getKey(),
-            $student->email
+            $student->email,
+            [
+                ['field' => 'Student Number', 'from' => $student_number, 'to' => '— (deleted)'],
+                ['field' => 'Name', 'from' => $studentName, 'to' => '— (deleted)'],
+                ['field' => 'Program', 'from' => $program, 'to' => '— (deleted)'],
+                ['field' => 'Section', 'from' => $section, 'to' => '— (deleted)'],
+            ]
         );
 
         return redirect()
@@ -1340,6 +1366,10 @@ class StudentController extends Controller
         $description = $historyDetails;
         if (! empty($changes)) {
             $parts = array_map(function (array $change): string {
+                if (str_contains((string) ($change['to'] ?? ''), '(deleted)')) {
+                    return $change['field'] . ': "' . $change['from'] . '" (deleted)';
+                }
+
                 return $change['field'] . ' from "' . $change['from'] . '" to "' . $change['to'] . '"';
             }, $changes);
 

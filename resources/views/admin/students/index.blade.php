@@ -48,7 +48,8 @@
                             || request()->filled('filter_year_id')
                             || request()->filled('filter_section_id')
                             || request()->filled('filter_gender_id')
-                            || request()->filled('filter_status_id');
+                            || request()->filled('filter_status_id')
+                            || request()->filled('filter_ladderized');
                     @endphp
                     <form method="GET" action="{{ route('admin.students') }}" class="mb-4 user-management-toolbar">
                         <input type="hidden" name="tab" value="students">
@@ -156,6 +157,14 @@
                                                     {{ $status->status_name }}
                                                 </option>
                                             @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 {{ in_array(strtoupper(optional($programs->firstWhere('program_id', request('filter_program_id')))->program_name ?? ''), ['BSIT','BSOA'], true) ? '' : 'd-none' }}" id="filterLadderizedWrap">
+                                        <label class="admin-filter-label">Ladderized</label>
+                                        <select name="filter_ladderized" class="form-select">
+                                            <option value="">All</option>
+                                            <option value="1" {{ request('filter_ladderized') === '1' ? 'selected' : '' }}>Yes</option>
+                                            <option value="0" {{ request('filter_ladderized') === '0' ? 'selected' : '' }}>No</option>
                                         </select>
                                     </div>
                                 </div>
@@ -717,6 +726,28 @@ function toggleEditLadderizedField(selectEl) {
     const isLadderizable = /BSOA|BSIT/i.test(label);
     wrap.classList.toggle('d-none', !isLadderizable);
 }
+
+// Show the Ladderized filter only when the selected program is BSIT/BSOA.
+(function initLadderizedFilterToggle() {
+    const programSelect = document.querySelector('select[name="filter_program_id"]');
+    const ladderizedWrap = document.getElementById('filterLadderizedWrap');
+    if (!programSelect || !ladderizedWrap) {
+        return;
+    }
+
+    function updateLadderizedFilterVisibility() {
+        const label = (programSelect.selectedOptions[0] || {}).textContent || '';
+        const isLadderizable = /BSOA|BSIT/i.test(label);
+        ladderizedWrap.classList.toggle('d-none', !isLadderizable);
+        if (!isLadderizable) {
+            const select = ladderizedWrap.querySelector('select[name="filter_ladderized"]');
+            if (select) { select.value = ''; }
+        }
+    }
+
+    programSelect.addEventListener('change', updateLadderizedFilterVisibility);
+    updateLadderizedFilterVisibility();
+})();
 
 document.querySelectorAll('.deleteStudentBtn').forEach(function (button) {
     button.addEventListener('click', function () {
