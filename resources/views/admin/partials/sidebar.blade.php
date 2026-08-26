@@ -26,9 +26,21 @@
 
     <ul>
 
-        @unless($isItAdministrator)
         <li class="sidebar-section-label">Overview</li>
 
+        @if($isItAdministrator)
+        <li>
+
+            <a href="{{ route('admin.super-admin.dashboard') }}" class="{{ request()->routeIs('admin.super-admin.dashboard') ? 'active' : '' }}">
+
+                <i class="bi bi-shield-lock"></i>
+
+                Dashboard
+
+            </a>
+
+        </li>
+        @else
         <li>
 
             <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
@@ -40,7 +52,7 @@
             </a>
 
         </li>
-        @endunless
+        @endif
 
         <li class="sidebar-section-label">Accounts</li>
 

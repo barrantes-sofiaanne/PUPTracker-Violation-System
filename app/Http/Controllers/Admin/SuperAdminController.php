@@ -21,11 +21,42 @@ class SuperAdminController extends Controller
         $maintenanceStatus = app()->isDownForMaintenance();
         $latestLog = AuditLog::latest('created_at')->first();
 
+        // MFA coverage: total admins vs admins with TOTP enabled.
+        $totalAdmins = Admin::count();
+        $mfaEnabledAdmins = Admin::where('mfa_totp_enabled', true)->count();
+
+        // Maintenance history: last + next review (quarterly ~3 months).
+        $latestMaintenance = \App\Models\MaintenanceRecord::query()
+            ->latest('maintenance_date')
+            ->first();
+        $maintenanceNextReview = $latestMaintenance
+            ? \Illuminate\Support\Carbon::parse($latestMaintenance->maintenance_date)->addMonths(3)
+            : null;
+        $maintenanceUpToDate = $maintenanceNextReview
+            ? $maintenanceNextReview->isFuture()
+            : false;
+
+        // Backup status: use the most recent Database Maintenance record as the
+        // best available in-app signal for the MyDumper→Cloudflare R2 backups.
+        $latestBackup = \App\Models\MaintenanceRecord::query()
+            ->where('maintenance_type', 'like', '%Database%')
+            ->latest('maintenance_date')
+            ->first();
+        $backupHealthy = $latestBackup
+            && \Illuminate\Support\Carbon::parse($latestBackup->maintenance_date)->isAfter(now()->subDays(2));
+
         return view('admin.super-admin.dashboard', compact(
             'totalLogs',
             'todayLogs',
             'maintenanceStatus',
-            'latestLog'
+            'latestLog',
+            'totalAdmins',
+            'mfaEnabledAdmins',
+            'latestMaintenance',
+            'maintenanceNextReview',
+            'maintenanceUpToDate',
+            'latestBackup',
+            'backupHealthy'
         ));
     }
 
