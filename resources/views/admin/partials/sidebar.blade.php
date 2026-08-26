@@ -150,6 +150,15 @@
 
         @if($isItAdministrator)
             <li>
+                <a href="{{ route('admin.super-admin.backups.index') }}" class="{{ request()->routeIs('admin.super-admin.backups*') ? 'active' : '' }}">
+                    <i class="bi bi-database-check"></i>
+                    Backup History
+                </a>
+            </li>
+        @endif
+
+        @if($isItAdministrator)
+            <li>
                 <a href="{{ route('admin.super-admin.email-incidents.index') }}" class="{{ request()->routeIs('admin.super-admin.email-incidents*') ? 'active' : '' }}">
                     <i class="bi bi-exclamation-octagon"></i>
                     System Logs

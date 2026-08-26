@@ -53,17 +53,20 @@
                 <h5>Database Backup</h5>
                 <p class="mb-1">
                     <span class="badge {{ ($backupHealthy ?? false) ? 'bg-success' : 'bg-warning text-dark' }}">
-                        {{ ($backupHealthy ?? false) ? 'Healthy' : 'No recent record' }}
+                        {{ ($backupHealthy ?? false) ? '✓ Healthy' : 'No recent record' }}
                     </span>
                 </p>
                 <p class="text-muted mb-1">
                     Last backup:
                     <strong>
-                        {{ $latestBackup?->maintenance_date?->format('M d, Y h:i A') ?: 'No record yet' }}
+                        {{ $latestBackup?->completed_at?->format('M d, Y h:i A') ?: 'No record yet' }}
                     </strong>
                 </p>
+                @if($latestBackup)
+                    <p class="text-muted mb-1"><strong>{{ $latestBackup->backup_name }}</strong></p>
+                @endif
                 <p class="text-muted mb-3">Destination: Cloudflare R2</p>
-                <a href="{{ route('admin.super-admin.maintenance-records.index') }}" class="admin-btn admin-btn-primary admin-btn-sm">View Backup Status</a>
+                <a href="{{ route('admin.super-admin.backups.index') }}" class="admin-btn admin-btn-primary admin-btn-sm">View Backup History</a>
             </div>
         </div>
     </div>

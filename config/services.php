@@ -39,6 +39,12 @@ return [
         ],
     ],
 
+    'backup' => [
+        // Shared secret used by the Railway backup job to report results to
+        // POST /admin/super-admin/backups/report. Set BACKUP_REPORT_TOKEN in .env.
+        'report_token' => env('BACKUP_REPORT_TOKEN'),
+    ],
+
     'idp' => [
         // Base URL includes the Swagger basePath (/api/v1).
         'base_url' => env('IDP_BASE_URL', 'https://identity-provider.isaxbsit2027.com/api/v1'),

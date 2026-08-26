@@ -36,14 +36,13 @@ class SuperAdminController extends Controller
             ? $maintenanceNextReview->isFuture()
             : false;
 
-        // Backup status: use the most recent Database Maintenance record as the
-        // best available in-app signal for the MyDumper→Cloudflare R2 backups.
-        $latestBackup = \App\Models\MaintenanceRecord::query()
-            ->where('maintenance_type', 'like', '%Database%')
-            ->latest('maintenance_date')
+        // Backup status: latest recorded outcome from backup_history.
+        $latestBackup = \App\Models\BackupHistory::query()
+            ->latest('completed_at')
             ->first();
         $backupHealthy = $latestBackup
-            && \Illuminate\Support\Carbon::parse($latestBackup->maintenance_date)->isAfter(now()->subDays(2));
+            && $latestBackup->isSuccessful()
+            && \Illuminate\Support\Carbon::parse($latestBackup->completed_at)->isAfter(now()->subDays(2));
 
         return view('admin.super-admin.dashboard', compact(
             'totalLogs',

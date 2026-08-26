@@ -611,8 +611,26 @@ Route::middleware('auth:admin')
 
                 Route::post('/email-incidents/simulate-failure', [App\Http\Controllers\Admin\EmailIncidentController::class, 'simulateFailure'])
                     ->name('email-incidents.simulate-failure');
+
+                /*
+                |--------------------------------------------------------------------------
+                | Backup History (Risk No. 3 — Railway → MyDumper → Cloudflare R2)
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get('/backups', [App\Http\Controllers\Admin\BackupHistoryController::class, 'index'])
+                    ->name('backups.index');
+
+                Route::get('/backups/{backup}', [App\Http\Controllers\Admin\BackupHistoryController::class, 'show'])
+                    ->name('backups.show');
             });
     });
+
+// Backup report webhook (called by the Railway backup job — token-protected,
+// NOT gated by the super.admin middleware so the cron/script can POST results).
+Route::post('/admin/super-admin/backups/report', [App\Http\Controllers\Admin\BackupHistoryController::class, 'report'])
+    ->middleware('web')
+    ->name('admin.super-admin.backups.report');
 
 Route::middleware('auth:security')
     ->prefix('security')
