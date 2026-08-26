@@ -75,9 +75,46 @@ class AnnouncementController extends Controller
         ]);
         $announcement->save();
 
+        // Notify students about the new announcement (target-aware).
+        $this->notifyStudentsOfAnnouncement($announcement);
+
         return redirect()
             ->route('admin.announcements')
             ->with('success', 'Announcement published successfully.');
+    }
+
+    /**
+     * Send a target-aware notification to every active student when a new
+     * announcement is published.
+     */
+    protected function notifyStudentsOfAnnouncement($announcement): void
+    {
+        try {
+            $students = \App\Models\User::query()
+                ->whereHas('role', fn ($q) => $q->where('roles_name', 'Student'))
+                ->get(['student_number']);
+
+            foreach ($students as $student) {
+                if (! $student->student_number) {
+                    continue;
+                }
+
+                try {
+                    app(\App\Services\StudentNotificationService::class)->create(
+                        studentNumber: $student->student_number,
+                        type: 'announcement',
+                        title: 'New Announcement',
+                        message: $announcement->title,
+                        targetType: 'announcement',
+                        targetId: (int) $announcement->announcement_id,
+                    );
+                } catch (\Throwable $e) {
+                    // Continue notifying remaining students.
+                }
+            }
+        } catch (\Throwable $e) {
+            // Notification must never break announcement publishing.
+        }
     }
 
     public function edit(Announcement $announcement)

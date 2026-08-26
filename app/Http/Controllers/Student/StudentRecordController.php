@@ -386,6 +386,20 @@ public function requestSanction(Request $request)
             targetId: (int) $sanctionRequest->request_id,
         );
 
+        // Notify the student that their request is now pending (target-aware).
+        try {
+            app(\App\Services\StudentNotificationService::class)->create(
+                studentNumber: $user->student_number,
+                type: 'sanction',
+                title: 'Sanction Request Pending',
+                message: 'Your sanction request is now pending review. You will be notified once it is approved or declined.',
+                targetType: 'sanction_request',
+                targetId: (int) $sanctionRequest->request_id,
+            );
+        } catch (\Throwable $e) {
+            // Notification must never break the request submission.
+        }
+
         DB::commit();
 
         return response()->json([

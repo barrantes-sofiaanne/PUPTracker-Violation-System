@@ -123,15 +123,24 @@
                                 {{ \Illuminate\Support\Str::limit(strip_tags($notification->message), 180) }}
                             </p>
 
-                            <button
-                                type="button"
-                                class="btn btn-sm btn-outline-primary notification-trigger"
-                                data-message="{{ e($notification->message) }}"
-                                data-created="{{ $notification->created_at->format('M d, Y h:i A') }}"
-                                data-type="{{ $notification->notification_type }}"
-                                data-link="{{ $notification->link ?: '' }}">
-                                View Full Message
-                            </button>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-outline-primary notification-trigger"
+                                    data-message="{{ e($notification->message) }}"
+                                    data-created="{{ $notification->created_at->format('M d, Y h:i A') }}"
+                                    data-type="{{ $notification->notification_type }}"
+                                    data-link="{{ $notification->link ?: '' }}">
+                                    View Full Message
+                                </button>
+
+                                @if($notification->target_type)
+                                    <a href="{{ route('student.notifications.open', $notification) }}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>
+                                        Open
+                                    </a>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 @empty

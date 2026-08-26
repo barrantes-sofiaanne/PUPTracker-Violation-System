@@ -198,6 +198,9 @@ Route::middleware('auth:student')
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->name('student.notifications');
 
+        Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])
+            ->name('student.notifications.open');
+
         Route::post('/notifications/status', [NotificationController::class, 'updateStatus'])
             ->name('student.notifications.status');
 

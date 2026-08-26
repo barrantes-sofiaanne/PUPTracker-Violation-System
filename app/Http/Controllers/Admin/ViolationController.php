@@ -553,8 +553,6 @@ public function store(Request $request): JsonResponse
 
     try {
 
-        // ... the rest of your code ...
-
             /*
             |--------------------------------------------------------------------------
             | Prevent Duplicate Records
@@ -625,15 +623,24 @@ public function store(Request $request): JsonResponse
 
             DB::commit();
 
+            // Notify the student about the recorded violation (target-aware).
+            try {
+                app(\App\Services\StudentNotificationService::class)->create(
+                    studentNumber: $validated['student_number'],
+                    type: 'violation',
+                    title: 'Violation Notice',
+                    message: 'A violation has been recorded against your record: ' . $violationType->violation_type . '. Please review your Student Record.',
+                    targetType: 'violation',
+                    targetId: (int) $violation->violation_id,
+                );
+            } catch (\Throwable $e) {
+                // Notification must never break the violation recording.
+            }
+
             return response()->json([
-
                 'success' => true,
-
-                'message' =>
-                    'Violation recorded successfully.',
-
+                'message' => 'Violation recorded successfully.',
                 'data' => $violation,
-
             ]);
 
         } catch (\Throwable $exception) {

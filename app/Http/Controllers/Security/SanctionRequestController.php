@@ -93,16 +93,24 @@ class SanctionRequestController extends Controller
                 }
             }
 
-            Notification::create([
-                'student_number' => $student?->student_number,
-                'message' => $decision === 'approved'
-                    ? 'Your sanction request was approved by the security office.'
-                    : 'Your sanction request was declined by the security office.',
-                'is_read' => false,
-                'link' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
-                'notification_type' => 'sanction',
-                'recipient_type' => 'student',
-            ]);
+            if ($student?->student_number) {
+                try {
+                    app(\App\Services\StudentNotificationService::class)->create(
+                        studentNumber: $student->student_number,
+                        type: 'sanction',
+                        title: $decision === 'approved'
+                            ? 'Sanction Request Approved'
+                            : 'Sanction Request Declined',
+                        message: $decision === 'approved'
+                            ? 'Your sanction request was approved by the security office.'
+                            : 'Your sanction request was declined by the security office.',
+                        targetType: 'sanction_request',
+                        targetId: (int) $sanctionRequest->request_id,
+                    );
+                } catch (\Throwable $e) {
+                    // Notification must never break the decision.
+                }
+            }
 
             AuditLog::create([
                 'actor_type' => 'security',

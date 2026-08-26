@@ -20,15 +20,19 @@ class Notification extends Model
     protected $fillable = [
         'student_number',
         'message',
+        'title',
         'is_read',
         'link',
         'notification_type',
-        'recipient_type'
+        'recipient_type',
+        'target_type',
+        'target_id',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'is_read' => 'boolean',
+        'target_id' => 'integer',
     ];
 
     public function student(): BelongsTo

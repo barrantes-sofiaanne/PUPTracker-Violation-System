@@ -239,14 +239,18 @@ class SanctionController extends Controller
                 'approved_at' => now(),
             ]);
 
-            Notification::create([
-                'student_number' => $student->student_number,
-                'message' => 'Your sanction request was approved. Please check your Sanction Record tab. Scheduled date: ' . $scheduledDate->format('M d, Y') . '.',
-                'is_read' => false,
-                'link' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
-                'notification_type' => 'sanction',
-                'recipient_type' => 'student',
-            ]);
+            try {
+                app(\App\Services\StudentNotificationService::class)->create(
+                    studentNumber: $student->student_number,
+                    type: 'sanction',
+                    title: 'Sanction Request Approved',
+                    message: 'Your sanction request was approved. Please check your Sanction Record tab. Scheduled date: ' . $scheduledDate->format('M d, Y') . '.',
+                    targetType: 'sanction_request',
+                    targetId: (int) $sanctionRequest->request_id,
+                );
+            } catch (\Throwable $e) {
+                // Notification must never break the approval.
+            }
 
             AuditLog::create([
                 'actor_type' => 'admin',
@@ -281,14 +285,18 @@ class SanctionController extends Controller
             ]);
 
             if ($student) {
-                Notification::create([
-                    'student_number' => $student->student_number,
-                    'message' => 'Your sanction request was declined by the administration.',
-                    'is_read' => false,
-                    'link' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
-                    'notification_type' => 'sanction',
-                    'recipient_type' => 'student',
-                ]);
+                try {
+                    app(\App\Services\StudentNotificationService::class)->create(
+                        studentNumber: $student->student_number,
+                        type: 'sanction',
+                        title: 'Sanction Request Declined',
+                        message: 'Your sanction request was declined by the administration.',
+                        targetType: 'sanction_request',
+                        targetId: (int) $sanctionRequest->request_id,
+                    );
+                } catch (\Throwable $e) {
+                    // Notification must never break the decline.
+                }
             }
 
             AuditLog::create([
@@ -319,14 +327,18 @@ class SanctionController extends Controller
                 'date_completed' => now(),
             ]);
 
-            Notification::create([
-                'student_number' => $studentSanctionRecord->student_number,
-                'message' => 'Your sanction status has been marked as completed by the administration.',
-                'is_read' => false,
-                'link' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
-                'notification_type' => 'sanction',
-                'recipient_type' => 'student',
-            ]);
+            try {
+                app(\App\Services\StudentNotificationService::class)->create(
+                    studentNumber: $studentSanctionRecord->student_number,
+                    type: 'sanction',
+                    title: 'Sanction Completed',
+                    message: 'Your sanction status has been marked as completed by the administration.',
+                    targetType: 'sanction_request',
+                    targetId: (int) $studentSanctionRecord->record_id,
+                );
+            } catch (\Throwable $e) {
+                // Notification must never break the completion.
+            }
 
             AuditLog::create([
                 'actor_type' => 'admin',
@@ -356,14 +368,18 @@ class SanctionController extends Controller
                 'date_completed' => null,
             ]);
 
-            Notification::create([
-                'student_number' => $studentSanctionRecord->student_number,
-                'message' => 'Your sanction status was reverted to pending by the administration.',
-                'is_read' => false,
-                'link' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
-                'notification_type' => 'sanction',
-                'recipient_type' => 'student',
-            ]);
+            try {
+                app(\App\Services\StudentNotificationService::class)->create(
+                    studentNumber: $studentSanctionRecord->student_number,
+                    type: 'sanction',
+                    title: 'Sanction Reverted',
+                    message: 'Your sanction status was reverted to pending by the administration.',
+                    targetType: 'sanction_request',
+                    targetId: (int) $studentSanctionRecord->record_id,
+                );
+            } catch (\Throwable $e) {
+                // Notification must never break the revert.
+            }
 
             AuditLog::create([
                 'actor_type' => 'admin',
