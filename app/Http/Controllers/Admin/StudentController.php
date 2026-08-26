@@ -976,6 +976,18 @@ class StudentController extends Controller
             'created_at' => now(),
         ]);
 
+        return back()->with('success', 'IDP Account unlinked from this student.');
+    }
+
+    /**
+     * Delete a student account (admin module).
+     */
+    public function destroy(string $student_number)
+    {
+        $student = User::query()
+            ->where('student_number', $student_number)
+            ->firstOrFail();
+
         $studentName = trim(
             ($student->first_name ?? '') . ' ' . ($student->middle_name ?? '') . ' ' . ($student->last_name ?? '')
         ) ?: $student_number;
