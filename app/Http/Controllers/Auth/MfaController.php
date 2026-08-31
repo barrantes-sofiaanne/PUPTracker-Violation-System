@@ -86,6 +86,9 @@ class MfaController extends Controller
         $request->session()->regenerate();
         $mfaService->clear($request);
 
+        // Show the privacy/terms consent modal first on every login.
+        $request->session()->put('show_privacy_consent_modal', true);
+
         $backupCodes = $mfaService->generateInitialBackupCodes($guard, $identifier);
         if (!empty($backupCodes)) {
             return redirect()

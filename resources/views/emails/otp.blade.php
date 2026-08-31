@@ -260,7 +260,7 @@
 
                 <p class="expiry-notice" style="font-size: 14px; color: #666666; margin: 30px 0 20px; line-height: 1.6; font-family: Arial, sans-serif; font-style: italic;">This code will expire in {{ $expiryMinutes }} minutes.</p>
 
-                <p class="support-text" style="font-size: 14px; color: #666666; margin: 20px 0 0; line-height: 1.6; font-family: Arial, sans-serif;">If you did not request this verification, please ignore this email or contact our support team immediately at <a href="mailto:puptrackervs@gmail.com" class="support-link" style="color: #800000; text-decoration: underline; font-weight: bold;">puptrackervs@gmail.com</a></p>
+                <p class="support-text" style="font-size: 14px; color: #666666; margin: 20px 0 0; line-height: 1.6; font-family: Arial, sans-serif;">If you did not request this verification, please ignore this email or contact our support team immediately at <a href="mailto:contact.puptrackervs@gmail.com" class="support-link" style="color: #800000; text-decoration: underline; font-weight: bold;">contact.puptrackervs@gmail.com</a></p>
             </td>
         </tr>
 

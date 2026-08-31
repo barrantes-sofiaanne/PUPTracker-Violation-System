@@ -37,7 +37,7 @@
                 <span class="auth-brand-separator" aria-hidden="true">•</span>
                 <a href="https://www.pup.edu.ph/terms/" target="_blank" rel="noopener noreferrer">Terms of Use</a>
                 <span class="auth-brand-separator" aria-hidden="true">•</span>
-                <a href="mailto:puptrackervs@gmail.com">Contact Us</a>
+                <a href="mailto:contact.puptrackervs@gmail.com">Contact Us</a>
             </div>
             <span class="auth-brand-version">Version 2.0.0</span>
         </aside>

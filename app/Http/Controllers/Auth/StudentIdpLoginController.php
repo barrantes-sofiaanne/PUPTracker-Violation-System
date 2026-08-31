@@ -191,6 +191,7 @@ class StudentIdpLoginController extends Controller
 
             Auth::guard('student')->login($user);
             $request->session()->regenerate();
+            $request->session()->put('show_privacy_consent_modal', true);
 
             return redirect()->route('student.dashboard');
         } catch (\Throwable $exception) {
@@ -317,6 +318,7 @@ class StudentIdpLoginController extends Controller
 
         Auth::guard('student')->login($student);
         $request->session()->regenerate();
+        $request->session()->put('show_privacy_consent_modal', true);
 
         return redirect()->route('student.dashboard');
     }

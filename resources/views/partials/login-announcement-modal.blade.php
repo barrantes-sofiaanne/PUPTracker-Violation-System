@@ -45,6 +45,20 @@
             }
 
             const modal = new bootstrap.Modal(modalElement);
+
+            // If the privacy/terms consent modal is present, it should show
+            // FIRST and reveal this announcement modal only after the user
+            // clicks "I Agree". Otherwise, show immediately.
+            const consentModalElement = document.getElementById('privacyConsentModal');
+            if (consentModalElement) {
+                // The consent modal's script calls PUPPrivacyConsentReady() to
+                // show itself; the announcement waits for the agreement event.
+                document.addEventListener('privacy:consent-agreed', function () {
+                    modal.show();
+                });
+                return;
+            }
+
             modal.show();
         });
     </script>

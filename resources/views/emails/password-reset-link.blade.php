@@ -67,7 +67,7 @@
 
                 <p class="support-text" style="font-size: 14px; color: #666666; margin: 20px 0 0; line-height: 1.6; font-family: Arial, sans-serif;">
                     If you did not request this, ignore this email. Contact our support team at
-                    <a href="mailto:puptrackervs@gmail.com" class="support-link" style="color: #800000; text-decoration: underline; font-weight: bold;">puptrackervs@gmail.com</a>
+                    <a href="mailto:contact.puptrackervs@gmail.com" class="support-link" style="color: #800000; text-decoration: underline; font-weight: bold;">contact.puptrackervs@gmail.com</a>
                     if you need further assistance.
                 </p>
             </td>

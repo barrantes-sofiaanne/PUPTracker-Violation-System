@@ -39,6 +39,7 @@ class AdminLoginController extends Controller
         Auth::guard('admin')->login($admin);
 
         $request->session()->regenerate();
+        $request->session()->put('show_privacy_consent_modal', true);
 
         return redirect()->route('admin.dashboard');
     }
