@@ -1,19 +1,17 @@
 <div class="card border-0">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <div class="d-flex gap-2 flex-wrap w-100 w-lg-auto">
-            <div class="input-group" style="max-width: 420px;">
-                <input
-                    type="text"
-                    class="form-control"
-                    id="sanctionSearchInput"
-                    placeholder="Search violation type...">
-                <span class="input-group-text bg-white">
-                    <i class="bi bi-search"></i>
-                </span>
-            </div>
+        <div class="input-group sanction-search-group">
+            <input
+                type="text"
+                class="form-control"
+                id="sanctionSearchInput"
+                placeholder="Search violation type...">
+            <span class="input-group-text bg-white">
+                <i class="bi bi-search"></i>
+            </span>
         </div>
 
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
             <button
                 type="button"
                 class="admin-btn admin-btn-secondary addSanctionBtn"
@@ -85,7 +83,7 @@
                                         <tr>
                                             <th style="width: 220px;">Offense Level</th>
                                             <th>Disciplinary Sanction</th>
-                                            <th style="width: 210px;">Actions</th>
+                                            <th class="text-end" style="width: 240px;">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -94,18 +92,20 @@
                                                 <td>{{ $sanction->offense_level }}</td>
                                                 <td>{{ $sanction->disciplinary_sanction }}</td>
                                                 <td>
-                                                    <button
-                                                        class="admin-btn admin-btn-view admin-btn-sm edit-sanction-btn"
-                                                        data-id="{{ $sanction->disciplinary_sanction_id }}">
-                                                        <i class="bi bi-pencil-square me-1"></i>
-                                                        Update
-                                                    </button>
-                                                    <button
-                                                        class="admin-btn admin-btn-danger admin-btn-sm delete-sanction-btn"
-                                                        data-id="{{ $sanction->disciplinary_sanction_id }}">
-                                                        <i class="bi bi-trash me-1"></i>
-                                                        Delete
-                                                    </button>
+                                                    <div class="d-flex align-items-center justify-content-end gap-2 flex-nowrap">
+                                                        <button
+                                                            class="admin-btn admin-btn-view admin-btn-sm edit-sanction-btn"
+                                                            data-id="{{ $sanction->disciplinary_sanction_id }}">
+                                                            <i class="bi bi-pencil-square me-1"></i>
+                                                            Update
+                                                        </button>
+                                                        <button
+                                                            class="admin-btn admin-btn-danger admin-btn-sm delete-sanction-btn"
+                                                            data-id="{{ $sanction->disciplinary_sanction_id }}">
+                                                            <i class="bi bi-trash me-1"></i>
+                                                            Delete
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         @endforeach

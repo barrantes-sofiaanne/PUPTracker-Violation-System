@@ -4,6 +4,11 @@
         <i class="bi bi-x-lg"></i>
     </button>
 
+    @php
+        $isItAdministrator = auth('admin')->check() && auth('admin')->user()->isItAdministrator();
+        $sidebarRoleLabel = $isItAdministrator ? 'IT Administrator' : 'Administrator';
+    @endphp
+
     <div class="sidebar-logo">
 
         <img
@@ -15,14 +20,10 @@
         </h5>
 
         <small>
-            System Administrator
+            {{ $sidebarRoleLabel }}
         </small>
 
     </div>
-
-    @php
-        $isItAdministrator = auth('admin')->check() && auth('admin')->user()->isItAdministrator();
-    @endphp
 
     <ul>
 
@@ -121,6 +122,46 @@
             </a>
 
         </li>
+
+        @unless($isItAdministrator)
+        <li class="sidebar-section-label">Reporting</li>
+
+        <li>
+
+            <a href="{{ route('admin.reports') }}" class="{{ request()->routeIs('admin.reports*') ? 'active' : '' }}">
+
+                <i class="bi bi-file-earmark-bar-graph"></i>
+
+                Reports
+
+            </a>
+
+        </li>
+
+        <li>
+
+            <a href="{{ route('admin.program-report.index') }}" class="{{ request()->routeIs('admin.program-report.index') ? 'active' : '' }}">
+
+                <i class="bi bi-stars"></i>
+
+                AI Program Report
+
+            </a>
+
+        </li>
+
+        <li>
+
+            <a href="{{ route('admin.program-report.history') }}" class="{{ request()->routeIs('admin.program-report.history') ? 'active' : '' }}">
+
+                <i class="bi bi-clock-history"></i>
+
+                Report History
+
+            </a>
+
+        </li>
+        @endunless
 
         <li class="sidebar-section-label">Records & Security</li>
 

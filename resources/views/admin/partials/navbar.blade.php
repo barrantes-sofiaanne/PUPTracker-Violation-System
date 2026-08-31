@@ -26,7 +26,7 @@
                 <img src="{{ asset('assets/images/SystemLogo_w/name.png') }}" alt="PUPTracker logo">
                 <div class="topbar-brand-text">
                     <p class="title">PUPTracker</p>
-                    <p class="subtitle">{{ request()->routeIs('admin.super-admin.*') ? 'Super Admin Module' : 'Admin Module' }}</p>
+                    <p class="subtitle">{{ ($adminUser && $adminUser->isItAdministrator()) ? 'IT Administrator' : 'Administrator' }}</p>
                 </div>
             </div>
         </div>

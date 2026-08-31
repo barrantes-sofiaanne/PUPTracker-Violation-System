@@ -758,6 +758,27 @@ h6 {
     border-left: 4px solid #991b1b;
 }
 
+/* Sanction configuration toolbar — keep the search + action buttons on one
+   row, with the action buttons right-aligned (not wrapping below the search). */
+.sanction-search-group {
+    flex: 0 1 auto;
+    width: min(100%, 420px);
+}
+
+.sanction-search-group .form-control {
+    min-height: 40px;
+}
+
+.sanction-accordion-item .accordion-body .table-responsive {
+    margin-bottom: 0;
+}
+
+@media (max-width: 575.98px) {
+    .sanction-search-group {
+        width: 100%;
+    }
+}
+
 .user-management-table thead th {
     background: #fff7de !important;
     color: #5f0000 !important;
