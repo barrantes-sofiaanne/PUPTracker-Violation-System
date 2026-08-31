@@ -6,9 +6,17 @@
 
 <div class="container-fluid">
 
-    @php $stats = $report->statistics_json ?? []; @endphp
+    @php
+        $stats = $report->statistics_json ?? [];
+        $isGraduating = $report->report_mode === 'graduating';
+        // graduating_year now holds the admission year(s) — either a single
+        // number or a comma-joined list (e.g. "2022" or "2022, 2023").
+        $appliedYearLabel = $isGraduating
+            ? 'Admitted ' . ($report->graduating_year ?: ($report->academic_year ?: '—'))
+            : ($report->academic_year ?: 'All configured years');
+    @endphp
 
-    <x-admin.page-header title="Program Sanction Report" :description="$report->program?->program_name . ($report->report_mode === 'graduating' ? ' · Graduating Students' : ' · Cohort ' . $report->academic_year)">
+    <x-admin.page-header title="Program Sanction Report" :description="$report->program?->program_name . ($isGraduating ? ' · Graduating Students' : ' · Cohort ' . $report->academic_year)">
         <x-slot name="actions">
             <a href="{{ route('admin.program-report.history') }}" class="admin-btn admin-btn-neutral">
                 <i class="bi bi-clock-history"></i> History
@@ -52,7 +60,7 @@
                 </div>
                 <div class="col-md-3">
                     <small class="text-muted d-block">Applied Year</small>
-                    <strong>{{ $report->graduating_year ? $report->graduating_year . ($report->graduating_year === 3 ? 'rd' : 'th') . ' Year' : ($report->academic_year ?: 'All configured years') }}</strong>
+                    <strong>{{ $appliedYearLabel }}</strong>
                 </div>
                 <div class="col-md-3">
                     <small class="text-muted d-block">Generated</small>
@@ -130,7 +138,9 @@
     @if($report->report_mode === 'graduating')
         <div class="alert alert-info mb-4">
             <strong>Applied eligibility:</strong>
-            {{ $report->degree_type }} programs include only {{ $report->graduating_year }}{{ $report->graduating_year === 3 ? 'rd' : 'th' }} Year students. Eligibility is determined by the system records, not AI.
+            Graduating students are identified by the admission year(s) encoded in the first four digits of their student number:
+            <strong>{{ $report->graduating_year ?: $report->academic_year }}</strong>.
+            Eligibility is determined by the system records, not AI.
         </div>
     @endif
 

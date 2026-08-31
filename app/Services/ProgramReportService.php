@@ -24,10 +24,19 @@ class ProgramReportService
     }
 
     /**
-     * All graduating students for a program + academic year (no limit).
+     * All students for a program report (no limit).
+     *
+     * - regular mode: filters by the academic year label (year_tbl).
+     * - graduating mode: filters by the admission year(s) encoded in the
+     *   first 4 digits of each student's student_number (e.g. "2022-xxxx"
+     *   => admitted 2022, expected to graduate this cycle).
      */
-    public function studentsFor(Program $program, ?string $academicYear = null, string $reportMode = 'regular'): Collection
-    {
+    public function studentsFor(
+        Program $program,
+        ?string $academicYear = null,
+        string $reportMode = 'regular',
+        array $graduatingYears = []
+    ): Collection {
         $query = User::query()
             ->with([
                 'studentInfo.program',
@@ -40,18 +49,21 @@ class ProgramReportService
             ->whereHas('studentInfo', fn ($q) => $q->where('program_id', $program->program_id));
 
         if ($reportMode === 'graduating') {
-            $graduatingYear = $program->graduatingYear();
-            if ($graduatingYear === null) {
-                throw new InvalidArgumentException('This program has no valid degree-type classification. Update the program configuration before generating a graduating report.');
+            // First 4 digits of the student number = admission year.
+            $years = array_values(array_unique(array_filter(
+                array_map('trim', $graduatingYears),
+                fn ($year) => is_numeric($year) && (int) $year >= 1900 && (int) $year <= now()->year
+            )));
+
+            if ($years === []) {
+                throw new InvalidArgumentException('Select at least one admission year for the graduating report.');
             }
 
-            $yearLabels = match ($graduatingYear) {
-                3 => ['3', '3rd Year', 'Third Year'],
-                4 => ['4', '4th Year', 'Fourth Year'],
-                default => [(string) $graduatingYear, $graduatingYear . 'th Year'],
-            };
-
-            $query->whereHas('studentInfo.year', fn ($q) => $q->whereIn('year', $yearLabels));
+            $query->where(function ($q) use ($years): void {
+                foreach ($years as $year) {
+                    $q->orWhere('student_number', 'like', $year . '%');
+                }
+            });
         } else {
             if ($academicYear === null || trim($academicYear) === '') {
                 throw new InvalidArgumentException('An academic year is required for a regular program report.');
@@ -67,11 +79,25 @@ class ProgramReportService
     }
 
     /**
+     * Preview the students that would be included in a graduating report for
+     * the given admission year(s) and program (no screening — raw list).
+     */
+    public function previewGraduating(Program $program, array $graduatingYears): Collection
+    {
+        return $this->studentsFor($program, null, 'graduating', $graduatingYears);
+    }
+
+    /**
      * Aggregate factual statistics for the selected program cohort.
      */
-    public function aggregate(Program $program, ?string $academicYear, string $reportType = 'full', string $reportMode = 'regular'): array
-    {
-        $students = $this->studentsFor($program, $academicYear, $reportMode);
+    public function aggregate(
+        Program $program,
+        ?string $academicYear,
+        string $reportType = 'full',
+        string $reportMode = 'regular',
+        array $graduatingYears = []
+    ): array {
+        $students = $this->studentsFor($program, $academicYear, $reportMode, $graduatingYears);
 
         $screened = $students
             ->map(fn (User $student) => $this->screening->screenStudent($student))
@@ -110,7 +136,10 @@ class ProgramReportService
             'report_type' => $reportType,
             'report_mode' => $reportMode,
             'degree_type' => $program->normalizedDegreeType(),
-            'graduating_year' => $program->graduatingYear(),
+            'graduating_year' => $reportMode === 'graduating'
+                ? implode(', ', $graduatingYears)
+                : $program->graduatingYear(),
+            'admission_years' => $reportMode === 'graduating' ? $graduatingYears : [],
             'students_with_violations' => $filtered->filter(fn ($s) => (int) $s['total_violations'] > 0)->count(),
             'students' => $filtered->all(),
             'total_students' => $filtered->count(),

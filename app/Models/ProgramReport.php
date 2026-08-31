@@ -21,6 +21,7 @@ class ProgramReport extends Model
         'report_mode',
         'degree_type',
         'graduating_year',
+        'admission_years',
         'generated_by_admin_id',
         'generated_at',
         'report_status',
@@ -42,7 +43,11 @@ class ProgramReport extends Model
         'manual_review_students' => 'array',
         'generated_at' => 'datetime',
         'ai_failed' => 'boolean',
-        'graduating_year' => 'integer',
+        // graduating_year holds the applied admission year(s): a single year
+        // or a comma-joined list (e.g. "2022" or "2022, 2023") for graduating
+        // reports, or the degree-type "year level" for regular reports.
+        'graduating_year' => 'string',
+        'admission_years' => 'array',
     ];
 
     public function program(): BelongsTo

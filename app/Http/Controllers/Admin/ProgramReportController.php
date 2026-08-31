@@ -31,7 +31,51 @@ class ProgramReportController extends Controller
     {
         $programs = Program::orderBy('program_name')->get();
 
-        return view('admin.program-report.index', compact('programs'));
+        // Default graduating admission year for the current cycle (first 4
+        // digits of the student number = year admitted). 2022 by default;
+        // users can add more years for returnees with a different start year.
+        $defaultGraduatingYear = (int) config('graduation_review.graduating.admission_year', 2022);
+        $availableAdmissionYears = [$defaultGraduatingYear];
+
+        return view('admin.program-report.index', compact(
+            'programs',
+            'defaultGraduatingYear',
+            'availableAdmissionYears'
+        ));
+    }
+
+    /**
+     * Preview the graduating students for the selected admission year(s) —
+     * returned as JSON for the AJAX preview list in the report form.
+     */
+    public function previewGraduating(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
+            'graduating_years' => ['required', 'array', 'min:1'],
+            'graduating_years.*' => ['required', 'integer', 'min:1900', 'max:' . now()->year],
+        ]);
+
+        $program = Program::findOrFail((int) $validated['program_id']);
+        $years = array_map('intval', $validated['graduating_years']);
+
+        try {
+            $students = $this->programReport->previewGraduating($program, $years);
+        } catch (\InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json([
+            'total' => $students->count(),
+            'students' => $students->map(fn ($s) => [
+                'student_number' => $s->student_number,
+                'name' => trim(($s->last_name ?? '') . ', ' . ($s->first_name ?? '') . ' ' . ($s->middle_name ?? '')),
+                'program' => $s->studentInfo?->program?->program_name ?? '-',
+                'year' => $s->studentInfo?->year?->year ?? '-',
+                'section' => $s->studentInfo?->section?->section_name ?? '-',
+                'status' => $s->studentInfo?->studentStatus?->status_name ?? '-',
+            ]),
+        ]);
     }
 
     /**
@@ -50,6 +94,8 @@ class ProgramReportController extends Controller
             'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
             'report_mode' => ['required', 'in:regular,graduating'],
             'academic_year' => ['nullable', 'string', 'max:20', 'required_if:report_mode,regular'],
+            'graduating_years' => ['nullable', 'array'],
+            'graduating_years.*' => ['nullable', 'integer', 'min:1900', 'max:' . now()->year],
             'report_type' => ['required', 'in:full,violations,outstanding,manual_review'],
         ]);
 
@@ -57,21 +103,33 @@ class ProgramReportController extends Controller
         $reportMode = $validated['report_mode'];
         $academicYear = $reportMode === 'graduating' ? null : trim((string) $validated['academic_year']);
         $reportType = $validated['report_type'];
+        $graduatingYears = $reportMode === 'graduating'
+            ? array_values(array_filter(array_map('intval', (array) ($validated['graduating_years'] ?? []))))
+            : [];
 
         try {
-            $statistics = $this->programReport->aggregate($program, $academicYear, $reportType, $reportMode);
+            $statistics = $this->programReport->aggregate(
+                $program,
+                $academicYear,
+                $reportType,
+                $reportMode,
+                $graduatingYears
+            );
         } catch (InvalidArgumentException $exception) {
-            return back()->withInput()->withErrors(['program_id' => $exception->getMessage()]);
+            return back()->withInput()->withErrors(['graduating_years' => $exception->getMessage()]);
         }
 
         $adminId = Auth::guard('admin')->id();
         $reportData = [
             'program_id' => $program->program_id,
-            'academic_year' => $academicYear,
+            'academic_year' => $reportMode === 'graduating'
+                ? implode(', ', $graduatingYears)
+                : $academicYear,
             'report_type' => $reportType,
             'report_mode' => $reportMode,
             'degree_type' => $statistics['degree_type'],
             'graduating_year' => $statistics['graduating_year'],
+            'admission_years' => $reportMode === 'graduating' ? $graduatingYears : [],
             'generated_by_admin_id' => $adminId,
             'generated_at' => now(),
             'report_status' => 'generated',
@@ -86,7 +144,7 @@ class ProgramReportController extends Controller
             'ai_failed' => ! $this->ai->isAvailable(),
         ];
 
-        foreach (['report_mode', 'degree_type', 'graduating_year'] as $column) {
+        foreach (['report_mode', 'degree_type', 'graduating_year', 'admission_years'] as $column) {
             if (! Schema::hasColumn('program_reports', $column)) {
                 unset($reportData[$column]);
             }

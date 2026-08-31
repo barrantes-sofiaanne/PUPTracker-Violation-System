@@ -216,30 +216,31 @@ class GraduationReviewEnhancementTest extends TestCase
         $this->assertGreaterThan(0, $stats['students_with_outstanding_sanctions']);
     }
 
-    public function test_graduating_program_report_uses_classification_derived_year(): void
+    public function test_graduating_program_report_filters_by_student_number_admission_year(): void
     {
         $program = Program::orderBy('program_id')->first();
-        $program->update(['degree_type' => "Bachelor's"]);
-        $fourthYear = Year::where('year', 'like', '%4th%')->first();
-        $firstYear = Year::where('year', 'like', '%1st%')->first();
 
-        $eligible = $this->createStudent('2026-eligible', 'Eligible', 'Student', $fourthYear->year_id);
-        $ineligible = $this->createStudent('2026-ineligible', 'Ineligible', 'Student', $firstYear->year_id);
+        // First 4 digits of the student number = admission year. Students whose
+        // student number starts with a selected year are the graduating cohort.
+        $eligible = $this->createStudent('2022-0001', 'Eligible', 'Student');
+        $returnee = $this->createStudent('2020-0002', 'Returnee', 'Student');
+        $other = $this->createStudent('2024-0003', 'Other', 'Student');
 
-        $students = app(ProgramReportService::class)->studentsFor($program, null, 'graduating');
+        // 2022 + 2020 (returnees) are graduating; 2024 is not.
+        $students = app(ProgramReportService::class)->studentsFor($program, null, 'graduating', ['2022', '2020']);
 
         $this->assertTrue($students->contains('student_number', $eligible->student_number));
-        $this->assertFalse($students->contains('student_number', $ineligible->student_number));
+        $this->assertTrue($students->contains('student_number', $returnee->student_number));
+        $this->assertFalse($students->contains('student_number', $other->student_number));
     }
 
-    public function test_graduating_program_report_rejects_unclassified_program(): void
+    public function test_graduating_program_report_rejects_missing_admission_years(): void
     {
         $program = Program::orderBy('program_id')->first();
-        $program->update(['degree_type' => null]);
 
         $this->expectException(\InvalidArgumentException::class);
 
-        app(ProgramReportService::class)->studentsFor($program, null, 'graduating');
+        app(ProgramReportService::class)->studentsFor($program, null, 'graduating', []);
     }
 
     public function test_program_report_ai_narrative_fails_gracefully(): void

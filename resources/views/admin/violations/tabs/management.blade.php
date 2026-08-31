@@ -301,13 +301,14 @@
                     </td>
 
                     <td>
-                        @php
-                            $contextRoute = route('admin.violations.show', array_merge(['student_number' => $student->student_number], request()->query()));
-                        @endphp
-                        <a href="{{ $contextRoute }}" class="admin-btn admin-btn-view admin-btn-sm">
+                        <button
+                            type="button"
+                            class="admin-btn admin-btn-view admin-btn-sm viewStudent"
+                            data-student="{{ $student->student_number }}"
+                            aria-label="View {{ $student->last_name }}, {{ $student->first_name }}'s violation record">
                             <i class="bi bi-eye me-1"></i>
                             View Record
-                        </a>
+                        </button>
                     </td>
 
                 </tr>

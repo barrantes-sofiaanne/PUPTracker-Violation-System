@@ -65,6 +65,11 @@ return [
             explode(',', (string) env('GRADUATION_REVIEW_YEAR_IDS', '')),
         ))),
         'student_status' => env('GRADUATION_REVIEW_STUDENT_STATUS', ''),
+        // First 4 digits of the student number = admission year. Default
+        // graduating admission year for the current cycle (e.g. 2022). Users
+        // can add additional years in the UI for returnees with a different
+        // start year. This is NOT the "year level" filter.
+        'admission_year' => (int) env('GRADUATION_REVIEW_ADMISSION_YEAR', 2022),
     ],
 
     /*

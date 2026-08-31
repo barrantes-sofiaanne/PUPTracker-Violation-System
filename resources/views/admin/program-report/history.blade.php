@@ -85,7 +85,13 @@
                             <td>{{ $report->program?->program_name }}</td>
                             <td>
                                 <div>{{ $report->report_mode === 'graduating' ? 'Graduating Students' : 'Program Report' }}</div>
-                                <small class="text-muted">{{ $report->graduating_year ? $report->graduating_year . ($report->graduating_year === 3 ? 'rd' : 'th') . ' Year' : $report->academic_year }}</small>
+                                <small class="text-muted">
+                                    @if ($report->report_mode === 'graduating')
+                                        Admitted {{ $report->graduating_year ?: $report->academic_year }}
+                                    @else
+                                        {{ $report->academic_year ?: '—' }}
+                                    @endif
+                                </small>
                             </td>
                             <td>{{ ucwords(str_replace('_', ' ', $report->report_type)) }}</td>
                             <td>{{ $report->generatedBy?->email ?? '—' }}</td>

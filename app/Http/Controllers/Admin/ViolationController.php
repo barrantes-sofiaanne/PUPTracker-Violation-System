@@ -264,6 +264,23 @@ public function show(Request $request, string $student_number)
         default => 'Back to Results',
     };
 
+    // When this endpoint is used by the student-history modal (AJAX), return a
+    // clean partial WITHOUT the admin layout so it renders inside the modal.
+    if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+        return view(
+            'admin.violations.partials.student-record-partial',
+            compact(
+                'student',
+                'summary',
+                'individualViolations',
+                'totalViolations',
+                'majorViolations',
+                'outstandingSanctions',
+                'completedSanctions'
+            )
+        );
+    }
+
     return view(
         'admin.violations.show',
         compact(
