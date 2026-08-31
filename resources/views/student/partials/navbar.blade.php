@@ -1,5 +1,6 @@
-@php($studentUser = auth('student')->user())
-
+@php
+    $studentUser = auth('student')->user();
+@endphp
 <nav class="navbar portal-topbar">
     <div class="container-fluid px-3 px-md-4">
         <div class="d-flex align-items-center gap-2">
