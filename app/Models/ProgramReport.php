@@ -22,6 +22,7 @@ class ProgramReport extends Model
         'degree_type',
         'graduating_year',
         'admission_years',
+        'ladderized',
         'generated_by_admin_id',
         'generated_at',
         'report_status',
@@ -48,6 +49,7 @@ class ProgramReport extends Model
         // in the admission_years JSON column.
         'graduating_year' => 'integer',
         'admission_years' => 'array',
+        'ladderized' => 'integer',
     ];
 
     public function program(): BelongsTo

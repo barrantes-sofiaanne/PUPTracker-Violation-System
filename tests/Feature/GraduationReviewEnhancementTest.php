@@ -243,6 +243,34 @@ class GraduationReviewEnhancementTest extends TestCase
         app(ProgramReportService::class)->studentsFor($program, null, 'graduating', []);
     }
 
+    public function test_graduating_program_report_ladderized_filter_checks_last_digit(): void
+    {
+        $program = Program::orderBy('program_id')->first();
+
+        // Student numbers follow YYYY-XXXXX-TG-N: first 4 digits = admission
+        // year, LAST digit encodes ladderized (1) vs non-ladderized (0).
+        $ladderized = $this->createStudent('2022-00001-TG-1', 'Ladderized', 'Student');
+        $nonLadderized = $this->createStudent('2022-00002-TG-0', 'NonLadder', 'Student');
+
+        // Ladderized = 1 → only student numbers ending in 1.
+        $ladderizedOnly = app(ProgramReportService::class)
+            ->studentsFor($program, null, 'graduating', ['2022'], 1);
+        $this->assertTrue($ladderizedOnly->contains('student_number', $ladderized->student_number));
+        $this->assertFalse($ladderizedOnly->contains('student_number', $nonLadderized->student_number));
+
+        // Ladderized = 0 → only student numbers ending in 0.
+        $nonLadderizedOnly = app(ProgramReportService::class)
+            ->studentsFor($program, null, 'graduating', ['2022'], 0);
+        $this->assertFalse($nonLadderizedOnly->contains('student_number', $ladderized->student_number));
+        $this->assertTrue($nonLadderizedOnly->contains('student_number', $nonLadderized->student_number));
+
+        // Ladderized = null → both included.
+        $all = app(ProgramReportService::class)
+            ->studentsFor($program, null, 'graduating', ['2022']);
+        $this->assertTrue($all->contains('student_number', $ladderized->student_number));
+        $this->assertTrue($all->contains('student_number', $nonLadderized->student_number));
+    }
+
     public function test_program_report_ai_narrative_fails_gracefully(): void
     {
         $program = Program::orderBy('program_id')->first();

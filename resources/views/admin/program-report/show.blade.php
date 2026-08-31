@@ -19,6 +19,12 @@
         $appliedYearLabel = $isGraduating
             ? 'Admitted ' . ($admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: '—'))
             : ($report->academic_year ?: 'All configured years');
+        // Ladderized filter note (BSOA/BSIT graduating reports).
+        $ladderizedLabel = match (optional($report)->ladderized) {
+            1 => ' · Ladderized Only (student # ends in 1)',
+            0 => ' · Non-Ladderized Only (student # ends in 0)',
+            default => '',
+        };
     @endphp
 
     <x-admin.page-header title="Program Sanction Report" :description="$report->program?->program_name . ($isGraduating ? ' · Graduating Students' : ' · Cohort ' . $report->academic_year)">
@@ -65,7 +71,7 @@
                 </div>
                 <div class="col-md-3">
                     <small class="text-muted d-block">Applied Year</small>
-                    <strong>{{ $appliedYearLabel }}</strong>
+                    <strong>{{ $appliedYearLabel }}{{ $ladderizedLabel }}</strong>
                 </div>
                 <div class="col-md-3">
                     <small class="text-muted d-block">Generated</small>

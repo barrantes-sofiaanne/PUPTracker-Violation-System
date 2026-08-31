@@ -91,8 +91,13 @@
                                             $admissionYears = is_array($report->admission_years) && $report->admission_years !== []
                                                 ? $report->admission_years
                                                 : array_values(array_filter(array_map('trim', explode(',', (string) ($report->academic_year ?? '')))));
+                                            $ladderizedLabel = match (optional($report)->ladderized) {
+                                                1 => ' · Ladderized',
+                                                0 => ' · Non-Ladderized',
+                                                default => '',
+                                            };
                                         @endphp
-                                        Admitted {{ $admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: '—') }}
+                                        Admitted {{ $admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: '—') }}{{ $ladderizedLabel }}
                                     @else
                                         {{ $report->academic_year ?: '—' }}
                                     @endif

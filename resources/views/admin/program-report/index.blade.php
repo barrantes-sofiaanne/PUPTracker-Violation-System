@@ -52,10 +52,10 @@
 
                 <div class="col-md-4">
                     <label class="form-label">Program</label>
-                    <select name="program_id" id="programSelect" class="form-select" required>
+                    <select name="program_id" id="programSelect" class="form-select" data-ladderized-programs='@json($ladderizedPrograms)' required>
                         <option value="">Select Program</option>
                         @foreach ($programs as $program)
-                            <option value="{{ $program->program_id }}" data-degree-type="{{ $program->normalizedDegreeType() ?: '' }}" @selected(old('program_id') == $program->program_id)>{{ $program->program_name }}</option>
+                            <option value="{{ $program->program_id }}" data-program-name="{{ $program->program_name }}" data-degree-type="{{ $program->normalizedDegreeType() ?: '' }}" @selected(old('program_id') == $program->program_id)>{{ $program->program_name }}</option>
                         @endforeach
                     </select>
                     @error('program_id')
@@ -85,7 +85,7 @@
 
                         <div class="row g-2 align-items-center">
                             <div class="col-md-5">
-                                <select id="graduatingYearSelect" class="form-select">
+                                <select id="graduatingYearSelect" class="form-select" data-default-year="{{ $defaultGraduatingYear }}">
                                     @foreach ($availableAdmissionYears as $year)
                                         <option value="{{ $year }}">{{ $year }}</option>
                                     @endforeach
@@ -105,8 +105,32 @@
                             {{-- Selected admission years render here as removable chips + hidden inputs --}}
                         </div>
 
+                        {{-- Ladderized filter — shown only for BSOA/BSIT in graduating mode --}}
+                        <div class="mt-3 d-none" id="ladderizedWrap">
+                            <label class="admin-filter-label mb-1">Ladderized</label>
+                            <p class="text-muted small mb-2">
+                                For {{ implode(' / ', $ladderizedPrograms) }}, the last digit of the student number encodes
+                                ladderized (ends in <strong>1</strong>) vs non-ladderized (ends in <strong>0</strong>).
+                                Select <strong>Yes</strong> to include only students whose number ends in 1.
+                            </p>
+                            <div class="d-flex gap-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="ladderized" id="ladderizedAll" value="" @checked(!in_array((string) old('ladderized'), ['0', '1'], true))>
+                                    <label class="form-check-label" for="ladderizedAll">All (Both)</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="ladderized" id="ladderizedYes" value="1" @checked(old('ladderized') === '1')>
+                                    <label class="form-check-label" for="ladderizedYes">Yes</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="ladderized" id="ladderizedNo" value="0" @checked(old('ladderized') === '0')>
+                                    <label class="form-check-label" for="ladderizedNo">No</label>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="d-flex align-items-center gap-2 mt-3 flex-wrap">
-                            <button type="button" class="admin-btn admin-btn-primary" id="previewGraduatingBtn">
+                            <button type="button" class="admin-btn admin-btn-primary" id="previewGraduatingBtn" data-preview-url="{{ route('admin.program-report.preview-graduating') }}">
                                 <i class="bi bi-search me-1"></i> Preview Students
                             </button>
                             <span class="text-muted small" id="previewSummary"></span>
@@ -172,9 +196,21 @@ document.addEventListener('DOMContentLoaded', function () {
     const previewWrap = document.getElementById('graduatingPreviewWrap');
     const previewBody = document.getElementById('graduatingPreviewBody');
     const previewSummary = document.getElementById('previewSummary');
+    const ladderizedWrap = document.getElementById('ladderizedWrap');
+
+    // Read server-side data from data-* attributes (no Blade directives in JS).
+    const defaultGraduatingYear = yearSelect.dataset.defaultYear || '2022';
+    const previewUrl = previewBtn.dataset.previewUrl || '';
+    let ladderizedPrograms = [];
+    try {
+        ladderizedPrograms = JSON.parse(program.dataset.ladderizedPrograms || '[]') || [];
+    } catch (e) {
+        ladderizedPrograms = [];
+    }
+    ladderizedPrograms = ladderizedPrograms.map(function (name) { return String(name).toUpperCase(); });
 
     // Seed the default admission year (2022) as a selected chip.
-    const seededYear = String({{ $defaultGraduatingYear }});
+    const seededYear = String(defaultGraduatingYear);
     let selectedYears = [];
 
     // Load any previously selected years from old input (validation redirect).
@@ -188,11 +224,32 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     renderSelectedYears();
 
+    function isLadderizedProgram() {
+        const option = program?.selectedOptions[0];
+        const name = (option?.dataset.programName || '').toUpperCase();
+        return ladderizedPrograms.indexOf(name) !== -1;
+    }
+
+    function getSelectedLadderized() {
+        if (!ladderizedWrap || ladderizedWrap.classList.contains('d-none')) {
+            return null;
+        }
+        const checked = document.querySelector('input[name="ladderized"]:checked');
+        if (!checked || checked.value === '') {
+            return null;
+        }
+        return checked.value;
+    }
+
     function updateMode() {
         const graduating = mode?.value === 'graduating';
         yearWrap?.classList.toggle('d-none', graduating);
         if (yearInput) yearInput.required = !graduating;
         graduatingWrap?.classList.toggle('d-none', !graduating);
+        // Ladderized radio shows only for BSOA/BSIT in graduating mode.
+        if (ladderizedWrap) {
+            ladderizedWrap.classList.toggle('d-none', !(graduating && isLadderizedProgram()));
+        }
     }
 
     function renderSelectedYears() {
@@ -219,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function () {
         yearSelect.innerHTML = '';
         const candidateYears = [];
         // Default candidates: the config default plus any manually added ones.
-        candidateYears.push(String({{ $defaultGraduatingYear }}));
+        candidateYears.push(String(defaultGraduatingYear));
         selectedYears.forEach(function (y) { if (!candidateYears.includes(y)) candidateYears.push(y); });
         // Also allow any recent year as a quick option.
         const thisYear = new Date().getFullYear();
@@ -271,7 +328,7 @@ document.addEventListener('DOMContentLoaded', function () {
         renderSelectedYears();
         // Keep at least one year.
         if (selectedYears.length === 0) {
-            selectedYears.push(String({{ $defaultGraduatingYear }}));
+            selectedYears.push(String(defaultGraduatingYear));
             renderSelectedYears();
         }
     });
@@ -288,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function () {
         previewSummary.textContent = '';
 
         try {
-            const response = await fetch("{{ route('admin.program-report.preview-graduating') }}", {
+            const response = await fetch(previewUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -298,6 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: JSON.stringify({
                     program_id: programId,
                     graduating_years: selectedYears,
+                    ladderized: getSelectedLadderized(),
                 }),
             });
 
@@ -306,7 +364,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 throw new Error(data.message || 'Unable to preview students.');
             }
 
-            previewSummary.textContent = data.total + ' student(s) match the selected admission year(s).';
+            const ladderizedLabel = data.ladderized_filter === 1 ? ' (Ladderized: Yes)' : (data.ladderized_filter === 0 ? ' (Ladderized: No)' : '');
+            previewSummary.textContent = data.total + ' student(s) match the selected admission year(s)' + ladderizedLabel + '.';
 
             if (data.total === 0) {
                 previewBody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">No students match the selected admission year(s).</td></tr>';

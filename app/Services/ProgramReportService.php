@@ -30,12 +30,18 @@ class ProgramReportService
      * - graduating mode: filters by the admission year(s) encoded in the
      *   first 4 digits of each student's student_number (e.g. "2022-xxxx"
      *   => admitted 2022, expected to graduate this cycle).
+     *
+     * Optional $ladderized filter (graduating mode, BSOA/BSIT only):
+     *   null = include both ladderized and non-ladderized
+     *   1    = additionally require the LAST digit of the student number to be 1
+     *   0    = additionally require the LAST digit of the student number to be 0
      */
     public function studentsFor(
         Program $program,
         ?string $academicYear = null,
         string $reportMode = 'regular',
-        array $graduatingYears = []
+        array $graduatingYears = [],
+        ?int $ladderized = null
     ): Collection {
         $query = User::query()
             ->with([
@@ -64,6 +70,14 @@ class ProgramReportService
                     $q->orWhere('student_number', 'like', $year . '%');
                 }
             });
+
+            // Ladderized filter: the last digit of the student number encodes
+            // ladderized (1) vs non-ladderized (0) status.
+            if ($ladderized === 1) {
+                $query->where('student_number', 'like', '%1');
+            } elseif ($ladderized === 0) {
+                $query->where('student_number', 'like', '%0');
+            }
         } else {
             if ($academicYear === null || trim($academicYear) === '') {
                 throw new InvalidArgumentException('An academic year is required for a regular program report.');
@@ -82,9 +96,9 @@ class ProgramReportService
      * Preview the students that would be included in a graduating report for
      * the given admission year(s) and program (no screening — raw list).
      */
-    public function previewGraduating(Program $program, array $graduatingYears): Collection
+    public function previewGraduating(Program $program, array $graduatingYears, ?int $ladderized = null): Collection
     {
-        return $this->studentsFor($program, null, 'graduating', $graduatingYears);
+        return $this->studentsFor($program, null, 'graduating', $graduatingYears, $ladderized);
     }
 
     /**
@@ -95,9 +109,10 @@ class ProgramReportService
         ?string $academicYear,
         string $reportType = 'full',
         string $reportMode = 'regular',
-        array $graduatingYears = []
+        array $graduatingYears = [],
+        ?int $ladderized = null
     ): array {
-        $students = $this->studentsFor($program, $academicYear, $reportMode, $graduatingYears);
+        $students = $this->studentsFor($program, $academicYear, $reportMode, $graduatingYears, $ladderized);
 
         $screened = $students
             ->map(fn (User $student) => $this->screening->screenStudent($student))

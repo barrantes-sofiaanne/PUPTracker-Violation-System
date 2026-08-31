@@ -37,11 +37,27 @@ class ProgramReportController extends Controller
         $defaultGraduatingYear = (int) config('graduation_review.graduating.admission_year', 2022);
         $availableAdmissionYears = [$defaultGraduatingYear];
 
+        // Programs that support the Ladderized filter (BSOA / BSIT).
+        $ladderizedPrograms = config('graduation_review.graduating.ladderized_programs', ['BSOA', 'BSIT']);
+
         return view('admin.program-report.index', compact(
             'programs',
             'defaultGraduatingYear',
-            'availableAdmissionYears'
+            'availableAdmissionYears',
+            'ladderizedPrograms'
         ));
+    }
+
+    /**
+     * Whether a program supports the Ladderized filter (BSOA / BSIT).
+     */
+    protected function supportsLadderized(Program $program): bool
+    {
+        $programs = config('graduation_review.graduating.ladderized_programs', ['BSOA', 'BSIT']);
+
+        $name = strtoupper(trim((string) $program->program_name));
+
+        return in_array($name, array_map('strtoupper', $programs), true);
     }
 
     /**
@@ -54,19 +70,29 @@ class ProgramReportController extends Controller
             'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
             'graduating_years' => ['required', 'array', 'min:1'],
             'graduating_years.*' => ['required', 'integer', 'min:1900', 'max:' . now()->year],
+            'ladderized' => ['nullable', 'in:0,1'],
         ]);
 
         $program = Program::findOrFail((int) $validated['program_id']);
         $years = array_map('intval', $validated['graduating_years']);
+        $ladderized = isset($validated['ladderized']) && $validated['ladderized'] !== ''
+            ? (int) $validated['ladderized']
+            : null;
+
+        // Only apply the ladderized last-digit filter for BSOA/BSIT.
+        if (! $this->supportsLadderized($program)) {
+            $ladderized = null;
+        }
 
         try {
-            $students = $this->programReport->previewGraduating($program, $years);
+            $students = $this->programReport->previewGraduating($program, $years, $ladderized);
         } catch (\InvalidArgumentException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }
 
         return response()->json([
             'total' => $students->count(),
+            'ladderized_filter' => $ladderized,
             'students' => $students->map(fn ($s) => [
                 'student_number' => $s->student_number,
                 'name' => trim(($s->last_name ?? '') . ', ' . ($s->first_name ?? '') . ' ' . ($s->middle_name ?? '')),
@@ -96,6 +122,7 @@ class ProgramReportController extends Controller
             'academic_year' => ['nullable', 'string', 'max:20', 'required_if:report_mode,regular'],
             'graduating_years' => ['nullable', 'array'],
             'graduating_years.*' => ['nullable', 'integer', 'min:1900', 'max:' . now()->year],
+            'ladderized' => ['nullable', 'in:0,1'],
             'report_type' => ['required', 'in:full,violations,outstanding,manual_review'],
         ]);
 
@@ -106,6 +133,10 @@ class ProgramReportController extends Controller
         $graduatingYears = $reportMode === 'graduating'
             ? array_values(array_filter(array_map('intval', (array) ($validated['graduating_years'] ?? []))))
             : [];
+        // Ladderized filter applies only in graduating mode for BSOA/BSIT.
+        $ladderized = ($reportMode === 'graduating' && isset($validated['ladderized']) && $validated['ladderized'] !== '' && $this->supportsLadderized($program))
+            ? (int) $validated['ladderized']
+            : null;
 
         try {
             $statistics = $this->programReport->aggregate(
@@ -113,7 +144,8 @@ class ProgramReportController extends Controller
                 $academicYear,
                 $reportType,
                 $reportMode,
-                $graduatingYears
+                $graduatingYears,
+                $ladderized
             );
         } catch (InvalidArgumentException $exception) {
             return back()->withInput()->withErrors(['graduating_years' => $exception->getMessage()]);
@@ -130,6 +162,7 @@ class ProgramReportController extends Controller
             'degree_type' => $statistics['degree_type'],
             'graduating_year' => $statistics['graduating_year'],
             'admission_years' => $reportMode === 'graduating' ? $graduatingYears : [],
+            'ladderized' => $ladderized,
             'generated_by_admin_id' => $adminId,
             'generated_at' => now(),
             'report_status' => 'generated',
@@ -144,7 +177,7 @@ class ProgramReportController extends Controller
             'ai_failed' => ! $this->ai->isAvailable(),
         ];
 
-        foreach (['report_mode', 'degree_type', 'graduating_year', 'admission_years'] as $column) {
+        foreach (['report_mode', 'degree_type', 'graduating_year', 'admission_years', 'ladderized'] as $column) {
             if (! Schema::hasColumn('program_reports', $column)) {
                 unset($reportData[$column]);
             }

@@ -70,6 +70,13 @@ return [
         // can add additional years in the UI for returnees with a different
         // start year. This is NOT the "year level" filter.
         'admission_year' => (int) env('GRADUATION_REVIEW_ADMISSION_YEAR', 2022),
+        // Programs that support the Ladderized filter (BSOA / BSIT). For these
+        // programs the LAST digit of the student number encodes ladderized (1)
+        // vs non-ladderized (0) status.
+        'ladderized_programs' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('GRADUATION_REVIEW_LADDERIZED_PROGRAMS', 'BSOA,BSIT')),
+        ))),
     ],
 
     /*
