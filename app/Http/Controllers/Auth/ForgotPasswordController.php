@@ -3,23 +3,33 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\PasswordChangedNotification;
+use App\Mail\PasswordResetLink;
 use App\Models\Admin;
+use App\Models\AuditLog;
+use App\Models\PasswordReset;
 use App\Models\Security;
 use App\Models\User;
 use App\Services\EmailIncidentService;
+use App\Services\PasswordResetService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class ForgotPasswordController extends Controller
 {
-    private const TOKEN_LIFETIME_MINUTES = 60;
+    /** Session key holding the OTP step during a privileged password reset. */
+    private const RESET_OTP_SESSION = 'password.reset.otp';
 
+    /**
+     * Step 1 — "Forgot Password?" form (asks only for the registered email).
+     */
     public function showForgotForm(string $guard): View
     {
         $config = $this->guardConfig($guard);
@@ -30,155 +40,320 @@ class ForgotPasswordController extends Controller
         ]);
     }
 
-    public function sendResetLink(Request $request, string $guard): RedirectResponse
+    /**
+     * Step 2 — Accept the email and (if an account exists) send a reset link.
+     *
+     * Deliberately does not reveal whether the email has an account: the same
+     * generic success message is shown regardless.
+     */
+    public function sendResetLink(Request $request, string $guard, PasswordResetService $passwordResetService): RedirectResponse
     {
-        Log::info('Password reset request received', ['guard' => $guard, 'email' => $request->input('email')]);
-
-        $config = $this->guardConfig($guard);
-
         $validated = $request->validate([
             'email' => ['required', 'email'],
         ]);
 
-        $modelClass = $config['model'];
+        $config = $this->guardConfig($guard);
         $email = strtolower(trim($validated['email']));
 
-        Log::info('Looking up account for password reset', ['email' => $email, 'model' => $modelClass]);
+        $account = $passwordResetService->findAccountByEmail($guard, $email);
 
-        /** @var User|Admin|Security|null $account */
-        $account = $modelClass::query()->where('email', $email)->first();
+        if ($account === null) {
+            $this->audit(
+                $guard,
+                null,
+                'PASSWORD_RESET_REQUESTED',
+                'Password Reset',
+                'Password reset requested for an unregistered email.',
+                $request
+            );
 
-        if (!$account) {
-            Log::warning('Password reset: account not found', ['email' => $email]);
-            return back()
-                ->withErrors([
-                    'email' => "No {$config['module_label']} account was found for this email.",
-                ])
-                ->withInput();
+            return back()->with('status', 'If an account is associated with this email address, a password reset link has been sent.');
         }
 
-        Log::info('Account found for password reset', ['email' => $email, 'account_id' => $account->id]);
+        $result = $passwordResetService->createReset($guard, $account);
+        $token = $result['token'];
 
-        $token = Str::random(64);
-        $account->setAttribute('reset_token_hash', Hash::make($token));
-        $account->setAttribute('reset_token_expires_at', now()->addMinutes(self::TOKEN_LIFETIME_MINUTES));
-        $account->save();
+        $this->sendResetLinkMail($guard, $email, $token);
 
-        Log::info('Reset token saved to database', ['email' => $email]);
+        $this->audit(
+            $guard,
+            $account->getKey(),
+            'PASSWORD_RESET_REQUESTED',
+            'Password Reset',
+            'Password reset link generated and emailed to the registered account.',
+            $request
+        );
 
-        $this->sendResetMail($guard, $email, $token);
-
-        Log::info('Password reset link request completed', ['email' => $email]);
-
-        return back()->with('success', "A password reset link was sent to your {$config['module_label']} account email.");
+        return back()->with('status', 'If an account is associated with this email address, a password reset link has been sent.');
     }
 
-    public function showResetForm(Request $request, string $guard, string $token): View
+    /**
+     * Step 6/7 — Open the reset link.
+     *
+     * The token identifies the recovery attempt; once validated it resolves to
+     * the account. Privileged accounts (admin/security) require an OTP step
+     * before the new-password form is revealed.
+     */
+    public function showResetForm(Request $request, string $guard, string $token, PasswordResetService $passwordResetService): View|RedirectResponse
     {
         $config = $this->guardConfig($guard);
+        $reset = $passwordResetService->findValidReset($guard, $token);
+
+        if ($reset === null) {
+            return redirect()
+                ->route($config['login_route'])
+                ->withErrors(['link' => 'Invalid or expired password reset link. Please request a new one.']);
+        }
+
+        $account = $passwordResetService->resolveAccount($guard, $reset);
+
+        if ($account === null) {
+            return redirect()
+                ->route($config['login_route'])
+                ->withErrors(['link' => 'Invalid or expired password reset link. Please request a new one.']);
+        }
+
+        $this->audit(
+            $guard,
+            $account->getKey(),
+            'PASSWORD_RESET_VERIFIED',
+            'Password Reset',
+            'Password reset link opened and validated.',
+            $request
+        );
+
+        $privileged = $passwordResetService->isPrivileged($guard);
+
+        if ($privileged) {
+            $this->stageOtp($request, $token, $reset, $account);
+
+            return view('auth.reset-otp', [
+                'guard' => $guard,
+                'moduleLabel' => $config['module_label'],
+                'token' => $token,
+                'emailMasked' => $this->maskEmail((string) $account->email),
+            ]);
+        }
 
         return view('auth.reset-password', [
             'guard' => $guard,
             'moduleLabel' => $config['module_label'],
             'token' => $token,
-            'email' => (string) $request->query('email', ''),
+            'email' => (string) $account->email,
         ]);
     }
 
-    public function reset(Request $request, string $guard): RedirectResponse
+    /**
+     * Step 8 — Verify the OTP for a privileged account, then reveal the
+     * new-password form.
+     */
+    public function verifyOtp(Request $request, string $guard, PasswordResetService $passwordResetService): RedirectResponse|View
+    {
+        $config = $this->guardConfig($guard);
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+            'code' => ['required', 'string', 'max:20'],
+        ]);
+
+        $staged = $request->session()->get(self::RESET_OTP_SESSION);
+
+        if (
+            !is_array($staged)
+            || ($staged['guard'] ?? null) !== $guard
+            || ($staged['token'] ?? null) !== $validated['token']
+        ) {
+            return redirect()
+                ->route($config['login_route'])
+                ->withErrors(['link' => 'Invalid or expired password reset link. Please request a new one.']);
+        }
+
+        $accountId = (int) ($staged['account_id'] ?? 0);
+        $attempts = (int) ($staged['attempts'] ?? 0) + 1;
+        $staged['attempts'] = $attempts;
+        $request->session()->put(self::RESET_OTP_SESSION, $staged);
+
+        if ($attempts > 5) {
+            $request->session()->forget(self::RESET_OTP_SESSION);
+
+            $this->audit(
+                $guard,
+                $accountId,
+                'PASSWORD_RESET_OTP_FAILED',
+                'Password Reset',
+                'Password reset OTP verification locked after repeated failures.',
+                $request
+            );
+
+            return redirect()
+                ->route($config['login_route'])
+                ->withErrors(['link' => 'Too many incorrect attempts. Please request a new password reset link.']);
+        }
+
+        if (
+            empty($staged['code_hash'])
+            || empty($staged['expires_at'])
+            || now()->timestamp > (int) $staged['expires_at']
+            || !Hash::check(trim($validated['code']), (string) $staged['code_hash'])
+        ) {
+            $this->audit(
+                $guard,
+                $accountId,
+                'PASSWORD_RESET_OTP_FAILED',
+                'Password Reset',
+                'Password reset OTP verification failed.',
+                $request
+            );
+
+            return back()->withErrors(['code' => 'Invalid or expired verification code. Please try again.'])->withInput();
+        }
+
+        $staged['otp_verified'] = true;
+        $request->session()->put(self::RESET_OTP_SESSION, $staged);
+
+        $this->audit(
+            $guard,
+            $accountId,
+            'PASSWORD_RESET_OTP_VERIFIED',
+            'Password Reset',
+            'Password reset OTP verified successfully.',
+            $request
+        );
+
+        return view('auth.reset-password', [
+            'guard' => $guard,
+            'moduleLabel' => $config['module_label'],
+            'token' => $validated['token'],
+            'email' => (string) ($staged['email'] ?? ''),
+        ]);
+    }
+
+    /**
+     * Steps 9–13 — Set a new password for the verified recovery attempt.
+     */
+    public function reset(Request $request, string $guard, PasswordResetService $passwordResetService): RedirectResponse
     {
         $config = $this->guardConfig($guard);
 
         $validated = $request->validate([
             'token' => ['required', 'string'],
-            'email' => ['required', 'email'],
             'password' => [
                 'required',
                 'string',
                 'confirmed',
-                Password::min(8)
+                Password::min(12)
                     ->mixedCase()
                     ->numbers()
                     ->symbols(),
             ],
         ]);
 
-        $modelClass = $config['model'];
-        $email = strtolower(trim($validated['email']));
+        $reset = $passwordResetService->findValidReset($guard, $validated['token']);
 
-        /** @var User|Admin|Security|null $account */
-        $account = $modelClass::query()->where('email', $email)->first();
-
-        if (
-            !$account ||
-            !$account->getAttribute('reset_token_hash') ||
-            !$account->getAttribute('reset_token_expires_at') ||
-            !$account->getAttribute('reset_token_expires_at')->isFuture() ||
-            !Hash::check($validated['token'], (string) $account->getAttribute('reset_token_hash'))
-        ) {
-            return back()
-                ->withErrors([
-                    'email' => "The reset link is invalid, expired, or not valid for the {$config['module_label']} module.",
-                ])
-                ->withInput($request->except('password', 'password_confirmation'));
+        if ($reset === null) {
+            return redirect()
+                ->route($config['login_route'])
+                ->withErrors(['link' => 'Invalid or expired password reset link. Please request a new one.']);
         }
 
+        $account = $passwordResetService->resolveAccount($guard, $reset);
+
+        if ($account === null) {
+            return redirect()
+                ->route($config['login_route'])
+                ->withErrors(['link' => 'Invalid or expired password reset link. Please request a new one.']);
+        }
+
+        // Privileged accounts must have completed the OTP step in this session
+        // before the password may be changed.
+        if ($passwordResetService->isPrivileged($guard)) {
+            $staged = $request->session()->get(self::RESET_OTP_SESSION);
+
+            if (
+                !is_array($staged)
+                || ($staged['guard'] ?? null) !== $guard
+                || ($staged['token'] ?? null) !== $validated['token']
+                || !($staged['otp_verified'] ?? false)
+                || (int) ($staged['account_id'] ?? 0) !== (int) $account->getKey()
+            ) {
+                return redirect()
+                    ->route($config['login_route'])
+                    ->withErrors(['link' => 'Invalid or expired password reset link. Please request a new one.']);
+            }
+        }
+
+        // Hash the new password; never store/log the plaintext.
         $passwordColumn = $config['password_column'];
         $account->setAttribute($passwordColumn, Hash::make($validated['password']));
-        $account->setAttribute('reset_token_hash', null);
-        $account->setAttribute('reset_token_expires_at', null);
         $account->save();
+
+        // Invalidate the token immediately (first click valid, second click invalid).
+        $passwordResetService->invalidateReset($reset);
+
+        // Revoke existing sessions so every device must re-authenticate.
+        $this->revokeSessions($guard, $account);
+
+        // Clear the OTP staging data.
+        $request->session()->forget(self::RESET_OTP_SESSION);
+
+        $this->audit(
+            $guard,
+            $account->getKey(),
+            'PASSWORD_RESET_COMPLETED',
+            'Password Reset',
+            'Password reset completed successfully; existing sessions revoked.',
+            $request
+        );
+
+        // Send the password-changed security notification.
+        $this->sendPasswordChangedMail($guard, (string) $account->email);
 
         return redirect()
             ->route($config['login_route'])
-            ->with('success', 'Your password has been reset successfully. Please log in.');
+            ->with('status', 'Your password has been changed successfully. Please log in.');
     }
 
-    private function sendResetMail(string $guard, string $email, string $token): void
-    {
-        Log::info('Password reset email sending initiated', ['email' => $email, 'guard' => $guard]);
+    // ------------------------------------------------------------------
+    // OTP staging helpers
+    // ------------------------------------------------------------------
 
+    private function stageOtp(Request $request, string $token, PasswordReset $reset, Admin|Security|User $account): void
+    {
+        $code = (string) random_int(100000, 999999);
+
+        $request->session()->put(self::RESET_OTP_SESSION, [
+            'guard' => $reset->guard,
+            'token' => $token,
+            'account_id' => $account->getKey(),
+            'email' => (string) $account->email,
+            'code_hash' => Hash::make($code),
+            'expires_at' => now()->addMinutes(5)->timestamp,
+            'attempts' => 0,
+            'otp_verified' => false,
+        ]);
+
+        $this->sendOtpMail((string) $account->email, $code);
+    }
+
+    // ------------------------------------------------------------------
+    // Email sending
+    // ------------------------------------------------------------------
+
+    private function sendResetLinkMail(string $guard, string $email, string $token): void
+    {
         $url = route('password.reset.form', [
             'guard' => $guard,
             'token' => $token,
-            'email' => $email,
-        ]);
-
-        Log::info('Password reset URL generated', ['url' => $url]);
-
-        $message = implode(PHP_EOL, [
-            'Hello,',
-            '',
-            'You requested to reset your password.',
-            "Reset link: {$url}",
-            '',
-            'This link will expire in 60 minutes.',
-            'If you did not request this, you can ignore this email.',
         ]);
 
         try {
-            Log::info('Attempting to send mail via Mail::raw', [
-                'email' => $email,
-                'mailer' => config('mail.default'),
-                'mailgun_domain' => config('mail.mailers.mailgun.domain'),
-                'mailgun_secret_exists' => !empty(config('mail.mailers.mailgun.secret')),
-                'mailgun_secret_length' => strlen(config('mail.mailers.mailgun.secret') ?? ''),
-            ]);
-            Mail::raw($message, function ($mail) use ($email): void {
-                $mail->to($email)->subject('PUPTracker Password Reset');
-            });
-            Log::info('Password reset email sent successfully', ['email' => $email]);
+            Mail::to($email)->send(new PasswordResetLink($url, PasswordResetService::TOKEN_LIFETIME_MINUTES));
         } catch (\Throwable $exception) {
-            Log::error('Unable to send password reset email.', [
+            Log::error('Unable to send password reset link email.', [
                 'email' => $email,
+                'guard' => $guard,
                 'error' => $exception->getMessage(),
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
-                'trace' => $exception->getTraceAsString(),
             ]);
 
-            // Risk No. 7 — record a definitive email failure as an incident and
-            // notify the Super Admin through the existing in-app notification system.
             app(EmailIncidentService::class)->record(
                 emailType: 'Password Reset',
                 errorMessage: $exception->getMessage(),
@@ -186,6 +361,124 @@ class ForgotPasswordController extends Controller
                 relatedRecordId: $email,
             );
         }
+    }
+
+    private function sendOtpMail(string $email, string $code): void
+    {
+        try {
+            Mail::to($email)->send(new \App\Mail\OtpCode($code, expiryMinutes: 5));
+        } catch (\Throwable $exception) {
+            Log::error('Unable to send password reset OTP email.', [
+                'email' => $email,
+                'error' => $exception->getMessage(),
+            ]);
+
+            app(EmailIncidentService::class)->record(
+                emailType: 'Password Reset OTP',
+                errorMessage: $exception->getMessage(),
+                relatedRecordType: 'Password Reset',
+                relatedRecordId: $email,
+            );
+        }
+    }
+
+    private function sendPasswordChangedMail(string $guard, string $email): void
+    {
+        try {
+            Mail::to($email)->send(new PasswordChangedNotification());
+        } catch (\Throwable $exception) {
+            Log::error('Unable to send password-changed notification email.', [
+                'email' => $email,
+                'guard' => $guard,
+                'error' => $exception->getMessage(),
+            ]);
+
+            app(EmailIncidentService::class)->record(
+                emailType: 'Password Changed Notification',
+                errorMessage: $exception->getMessage(),
+                relatedRecordType: 'Password Reset',
+                relatedRecordId: $email,
+            );
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Session revocation
+    // ------------------------------------------------------------------
+
+    private function revokeSessions(string $guard, Admin|Security|User $account): void
+    {
+        try {
+            if (!Schema::hasTable('sessions')) {
+                return;
+            }
+
+            DB::table('sessions')
+                ->where('user_id', $account->getKey())
+                ->delete();
+
+            Log::info('Sessions revoked after password reset.', [
+                'guard' => $guard,
+                'account_id' => $account->getKey(),
+            ]);
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to revoke sessions after password reset.', [
+                'guard' => $guard,
+                'account_id' => $account->getKey(),
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Audit + helpers
+    // ------------------------------------------------------------------
+
+    private function audit(string $guard, ?int $accountId, string $action, string $module, string $description, Request $request): void
+    {
+        try {
+            AuditLog::create([
+                'actor_type' => $guard,
+                'actor_id' => $accountId,
+                'action' => $action,
+                'module' => $module,
+                'description' => $description . sprintf(
+                    ' [%s:%s | %s | %s]',
+                    $guard,
+                    $accountId ?? 'guest',
+                    $request->ip() ?? 'unknown',
+                    $this->shortenUserAgent((string) $request->userAgent())
+                ),
+                'created_at' => now(),
+            ]);
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to write password-reset audit log.', [
+                'action' => $action,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function shortenUserAgent(string $userAgent): string
+    {
+        $clean = preg_replace('/\s+/', ' ', trim($userAgent)) ?? '';
+
+        return strlen($clean) > 120 ? substr($clean, 0, 120) . '…' : $clean;
+    }
+
+    private function maskEmail(string $email): string
+    {
+        [$name, $domain] = array_pad(explode('@', $email, 2), 2, '');
+
+        if ($name === '' || $domain === '') {
+            return '***';
+        }
+
+        $visiblePrefix = substr($name, 0, 1);
+        $visibleSuffix = strlen($name) > 2 ? substr($name, -1) : '';
+        $maskedMid = str_repeat('*', max(1, strlen($name) - 2));
+
+        return $visiblePrefix . $maskedMid . $visibleSuffix . '@' . $domain;
     }
 
     private function guardConfig(string $guard): array

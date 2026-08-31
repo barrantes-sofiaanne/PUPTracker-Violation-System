@@ -9,7 +9,7 @@ function initializePasswordResetPolicy() {
 
     const requirements = {
         length: function (value) {
-            return value.length >= 8;
+            return value.length >= 12;
         },
         lowercase: function (value) {
             return /[a-z]/.test(value);

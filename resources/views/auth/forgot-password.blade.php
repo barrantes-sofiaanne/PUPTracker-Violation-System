@@ -4,15 +4,22 @@
 
         <p class="module-chip">{{ $moduleLabel }} Module</p>
         <h2>Forgot Password</h2>
-        <p class="subtitle">Enter your account email to receive a reset link.</p>
+        <p class="subtitle">Enter your registered email address to receive a reset link.</p>
 
-        <section class="password-policy password-policy-preview" aria-labelledby="password-policy-title">
-            <div class="password-policy-heading">
-                <i class="bi bi-shield-check" aria-hidden="true"></i>
-                <h3 id="password-policy-title">Password policy</h3>
+        @if(session('status'))
+            <div class="login-success" role="status">
+                <i class="bi bi-envelope-check" aria-hidden="true"></i>
+                <span>{{ session('status') }}</span>
             </div>
-            <p>Your new password must have at least 8 characters, including an uppercase letter, lowercase letter, number, and symbol.</p>
-        </section>
+        @endif
+
+        @if($errors->has('email'))
+            <div class="login-error">
+                <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+                <span>{{ $errors->first('email') }}</span>
+            </div>
+        @endif
+
         <form action="{{ route('password.email', ['guard' => $guard]) }}" method="POST" autocomplete="off">
             @csrf
 
@@ -26,6 +33,7 @@
                         class="form-control @error('email') is-invalid @enderror"
                         value="{{ old('email') }}"
                         autocomplete="email"
+                        placeholder="admin@puptvs.com"
                         required>
                 </div>
                 @error('email')

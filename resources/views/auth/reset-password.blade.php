@@ -6,20 +6,23 @@
         <h2>Reset Password</h2>
         <p class="subtitle">Set a new password for your account.</p>
 
+        @if($errors->has('link'))
+            <div class="login-error">
+                <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+                <span>{{ $errors->first('link') }}</span>
+            </div>
+        @endif
+
         <form id="resetPasswordForm" action="{{ route('password.update', ['guard' => $guard]) }}" method="POST" autocomplete="off">
             @csrf
             <input type="hidden" name="token" value="{{ $token }}">
 
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <div class="input-group login-input-group">
-                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                    <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email', $email) }}" autocomplete="email" required>
+            @if(!empty($email))
+                <div class="mb-3 text-muted small">
+                    <i class="bi bi-shield-check" aria-hidden="true"></i>
+                    Resetting the password for the account registered to {{ $email }}.
                 </div>
-                @error('email')
-                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                @enderror
-            </div>
+            @endif
 
             <div class="mb-3">
                 <label class="form-label">New Password</label>
@@ -38,7 +41,7 @@
                     <h3 id="password-policy-title">Password policy</h3>
                 </div>
                 <ul>
-                    <li data-policy="length"><i class="bi bi-circle" aria-hidden="true"></i> At least 8 characters</li>
+                    <li data-policy="length"><i class="bi bi-circle" aria-hidden="true"></i> At least 12 characters</li>
                     <li data-policy="lowercase"><i class="bi bi-circle" aria-hidden="true"></i> One lowercase letter</li>
                     <li data-policy="uppercase"><i class="bi bi-circle" aria-hidden="true"></i> One uppercase letter</li>
                     <li data-policy="number"><i class="bi bi-circle" aria-hidden="true"></i> One number</li>

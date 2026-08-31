@@ -178,6 +178,24 @@ body {
     margin-bottom: 1rem;
 }
 
+.login-success {
+    border-radius: 0.72rem;
+    border: 1px solid rgba(21, 87, 36, 0.2);
+    background: #f1f8f2;
+    color: #155724;
+    font-size: 0.9rem;
+    padding: 0.6rem 0.72rem;
+    margin-bottom: 1rem;
+}
+
+.login-success i {
+    margin-right: 0.35rem;
+}
+
+.login-error i {
+    margin-right: 0.35rem;
+}
+
 .footer-links {
     margin-top: 1rem;
     display: flex;
@@ -499,6 +517,12 @@ body {
     border-color: rgba(139, 37, 45, 0.24);
     background: #fff2f2;
     color: #7b1e26;
+}
+
+.login-success {
+    border-color: rgba(21, 87, 36, 0.24);
+    background: #f1f8f2;
+    color: #155724;
 }
 
 .footer-links {

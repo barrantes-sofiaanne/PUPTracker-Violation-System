@@ -130,22 +130,36 @@ Route::post('/mfa/resend', [MfaController::class, 'resend'])
 Route::post('/mfa/cancel', [MfaController::class, 'cancel'])
     ->name('mfa.verify.cancel');
 
+// Proper password reset flow (see SECURITY MODULE requirements):
+//   1. Forgot Password? -> email only (no security questions)
+//   2. Send reset link to the registered email (generic response, no account enumeration)
+//   3. Reset link identifies the recovery attempt (token only, no email query param)
+//   4. Privileged accounts (admin/security) require an OTP step before setting a new password
+//   5. Password change invalidates the token and revokes existing sessions
 Route::get('/password/forgot/{guard}', [ForgotPasswordController::class, 'showForgotForm'])
     ->whereIn('guard', ['student', 'admin', 'security'])
     ->name('password.request');
 
 Route::post('/password/forgot/{guard}', [ForgotPasswordController::class, 'sendResetLink'])
     ->whereIn('guard', ['student', 'admin', 'security'])
-    ->middleware('throttle:3,1')
+    ->middleware('throttle:5,15')
     ->name('password.email');
 
 Route::get('/password/reset/{guard}/{token}', [ForgotPasswordController::class, 'showResetForm'])
     ->whereIn('guard', ['student', 'admin', 'security'])
     ->name('password.reset.form');
 
+// OTP step for privileged (admin/security) password resets.
+// The in-app lock caps verification attempts at 5; the network throttle is a
+// looser backstop so a user with a couple of typos isn't blocked by IP.
+Route::post('/password/reset/{guard}/otp', [ForgotPasswordController::class, 'verifyOtp'])
+    ->whereIn('guard', ['student', 'admin', 'security'])
+    ->middleware('throttle:10,15')
+    ->name('password.reset.otp');
+
 Route::post('/password/reset/{guard}', [ForgotPasswordController::class, 'reset'])
     ->whereIn('guard', ['student', 'admin', 'security'])
-    ->middleware('throttle:5,1')
+    ->middleware('throttle:5,15')
     ->name('password.update');
 
 /*
