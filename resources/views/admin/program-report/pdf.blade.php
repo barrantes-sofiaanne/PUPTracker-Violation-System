@@ -34,8 +34,13 @@
     @php
         $stats = $report->statistics_json ?? [];
         $isGraduating = $report->report_mode === 'graduating';
+        $admissionYears = $isGraduating
+            ? (is_array($report->admission_years) && $report->admission_years !== []
+                ? $report->admission_years
+                : array_values(array_filter(array_map('trim', explode(',', (string) ($report->academic_year ?? ''))))))
+            : [];
         $appliedYearLabel = $isGraduating
-            ? 'Admitted ' . ($report->graduating_year ?: ($report->academic_year ?: '—'))
+            ? 'Admitted ' . ($admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: '—'))
             : ($report->academic_year ?: 'All configured years');
     @endphp
 

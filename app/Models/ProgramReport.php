@@ -43,10 +43,10 @@ class ProgramReport extends Model
         'manual_review_students' => 'array',
         'generated_at' => 'datetime',
         'ai_failed' => 'boolean',
-        // graduating_year holds the applied admission year(s): a single year
-        // or a comma-joined list (e.g. "2022" or "2022, 2023") for graduating
-        // reports, or the degree-type "year level" for regular reports.
-        'graduating_year' => 'string',
+        // graduating_year is an INT (tinyint): for graduating reports it holds
+        // the first/oldest admission year; the full admission-year list lives
+        // in the admission_years JSON column.
+        'graduating_year' => 'integer',
         'admission_years' => 'array',
     ];
 

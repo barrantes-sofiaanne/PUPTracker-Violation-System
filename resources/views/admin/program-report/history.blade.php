@@ -87,7 +87,12 @@
                                 <div>{{ $report->report_mode === 'graduating' ? 'Graduating Students' : 'Program Report' }}</div>
                                 <small class="text-muted">
                                     @if ($report->report_mode === 'graduating')
-                                        Admitted {{ $report->graduating_year ?: $report->academic_year }}
+                                        @php
+                                            $admissionYears = is_array($report->admission_years) && $report->admission_years !== []
+                                                ? $report->admission_years
+                                                : array_values(array_filter(array_map('trim', explode(',', (string) ($report->academic_year ?? '')))));
+                                        @endphp
+                                        Admitted {{ $admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: '—') }}
                                     @else
                                         {{ $report->academic_year ?: '—' }}
                                     @endif

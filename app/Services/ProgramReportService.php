@@ -136,8 +136,11 @@ class ProgramReportService
             'report_type' => $reportType,
             'report_mode' => $reportMode,
             'degree_type' => $program->normalizedDegreeType(),
+            // graduating_year column is an INT (tinyint). For graduating mode
+            // store the first (oldest) admission year as an int; the FULL list
+            // of admission years lives in the admission_years JSON column.
             'graduating_year' => $reportMode === 'graduating'
-                ? implode(', ', $graduatingYears)
+                ? (int) (min($graduatingYears) ?? 0)
                 : $program->graduatingYear(),
             'admission_years' => $reportMode === 'graduating' ? $graduatingYears : [],
             'students_with_violations' => $filtered->filter(fn ($s) => (int) $s['total_violations'] > 0)->count(),

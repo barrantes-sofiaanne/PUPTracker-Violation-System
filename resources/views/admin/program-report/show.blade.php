@@ -9,10 +9,15 @@
     @php
         $stats = $report->statistics_json ?? [];
         $isGraduating = $report->report_mode === 'graduating';
-        // graduating_year now holds the admission year(s) — either a single
-        // number or a comma-joined list (e.g. "2022" or "2022, 2023").
+        // For graduating reports the FULL admission-year list is stored in
+        // admission_years (JSON); graduating_year holds the first year only.
+        $admissionYears = $isGraduating
+            ? (is_array($report->admission_years) && $report->admission_years !== []
+                ? $report->admission_years
+                : array_values(array_filter(array_map('trim', explode(',', (string) ($report->academic_year ?? ''))))))
+            : [];
         $appliedYearLabel = $isGraduating
-            ? 'Admitted ' . ($report->graduating_year ?: ($report->academic_year ?: '—'))
+            ? 'Admitted ' . ($admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: '—'))
             : ($report->academic_year ?: 'All configured years');
     @endphp
 
@@ -139,7 +144,7 @@
         <div class="alert alert-info mb-4">
             <strong>Applied eligibility:</strong>
             Graduating students are identified by the admission year(s) encoded in the first four digits of their student number:
-            <strong>{{ $report->graduating_year ?: $report->academic_year }}</strong>.
+            <strong>{{ $admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: $report->academic_year) }}</strong>.
             Eligibility is determined by the system records, not AI.
         </div>
     @endif
