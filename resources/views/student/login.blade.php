@@ -22,7 +22,7 @@
             class="btn btn-success w-100 login-btn"
             role="button">
 
-            <span class="login-btn-label">Continue with PUP ID</span>
+            <span class="login-btn-label">Continue with PUP IDP</span>
 
         </a>
 
