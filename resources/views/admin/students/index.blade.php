@@ -1,5 +1,9 @@
 @extends('layouts.admin')
 
+@php
+    $isItAdministrator = auth('admin')->check() && auth('admin')->user()->isItAdministrator();
+@endphp
+
 @section('content')
 <div class="container-fluid">
     <div class="page-header-modern mb-3">
@@ -25,6 +29,7 @@
                         Students
                     </button>
                 </li>
+                @if($isItAdministrator)
                 <li class="nav-item" role="presentation">
                     <button class="nav-link {{ request('tab') === 'admins' ? 'active' : '' }}" id="admins-tab" data-bs-toggle="tab" data-bs-target="#admins-pane" type="button" role="tab">
                         <i class="bi bi-person-badge-fill me-1"></i>
@@ -37,6 +42,7 @@
                         Security
                     </button>
                 </li>
+                @endif
             </ul>
         </div>
 
@@ -268,6 +274,7 @@
                     </div>
                 </div>
 
+                @if($isItAdministrator)
                 <div class="tab-pane fade {{ request('tab') === 'admins' ? 'show active' : '' }}" id="admins-pane" role="tabpanel">
                     <form method="GET" action="{{ route('admin.students') }}" class="mb-4 user-management-toolbar">
                         <input type="hidden" name="tab" value="admins">
@@ -362,7 +369,9 @@
                         {{ $admins->appends(request()->query())->links() }}
                     </div>
                 </div>
+                @endif
 
+                @if($isItAdministrator)
                 <div class="tab-pane fade {{ request('tab') === 'security' ? 'show active' : '' }}" id="security-pane" role="tabpanel">
                     <form method="GET" action="{{ route('admin.students') }}" class="mb-4 user-management-toolbar">
                         <input type="hidden" name="tab" value="security">
@@ -456,6 +465,7 @@
                         {{ $securities->appends(request()->query())->links() }}
                     </div>
                 </div>
+                @endif
             </div>
         </div>
     </div>

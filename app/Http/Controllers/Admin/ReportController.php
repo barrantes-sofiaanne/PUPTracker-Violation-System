@@ -10,7 +10,6 @@ use App\Models\ViolationType;
 use App\Models\Year;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -238,7 +237,10 @@ class ReportController extends Controller
             ->latest('violation_date')
             ->get();
 
-        $spreadsheet = $this->buildReportSpreadsheet($reports);
+        $statistics = $this->getStatistics($request);
+        $charts = $this->buildCharts($request);
+
+        $spreadsheet = $this->buildReportSpreadsheet($reports, $statistics, $charts);
         $writer = new Xlsx($spreadsheet);
 
         $fileName = 'violation-reports-' . now()->format('Ymd_His') . '.xlsx';
@@ -261,17 +263,33 @@ class ReportController extends Controller
             ->latest('violation_date')
             ->get();
 
-        $spreadsheet = $this->buildReportSpreadsheet($reports);
-        $writer = IOFactory::createWriter($spreadsheet, 'Mpdf');
+        $statistics = $this->getStatistics($request);
+        $charts = $this->buildCharts($request);
+
+        $html = view('admin.reports.pdf', [
+            'reports' => $reports,
+            'statistics' => $statistics,
+            'charts' => $charts,
+            'generatedAt' => now()->format('F d, Y, h:i a'),
+            'filtersApplied' => $this->describeFilters($request),
+        ])->render();
+
+        $mpdf = new \Mpdf\Mpdf([
+            'tempDir' => storage_path('framework/cache'),
+            'margin_left' => 12,
+            'margin_right' => 12,
+            'margin_top' => 12,
+            'margin_bottom' => 12,
+        ]);
+
+        $mpdf->WriteHTML($html);
 
         $fileName = 'violation-reports-' . now()->format('Ymd_His') . '.pdf';
-        $tempFile = tempnam(sys_get_temp_dir(), 'violation_reports_pdf_');
 
-        $writer->save($tempFile);
-
-        return response()
-            ->download($tempFile, $fileName, ['Content-Type' => 'application/pdf'])
-            ->deleteFileAfterSend(true);
+        return response($mpdf->Output($fileName, 'S'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+        ]);
     }
 
     public function print(Request $request)
@@ -280,6 +298,20 @@ class ReportController extends Controller
             ->latest('violation_date')
             ->get();
 
+        $filtersApplied = $this->describeFilters($request);
+
+        return view('admin.reports.print', [
+            'reports' => $reports,
+            'generatedAt' => now()->format('F d, Y, h:i a'),
+            'filtersApplied' => $filtersApplied,
+        ]);
+    }
+
+    /**
+     * Build a human-readable description of the active report filters.
+     */
+    private function describeFilters(Request $request): string
+    {
         $filters = [];
 
         if ($request->filled('course')) {
@@ -322,13 +354,7 @@ class ReportController extends Controller
             $filters[] = 'Student Search: ' . $request->search_student;
         }
 
-        $filtersApplied = empty($filters) ? 'None' : implode(' | ', $filters);
-
-        return view('admin.reports.print', [
-            'reports' => $reports,
-            'generatedAt' => now()->format('F d, Y, h:i a'),
-            'filtersApplied' => $filtersApplied,
-        ]);
+        return empty($filters) ? 'None' : implode(' | ', $filters);
     }
 
     private function buildCharts(Request $request): array
@@ -428,10 +454,85 @@ class ReportController extends Controller
         return $actions;
     }
 
-    private function buildReportSpreadsheet($reports): Spreadsheet
+    private function buildReportSpreadsheet($reports, array $statistics = [], array $charts = []): Spreadsheet
     {
         $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
+
+        // ---- Sheet 1: Summary + Charts ----
+        $summarySheet = $spreadsheet->getActiveSheet();
+        $summarySheet->setTitle('Summary');
+
+        $summarySheet->setCellValue('A1', 'VIOLATION REPORT SUMMARY');
+        $summarySheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $summarySheet->mergeCells('A1:D1');
+
+        $summaryRows = [
+            ['Total Violations', (int) ($statistics['total'] ?? $reports->count())],
+            ['Minor Violations', (int) ($statistics['minor'] ?? 0)],
+            ['Major Violations', (int) ($statistics['major'] ?? 0)],
+            ['Repeat Offenders', (int) ($statistics['repeat_offenders'] ?? 0)],
+            ['Generated At', now()->format('M d, Y h:i A')],
+        ];
+
+        $row = 3;
+        foreach ($summaryRows as $summaryRow) {
+            $summarySheet->setCellValue('A' . $row, $summaryRow[0]);
+            $summarySheet->getStyle('A' . $row)->getFont()->setBold(true);
+            $summarySheet->setCellValue('B' . $row, $summaryRow[1]);
+            $row++;
+        }
+
+        // Monthly trend (chart data).
+        $row += 1;
+        $summarySheet->setCellValue('A' . $row, 'MONTHLY VIOLATION TREND');
+        $summarySheet->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+        $summarySheet->setCellValue('A' . $row, 'Month');
+        $summarySheet->setCellValue('B' . $row, 'Count');
+        $summarySheet->getStyle('A' . $row . ':B' . $row)->getFont()->setBold(true);
+        $row++;
+        foreach (($charts['monthly']['labels'] ?? []) as $i => $label) {
+            $summarySheet->setCellValue('A' . $row, $label);
+            $summarySheet->setCellValue('B' . $row, (int) ($charts['monthly']['data'][$i] ?? 0));
+            $row++;
+        }
+
+        // Category distribution (chart data).
+        $row += 1;
+        $summarySheet->setCellValue('A' . $row, 'CATEGORY DISTRIBUTION');
+        $summarySheet->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+        $summarySheet->setCellValue('A' . $row, 'Category');
+        $summarySheet->setCellValue('B' . $row, 'Count');
+        $summarySheet->getStyle('A' . $row . ':B' . $row)->getFont()->setBold(true);
+        $row++;
+        foreach (($charts['categories']['labels'] ?? []) as $i => $label) {
+            $summarySheet->setCellValue('A' . $row, $label);
+            $summarySheet->setCellValue('B' . $row, (int) ($charts['categories']['data'][$i] ?? 0));
+            $row++;
+        }
+
+        // Top violations (chart data).
+        $row += 1;
+        $summarySheet->setCellValue('A' . $row, 'TOP VIOLATIONS');
+        $summarySheet->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+        $summarySheet->setCellValue('A' . $row, 'Violation');
+        $summarySheet->setCellValue('B' . $row, 'Count');
+        $summarySheet->getStyle('A' . $row . ':B' . $row)->getFont()->setBold(true);
+        $row++;
+        foreach (($charts['topViolations']['labels'] ?? []) as $i => $label) {
+            $summarySheet->setCellValue('A' . $row, $label);
+            $summarySheet->setCellValue('B' . $row, (int) ($charts['topViolations']['data'][$i] ?? 0));
+            $row++;
+        }
+
+        $summarySheet->getColumnDimension('A')->setAutoSize(true);
+        $summarySheet->getColumnDimension('B')->setAutoSize(true);
+
+        // ---- Sheet 2: Violation Records ----
+        $sheet = $spreadsheet->createSheet();
+        $sheet->setTitle('Violations');
 
         $headers = [
             'Student Number',
@@ -473,6 +574,9 @@ class ReportController extends Controller
         foreach (range('A', 'I') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
+
+        // Make Summary the first visible sheet.
+        $spreadsheet->setActiveSheetIndex(0);
 
         return $spreadsheet;
     }

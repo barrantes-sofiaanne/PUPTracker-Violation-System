@@ -22,21 +22,21 @@
         <div class="card-header bg-white">
             <ul class="nav nav-tabs" id="sanctionTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="sanction-management-tab" data-bs-toggle="tab" data-bs-target="#sanction-management" type="button" role="tab">
-                        <i class="bi bi-shield-check me-1"></i>
-                        Sanctions
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="sanction-request-tab" data-bs-toggle="tab" data-bs-target="#sanction-requests" type="button" role="tab">
+                    <button class="nav-link {{ (request('sanctions_tab', 'sanction-requests') === 'sanction-requests' && !request('tab')) ? 'active' : '' }}" id="sanction-request-tab" data-bs-toggle="tab" data-bs-target="#sanction-requests" type="button" role="tab">
                         <i class="bi bi-inbox me-1"></i>
                         Sanction Requests
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="student-sanctions-tab" data-bs-toggle="tab" data-bs-target="#student-sanctions" type="button" role="tab">
+                    <button class="nav-link {{ request('sanctions_tab') === 'student-sanctions' ? 'active' : '' }}" id="student-sanctions-tab" data-bs-toggle="tab" data-bs-target="#student-sanctions" type="button" role="tab">
                         <i class="bi bi-list-check me-1"></i>
                         Student Sanctions
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {{ request('sanctions_tab') === 'sanction-management' ? 'active' : '' }}" id="sanction-management-tab" data-bs-toggle="tab" data-bs-target="#sanction-management" type="button" role="tab">
+                        <i class="bi bi-shield-check me-1"></i>
+                        Sanction Configuration
                     </button>
                 </li>
             </ul>
@@ -44,13 +44,7 @@
 
         <div class="card-body">
             <div class="tab-content">
-                <div class="tab-pane fade show active" id="sanction-management" role="tabpanel">
-                    <div id="sanctionContainer">
-                        @include('admin.violations.configuration.sanctions')
-                    </div>
-                </div>
-
-                <div class="tab-pane fade" id="sanction-requests" role="tabpanel">
+                <div class="tab-pane fade {{ (request('sanctions_tab', 'sanction-requests') === 'sanction-requests' && !request('tab')) ? 'show active' : '' }}" id="sanction-requests" role="tabpanel">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
                         <span class="text-muted small">
                             Showing {{ $requests->firstItem() ?? 0 }}–{{ $requests->lastItem() ?? 0 }} of {{ $requests->total() }} pending requests
@@ -114,7 +108,7 @@
                     @endif
                 </div>
 
-                <div class="tab-pane fade" id="student-sanctions" role="tabpanel">
+                <div class="tab-pane fade {{ request('sanctions_tab') === 'student-sanctions' ? 'show active' : '' }}" id="student-sanctions" role="tabpanel">
                     <form method="GET" action="{{ route('admin.sanctions.index') }}" class="mb-4 admin-filter-form">
                         <input type="hidden" name="sanctions_tab" value="student-sanctions">
                         <div class="border rounded-3 p-3 bg-light-subtle">
@@ -282,6 +276,12 @@
                         </div>
                     @endif
                 </div>
+
+                <div class="tab-pane fade {{ request('sanctions_tab') === 'sanction-management' ? 'show active' : '' }}" id="sanction-management" role="tabpanel">
+                    <div id="sanctionContainer">
+                        @include('admin.violations.configuration.sanctions')
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -389,6 +389,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const sanctionRequestsTab = document.getElementById('sanction-request-tab');
         if (sanctionRequestsTab) {
             bootstrap.Tab.getOrCreateInstance(sanctionRequestsTab).show();
+        }
+    }
+
+    if (requestedTab === 'sanction-management') {
+        const sanctionManagementTab = document.getElementById('sanction-management-tab');
+        if (sanctionManagementTab) {
+            bootstrap.Tab.getOrCreateInstance(sanctionManagementTab).show();
         }
     }
 
