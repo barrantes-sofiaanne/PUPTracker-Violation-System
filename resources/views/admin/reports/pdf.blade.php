@@ -48,7 +48,10 @@
 <body>
 <div class="page">
     <div class="report-header">
-        <img src="{{ asset('assets/images/Tracker-logo.png') }}" alt="PUPTracker Logo" class="report-logo">
+        <img
+            src="{{ public_path('assets/images/Tracker-logo.png') }}"
+            alt="PUPTracker Logo"
+            class="report-logo">
         <h1 class="report-title">PUPT Violation Report</h1>
     </div>
 
