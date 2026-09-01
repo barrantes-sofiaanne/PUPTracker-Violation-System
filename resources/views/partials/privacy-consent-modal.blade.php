@@ -3,12 +3,13 @@
 
     Shown FIRST after login (before any login announcement modal). The user
     must agree to the privacy terms & conditions to continue using the system.
-    - I Agree   → closes this modal, clears the session flag, then the login
-                  announcement modal (if any) shows.
+    - I Agree   → closes this modal, marks consent for the browser session
+                  (sessionStorage), then the login announcement modal (if any) shows.
     - I Disagree → automatically logs the user out of the system.
 
     Only renders when the session flag `show_privacy_consent_modal` is set
-    (set on every successful login), so it appears once per login.
+    (set on every successful login). Re-show is suppressed client-side via
+    sessionStorage so no AJAX/session write races with logout (prevents 419).
 --}}
 @if(session()->get('show_privacy_consent_modal', false))
     @php
@@ -25,7 +26,6 @@
         tabindex="-1"
         data-bs-backdrop="static"
         data-bs-keyboard="false"
-        data-acknowledge-url="{{ route('privacy.consent.acknowledge') }}"
         aria-labelledby="privacyConsentModalLabel"
         aria-hidden="true"
         role="dialog"
@@ -96,27 +96,31 @@
                 return;
             }
 
+            // Show the consent modal only if it has NOT been acknowledged in
+            // this browser session (sessionStorage). This avoids any AJAX
+            // session write that could race with the logout POST (419).
+            const CONSENT_KEY = 'puptracker_privacy_consent_acknowledged';
+            if (sessionStorage.getItem(CONSENT_KEY)) {
+                // Already acknowledged this session — let the announcement modal show directly.
+                document.dispatchEvent(new CustomEvent('privacy:consent-agreed'));
+                return;
+            }
+
             const modal = new bootstrap.Modal(modalElement, {
                 backdrop: 'static',
                 keyboard: false,
             });
-            const acknowledgeUrl = modalElement.dataset.acknowledgeUrl || '';
 
             // Show the consent modal FIRST — before any login announcement modal.
             modal.show();
 
             agreeBtn.addEventListener('click', function () {
                 modal.hide();
-                // Clear the session flag so it only shows once per login.
-                if (acknowledgeUrl) {
-                    fetch(acknowledgeUrl, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'Accept': 'application/json',
-                        },
-                    }).catch(function () { /* ignore transient errors */ });
-                }
+                // Mark acknowledged for this browser session (client-side only,
+                // no server request — removes the AJAX/session race entirely).
+                try {
+                    sessionStorage.setItem(CONSENT_KEY, '1');
+                } catch (e) { /* ignore storage errors */ }
                 // Notify the login announcement modal (if any) that consent was
                 // granted so it can now show.
                 document.dispatchEvent(new CustomEvent('privacy:consent-agreed'));

@@ -92,15 +92,6 @@ Route::post('/student/idp/link', [StudentIdpLoginController::class, 'linkAccount
 Route::post('/logout', [LoginController::class, 'logout'])
     ->name('logout');
 
-// Privacy / Terms & Conditions consent acknowledgement (called from the
-// consent modal after the user clicks "I Agree" — clears the once-per-login flag).
-Route::post('/privacy/consent/acknowledge', function (\Illuminate\Http\Request $request) {
-    $request->session()->forget('show_privacy_consent_modal');
-
-    return response()->json(['ok' => true]);
-})->middleware('auth:admin,student,security')
-    ->name('privacy.consent.acknowledge');
-
 Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])
     ->name('admin.login');
 
