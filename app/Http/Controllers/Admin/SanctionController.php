@@ -40,6 +40,7 @@ class SanctionController extends Controller
             'violation.violationType',
             'assignedSanction',
             'violation.student',
+            'completionReviewer',
         ])->whereHas('violation.violationType');
 
         $recordSearch = trim((string) request('record_search', ''));
@@ -99,12 +100,14 @@ class SanctionController extends Controller
         $requests->getCollection()->transform(function (SanctionRequest $request) {
             $offenseCount = Violation::where('student_number', $request->student_number)
                 ->where('violation_type', $request->violation_type_id)
+                ->effective()
                 ->count();
 
             $offenseLevel = $this->formatOffenseLevel($offenseCount);
 
             $latestViolation = Violation::where('student_number', $request->student_number)
                 ->where('violation_type', $request->violation_type_id)
+                ->effective()
                 ->latest('violation_date')
                 ->first();
 
@@ -131,11 +134,13 @@ class SanctionController extends Controller
 
         $latestViolation = Violation::where('student_number', $sanctionRequest->student_number)
             ->where('violation_type', $sanctionRequest->violation_type_id)
+            ->effective()
             ->latest('violation_date')
             ->first();
 
         $offenseCount = Violation::where('student_number', $sanctionRequest->student_number)
             ->where('violation_type', $sanctionRequest->violation_type_id)
+            ->effective()
             ->count();
         $offenseLevel = $this->formatOffenseLevel($offenseCount);
         $assignedSanction = DisciplinarySanction::where('violation_type_id', $sanctionRequest->violation_type_id)
@@ -163,12 +168,16 @@ class SanctionController extends Controller
 
         $validated = $request->validate([
             'notification_date' => ['required', 'date'],
+            'deadline_date' => ['nullable', 'date', 'after_or_equal:notification_date'],
         ]);
 
         $adminId = Auth::guard('admin')->id();
         $scheduledDate = Carbon::parse($validated['notification_date'])->startOfDay();
+        $deadlineDate = !empty($validated['deadline_date'])
+            ? Carbon::parse($validated['deadline_date'])->endOfDay()
+            : null;
 
-        DB::transaction(function () use ($sanctionRequest, $adminId, $scheduledDate): void {
+        DB::transaction(function () use ($sanctionRequest, $adminId, $scheduledDate, $deadlineDate): void {
             $student = $sanctionRequest->student;
             $violationType = $sanctionRequest->violationType;
 
@@ -180,6 +189,7 @@ class SanctionController extends Controller
 
             $latestViolation = Violation::where('student_number', $student->student_number)
                 ->where('violation_type', $violationType->violation_type_id)
+                ->effective()
                 ->latest('violation_date')
                 ->first();
 
@@ -191,6 +201,7 @@ class SanctionController extends Controller
 
             $offenseCount = Violation::where('student_number', $student->student_number)
                 ->where('violation_type', $violationType->violation_type_id)
+                ->effective()
                 ->count();
 
             $offenseLevel = $this->formatOffenseLevel($offenseCount);
@@ -220,6 +231,7 @@ class SanctionController extends Controller
                     'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
                     'assigned_by_admin_id' => $adminId,
                     'date_assigned' => $scheduledDate,
+                    'deadline_date' => $deadlineDate,
                 ]);
             } else {
                 StudentSanctionRecord::create([
@@ -229,6 +241,7 @@ class SanctionController extends Controller
                     'assigned_by_admin_id' => $adminId,
                     'status' => 'Pending',
                     'date_assigned' => $scheduledDate,
+                    'deadline_date' => $deadlineDate,
                 ]);
             }
 
@@ -240,11 +253,14 @@ class SanctionController extends Controller
             ]);
 
             try {
+                $deadlineMessage = $deadlineDate
+                    ? ' Deadline to complete: ' . $deadlineDate->format('M d, Y') . '.'
+                    : '';
                 app(\App\Services\StudentNotificationService::class)->create(
                     studentNumber: $student->student_number,
                     type: 'sanction',
                     title: 'Sanction Request Approved',
-                    message: 'Your sanction request was approved. Please check your Sanction Record tab. Scheduled date: ' . $scheduledDate->format('M d, Y') . '.',
+                    message: 'Your sanction request was approved. Please check your Sanction Record tab. Scheduled date: ' . $scheduledDate->format('M d, Y') . '.' . $deadlineMessage,
                     targetType: 'sanction_request',
                     targetId: (int) $sanctionRequest->request_id,
                 );
@@ -257,7 +273,7 @@ class SanctionController extends Controller
                 'actor_id' => $adminId,
                 'action' => 'Approve',
                 'module' => 'Sanction Requests',
-                'description' => 'Approved sanction request #' . $sanctionRequest->request_id . ' for student ' . $student->student_number . '.',
+                'description' => 'Approved sanction request #' . $sanctionRequest->request_id . ' for student ' . $student->student_number . ($deadlineDate ? ' with deadline ' . $deadlineDate->format('Y-m-d') : '') . '.',
             ]);
         });
 
@@ -311,11 +327,17 @@ class SanctionController extends Controller
         return back()->with('success', 'Sanction request declined and the student was notified.');
     }
 
-    public function markRecordCompleted(StudentSanctionRecord $studentSanctionRecord): RedirectResponse
+    public function acceptProof(StudentSanctionRecord $studentSanctionRecord): RedirectResponse
     {
         if (strcasecmp((string) $studentSanctionRecord->status, 'Pending') !== 0) {
             return back()->withErrors([
-                'sanction_record' => 'Only pending sanctions can be marked as completed.',
+                'sanction_record' => 'Only pending sanctions with a submitted proof can be completed.',
+            ]);
+        }
+
+        if ($studentSanctionRecord->proof_path === null || $studentSanctionRecord->proof_path === '') {
+            return back()->withErrors([
+                'sanction_record' => 'This sanction has no submitted proof of completion to accept.',
             ]);
         }
 
@@ -325,6 +347,8 @@ class SanctionController extends Controller
             $studentSanctionRecord->update([
                 'status' => 'Completed',
                 'date_completed' => now(),
+                'completion_reviewed_by_admin_id' => $adminId,
+                'completion_reviewed_at' => now(),
             ]);
 
             try {
@@ -332,7 +356,7 @@ class SanctionController extends Controller
                     studentNumber: $studentSanctionRecord->student_number,
                     type: 'sanction',
                     title: 'Sanction Completed',
-                    message: 'Your sanction status has been marked as completed by the administration.',
+                    message: 'Your submitted proof of completion was accepted. Your sanction is now marked as completed.',
                     targetType: 'sanction_request',
                     targetId: (int) $studentSanctionRecord->record_id,
                 );
@@ -343,13 +367,66 @@ class SanctionController extends Controller
             AuditLog::create([
                 'actor_type' => 'admin',
                 'actor_id' => $adminId,
-                'action' => 'Complete',
+                'action' => 'Accept Proof',
                 'module' => 'Sanction Records',
-                'description' => 'Marked sanction record #' . $studentSanctionRecord->record_id . ' as completed.',
+                'description' => 'Accepted proof of completion and marked sanction record #' . $studentSanctionRecord->record_id . ' as completed.',
             ]);
         });
 
-        return back()->with('success', 'Pending sanction marked as completed.');
+        return back()->with('success', 'Proof accepted and sanction marked as completed.');
+    }
+
+    public function rejectProof(Request $request, StudentSanctionRecord $studentSanctionRecord): RedirectResponse
+    {
+        if (strcasecmp((string) $studentSanctionRecord->status, 'Pending') !== 0) {
+            return back()->withErrors([
+                'sanction_record' => 'Only pending sanctions with a submitted proof can be rejected.',
+            ]);
+        }
+
+        if ($studentSanctionRecord->proof_path === null || $studentSanctionRecord->proof_path === '') {
+            return back()->withErrors([
+                'sanction_record' => 'This sanction has no submitted proof of completion to reject.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $adminId = Auth::guard('admin')->id();
+
+        DB::transaction(function () use ($studentSanctionRecord, $adminId, $validated): void {
+            $studentSanctionRecord->update([
+                'status' => 'Pending',
+                'completion_reviewed_by_admin_id' => $adminId,
+                'completion_reviewed_at' => now(),
+                'completion_remarks' => trim($validated['reason']),
+            ]);
+
+            try {
+                app(\App\Services\StudentNotificationService::class)->create(
+                    studentNumber: $studentSanctionRecord->student_number,
+                    type: 'sanction',
+                    title: 'Proof of Completion Rejected',
+                    message: 'Your proof of completion was not accepted. Reason: ' . trim($validated['reason']) . '. You may submit a new proof for verification.',
+                    targetType: 'sanction_request',
+                    targetId: (int) $studentSanctionRecord->record_id,
+                );
+            } catch (\Throwable $e) {
+                // Notification must never break the rejection.
+            }
+
+            AuditLog::create([
+                'actor_type' => 'admin',
+                'actor_id' => $adminId,
+                'action' => 'Reject Proof',
+                'module' => 'Sanction Records',
+                'description' => 'Rejected proof of completion for sanction record #' . $studentSanctionRecord->record_id . '. Reason: ' . trim($validated['reason']) . '.',
+            ]);
+        });
+
+        return back()->with('success', 'Proof rejected. The student was notified and may resubmit.');
     }
 
     public function revertRecordToPending(StudentSanctionRecord $studentSanctionRecord): RedirectResponse
@@ -366,6 +443,15 @@ class SanctionController extends Controller
             $studentSanctionRecord->update([
                 'status' => 'Pending',
                 'date_completed' => null,
+                // Reverting reopens the proof workflow: clear the review outcome
+                // so the student can submit a fresh proof for verification.
+                'completion_reviewed_by_admin_id' => null,
+                'completion_reviewed_at' => null,
+                'completion_remarks' => null,
+                'proof_path' => null,
+                'proof_original_name' => null,
+                'proof_submitted_at' => null,
+                'proof_notes' => null,
             ]);
 
             try {
@@ -373,7 +459,7 @@ class SanctionController extends Controller
                     studentNumber: $studentSanctionRecord->student_number,
                     type: 'sanction',
                     title: 'Sanction Reverted',
-                    message: 'Your sanction status was reverted to pending by the administration.',
+                    message: 'Your sanction status was reverted to pending by the administration. You may submit a new proof of completion for verification.',
                     targetType: 'sanction_request',
                     targetId: (int) $studentSanctionRecord->record_id,
                 );

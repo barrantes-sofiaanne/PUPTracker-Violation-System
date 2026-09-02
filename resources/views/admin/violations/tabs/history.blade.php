@@ -99,6 +99,8 @@
 
                     <th>Recorded By</th>
 
+                    <th>Status</th>
+
                     <th width="120">Action</th>
 
                 </tr>
@@ -147,6 +149,19 @@
                         </td>
 
                         <td>
+                            @php $vStatus = strtolower((string) $history->status); @endphp
+                            @if($vStatus === 'pending')
+                                <x-admin.badge status="pending" label="Awaiting Confirmation" />
+                            @elseif($vStatus === 'confirmed' || $vStatus === '')
+                                <x-admin.badge status="confirmed" label="Confirmed" />
+                            @elseif($vStatus === 'denied')
+                                <x-admin.badge status="rejected" label="Denied" />
+                            @else
+                                <x-admin.badge status="gray" :label="$history->status" />
+                            @endif
+                        </td>
+
+                        <td>
 
                             <button
                                 type="button"
@@ -166,7 +181,7 @@
                 @empty
 
                     <x-admin.empty-state
-                        :colspan="7"
+                        :colspan="8"
                         icon="bi-clock-history"
                         title="No violation records found"
                         message="No violation records match your current filters."

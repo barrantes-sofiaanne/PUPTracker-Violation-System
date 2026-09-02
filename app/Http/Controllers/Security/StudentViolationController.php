@@ -184,6 +184,7 @@ class StudentViolationController extends Controller
                 $query->where('violation_type', (string) $violationType->violation_type_id)
                     ->orWhere('violation_type', $violationType->violation_type);
             })
+            ->effective()
             ->count();
 
         $currentOffenseNumber = $previousCount + 1;
@@ -222,6 +223,9 @@ class StudentViolationController extends Controller
                         ->orWhere('violation_type', $violationType->violation_type);
                 })
                 ->whereDate('violation_date', Carbon::parse($validated['violation_date'])->toDateString())
+                // A denied violation should not block re-recording the same real
+                // incident; pending + confirmed still block a same-day duplicate.
+                ->notDenied()
                 ->exists();
 
             if ($exists) {
@@ -244,17 +248,26 @@ class StudentViolationController extends Controller
                 'recorder_id' => null,
                 'recorder_type' => 'security',
                 'recorder_name' => $securityLabel,
+                // Security-recorded violations are sent to the admin for
+                // confirmation before they count toward the student's record.
+                'status' => Violation::STATUS_PENDING,
             ]);
 
             DB::commit();
 
-            // Notify the student about the recorded violation (target-aware).
+            // Notify the admin so they can confirm or deny the recorded
+            // violation (target-aware). The student is notified after the
+            // admin decision, not on the initial record.
             try {
-                app(\App\Services\StudentNotificationService::class)->create(
-                    studentNumber: $validated['student_number'],
-                    type: 'violation',
-                    title: 'Violation Notice',
-                    message: 'A violation has been recorded against your record: ' . $violationType->violation_type . '. Please review your Student Record.',
+                $student = $violation->student;
+                $studentName = $student
+                    ? trim(($student->first_name ?? '') . ' ' . ($student->last_name ?? ''))
+                    : $validated['student_number'];
+
+                app(\App\Services\AdminNotificationService::class)->create(
+                    type: 'violation_confirmation',
+                    title: 'Violation Awaiting Confirmation',
+                    message: 'Security recorded a violation for ' . $studentName . ' (' . $validated['student_number'] . '): ' . $violationType->violation_type . '. Confirm or deny this violation.',
                     targetType: 'violation',
                     targetId: (int) $violation->violation_id,
                 );
@@ -264,7 +277,7 @@ class StudentViolationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Violation recorded successfully.',
+                'message' => 'Violation recorded successfully. It has been sent to the administrator for confirmation.',
                 'data' => $violation,
             ]);
         } catch (\Throwable $exception) {
@@ -531,7 +544,10 @@ class StudentViolationController extends Controller
                 if ($legacySecurityEmailLabel !== null) {
                     $innerQuery->orWhere('recorder_name', $legacySecurityEmailLabel);
                 }
-            });
+            })
+            // Denied violations are not real violations; the officer still sees
+            // their pending (awaiting admin confirmation) and confirmed rows.
+            ->notDenied();
     }
 
     private function buildSecurityRecorderLabel($securityId, ?string $email): string

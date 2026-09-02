@@ -719,7 +719,9 @@ class StudentController extends Controller
                 'studentInfo.studentStatus',
                 'gender',
                 'status',
-                'violations.violationType.violationCategory',
+                'violations' => function ($query) {
+                    $query->notDenied()->with('violationType.violationCategory');
+                },
             ])
             ->where('student_number', $student_number)
             ->firstOrFail();

@@ -465,6 +465,7 @@
 
         <div class="card-body p-0">
 
+            <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
 
                 <thead>
@@ -491,13 +492,19 @@
 
                         <th>
 
+                            Deadline
+
+                        </th>
+
+                        <th>
+
                             Sanction Details
 
                         </th>
 
                         <th>
 
-                            Violation Remarks
+                            Proof of Completion
 
                         </th>
 
@@ -523,11 +530,15 @@
 
                                     @case('pending')
 
-                                        <span class="portal-badge warning">
-
-                                            Pending
-
-                                        </span>
+                                        @if($record->has_pending_proof)
+                                            <span class="portal-badge maroon">
+                                                For Review
+                                            </span>
+                                        @else
+                                            <span class="portal-badge warning">
+                                                Pending
+                                            </span>
+                                        @endif
 
                                         @break
 
@@ -559,15 +570,81 @@
 
                             </td>
 
+                            <td>
+
+                                @if($record->deadline_date)
+                                    <span class="fw-semibold {{ $record->status === 'Pending' && $record->deadline_date->isPast() ? 'text-danger' : '' }}">
+                                        {{ $record->deadline_date->format('M d, Y') }}
+                                    </span>
+                                    @if($record->status === 'Pending' && $record->deadline_date->isPast())
+                                        <span class="portal-badge maroon d-block mt-1">Overdue</span>
+                                    @endif
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+
+                            </td>
+
                             <td style="max-width:320px; white-space:normal;">
 
                                 {{ optional($record->assignedSanction)->disciplinary_sanction ?? 'N/A' }}
 
                             </td>
 
-                            <td>
+                            <td style="min-width:220px;">
 
-                                {{ optional($record->violation)->description ?? 'No remarks' }}
+                                @if(strcasecmp($record->status, 'Completed') === 0)
+
+                                    @if($record->proof_path)
+                                        <div class="small text-success mb-1">
+                                            <i class="bi bi-patch-check-fill me-1"></i>Proof accepted
+                                        </div>
+                                        <a href="{{ asset($record->proof_path) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-paperclip me-1"></i>View Proof
+                                        </a>
+                                    @else
+                                        <span class="small text-muted">Completed by administration</span>
+                                    @endif
+
+                                @elseif($record->has_pending_proof)
+
+                                    <div class="small text-muted mb-1">
+                                        <i class="bi bi-hourglass-split me-1"></i>Proof submitted — awaiting admin review.
+                                    </div>
+
+                                    @if($record->proof_path)
+                                        <a href="{{ asset($record->proof_path) }}" target="_blank" class="btn btn-sm btn-outline-secondary mb-1">
+                                            <i class="bi bi-paperclip me-1"></i>View Submitted Proof
+                                        </a>
+                                    @endif
+
+                                    @if($record->completion_remarks)
+                                        <div class="small text-danger mt-1">
+                                            <i class="bi bi-x-circle me-1"></i>Last review: {{ $record->completion_remarks }}
+                                        </div>
+                                    @endif
+
+                                @elseif(strcasecmp($record->status, 'Pending') === 0)
+
+                                    @if($record->completion_remarks)
+                                        <div class="small text-danger mb-2">
+                                            <i class="bi bi-x-circle me-1"></i>Your previous proof was not accepted: {{ $record->completion_remarks }}
+                                        </div>
+                                    @endif
+
+                                    <button
+                                        type="button"
+                                        class="btn portal-btn btn-sm submit-proof-btn"
+                                        data-record-id="{{ $record->record_id }}"
+                                        data-violation="{{ optional(optional($record->violation)->violationType)->violation_type ?? 'N/A' }}">
+                                        <i class="bi bi-upload me-1"></i>Submit Proof
+                                    </button>
+
+                                @else
+
+                                    <span class="text-muted small">—</span>
+
+                                @endif
 
                             </td>
 
@@ -578,7 +655,7 @@
                         <tr>
 
                             <td
-                                colspan="5"
+                                colspan="6"
                                 class="text-center py-5 text-muted">
 
                                 No sanction records found.
@@ -592,6 +669,7 @@
                 </tbody>
 
             </table>
+            </div>
 
         </div>
 
@@ -623,6 +701,47 @@
         </div>
     </div>
 </div>
+
+{{-- Submit Proof of Completion modal --}}
+<div class="modal fade" id="submitProofModal" tabindex="-1" aria-labelledby="submitProofModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="submitProofModalLabel">Submit Proof of Completion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="submitProofForm" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" name="record_id" id="proofRecordId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Violation Type</label>
+                        <div class="form-control bg-light" id="proofViolationDisplay" readonly>—</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="proofFile" class="form-label fw-semibold">Proof of Completion <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="proofFile" name="proof_file" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx" required>
+                        <small class="text-muted">Accepted: JPG, PNG, GIF, PDF, DOC, DOCX. Max 5MB.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="proofNotes" class="form-label fw-semibold">Notes (Optional)</label>
+                        <textarea class="form-control" id="proofNotes" name="proof_notes" rows="3" maxlength="1000" placeholder="Add any remarks about your completion..."></textarea>
+                    </div>
+                    <div class="alert alert-info small mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Your proof will be sent to the administrator for verification. You will be notified once it is accepted or rejected.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn portal-btn" id="submitProofBtn">
+                        <i class="bi bi-send me-1"></i>Submit Proof
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -636,6 +755,76 @@ document.addEventListener('DOMContentLoaded', function () {
         if (sanctionTab) {
             bootstrap.Tab.getOrCreateInstance(sanctionTab).show();
         }
+    }
+
+    // Proof of completion submission.
+    const submitProofModalEl = document.getElementById('submitProofModal');
+    const submitProofForm = document.getElementById('submitProofForm');
+
+    if (submitProofModalEl && submitProofForm) {
+        const submitProofModal = new bootstrap.Modal(submitProofModalEl);
+
+        document.querySelectorAll('.submit-proof-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
+                document.getElementById('proofRecordId').value = button.dataset.recordId || '';
+                document.getElementById('proofViolationDisplay').textContent = button.dataset.violation || '—';
+                submitProofForm.reset();
+                document.getElementById('proofRecordId').value = button.dataset.recordId || '';
+                submitProofModal.show();
+            });
+        });
+
+        submitProofForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const recordId = document.getElementById('proofRecordId').value;
+            const fileInput = document.getElementById('proofFile');
+            const submitBtn = document.getElementById('submitProofBtn');
+
+            if (!recordId || !fileInput.files.length) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Missing Information',
+                    text: 'Please select a proof file to upload.',
+                });
+                return;
+            }
+
+            if (submitBtn) { submitBtn.disabled = true; }
+
+            const formData = new FormData(submitProofForm);
+
+            fetch("{{ route('student.submit-proof') }}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                },
+                body: formData,
+            })
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    Swal.fire({
+                        icon: data.success ? 'success' : 'error',
+                        title: data.success ? 'Success' : 'Error',
+                        text: data.message,
+                    });
+                    if (data.success) {
+                        submitProofModal.hide();
+                        location.reload();
+                    }
+                })
+                .catch(function () {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'An unexpected error occurred while submitting your proof.',
+                    });
+                })
+                .finally(function () {
+                    if (submitBtn) { submitBtn.disabled = false; }
+                });
+        });
     }
 });
 </script>

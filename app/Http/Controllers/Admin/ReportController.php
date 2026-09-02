@@ -55,7 +55,9 @@ class ReportController extends Controller
                 'student.studentInfo.section',
                 'violationType.violationCategory',
                 'recorder',
-            ]);
+            ])
+            // Only confirmed/legacy violations appear in official reports.
+            ->effective();
 
         if ($request) {
             if ($request->filled('course')) {

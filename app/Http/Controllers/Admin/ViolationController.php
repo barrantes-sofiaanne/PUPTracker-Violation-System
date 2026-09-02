@@ -21,6 +21,7 @@ use App\Models\Section;
 use App\Models\StudentStatus;
 use App\Models\SanctionRequest;
 use App\Models\StudentSanctionRecord;
+use App\Models\AuditLog;
 
 
 class ViolationController extends Controller
@@ -49,7 +50,9 @@ $students = User::with([
     'studentInfo.year',
     'studentInfo.section',
     'studentInfo.studentStatus',
-    'violations',
+    'violations' => function ($q) {
+        $q->effective();
+    },
     'role'
 ])
 ->whereHas('role', function ($query) {
@@ -79,6 +82,7 @@ $students = User::with([
 })
 ->when($request->filled('from_date') || $request->filled('to_date'), function ($query) use ($request) {
     $query->whereHas('violations', function ($q) use ($request) {
+        $q->effective();
         if ($request->filled('from_date')) {
             $q->whereDate('violation_date', '>=', $request->input('from_date'));
         }
@@ -137,6 +141,7 @@ $students = User::with([
         'violationType.violationCategory',
         'recorder.adminInfo'
     ])
+    ->notDenied()
     ->latest('violation_date')
     ->when($request->filled('history_search'), function ($query) use ($request) {
         $search = '%' . trim($request->input('history_search')) . '%';
@@ -167,6 +172,187 @@ $students = User::with([
     );
 }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Violation Confirmation Queue
+    |--------------------------------------------------------------------------
+    |
+    | Security-recorded violations start as 'pending' and are sent here for an
+    | administrator to confirm or deny before they count toward the student's
+    | record. Confirmations are surfaced to admins via the notification bell.
+    |--------------------------------------------------------------------------
+    */
+
+    public function confirmations(Request $request)
+    {
+        $violations = Violation::with([
+                'student.studentInfo.program',
+                'violationType.violationCategory',
+                'recorder.adminInfo',
+            ])
+            ->where('status', Violation::STATUS_PENDING)
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = '%' . trim($request->input('search')) . '%';
+                $query->where(function ($q) use ($search) {
+                    $q->where('student_number', 'like', $search)
+                        ->orWhereHas('student', fn ($s) => $s->where('first_name', 'like', $search)->orWhere('last_name', 'like', $search))
+                        ->orWhereHas('violationType', fn ($v) => $v->where('violation_type', 'like', $search));
+                });
+            })
+            ->when($request->filled('from'), fn ($query) => $query->whereDate('violation_date', '>=', $request->input('from')))
+            ->when($request->filled('to'), fn ($query) => $query->whereDate('violation_date', '<=', $request->input('to')))
+            ->latest('violation_date')
+            ->paginate(15, ['*'], 'confirmation_page')
+            ->withQueryString();
+
+        $pendingCount = Violation::where('status', Violation::STATUS_PENDING)->count();
+
+        // If an admin arrived from a notification (pending_id), keep it flagged
+        // so the view can highlight the exact violation.
+        $highlightId = $request->integer('pending_id');
+
+        return view('admin.violations.confirmations', compact('violations', 'pendingCount', 'highlightId'));
+    }
+
+    public function confirmViolation(Violation $violation): \Illuminate\Http\RedirectResponse
+    {
+        if (strtolower((string) $violation->status) !== Violation::STATUS_PENDING) {
+            return back()->withErrors([
+                'violation' => 'This violation has already been reviewed.',
+            ]);
+        }
+
+        $adminId = Auth::guard('admin')->id();
+
+        DB::transaction(function () use ($violation, $adminId): void {
+            $violation->update([
+                'status' => Violation::STATUS_CONFIRMED,
+                'reviewed_by_admin_id' => $adminId,
+                'reviewed_at' => now(),
+            ]);
+
+            $this->notifyViolationOutcome($violation, 'confirmed');
+
+            AuditLog::create([
+                'actor_type' => 'admin',
+                'actor_id' => $adminId,
+                'action' => 'Confirm Violation',
+                'module' => 'Violations',
+                'description' => 'Confirmed violation #' . $violation->violation_id . ' for student ' . ($violation->student_number ?? 'unknown') . '.',
+            ]);
+        });
+
+        return back()->with('success', 'Violation confirmed and added to the student\'s record.');
+    }
+
+    public function denyViolation(Request $request, Violation $violation): \Illuminate\Http\RedirectResponse
+    {
+        if (strtolower((string) $violation->status) !== Violation::STATUS_PENDING) {
+            return back()->withErrors([
+                'violation' => 'This violation has already been reviewed.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $adminId = Auth::guard('admin')->id();
+
+        DB::transaction(function () use ($violation, $adminId, $validated): void {
+            $violation->update([
+                'status' => Violation::STATUS_DENIED,
+                'reviewed_by_admin_id' => $adminId,
+                'reviewed_at' => now(),
+                'review_remarks' => trim($validated['reason']),
+            ]);
+
+            $this->notifyViolationOutcome($violation, 'denied');
+
+            AuditLog::create([
+                'actor_type' => 'admin',
+                'actor_id' => $adminId,
+                'action' => 'Deny Violation',
+                'module' => 'Violations',
+                'description' => 'Denied violation #' . $violation->violation_id . ' for student ' . ($violation->student_number ?? 'unknown') . '. Reason: ' . trim($validated['reason']) . '.',
+            ]);
+        });
+
+        return back()->with('success', 'Violation denied. The student and recording security officer were notified.');
+    }
+
+    /**
+     * Notify the student and security about the admin decision on a
+     * security-recorded violation.
+     */
+    private function notifyViolationOutcome(Violation $violation, string $decision): void
+    {
+        $student = $violation->student;
+        $studentName = $student
+            ? trim(($student->first_name ?? '') . ' ' . ($student->last_name ?? ''))
+            : ($violation->student_number ?? 'a student');
+        $violationLabel = $violation->violationType?->violation_type
+            ?? $violation->violation_type_display
+            ?? 'the recorded violation';
+        $reason = trim((string) $violation->review_remarks);
+
+        if ($decision === 'confirmed') {
+            // Notify the student their violation is now on their record.
+            try {
+                app(\App\Services\StudentNotificationService::class)->create(
+                    studentNumber: $violation->student_number,
+                    type: 'violation',
+                    title: 'Violation Confirmed',
+                    message: 'Your recorded violation (' . $violationLabel . ') has been confirmed and added to your Student Record.',
+                    targetType: 'violation',
+                    targetId: (int) $violation->violation_id,
+                );
+            } catch (\Throwable $e) {
+                // Notification must never break the confirmation.
+            }
+
+            // Notify the recording security officer of the confirmation.
+            try {
+                app(\App\Services\SecurityNotificationService::class)->create(
+                    type: 'violation',
+                    title: 'Violation Confirmed',
+                    message: 'The violation you recorded for ' . $studentName . ' (' . ($violation->student_number ?? '') . ') has been confirmed by the administrator.',
+                    targetType: 'violation',
+                    targetId: (int) $violation->violation_id,
+                );
+            } catch (\Throwable $e) {
+                // Notification must never break the confirmation.
+            }
+        } else {
+            // Notify the student their violation was denied with the reason.
+            try {
+                app(\App\Services\StudentNotificationService::class)->create(
+                    studentNumber: $violation->student_number,
+                    type: 'violation',
+                    title: 'Violation Rejected',
+                    message: 'A recorded violation (' . $violationLabel . ') was not confirmed. Reason: ' . ($reason !== '' ? $reason : 'No reason provided.'),
+                    targetType: 'violation',
+                    targetId: (int) $violation->violation_id,
+                );
+            } catch (\Throwable $e) {
+                // Notification must never break the denial.
+            }
+
+            // Notify the recording security officer of the denial + reason.
+            try {
+                app(\App\Services\SecurityNotificationService::class)->create(
+                    type: 'violation',
+                    title: 'Violation Rejected',
+                    message: 'The violation you recorded for ' . $studentName . ' (' . ($violation->student_number ?? '') . ') was denied by the administrator. Reason: ' . ($reason !== '' ? $reason : 'No reason provided.'),
+                    targetType: 'violation',
+                    targetId: (int) $violation->violation_id,
+                );
+            } catch (\Throwable $e) {
+                // Notification must never break the denial.
+            }
+        }
+    }
+
 public function show(Request $request, string $student_number)
 {
     $student = User::with([
@@ -183,6 +369,7 @@ public function show(Request $request, string $student_number)
         'recorder.adminInfo'
     ])
     ->where('student_number', $student_number)
+    ->effective()
     ->latest('violation_date')
     ->get();
 
@@ -191,6 +378,7 @@ public function show(Request $request, string $student_number)
         'recorder.adminInfo'
     ])
     ->where('student_number', $student_number)
+    ->effective()
     ->latest('violation_date')
     ->paginate(10)
     ->appends($request->query());
@@ -428,6 +616,7 @@ $previousCount = Violation::where(
         $query->where('violation_type', (string) $violationType->violation_type_id)
             ->orWhere('violation_type', $violationType->violation_type);
     })
+    ->effective()
     ->count();
 
         /*
@@ -591,6 +780,9 @@ public function store(Request $request): JsonResponse
                         strtotime($validated['violation_date'])
                     )
                 )
+                // A denied violation should not block re-recording the same real
+                // incident; pending + confirmed still block a same-day duplicate.
+                ->notDenied()
                 ->exists();
 
             if ($exists) {
@@ -636,6 +828,11 @@ public function store(Request $request): JsonResponse
                 'recorder_name' => $adminName !== ''
                     ? $adminName
                     : ($admin?->email ? 'Admin: ' . $admin->email : 'Admin #' . Auth::guard('admin')->id()),
+                // Admin-recorded violations are recorded by the confirming
+                // authority itself, so they count immediately.
+                'status' => Violation::STATUS_CONFIRMED,
+                'reviewed_by_admin_id' => Auth::guard('admin')->id(),
+                'reviewed_at' => now(),
             ]);
 
             DB::commit();
@@ -679,6 +876,7 @@ public function store(Request $request): JsonResponse
         'violationType.violationCategory',
         'recorder.adminInfo'
     ])
+    ->notDenied()
     ->when($request->student, function ($query) use ($request) {
         $query->whereHas('student', function ($q) use ($request) {
             $q->where('student_number', 'like', "%{$request->student}%")

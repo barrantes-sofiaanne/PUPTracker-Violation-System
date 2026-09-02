@@ -8,6 +8,20 @@ use App\Models\Admin;
 use App\Models\Security;
 use App\Models\ViolationType;
 
+/**
+ * @property int $violation_id
+ * @property string|null $student_number
+ * @property string|int|null $violation_type
+ * @property \Illuminate\Support\Carbon|null $violation_date
+ * @property string|null $description
+ * @property int|null $recorder_id
+ * @property string|null $recorder_type
+ * @property string|null $recorder_name
+ * @property string|null $status            pending | confirmed | denied
+ * @property int|null $reviewed_by_admin_id
+ * @property \Illuminate\Support\Carbon|null $reviewed_at
+ * @property string|null $review_remarks
+ */
 class Violation extends Model
 {
     protected $table = 'violation_tbl';
@@ -24,11 +38,89 @@ class Violation extends Model
         'recorder_id',
         'recorder_type',
         'recorder_name',
+        'status',
+        'reviewed_by_admin_id',
+        'reviewed_at',
+        'review_remarks',
     ];
 
     protected $casts = [
         'violation_date' => 'datetime',
+        'reviewed_at' => 'datetime',
     ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Confirmation workflow
+    |--------------------------------------------------------------------------
+    |
+    | Violations recorded by Security start as 'pending' and are sent to an
+    | administrator who either 'confirmed' or 'denied' them. Admin-recorded
+    | violations are treated as confirmed immediately. Legacy rows (NULL)
+    | remain effective for backward compatibility.
+    |
+    | Status values (lowercase): pending | confirmed | denied
+    |-----------------------------------------------------------------------
+    */
+
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_CONFIRMED = 'confirmed';
+    public const STATUS_DENIED = 'denied';
+
+    /**
+     * A violation is "effective" (counts toward the record) once confirmed.
+     * Admin-recorded or legacy rows without an explicit status also count.
+     */
+    public function getIsEffectiveAttribute(): bool
+    {
+        $status = strtolower(trim((string) ($this->attributes['status'] ?? '')));
+
+        return $status !== self::STATUS_PENDING && $status !== self::STATUS_DENIED;
+    }
+
+    /**
+     * Scope: ONLY violations that count toward the official record, dashboards,
+     * reports, offense levels, and the student module. Pending (awaiting admin
+     * confirmation) and denied rows are excluded.
+     */
+    public function scopeEffective($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('status')
+                ->orWhere('status', self::STATUS_CONFIRMED);
+        });
+    }
+
+    /**
+     * Scope: everything EXCEPT denied rows. Used where a recorder should still
+     * see their own pending + confirmed recordings (e.g. the security module).
+     */
+    public function scopeNotDenied($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('status')
+                ->orWhereIn('status', [self::STATUS_PENDING, self::STATUS_CONFIRMED]);
+        });
+    }
+
+    /**
+     * Scope: rows still awaiting admin confirmation (security-recorded only).
+     */
+    public function scopePendingConfirmation($query)
+    {
+        return $query->where('status', self::STATUS_PENDING);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reviewer
+    |--------------------------------------------------------------------------
+    */
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'reviewed_by_admin_id', 'id');
+    }
 
     public function getViolationTypeDisplayAttribute(): string
     {
@@ -81,6 +173,9 @@ class Violation extends Model
                     $query->orWhere('violation_type', $resolved->violation_type);
                 }
             })
+            // Only confirmed/legacy violations count toward the offense level;
+            // pending (awaiting admin confirmation) and denied rows do not.
+            ->effective()
             ->count();
 
         return $this->formatOffenseLevel((int) $count);

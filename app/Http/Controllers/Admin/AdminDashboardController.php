@@ -18,7 +18,7 @@ class AdminDashboardController extends Controller
     {
         $totalStudents = User::count();
 
-        $totalViolations = Violation::count();
+        $totalViolations = Violation::effective()->count();
 
         $pendingRequests = SanctionRequest::where(
             'status',
@@ -30,12 +30,14 @@ class AdminDashboardController extends Controller
         $recentViolations = Violation::with(
             'violationType'
         )
+        ->effective()
         ->latest('violation_date')
         ->take(10)
         ->get();
 
         // Get top students with most violations
-        $topOffenders = Violation::select('student_number', DB::raw('COUNT(*) as violation_count'))
+        $topOffenders = Violation::effective()
+            ->select('student_number', DB::raw('COUNT(*) as violation_count'))
             ->groupBy('student_number')
             ->orderByDesc('violation_count')
             ->take(5)
@@ -83,6 +85,7 @@ class AdminDashboardController extends Controller
         });
 
         $violations = Violation::query()
+            ->effective()
             ->whereNotNull('violation_date')
             ->where('violation_date', '>=', $start)
             ->get();

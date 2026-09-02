@@ -209,6 +209,9 @@ Route::middleware('auth:student')
         Route::post('/request-sanction', [StudentRecordController::class, 'requestSanction'])
             ->name('student.request-sanction');
 
+        Route::post('/submit-proof', [StudentRecordController::class, 'submitProof'])
+            ->name('student.submit-proof');
+
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->name('student.notifications');
 
@@ -369,6 +372,21 @@ Route::middleware('auth:admin')
         Route::post('/violations/offense-level', [ViolationController::class, 'getOffenseLevel'])
             ->name('admin.violations.offense');
 
+        /*
+        |--------------------------------------------------------------------------
+        | Violation Confirmation Queue (Security → Admin)
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/violations/confirmations', [ViolationController::class, 'confirmations'])
+            ->name('admin.violations.confirmations');
+
+        Route::post('/violations/confirm/{violation}', [ViolationController::class, 'confirmViolation'])
+            ->name('admin.violations.confirm');
+
+        Route::post('/violations/deny/{violation}', [ViolationController::class, 'denyViolation'])
+            ->name('admin.violations.deny');
+
         Route::get('/sanctions', [SanctionController::class, 'index'])
             ->name('admin.sanctions.index');
 
@@ -381,8 +399,11 @@ Route::middleware('auth:admin')
         Route::post('/sanctions/requests/{sanctionRequest}/decline', [SanctionController::class, 'declineRequest'])
             ->name('admin.sanctions.requests.decline');
 
-        Route::post('/sanctions/records/{studentSanctionRecord}/complete', [SanctionController::class, 'markRecordCompleted'])
+        Route::post('/sanctions/records/{studentSanctionRecord}/complete', [SanctionController::class, 'acceptProof'])
             ->name('admin.sanctions.records.complete');
+
+        Route::post('/sanctions/records/{studentSanctionRecord}/reject-proof', [SanctionController::class, 'rejectProof'])
+            ->name('admin.sanctions.records.reject-proof');
 
         Route::post('/sanctions/records/{studentSanctionRecord}/revert', [SanctionController::class, 'revertRecordToPending'])
             ->name('admin.sanctions.records.revert');
@@ -696,6 +717,15 @@ Route::middleware('auth:security')
 
         Route::get('/notifications', [App\Http\Controllers\Security\NotificationController::class, 'index'])
             ->name('security.notifications');
+
+        Route::get('/notifications/unread-count', [App\Http\Controllers\Security\NotificationController::class, 'unreadCount'])
+            ->name('security.notifications.unread-count');
+
+        Route::get('/notifications/{notification}/open', [App\Http\Controllers\Security\NotificationController::class, 'open'])
+            ->name('security.notifications.open');
+
+        Route::post('/notifications/{notification}/read', [App\Http\Controllers\Security\NotificationController::class, 'markAsRead'])
+            ->name('security.notifications.read');
 
         Route::get('/profile', [App\Http\Controllers\Security\SecurityProfileController::class, 'index'])
             ->name('security.profile');

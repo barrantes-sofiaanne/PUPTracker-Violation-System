@@ -63,6 +63,7 @@ class GraduationReviewScreeningService
         $violations = Violation::query()
             ->with(['violationType.violationCategory'])
             ->where('student_number', $student->student_number)
+            ->effective()
             ->orderBy('violation_date')
             ->orderBy('violation_id')
             ->get();

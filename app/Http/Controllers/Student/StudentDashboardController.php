@@ -24,6 +24,7 @@ class StudentDashboardController extends Controller
                 'violationType.violationCategory'
             ])
             ->where('student_number', $user->student_number)
+            ->effective()
             ->orderByDesc('violation_date')
 ->take(5)            ->get();
 
@@ -31,6 +32,7 @@ class StudentDashboardController extends Controller
                 'student_number',
                 $user->student_number
             )
+            ->effective()
             ->count();
 
         /*

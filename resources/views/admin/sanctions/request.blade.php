@@ -59,6 +59,11 @@
                             <label for="notification_date" class="admin-filter-label">Notification / Date Assigned</label>
                             <input type="date" id="notification_date" name="notification_date" class="form-control" value="{{ now()->format('Y-m-d') }}" required>
                         </div>
+                        <div>
+                            <label for="deadline_date" class="admin-filter-label">Deadline (if needed)</label>
+                            <input type="date" id="deadline_date" name="deadline_date" class="form-control" value="">
+                            <small class="text-muted">Optional completion deadline shown to the student.</small>
+                        </div>
                         <button type="submit" class="admin-btn admin-btn-success"><i class="bi bi-check2-circle"></i>Approve &amp; Notify</button>
                     </form>
                     <form action="{{ route('admin.sanctions.requests.decline', $sanctionRequest) }}" method="POST" class="mt-2">

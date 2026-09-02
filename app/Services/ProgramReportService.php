@@ -195,6 +195,7 @@ class ProgramReportService
     protected function violationCategories(Collection $students): array
     {
         return Violation::query()
+            ->effective()
             ->join('violation_type_tbl', 'violation_tbl.violation_type', '=', 'violation_type_tbl.violation_type_id')
             ->join('violation_category_tbl', 'violation_type_tbl.violation_category_id', '=', 'violation_category_tbl.violation_category_id')
             ->whereIn('violation_tbl.student_number', $students->pluck('student_number'))
@@ -211,6 +212,7 @@ class ProgramReportService
     protected function violationTypes(Collection $students): array
     {
         return Violation::query()
+            ->effective()
             ->join('violation_type_tbl', 'violation_tbl.violation_type', '=', 'violation_type_tbl.violation_type_id')
             ->whereIn('violation_tbl.student_number', $students->pluck('student_number'))
             ->selectRaw('violation_type_tbl.violation_type, COUNT(*) as total')

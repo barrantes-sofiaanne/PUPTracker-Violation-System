@@ -213,13 +213,15 @@
                                     <th>Violation Type</th>
                                     <th>Sanction</th>
                                     <th>Date Assigned</th>
+                                    <th>Deadline</th>
                                     <th>Status</th>
+                                    <th>Proof of Completion</th>
                                     <th class="text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($studentSanctions as $record)
-                                    <tr>
+                                    <tr @if((int) $record->record_id === (int) request('record_id')) class="table-warning" @endif>
                                         <td>
                                             <strong>{{ $record->student_number }}</strong>
                                             <div class="text-muted small">
@@ -227,25 +229,74 @@
                                             </div>
                                         </td>
                                         <td>{{ optional(optional($record->violation)->violationType)->violation_type ?? 'N/A' }}</td>
-                                        <td style="max-width: 280px; white-space: normal;">{{ optional($record->assignedSanction)->disciplinary_sanction ?? 'N/A' }}</td>
+                                        <td style="max-width: 240px; white-space: normal;">{{ optional($record->assignedSanction)->disciplinary_sanction ?? 'N/A' }}</td>
                                         <td>{{ optional($record->date_assigned)->format('M d, Y') ?? '-' }}</td>
                                         <td>
+                                            @if($record->deadline_date)
+                                                <span class="{{ $record->status === 'Pending' && $record->deadline_date->isPast() ? 'text-danger fw-semibold' : '' }}">
+                                                    {{ $record->deadline_date->format('M d, Y') }}
+                                                </span>
+                                                @if($record->status === 'Pending' && $record->deadline_date->isPast())
+                                                    <span class="d-block small text-danger">Overdue</span>
+                                                @endif
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td>
                                             @if(strcasecmp((string) $record->status, 'Pending') === 0)
-                                                <x-admin.badge status="pending" />
+                                                @if($record->has_pending_proof)
+                                                    <x-admin.badge status="pending" label="For Review" />
+                                                @else
+                                                    <x-admin.badge status="pending" />
+                                                @endif
                                             @elseif(strcasecmp((string) $record->status, 'Completed') === 0)
                                                 <x-admin.badge status="completed" />
                                             @else
                                                 <x-admin.badge status="gray" :label="$record->status" />
                                             @endif
                                         </td>
+                                        <td style="min-width:200px;">
+                                            @if($record->has_pending_proof)
+                                                <div class="small text-muted mb-1">
+                                                    <i class="bi bi-file-earmark-arrow-up me-1"></i>
+                                                    {{ $record->proof_original_name ?: 'Proof submitted' }}
+                                                </div>
+                                                <div class="small text-muted mb-1">
+                                                    {{ optional($record->proof_submitted_at)->format('M d, Y h:i A') }}
+                                                </div>
+                                                @if($record->proof_path)
+                                                    <a href="{{ asset($record->proof_path) }}" target="_blank" class="admin-btn admin-btn-view admin-btn-sm mb-1">
+                                                        <i class="bi bi-eye me-1"></i>View Proof
+                                                    </a>
+                                                @endif
+                                            @elseif($record->proof_path && strcasecmp((string) $record->status, 'Completed') === 0)
+                                                <a href="{{ asset($record->proof_path) }}" target="_blank" class="admin-btn admin-btn-view admin-btn-sm">
+                                                    <i class="bi bi-eye me-1"></i>View Proof
+                                                </a>
+                                            @else
+                                                <span class="text-muted small">—</span>
+                                            @endif
+                                        </td>
                                         <td class="text-end">
-                                            @if(strcasecmp((string) $record->status, 'Pending') === 0)
+                                            @if($record->has_pending_proof)
                                                 <form action="{{ route('admin.sanctions.records.complete', $record) }}" method="POST" class="d-inline">
                                                     @csrf
                                                     <button type="submit" class="admin-btn admin-btn-success admin-btn-sm">
-                                                        Mark as Completed
+                                                        Accept
                                                     </button>
                                                 </form>
+                                                <button
+                                                    type="button"
+                                                    class="admin-btn admin-btn-danger admin-btn-sm reject-proof-btn"
+                                                    data-record-id="{{ $record->record_id }}"
+                                                    data-student="{{ $record->student_number }}"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#rejectProofModal">
+                                                    Reject
+                                                </button>
+                                            @elseif(strcasecmp((string) $record->status, 'Pending') === 0)
+                                                <span class="text-muted small">Awaiting proof</span>
                                             @elseif(strcasecmp((string) $record->status, 'Completed') === 0)
                                                 <form action="{{ route('admin.sanctions.records.revert', $record) }}" method="POST" class="d-inline">
                                                     @csrf
@@ -260,7 +311,7 @@
                                     </tr>
                                 @empty
                                     <x-admin.empty-state
-                                        :colspan="6"
+                                        :colspan="8"
                                         icon="bi-shield-check"
                                         title="No student sanctions found"
                                         message="No student sanctions match your current filters."
@@ -316,6 +367,9 @@
                     <label for="notification_date" class="form-label fw-semibold">Notification / Date Assigned (Student Sanction Tab)</label>
                     <input type="date" id="notification_date" name="notification_date" class="form-control" required>
                     <small class="text-muted">The selected date will be shown in the student's Sanction Record tab.</small>
+                    <label for="modal_deadline_date" class="form-label fw-semibold mt-3">Deadline (if needed)</label>
+                    <input type="date" id="modal_deadline_date" name="deadline_date" class="form-control">
+                    <small class="text-muted">Optional completion deadline shown to the student.</small>
                 </form>
             </div>
             <div class="modal-footer admin-modal-footer d-flex justify-content-between">
@@ -329,6 +383,35 @@
                     <button type="submit" form="approveSanctionRequestForm" class="admin-btn admin-btn-success" id="approveSanctionRequestBtn">Approve & Notify</button>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+{{-- Reject proof of completion modal --}}
+<div class="modal fade admin-modal" id="rejectProofModal" tabindex="-1" aria-labelledby="rejectProofModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content admin-modal-content">
+            <div class="modal-header admin-modal-header">
+                <h5 class="modal-title admin-modal-title" id="rejectProofModalLabel">Reject Proof of Completion</h5>
+                <button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="rejectProofForm" method="POST">
+                @csrf
+                <div class="modal-body admin-modal-body">
+                    <p class="text-muted">
+                        The sanction will remain <strong>Pending</strong> and the student will be notified of the reason. They may submit a new proof for verification.
+                    </p>
+                    <div class="mb-2"><strong>Student Number:</strong> <span id="rejectModalStudent">-</span></div>
+                    <label for="rejectReason" class="form-label fw-semibold mt-2">Reason <span class="text-danger">*</span></label>
+                    <textarea name="reason" id="rejectReason" class="form-control" rows="3" placeholder="Required — explain why this proof is being rejected..." maxlength="1000" required></textarea>
+                </div>
+                <div class="modal-footer admin-modal-footer">
+                    <button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="admin-btn admin-btn-danger">
+                        <i class="bi bi-x-circle me-1"></i>Reject Proof
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -346,6 +429,7 @@
             'sanctionDelete' => route('admin.disciplinary-sanctions.destroy', ':id'),
             'approveUrlTemplate' => route('admin.sanctions.requests.approve', ['sanctionRequest' => '__REQUEST_ID__']),
             'declineUrlTemplate' => route('admin.sanctions.requests.decline', ['sanctionRequest' => '__REQUEST_ID__']),
+            'rejectProofUrlTemplate' => route('admin.sanctions.records.reject-proof', ['studentSanctionRecord' => '__RECORD_ID__']),
         ],
     ];
 @endphp
@@ -368,6 +452,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const approveForm = document.getElementById('approveSanctionRequestForm');
     const declineForm = document.getElementById('declineSanctionRequestForm');
+    const rejectProofForm = document.getElementById('rejectProofForm');
     const dateInput = document.getElementById('notification_date');
     const today = new Date().toISOString().split('T')[0];
 
@@ -415,6 +500,19 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('requestModalSanction').textContent = button.dataset.sanction || 'No matching sanction is configured yet.';
         });
     });
+
+    // Reject proof modal wiring.
+    const rejectProofModalEl = document.getElementById('rejectProofModal');
+    if (rejectProofModalEl && rejectProofForm && pageData.routes.rejectProofUrlTemplate) {
+        document.querySelectorAll('.reject-proof-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const recordId = button.dataset.recordId;
+                rejectProofForm.action = pageData.routes.rejectProofUrlTemplate.replace('__RECORD_ID__', recordId);
+                document.getElementById('rejectModalStudent').textContent = button.dataset.student || '-';
+                document.getElementById('rejectReason').value = '';
+            });
+        });
+    }
 });
 </script>
 

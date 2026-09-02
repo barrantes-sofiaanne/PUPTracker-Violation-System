@@ -31,6 +31,7 @@ class StudentRecordController extends Controller
     'violationType.disciplinarySanctions',
 ])
            ->where('student_number', $user->student_number)
+           ->effective()
            ->orderByDesc('violation_date')
            ->paginate(10);
 /*
@@ -135,6 +136,7 @@ $groupedViolations = Violation::with([
     'violationType.disciplinarySanctions'
 ])
     ->where('student_number', $user->student_number)
+    ->effective()
     ->get()
     ->groupBy(function ($violation) {
         $resolvedType = $violation->resolvedViolationType();
@@ -216,7 +218,8 @@ foreach ($groupedViolations as $records) {
 
 $sanctionRecords = StudentSanctionRecord::with([
     'violation.violationType',
-    'assignedSanction'
+    'assignedSanction',
+    'completionReviewer',
 ])
 ->where(
     'student_number',
@@ -258,6 +261,7 @@ public function requestSanction(Request $request)
             $query->where('violation_type', (string) $violationType->violation_type_id)
                 ->orWhere('violation_type', $violationType->violation_type);
         })
+        ->effective()
         ->count();
 
     if ($offenseCount < 1) {
@@ -355,6 +359,7 @@ public function requestSanction(Request $request)
                 $query->where('violation_type', (string) $violationType->violation_type_id)
                     ->orWhere('violation_type', $violationType->violation_type);
             })
+            ->effective()
             ->latest('violation_date')
             ->first();
 
@@ -426,4 +431,89 @@ public function requestSanction(Request $request)
 
     }
 }
+
+    /**
+     * Submit a proof of completion for a pending disciplinary sanction.
+     *
+     * The uploaded file and optional notes are attached to the sanction record
+     * and an administrator is notified so they can accept or reject the proof.
+     */
+    public function submitProof(Request $request)
+    {
+        $request->validate([
+            'record_id' => ['required', 'integer'],
+            'proof_file' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,pdf,doc,docx', 'max:5120'],
+            'proof_notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        /** @var User $user */
+        $user = Auth::user();
+
+        $record = StudentSanctionRecord::with('violation')
+            ->where('record_id', $request->integer('record_id'))
+            ->where('student_number', $user->student_number)
+            ->first();
+
+        if (!$record) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sanction record not found.',
+            ], 404);
+        }
+
+        if (strcasecmp((string) $record->status, 'Pending') !== 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only pending sanctions can accept a proof of completion.',
+            ], 422);
+        }
+
+        try {
+            $file = $request->file('proof_file');
+            $directory = public_path('uploads/sanction-proofs');
+
+            if (!\Illuminate\Support\Facades\File::exists($directory)) {
+                \Illuminate\Support\Facades\File::makeDirectory($directory, 0755, true);
+            }
+
+            $extension = strtolower($file->getClientOriginalExtension());
+            $filename = 'sanction_proof_' . $record->record_id . '_' . uniqid('', true) . '.' . $extension;
+            $file->move($directory, $filename);
+
+            $record->update([
+                'proof_path' => 'uploads/sanction-proofs/' . $filename,
+                'proof_original_name' => $file->getClientOriginalName(),
+                'proof_submitted_at' => now(),
+                'proof_notes' => trim((string) $request->input('proof_notes', '')),
+                'completion_reviewed_by_admin_id' => null,
+                'completion_reviewed_at' => null,
+                'completion_remarks' => null,
+            ]);
+
+            // Notify the admin so they can review the submitted proof.
+            try {
+                $studentName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+                app(AdminNotificationService::class)->create(
+                    type: 'completion_proof',
+                    title: 'Sanction Proof of Completion',
+                    message: $studentName . ' (' . $user->student_number . ') submitted a proof of completion for a sanction. Review and accept or reject it.',
+                    targetType: 'sanction_record',
+                    targetId: (int) $record->record_id,
+                );
+            } catch (\Throwable $e) {
+                // Notification must never break the submission.
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Proof of completion submitted. You will be notified once it is reviewed.',
+                'record_id' => $record->record_id,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to upload the proof of completion. Please try again.',
+            ], 500);
+        }
+    }
 }

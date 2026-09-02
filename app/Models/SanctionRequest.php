@@ -6,6 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $request_id
+ * @property string $student_number
+ * @property int $violation_type_id
+ * @property \Illuminate\Support\Carbon|null $request_date
+ * @property bool $is_active
+ * @property string|null $status            Pending | Approved | Declined
+ * @property int|null $approved_by_admin_id
+ * @property \Illuminate\Support\Carbon|null $approved_at
+ */
 class SanctionRequest extends Model
 {
     use HasFactory;

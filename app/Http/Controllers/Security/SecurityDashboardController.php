@@ -111,6 +111,8 @@ class SecurityDashboardController extends Controller
             ->where(function ($innerQuery) use ($label, $legacySecurityIdLabel) {
                 $innerQuery->where('recorder_name', $label)
                     ->orWhere('recorder_name', $legacySecurityIdLabel);
-            });
+            })
+            // Denied violations are excluded from the officer's dashboard stats.
+            ->notDenied();
     }
 }

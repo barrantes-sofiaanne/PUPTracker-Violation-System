@@ -84,10 +84,12 @@
                     <div class="admin-notif-list">
                         @forelse($adminRecentNotifications as $notif)
                             <a href="{{ $notif->target_type ? route('admin.notifications.open', $notif) : route('admin.notifications') }}" class="admin-notif-item {{ $notif->is_read ? '' : 'unread' }}" data-notif-id="{{ $notif->admin_notification_id }}" data-notif-unread="{{ $notif->is_read ? '0' : '1' }}">
-                                <span class="admin-notif-icon {{ $notif->notification_type === 'system_email_failure' ? 'danger' : ($notif->notification_type === 'sanction' ? 'warning' : 'default') }}" aria-hidden="true">
+                                <span class="admin-notif-icon {{ in_array($notif->notification_type, ['system_email_failure', 'violation_confirmation'], true) ? 'danger' : (in_array($notif->notification_type, ['sanction', 'completion_proof'], true) ? 'warning' : 'default') }}" aria-hidden="true">
                                     @if($notif->notification_type === 'system_email_failure')
                                         <i class="bi bi-exclamation-octagon-fill"></i>
-                                    @elseif(in_array($notif->notification_type, ['sanction', 'disciplinary_sanction_request'], true))
+                                    @elseif($notif->notification_type === 'violation_confirmation')
+                                        <i class="bi bi-shield-exclamation"></i>
+                                    @elseif(in_array($notif->notification_type, ['sanction', 'disciplinary_sanction_request', 'completion_proof'], true))
                                         <i class="bi bi-shield-check"></i>
                                     @else
                                         <i class="bi bi-bell-fill"></i>

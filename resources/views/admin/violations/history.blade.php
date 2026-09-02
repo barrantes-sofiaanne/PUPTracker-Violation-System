@@ -39,6 +39,7 @@
                             <th>Student</th>
                             <th>Violation</th>
                             <th>Recorded By</th>
+                            <th>Status</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -51,6 +52,18 @@
                                 <td>{{ optional($violation->violationType)->violation_type ?? $violation->violation_type }}</td>
                                 <td>{{ $violation->recorded_by_display }}</td>
                                 <td>
+                                    @php $vStatus = strtolower((string) $violation->status); @endphp
+                                    @if($vStatus === 'pending')
+                                        <x-admin.badge status="pending" label="Awaiting Confirmation" />
+                                    @elseif($vStatus === 'confirmed' || $vStatus === '')
+                                        <x-admin.badge status="confirmed" label="Confirmed" />
+                                    @elseif($vStatus === 'denied')
+                                        <x-admin.badge status="rejected" label="Denied" />
+                                    @else
+                                        <x-admin.badge status="gray" :label="$violation->status" />
+                                    @endif
+                                </td>
+                                <td>
                                     @php
                                         $historyContext = array_merge(['student_number' => $violation->student_number], request()->query(), ['source' => 'history']);
                                     @endphp
@@ -61,7 +74,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center py-5">
+                                <td colspan="7" class="text-center py-5">
                                     No violation history found.
                                 </td>
                             </tr>

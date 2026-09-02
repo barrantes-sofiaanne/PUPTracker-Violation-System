@@ -145,6 +145,21 @@ body {
     box-shadow: inset 0 0 0 1px rgba(255, 223, 0, 0.45);
 }
 
+.sidebar a .sidebar-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: #dc3545;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
 .sidebar-section-label {
     margin: 0.85rem 0.6rem 0.2rem;
     padding: 0;
