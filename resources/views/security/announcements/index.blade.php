@@ -3,13 +3,15 @@
 @section('title', 'Security Announcements')
 
 @section('content')
-<div class="container py-4">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+<div class="container-fluid py-1">
+    <div class="page-header-modern d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
         <div>
-            <h2 class="mb-1">Security Announcements</h2>
-            <p class="mb-0">Review announcements shared by the administration.</p>
+            <h2 class="fw-bold mb-1">Security Announcements</h2>
+            <p class="text-muted mb-0">Review announcements shared by the administration.</p>
         </div>
-        <a href="{{ route('security.dashboard') }}" class="btn portal-btn-outline">Back to Dashboard</a>
+        <a href="{{ route('security.dashboard') }}" class="admin-btn admin-btn-neutral">
+            <i class="bi bi-speedometer2 me-1"></i>Back to Dashboard
+        </a>
     </div>
 
     <div class="row g-3">

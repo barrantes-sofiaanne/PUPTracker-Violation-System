@@ -2,13 +2,13 @@
 
 .dashboard-header-right {
     justify-content: flex-end;
-    align-items: flex-end;
+    align-items: center;
 }
 
 .dashboard-time-wrap {
     display: inline-flex;
     align-items: center;
-    align-self: flex-end;
+    align-self: center;
 }
 
 .dashboard-time-value {
@@ -23,14 +23,6 @@
 
 .dashboard-time-value i {
     font-size: 1.4rem;
-}
-
-.dashboard-quick-actions {
-    justify-content: flex-end;
-}
-
-.dashboard-quick-actions .admin-btn {
-    min-width: 190px;
 }
 
 .category-legend-dot {
@@ -56,15 +48,5 @@
 
     .dashboard-time-value {
         font-size: 1.1rem;
-    }
-
-    .dashboard-quick-actions {
-        justify-content: flex-start;
-        width: 100%;
-    }
-
-    .dashboard-quick-actions .admin-btn {
-        flex: 1 1 100%;
-        min-width: 0;
     }
 }

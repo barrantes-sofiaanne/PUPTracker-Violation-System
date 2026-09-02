@@ -1073,6 +1073,59 @@ h6 {
     color: #374151 !important;
 }
 
+/* ==========================================================================
+   Cross-module UI normalization
+   (loaded by the Admin, Student and Security layouts)
+   ========================================================================== */
+
+/* Modal close (×) buttons — never show a white box/halo behind the X.
+   Bootstrap's .btn-close draws the × from an SVG background-image; on some
+   mobile browsers (and inside dark headers) it can appear as a white square
+   around the glyph. We force the glyph to render purely from its SVG with a
+   transparent background, sized to the touch target, and colour it per header
+   theme (dark × on light headers, white × on dark headers). */
+.btn-close {
+    background-color: transparent !important;
+    background-size: 1em auto;
+    background-position: center;
+    border-radius: 999px;
+    opacity: 0.85;
+    box-shadow: none !important;
+}
+
+.btn-close:focus {
+    box-shadow: 0 0 0 0.2rem rgba(218, 165, 32, 0.25) !important;
+}
+
+.btn-close:hover {
+    opacity: 1;
+}
+
+/* Default (light header) — keep a clean dark × from an explicit SVG so no
+   Bootstrap default-grey box is shown. */
+.modal-header .btn-close,
+[data-bs-dismiss="modal"].btn-close {
+    filter: none !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%233c3f46'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e");
+}
+
+/* Dark/maroon modal headers — white ×, no filter (a filter over the whole
+   button is what produced the visible white box on phones). */
+.admin-modal-header .btn-close,
+.violation-history-modal-header .btn-close,
+.import-modal-header .btn-close,
+.modal-header .btn-close.btn-close-white {
+    filter: none !important;
+    background-color: transparent !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e");
+}
+
+@media (max-width: 575.98px) {
+    .btn-close {
+        background-size: 0.9em auto;
+    }
+}
+
 .import-dropzone {
     width: 100%;
     border: 2px dashed #d1d5db;

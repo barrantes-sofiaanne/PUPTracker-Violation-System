@@ -62,6 +62,18 @@ class NotificationController extends Controller
     }
 
     /**
+     * Mark all security notifications as read.
+     */
+    public function markAllRead(): Response
+    {
+        Notification::where('recipient_type', 'security')
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return back()->with('success', 'All notifications marked as read.');
+    }
+
+    /**
      * Lightweight unread-count endpoint for the header bell.
      */
     public function unreadCount(): Response

@@ -727,6 +727,9 @@ Route::middleware('auth:security')
         Route::post('/notifications/{notification}/read', [App\Http\Controllers\Security\NotificationController::class, 'markAsRead'])
             ->name('security.notifications.read');
 
+        Route::post('/notifications/mark-all-read', [App\Http\Controllers\Security\NotificationController::class, 'markAllRead'])
+            ->name('security.notifications.mark-all-read');
+
         Route::get('/profile', [App\Http\Controllers\Security\SecurityProfileController::class, 'index'])
             ->name('security.profile');
 

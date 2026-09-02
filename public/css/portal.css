@@ -413,10 +413,17 @@ body {
     box-shadow: 0 8px 20px rgba(128, 0, 0, 0.14);
 }
 
+/* Hover turns the button into the logo's gold/yellow with dark text. */
 .portal-btn:hover,
 .portal-btn:focus {
-    color: var(--portal-white);
-    background: linear-gradient(135deg, #5f0000 0%, var(--portal-maroon) 100%);
+    color: #2b1a00;
+    background: linear-gradient(
+        135deg,
+        #ffdf00 0%,
+        var(--portal-goldenrod) 100%
+    );
+    border-color: var(--portal-goldenrod);
+    box-shadow: 0 8px 20px rgba(218, 165, 32, 0.28);
 }
 
 .portal-btn-outline {
@@ -427,9 +434,13 @@ body {
 
 .portal-btn-outline:hover,
 .portal-btn-outline:focus {
-    color: var(--portal-white);
-    background: var(--portal-maroon);
-    border-color: var(--portal-maroon);
+    color: #2b1a00;
+    background: linear-gradient(
+        135deg,
+        #ffdf00 0%,
+        var(--portal-goldenrod) 100%
+    );
+    border-color: var(--portal-goldenrod);
 }
 
 .portal-badge.muted {
@@ -694,5 +705,69 @@ body {
 
     .portal-main .d-flex.justify-content-between form {
         width: 100%;
+    }
+}
+
+/* ==========================================================================
+   Mobile spacing normalization (Student & Security portals)
+   Keeps stacked headers, action bars, cards, and filters breathing on phones.
+   ========================================================================== */
+@media (max-width: 767.98px) {
+    .portal-main .page-header-modern,
+    .portal-main .portal-hero {
+        margin-bottom: 0.9rem;
+    }
+
+    .portal-main .card {
+        margin-bottom: 0.9rem;
+    }
+
+    /* Filter/action bars under headers get consistent gaps. */
+    .portal-main .card + .card,
+    .portal-main .card + form,
+    .portal-main form + .card {
+        margin-top: 0.1rem;
+    }
+
+    /* Notification list rows shouldn't touch. */
+    .portal-main .list-group-item {
+        padding: 0.9rem 0.75rem;
+    }
+
+    .portal-main .list-group-item .admin-notif-center-msg {
+        white-space: normal;
+        line-height: 1.45;
+    }
+
+    /* Keep "Select all / bulk actions" bars wrapping neatly. */
+    .portal-main .card-body.d-flex.flex-wrap {
+        row-gap: 0.6rem;
+        column-gap: 0.6rem;
+    }
+
+    .portal-main .card-body.d-flex.flex-wrap .form-check {
+        margin-right: 0 !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .portal-main .card-body {
+        padding: 0.85rem 0.75rem;
+    }
+
+    .portal-main .page-header-modern,
+    .portal-main .portal-hero {
+        padding: 0.95rem 0.9rem;
+    }
+
+    .portal-main .admin-btn,
+    .portal-main .btn {
+        width: auto;
+    }
+
+    /* Full-width primary actions on phones when stacked with bulk controls. */
+    .portal-main .card-body.d-flex.flex-wrap .admin-btn,
+    .portal-main .card-body.d-flex.flex-wrap .btn {
+        flex: 1 1 100%;
     }
 }

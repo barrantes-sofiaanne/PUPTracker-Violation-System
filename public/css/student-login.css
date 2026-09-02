@@ -164,8 +164,26 @@ body {
 }
 
 .login-btn:hover {
-    color: #fff;
-    filter: brightness(1.05);
+    color: #2b1a00;
+    filter: none;
+    background: linear-gradient(
+        135deg,
+        var(--login-gold) 0%,
+        var(--login-goldenrod) 100%
+    ) !important;
+    border-color: var(--login-goldenrod);
+}
+
+/* Portal/outline buttons on the auth screens also turn gold on hover. */
+.auth-content-card .portal-btn:hover,
+.auth-content-card .portal-btn:focus {
+    color: #2b1a00;
+    background: linear-gradient(
+        135deg,
+        var(--login-gold) 0%,
+        var(--login-goldenrod) 100%
+    );
+    border-color: var(--login-goldenrod);
 }
 
 .login-error {
@@ -2107,6 +2125,34 @@ html.is-navigating .auth-brand-mark::after {
     color: #800000;
 }
 
+/* "Forgot Password?" always sits on the far right of the footer, on the
+   same line as the "← Back" link — even on narrow/phone widths. */
+.auth-content-card[data-portal="admin"] .footer-links,
+.auth-content-card[data-portal="security"] .footer-links {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.auth-content-card[data-portal="admin"] .footer-links a,
+.auth-content-card[data-portal="security"] .footer-links a {
+    white-space: nowrap;
+}
+
+.auth-content-card[data-portal="admin"] .footer-links a:first-child,
+.auth-content-card[data-portal="security"] .footer-links a:first-child {
+    margin-right: 1rem;
+}
+
+.auth-content-card[data-portal="admin"] .footer-links a:last-child,
+.auth-content-card[data-portal="security"] .footer-links a:last-child {
+    margin-left: auto;
+    text-align: right;
+}
+
 @media (max-width: 850px) {
     .auth-content-card[data-portal="admin"] .auth-login-form,
     .auth-content-card[data-portal="security"] .auth-login-form {
@@ -2138,8 +2184,14 @@ html.is-navigating .auth-brand-mark::after {
 .auth-content-card .login-btn:hover,
 .auth-content-card .btn-success.login-btn:hover,
 .auth-portal-page .btn-success.login-btn:hover {
-    color: #ffffff !important;
-    filter: brightness(1.08);
+    color: #2b1a00 !important;
+    filter: none;
+    background: linear-gradient(
+        135deg,
+        var(--login-gold) 0%,
+        var(--login-goldenrod) 100%
+    ) !important;
+    border-color: var(--login-goldenrod) !important;
     transform: translateY(-2px);
-    box-shadow: 0 16px 26px rgba(128, 0, 0, 0.3);
+    box-shadow: 0 16px 26px rgba(218, 165, 32, 0.34);
 }

@@ -9,74 +9,66 @@
 
 <div class="container-fluid py-1">
 
-            {{-- Header --}}
-            <div class="portal-hero mb-4">
+    {{-- Header (same design as the Admin module) --}}
+    <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Notifications</h2>
+            <p class="text-muted mb-0">
+                You have <strong>{{ $unreadCount }}</strong> unread notifications.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('student.dashboard') }}" class="admin-btn admin-btn-neutral">
+                <i class="bi bi-speedometer2 me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
 
-                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <form action="{{ route('student.notifications.status') }}" method="POST" id="notificationsBulkForm">
+        @csrf
+        <input type="hidden" name="action" id="notificationActionInput" value="">
 
-                    <div>
+        {{-- Result count --}}
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <span class="text-muted small">
+                Showing {{ $notifications->firstItem() ?? 0 }}–{{ $notifications->lastItem() ?? 0 }} of {{ $notifications->total() }} notifications
+            </span>
+        </div>
 
-                        <h2 class="fw-bold mb-1">
-
-                            Notifications
-
-                        </h2>
-
-                        <p class="mb-0">
-
-                            You have
-
-                            <strong>
-
-                                {{ $unreadCount }}
-
-                            </strong>
-
-                            unread notifications.
-
-                        </p>
-
-                    </div>
-
+        {{-- Bulk actions (admin-style action bar) --}}
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-body d-flex flex-wrap align-items-center gap-2 py-2">
+                <div class="form-check me-2 mb-0">
+                    <input class="form-check-input" type="checkbox" id="selectAllNotifications">
+                    <label class="form-check-label" for="selectAllNotifications">
+                        Select All
+                    </label>
                 </div>
 
+                <button type="button" class="admin-btn admin-btn-view admin-btn-sm" id="markAllReadBtn">
+                    <i class="bi bi-check2-all me-1"></i>Mark All Unread as Read
+                </button>
+                <button type="button" class="admin-btn admin-btn-success admin-btn-sm" id="markSelectedReadBtn">
+                    <i class="bi bi-check2 me-1"></i>Mark Selected as Read
+                </button>
+                <button type="button" class="admin-btn admin-btn-neutral admin-btn-sm" id="markSelectedUnreadBtn">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Mark Selected as Unread
+                </button>
             </div>
+        </div>
 
-            <form action="{{ route('student.notifications.status') }}" method="POST" id="notificationsBulkForm">
-                @csrf
-                <input type="hidden" name="action" id="notificationActionInput" value="">
+        @error('notification_ids')
+            <div class="alert alert-danger">{{ $message }}</div>
+        @enderror
 
-                <div class="card portal-card mb-4">
-                    <div class="card-body d-flex flex-wrap align-items-center gap-2">
-                        <div class="form-check me-2">
-                            <input class="form-check-input" type="checkbox" id="selectAllNotifications">
-                            <label class="form-check-label" for="selectAllNotifications">
-                                Select All
-                            </label>
-                        </div>
-
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="markAllReadBtn">
-                            Mark All Unread as Read
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-success" id="markSelectedReadBtn">
-                            Mark Selected as Read
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-warning" id="markSelectedUnreadBtn">
-                            Mark Selected as Unread
-                        </button>
-                    </div>
-                </div>
-
-                @error('notification_ids')
-                    <div class="alert alert-danger">{{ $message }}</div>
-                @enderror
-
-                @forelse($notifications as $notification)
-                    <div class="card portal-card mb-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-                                <div class="d-flex align-items-start gap-2">
-                                    <div class="form-check mt-1">
+        @if($notifications->count())
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        @foreach($notifications as $notification)
+                            <div class="list-group-item d-flex justify-content-between align-items-start gap-2 {{ $notification->is_read ? '' : 'admin-notif-unread-row' }}">
+                                <div class="d-flex align-items-start gap-2 flex-grow-1 min-w-0">
+                                    <div class="form-check mt-2 flex-shrink-0">
                                         <input
                                             class="form-check-input notification-checkbox"
                                             type="checkbox"
@@ -85,104 +77,90 @@
                                             @checked(in_array($notification->notification_id, old('notification_ids', [])))>
                                     </div>
 
-                                    <div>
-                                        <div class="mb-2">
-                                            @if(!$notification->is_read)
-                                                <span class="portal-badge maroon">Unread</span>
-                                            @else
-                                                <span class="portal-badge muted">Read</span>
-                                            @endif
+                                    <button
+                                        type="button"
+                                        class="btn btn-link text-decoration-none p-0 text-start flex-grow-1 admin-notif-trigger"
+                                        data-message="{{ e($notification->message) }}"
+                                        data-created="{{ $notification->created_at->format('F d, Y h:i A') }}"
+                                        data-type="{{ $notification->notification_type }}"
+                                        data-link="{{ $notification->link ?: '' }}">
+                                        <div class="{{ $notification->is_read ? 'admin-notif-center-msg' : 'admin-notif-center-msg fw-bold' }}">
+                                            @switch($notification->notification_type)
+                                                @case('announcement')
+                                                    <i class="bi bi-megaphone-fill text-warning me-1"></i>
+                                                    @break
+                                                @case('violation')
+                                                    <i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>
+                                                    @break
+                                                @case('sanction')
+                                                    <i class="bi bi-shield-check text-primary me-1"></i>
+                                                    @break
+                                                @default
+                                                    <i class="bi bi-bell-fill text-muted me-1"></i>
+                                            @endswitch
+                                            {{ \Illuminate\Support\Str::limit(strip_tags($notification->message), 120) }}
                                         </div>
-
-                                        <small class="text-muted">
-                                            {{ $notification->created_at->format('M d, Y h:i A') }}
-                                        </small>
-                                    </div>
+                                        <small class="text-muted">{{ $notification->created_at->format('F d, Y h:i A') }}</small>
+                                    </button>
                                 </div>
 
-                                <div>
-                                    @switch($notification->notification_type)
-                                        @case('announcement')
-                                            <i class="bi bi-megaphone-fill fs-2" style="color: var(--portal-goldenrod);"></i>
-                                            @break
-                                        @case('violation')
-                                            <i class="bi bi-exclamation-triangle-fill fs-2" style="color: var(--portal-maroon);"></i>
-                                            @break
-                                        @case('sanction')
-                                            <i class="bi bi-shield-check fs-2" style="color: var(--portal-goldenrod);"></i>
-                                            @break
-                                        @default
-                                            <i class="bi bi-bell-fill fs-2" style="color: var(--portal-goldenrod);"></i>
-                                    @endswitch
+                                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                    <x-admin.badge :status="$notification->is_read ? 'read' : 'unread'" />
+                                    @if($notification->target_type)
+                                        <a href="{{ route('student.notifications.open', $notification) }}" class="admin-btn admin-btn-view admin-btn-sm">
+                                            <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    @endif
                                 </div>
                             </div>
-
-                            <hr class="border-secondary-subtle">
-
-                            <p style="white-space: pre-line" class="mb-3 text-dark">
-                                {{ \Illuminate\Support\Str::limit(strip_tags($notification->message), 180) }}
-                            </p>
-
-                            <div class="d-flex flex-wrap align-items-center gap-2">
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-outline-primary notification-trigger"
-                                    data-message="{{ e($notification->message) }}"
-                                    data-created="{{ $notification->created_at->format('M d, Y h:i A') }}"
-                                    data-type="{{ $notification->notification_type }}"
-                                    data-link="{{ $notification->link ?: '' }}">
-                                    View Full Message
-                                </button>
-
-                                @if($notification->target_type)
-                                    <a href="{{ route('student.notifications.open', $notification) }}" class="btn btn-sm btn-primary">
-                                        <i class="bi bi-box-arrow-up-right me-1"></i>
-                                        Open
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
+                        @endforeach
                     </div>
-                @empty
-                    <div class="card portal-card">
-                        <div class="card-body text-center py-5">
-                            <i class="bi bi-bell-slash fs-1 text-muted"></i>
-                            <h4 class="mt-3">
-                                No notifications available.
-                            </h4>
-                        </div>
-                    </div>
-                @endforelse
-            </form>
-
-            @if($notifications->hasPages())
-                <div class="mt-4">
-                    {{ $notifications->links() }}
                 </div>
-            @endif
 
-        </div>
+                @if($notifications->hasPages())
+                    <div class="card-footer bg-white d-flex justify-content-center">
+                        {{ $notifications->links() }}
+                    </div>
+                @endif
+            </div>
+        @else
+            <div class="card portal-card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-bell-slash fs-1 text-muted"></i>
+                    <h4 class="mt-3">No notifications available.</h4>
+                </div>
+            </div>
+        @endif
+    </form>
+
+</div>
 
 @endsection
 
 @push('scripts')
-<div class="modal fade" id="notificationDetailModal" tabindex="-1" aria-labelledby="notificationDetailModalLabel" aria-hidden="true">
+<div class="modal fade admin-modal" id="notificationDetailModal" tabindex="-1" aria-labelledby="notificationDetailModalLabel" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="notificationDetailModalLabel">Notification</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content admin-modal-content">
+            <div class="modal-header admin-modal-header">
+                <h5 class="modal-title admin-modal-title" id="notificationDetailModalLabel">Notification</h5>
+                <button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <small class="text-muted d-block mb-3" id="notificationModalDate"></small>
-                <p class="mb-0" style="white-space: pre-line;" id="notificationModalMessage"></p>
+            <div class="modal-body admin-modal-body">
+                <div class="mb-3">
+                    <span class="admin-filter-label d-block">Received</span>
+                    <strong id="notificationModalDate"></strong>
+                </div>
+                <div class="mb-0">
+                    <span class="admin-filter-label d-block">Message</span>
+                    <p class="mb-0" style="white-space: pre-line;" id="notificationModalMessage"></p>
+                </div>
             </div>
-            <div class="modal-footer">
-                <a href="#" class="btn btn-primary d-none" id="notificationModalLink">
+            <div class="modal-footer admin-modal-footer">
+                <a href="#" class="admin-btn admin-btn-primary d-none" id="notificationModalLink">
                     <i class="bi bi-box-arrow-up-right me-1"></i>
                     <span id="notificationModalLinkLabel">View</span>
                 </a>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -202,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const linkEl = document.getElementById('notificationModalLink');
     const linkLabelEl = document.getElementById('notificationModalLinkLabel');
 
-    document.querySelectorAll('.notification-trigger').forEach(function (item) {
+    document.querySelectorAll('.admin-notif-trigger').forEach(function (item) {
         item.addEventListener('click', function () {
             const type = item.dataset.type || 'notification';
             const readableType = type.charAt(0).toUpperCase() + type.slice(1);

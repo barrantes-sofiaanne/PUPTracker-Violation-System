@@ -11,33 +11,17 @@
 <div class="container-fluid">
     
     {{-- Page Header --}}
-    <div class="page-header-modern d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
             <h1 class="fw-bold mb-1">Dashboard</h1>
             <p class="text-muted mb-0">Welcome back! Here's your system overview.</p>
         </div>
-        <div class="dashboard-header-right d-flex flex-column align-items-end gap-3">
+        <div class="dashboard-header-right">
             <div class="dashboard-time-wrap">
                 <span id="phTimeDisplay" class="dashboard-time-value" title="Philippine Standard Time">
                     <i class="bi bi-clock-history"></i>
                     <span>Loading...</span>
                 </span>
-            </div>
-            <div class="quick-actions dashboard-quick-actions d-flex flex-wrap gap-2">
-                <a href="{{ route('admin.violations.index') }}" class="admin-btn admin-btn-primary">
-                    <i class="bi bi-plus-circle me-2"></i>Record Violation
-                </a>
-                <a href="{{ route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']) }}" class="admin-btn admin-btn-secondary">
-                    <i class="bi bi-shield-check me-2"></i>View Pending Sanctions
-                </a>
-                <a href="{{ route('admin.reports') }}" class="admin-btn admin-btn-neutral">
-                    <i class="bi bi-file-earmark-bar-graph me-2"></i>View Reports
-                </a>
-                @if(Auth::guard('admin')->user()?->isItAdministrator())
-                    <a href="{{ route('admin.announcements.create') }}" class="admin-btn admin-btn-secondary">
-                        <i class="bi bi-megaphone me-2"></i>New Announcement
-                    </a>
-                @endif
             </div>
         </div>
     </div>
