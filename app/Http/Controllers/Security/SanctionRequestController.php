@@ -10,6 +10,7 @@ use App\Models\SanctionRequest;
 use App\Models\StudentSanctionRecord;
 use App\Models\Violation;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -42,6 +43,9 @@ class SanctionRequestController extends Controller
     private function finalizeRequest(SanctionRequest $sanctionRequest, string $decision): void
     {
         DB::transaction(function () use ($sanctionRequest, $decision): void {
+            $security = Auth::guard('security')->user();
+            $securityId = $security ? (int) $security->id : null;
+
             $sanctionRequest->update(['is_active' => false]);
 
             $student = $sanctionRequest->student;
@@ -78,17 +82,25 @@ class SanctionRequestController extends Controller
                 if ($decision === 'approved' && $latestViolation) {
                     $pendingRecord = StudentSanctionRecord::where('student_number', $student->student_number)
                         ->where('violation_id', $latestViolation->violation_id)
-                        ->where('status', 'Pending')
+                        ->where(function ($q) {
+                            $q->where('status', \App\Models\StudentSanctionRecord::STATUS_PENDING)
+                                ->orWhere('status', \App\Models\StudentSanctionRecord::STATUS_IN_PROGRESS)
+                                ->orWhere('status', \App\Models\StudentSanctionRecord::STATUS_OVERDUE);
+                        })
                         ->latest('record_id')
                         ->first();
 
-                    if (!$pendingRecord) {
+                    if (! $pendingRecord) {
                         StudentSanctionRecord::create([
                             'student_number' => $student->student_number,
                             'violation_id' => $latestViolation->violation_id,
                             'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
-                            'assigned_by_admin_id' => 1,
-                            'status' => 'Pending',
+                            // The assigned_by_admin_id is only set by an actual
+                            // admin approval. A security-mediated approval does
+                            // not fabricate an admin id — it stays null until an
+                            // administrator assigns the sanction with a deadline.
+                            'assigned_by_admin_id' => null,
+                            'status' => \App\Models\StudentSanctionRecord::STATUS_IN_PROGRESS,
                             'date_assigned' => now(),
                         ]);
                     }
@@ -116,7 +128,7 @@ class SanctionRequestController extends Controller
 
             AuditLog::create([
                 'actor_type' => 'security',
-                'actor_id' => 1,
+                'actor_id' => $securityId,
                 'action' => ucfirst($decision),
                 'module' => 'Sanction Requests',
                 'description' => 'Security processed sanction request #' . $sanctionRequest->request_id . ' for student ' . ($student?->student_number ?? 'unknown'),

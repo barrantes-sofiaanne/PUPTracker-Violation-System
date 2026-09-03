@@ -366,8 +366,13 @@
                                     @endif
                                     <td>{{ $record['sanction'] }}</td>
                                     <td>
-                                        @if (strtolower((string) $record['status']) === 'completed')
+                                        @php $recStatus = strtolower((string) $record['status']); @endphp
+                                        @if ($recStatus === 'completed')
                                             <x-admin.badge status="completed" />
+                                        @elseif ($recStatus === 'in progress')
+                                            <x-admin.badge status="in progress" />
+                                        @elseif ($recStatus === 'overdue')
+                                            <x-admin.badge status="overdue" />
                                         @else
                                             <x-admin.badge status="pending" :label="$record['status']" />
                                         @endif

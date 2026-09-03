@@ -156,18 +156,20 @@ class StudentIdpLoginTest extends TestCase
         ]);
     }
 
-    public function test_first_time_safe_account_linking_by_email(): void
+    public function test_first_time_unlinked_account_goes_to_connect_flow(): void
     {
+        // Even with a matching local email, an unlinked IDP account is NOT
+        // auto-linked. It is routed to the "Connect your PUPTracker Account"
+        // flow where the student number + name are verified.
         $this->createStudent();
         $this->fakeIdp();
 
-        $this->hitCallback()->assertRedirect(route('student.dashboard'));
-        $this->assertAuthenticated('student');
+        $this->hitCallback()->assertRedirect(route('student.idp.link'));
+        $this->assertGuest('student');
 
         $this->assertDatabaseHas('users_tbl', [
             'student_number' => '2026-00003',
-            'idp_subject' => 'user-123',
-            'idp_email' => 'student.idp@example.com',
+            'idp_subject' => null,
         ]);
     }
 
@@ -431,7 +433,10 @@ class StudentIdpLoginTest extends TestCase
             }
             // The access token must be sent as the Bearer header, never in the body.
             $body = $request->data();
-            $authHeaders = $request->header('Authorization', []);
+            $authHeaders = $request->header('Authorization');
+            if (empty($authHeaders)) {
+                $authHeaders = [];
+            }
             if (is_array($authHeaders)) {
                 $authHeader = implode(' ', array_map('strval', $authHeaders));
             } else {
@@ -513,6 +518,7 @@ class StudentIdpLoginTest extends TestCase
                 $table->string('first_name')->nullable();
                 $table->string('middle_name')->nullable();
                 $table->string('last_name')->nullable();
+                $table->string('name_suffix')->nullable();
                 $table->string('email')->nullable();
                 $table->string('idp_subject')->nullable()->unique();
                 $table->string('idp_email')->nullable();

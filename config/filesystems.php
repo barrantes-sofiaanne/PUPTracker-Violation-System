@@ -60,7 +60,31 @@ return [
             'report' => false,
         ],
 
+        'evidence' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'serve' => true,
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Evidence disk
+    |--------------------------------------------------------------------------
+    |
+    | Violation evidence and sanction proofs are confidential and MUST stay on
+    | a private disk. Default is the private local disk (storage/app/private)
+    | served only through authorized routes.
+    |
+    | For Railway production, set EVIDENCE_STORAGE_DISK=s3 and configure the
+    | AWS_* variables (private bucket) to use S3-compatible object storage.
+    | The 'evidence' disk definition above is a private local alias used when
+    | EVIDENCE_STORAGE_DISK=evidence.
+    */
+    'evidence_disk' => env('EVIDENCE_STORAGE_DISK', 'local'),
 
     /*
     |--------------------------------------------------------------------------

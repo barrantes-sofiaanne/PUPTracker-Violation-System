@@ -85,6 +85,25 @@
         color: #4a0209;
     }
 
+    /* Controlled camera capture */
+    .security-record-modal #cameraPreview {
+        filter: none;
+        transition: filter 0.15s ease;
+        background: #000;
+    }
+
+    .security-record-modal #cameraPreview.camera-obscured {
+        filter: blur(18px) brightness(0.5);
+    }
+
+    .security-record-modal #cameraWrap.video-interrupted #cameraPreview {
+        filter: blur(18px) brightness(0.5);
+    }
+
+    .security-notice-modal .modal-content {
+        border-radius: 1rem;
+    }
+
     /* Disabled buttons stay readable — keep the maroon/gold tone visible. */
     .security-record-modal .modal-footer .btn:disabled,
     .security-record-modal .modal-footer .btn.disabled {
@@ -137,6 +156,14 @@
                         <div class="col">
                             <div id="violationStepIndicator" class="wizard-bubble bg-goldenrod text-white mx-auto">2</div>
                             <div class="mt-2 fw-semibold">Violation</div>
+                        </div>
+                        <div class="col">
+                            <div id="evidenceStepIndicator" class="wizard-bubble bg-goldenrod text-white mx-auto">3</div>
+                            <div class="mt-2 fw-semibold">Evidence</div>
+                        </div>
+                        <div class="col">
+                            <div id="reviewStepIndicator" class="wizard-bubble bg-goldenrod text-white mx-auto">4</div>
+                            <div class="mt-2 fw-semibold">Review</div>
                         </div>
                     </div>
 
@@ -261,14 +288,214 @@
                             </div>
                         </div>
                     </div>
+
+                    {{-- Step 3: Evidence --}}
+                    <div id="evidenceStep" class="d-none">
+                        <div class="card wizard-card">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="bi bi-shield-lock me-2" style="color:#7a0f1e;"></i>Controlled Evidence Capture</h5>
+                                <span class="badge text-bg-secondary" id="evidenceCountBadge">0 / 5 files</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-warning small mb-3">
+                                    <i class="bi bi-shield-exclamation me-1"></i>
+                                    <strong>Protected capture:</strong> photos must be taken through the PUPTracker camera interface so a permanent watermark can be applied. Photo capture is monitored for suspicious interruptions (screen capture, focus loss) as a deterrent — these are recorded as security events requiring review. PDF documents use the secure upload path. All files are stored privately.
+                                </div>
+
+                                <div class="row g-3">
+                                    {{-- Photo: controlled camera --}}
+                                    <div class="col-lg-7">
+                                        <div class="border rounded-3 p-3 h-100 bg-white">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="bi bi-camera-fill fs-4 me-2" style="color:#7a0f1e;"></i>
+                                                <div>
+                                                    <strong>Capture Photo</strong>
+                                                    <div class="small text-muted">Live capture with watermark</div>
+                                                </div>
+                                            </div>
+
+                                            {{-- Camera not started / notice gate --}}
+                                            <div id="cameraIdlePanel" class="text-center py-4 text-muted">
+                                                <i class="bi bi-camera-video-off display-5 d-block mb-2"></i>
+                                                <p class="small mb-3">Camera is off. A security notice will be shown before the camera starts.</p>
+                                                <button type="button" id="openCameraBtn" class="btn portal-btn btn-sm">
+                                                    <i class="bi bi-camera-video me-1"></i>Open Camera
+                                                </button>
+                                            </div>
+
+                                            {{-- Camera running --}}
+                                            <div id="cameraLivePanel" class="d-none">
+                                                <div id="cameraWrap" class="position-relative rounded-3 overflow-hidden bg-black" style="aspect-ratio:4/3;">
+                                                    <video id="cameraPreview" autoplay playsinline muted class="w-100 h-100 object-fit-cover"></video>
+                                                    {{-- Live watermark overlay is a real-time preview; the FINAL watermark is baked into the captured image via canvas. --}}
+                                                    <div id="liveWatermarkOverlay" class="position-absolute bottom-0 start-0 end-0 px-2 py-1 text-white small" style="background:rgba(0,0,0,0.55);font-family:ui-monospace,monospace;pointer-events:none;">
+                                                        PUPTracker &nbsp;|&nbsp; <span id="liveWatermarkStudent">—</span> &nbsp;|&nbsp; <span id="liveWatermarkTime">--/--/---- --:--</span>
+                                                    </div>
+                                                    <div id="cameraInterruptedOverlay" class="position-absolute top-0 start-0 end-0 bottom-0 d-none align-items-center justify-content-center text-white" style="background:rgba(122,15,30,0.85);">
+                                                        <div class="text-center px-3">
+                                                            <i class="bi bi-eye-slash display-6 d-block mb-2"></i>
+                                                            <strong>Camera paused</strong>
+                                                            <div class="small">Possible screen capture or browser interruption was detected. Return to this window to continue.</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="d-flex align-items-center justify-content-between mt-2">
+                                                    <span class="small text-muted">
+                                                        <i class="bi bi-shield-check me-1"></i>Watermark will be applied on capture
+                                                    </span>
+                                                    <div class="d-flex gap-2">
+                                                        <button type="button" id="capturePhotoBtn" class="btn portal-btn btn-sm" disabled>
+                                                            <i class="bi bi-camera me-1"></i>Capture Photo
+                                                        </button>
+                                                        <button type="button" id="closeCameraBtn" class="btn btn-outline-secondary btn-sm">
+                                                            <i class="bi bi-x-lg me-1"></i>Stop
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {{-- Review captured photo before accepting --}}
+                                            <div id="captureReviewPanel" class="d-none">
+                                                <div class="rounded-3 overflow-hidden bg-black mb-2">
+                                                    <img id="captureReviewImg" alt="Captured photo preview" class="w-100 d-block">
+                                                </div>
+                                                <div class="small text-muted mb-2">
+                                                    <div>Evidence ID: <strong id="captureReviewCode">assigned on submit</strong></div>
+                                                    <div>Type: <span id="captureReviewType">JPEG</span> &middot; Size: <span id="captureReviewSize">0 KB</span></div>
+                                                </div>
+                                                <div class="d-flex gap-2">
+                                                    <button type="button" id="retakePhotoBtn" class="btn btn-outline-secondary btn-sm">
+                                                        <i class="bi bi-arrow-counterclockwise me-1"></i>Retake
+                                                    </button>
+                                                    <button type="button" id="usePhotoBtn" class="btn portal-btn btn-sm">
+                                                        <i class="bi bi-check-lg me-1"></i>Use Photo
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- PDF / document upload --}}
+                                    <div class="col-lg-5">
+                                        <div class="border rounded-3 p-3 h-100 bg-white">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="bi bi-file-earmark-pdf-fill fs-4 me-2" style="color:#b91c1c;"></i>
+                                                <div>
+                                                    <strong>Upload PDF Document</strong>
+                                                    <div class="small text-muted">Secure private upload</div>
+                                                </div>
+                                            </div>
+                                            <p class="small text-muted">For document-type evidence (e.g. written reports). Photos must be captured with the camera above.</p>
+                                            <input type="file" id="evidenceInput" name="evidence[]" class="form-control" accept=".pdf,application/pdf">
+                                            <small class="text-muted">Allowed: PDF — max 5 MB each, up to 5 total files.</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                                <label class="form-label fw-semibold">Staged Evidence</label>
+                                <div id="evidencePreviewList" class="d-flex flex-wrap gap-2"></div>
+                                <p class="text-muted small mb-0 mt-2">Each file is stored privately with its own unique Evidence ID (EVD-…) and is never overwritten.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Step 4: Review --}}
+                    <div id="reviewStep" class="d-none">
+                        <div class="card wizard-card">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0"><i class="bi bi-clipboard-check me-2" style="color:#7a0f1e;"></i>Review &amp; Submit</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="preview-box p-3">
+                                            <h6 class="fw-bold mb-2"><i class="bi bi-person-badge me-1"></i>Student</h6>
+                                            <div class="small mb-1"><strong>Number:</strong> <span id="reviewStudentNumber">-</span></div>
+                                            <div class="small mb-1"><strong>Name:</strong> <span id="reviewStudentName">-</span></div>
+                                            <div class="small mb-1"><strong>Program:</strong> <span id="reviewStudentProgram">-</span></div>
+                                            <div class="small"><strong>Year:</strong> <span id="reviewStudentYear">-</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="preview-box p-3">
+                                            <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-octagon me-1"></i>Violation</h6>
+                                            <div class="small mb-1"><strong>Category:</strong> <span id="reviewCategory">-</span></div>
+                                            <div class="small mb-1"><strong>Type:</strong> <span id="reviewViolationType">-</span></div>
+                                            <div class="small mb-1"><strong>Date &amp; Time:</strong> <span id="reviewDate">-</span></div>
+                                            <div class="small mb-1"><strong>Offense Level:</strong> <span id="reviewOffenseLevel">-</span></div>
+                                            <div class="small"><strong>Sanction:</strong> <span id="reviewSanction">-</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="preview-box p-3">
+                                            <h6 class="fw-bold mb-2"><i class="bi bi-chat-left-text me-1"></i>Description</h6>
+                                            <div class="small" id="reviewDescription" style="white-space:pre-line;">-</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="preview-box p-3">
+                                            <h6 class="fw-bold mb-2"><i class="bi bi-paperclip me-1"></i>Evidence</h6>
+                                            <div class="small" id="reviewEvidenceSummary">No evidence attached.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info small mt-3 mb-0">
+                                    <i class="bi bi-shield-exclamation me-1"></i>
+                                    This report will be sent to an administrator for review and confirmation.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn portal-btn-outline d-none" id="backStep">Back</button>
-                    <button type="button" class="btn portal-btn" id="continueStep" disabled>Continue</button>
-                    <button type="button" class="btn portal-btn d-none" id="saveViolation">Save Violation</button>
+                    <button type="button" class="btn portal-btn-outline d-none" id="backStep"><i class="bi bi-arrow-left me-1"></i>Back</button>
+                    <button type="button" class="btn portal-btn d-none" id="nextStep">Next <i class="bi bi-arrow-right ms-1"></i></button>
+                    <button type="button" class="btn portal-btn d-none" id="saveViolation"><i class="bi bi-send me-1"></i>Submit for Review</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+{{-- Security notice shown before the camera initializes --}}
+<div class="modal fade security-notice-modal" id="securityNoticeModal" tabindex="-1" aria-labelledby="securityNoticeModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header" style="background:linear-gradient(120deg,#7a0f1e 0%,#4a0209 65%,#c9981f 180%);">
+                <h5 class="modal-title text-white fw-bold" id="securityNoticeModalLabel">
+                    <i class="bi bi-shield-exclamation me-2"></i>Security Notice
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div class="border rounded-3 p-3 mb-3" style="background:#fff7e3;">
+                    <div class="small lh-lg" style="font-family:ui-monospace,monospace;">
+                        This evidence capture process is protected by security and audit controls.<br><br>
+                        Photo evidence must be captured using the PUPTracker camera interface.<br><br>
+                        Unauthorized screen capture, attempts to circumvent the evidence capture process, and suspicious browser interruptions may be recorded as security events.<br><br>
+                        Captured evidence may contain identifying information and is protected by access controls.
+                    </div>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="securityNoticeAck">
+                    <label class="form-check-label" for="securityNoticeAck">
+                        I understand the security notice.
+                    </label>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    This acknowledgement records your consent to the capture controls described. It does not replace the institution's privacy notice or applicable data protection requirements.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="securityNoticeCancelBtn">Cancel</button>
+                <button type="button" class="btn portal-btn" id="securityNoticeStartBtn" disabled>
+                    <i class="bi bi-camera-video me-1"></i>Start Camera
+                </button>
+            </div>
         </div>
     </div>
 </div>

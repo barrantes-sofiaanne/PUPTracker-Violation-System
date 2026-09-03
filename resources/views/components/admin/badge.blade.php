@@ -35,6 +35,8 @@
 
     $map = [
         'pending' => ['gold', 'bi-hourglass-split'],
+        'in progress' => ['blue', 'bi-play-circle'],
+        'overdue' => ['red', 'bi-exclamation-triangle'],
         'completed' => ['green', 'bi-check-circle'],
         'approved' => ['green', 'bi-check-circle'],
         'confirmed' => ['green', 'bi-check-circle'],

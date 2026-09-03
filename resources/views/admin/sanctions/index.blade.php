@@ -176,6 +176,26 @@
                                                 class="form-check-input"
                                                 type="checkbox"
                                                 name="record_statuses[]"
+                                                value="In Progress"
+                                                id="record_status_in_progress"
+                                                @checked(in_array('In Progress', (array) request('record_statuses', []), true))>
+                                            <label class="form-check-label" for="record_status_in_progress">In Progress</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                name="record_statuses[]"
+                                                value="Overdue"
+                                                id="record_status_overdue"
+                                                @checked(in_array('Overdue', (array) request('record_statuses', []), true))>
+                                            <label class="form-check-label" for="record_status_overdue">Overdue</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                name="record_statuses[]"
                                                 value="Completed"
                                                 id="record_status_completed"
                                                 @checked(in_array('Completed', (array) request('record_statuses', []), true))>
@@ -232,11 +252,16 @@
                                         <td style="max-width: 240px; white-space: normal;">{{ optional($record->assignedSanction)->disciplinary_sanction ?? 'N/A' }}</td>
                                         <td>{{ optional($record->date_assigned)->format('M d, Y') ?? '-' }}</td>
                                         <td>
+                                            @php
+                                                $isOpen = strcasecmp((string) $record->status, 'Completed') !== 0;
+                                                $isOverdue = $isOpen && $record->deadline_date && $record->deadline_date->isPast();
+                                                $isOverdueStatus = strcasecmp((string) $record->status, 'Overdue') === 0;
+                                            @endphp
                                             @if($record->deadline_date)
-                                                <span class="{{ $record->status === 'Pending' && $record->deadline_date->isPast() ? 'text-danger fw-semibold' : '' }}">
+                                                <span class="{{ ($isOverdue || $isOverdueStatus) ? 'text-danger fw-semibold' : '' }}">
                                                     {{ $record->deadline_date->format('M d, Y') }}
                                                 </span>
-                                                @if($record->status === 'Pending' && $record->deadline_date->isPast())
+                                                @if($isOverdue || $isOverdueStatus)
                                                     <span class="d-block small text-danger">Overdue</span>
                                                 @endif
                                             @else
@@ -250,6 +275,10 @@
                                                 @else
                                                     <x-admin.badge status="pending" />
                                                 @endif
+                                            @elseif(strcasecmp((string) $record->status, 'In Progress') === 0)
+                                                <x-admin.badge status="in progress" />
+                                            @elseif(strcasecmp((string) $record->status, 'Overdue') === 0)
+                                                <x-admin.badge status="overdue" />
                                             @elseif(strcasecmp((string) $record->status, 'Completed') === 0)
                                                 <x-admin.badge status="completed" />
                                             @else
@@ -266,12 +295,12 @@
                                                     {{ optional($record->proof_submitted_at)->format('M d, Y h:i A') }}
                                                 </div>
                                                 @if($record->proof_path)
-                                                    <a href="{{ asset($record->proof_path) }}" target="_blank" class="admin-btn admin-btn-view admin-btn-sm mb-1">
+                                                    <a href="{{ route('admin.sanctions.proof.download', $record) }}" target="_blank" class="admin-btn admin-btn-view admin-btn-sm mb-1">
                                                         <i class="bi bi-eye me-1"></i>View Proof
                                                     </a>
                                                 @endif
                                             @elseif($record->proof_path && strcasecmp((string) $record->status, 'Completed') === 0)
-                                                <a href="{{ asset($record->proof_path) }}" target="_blank" class="admin-btn admin-btn-view admin-btn-sm">
+                                                <a href="{{ route('admin.sanctions.proof.download', $record) }}" target="_blank" class="admin-btn admin-btn-view admin-btn-sm">
                                                     <i class="bi bi-eye me-1"></i>View Proof
                                                 </a>
                                             @else
@@ -295,13 +324,13 @@
                                                     data-bs-target="#rejectProofModal">
                                                     Reject
                                                 </button>
-                                            @elseif(strcasecmp((string) $record->status, 'Pending') === 0)
+                                            @elseif($isOpen)
                                                 <span class="text-muted small">Awaiting proof</span>
                                             @elseif(strcasecmp((string) $record->status, 'Completed') === 0)
                                                 <form action="{{ route('admin.sanctions.records.revert', $record) }}" method="POST" class="d-inline">
                                                     @csrf
                                                     <button type="submit" class="admin-btn admin-btn-view admin-btn-sm">
-                                                        Revert to Pending
+                                                        Reopen
                                                     </button>
                                                 </form>
                                             @else

@@ -80,13 +80,19 @@ class GraduationReviewScreeningService
         });
 
         $completed = $sanctionsByStatus->get('completed', collect())->count();
-        $pending = $sanctionsByStatus->get('pending', collect())->count();
-        $outstanding = $pending; // Pending sanction = outstanding/not yet completed.
+        // Open / not-yet-completed sanctions include Pending, In Progress and
+        // Overdue records. Any of them keeps the student from being "clear".
+        $pending = $sanctionsByStatus->filter(function ($group, $status) {
+            return in_array($status, ['pending', 'in progress', 'overdue'], true);
+        })->sum(function ($group) {
+            return $group->count();
+        });
+        $outstanding = $pending; // Open sanction = outstanding/not yet completed.
 
         $mostRecentViolation = $violations->last();
 
         $patternCounts = $violations
-            ->map(function ($violation) {
+            ->map(function (\App\Models\Violation $violation) {
                 $type = $violation->resolvedViolationType();
 
                 return $type?->violation_type_id
@@ -98,7 +104,7 @@ class GraduationReviewScreeningService
         $repeatedViolations = $patternCounts->filter(fn ($count) => $count > 1)->isNotEmpty();
 
         $categoryCounts = $violations
-            ->map(fn ($violation) => strtolower((string) ($violation->violationType?->violationCategory?->category_name ?? $violation->getViolationCategoryDisplayAttribute() ?? 'uncategorized')))
+            ->map(fn (\App\Models\Violation $violation) => strtolower((string) ($violation->violationType?->violationCategory?->category_name ?? $violation->getViolationCategoryDisplayAttribute() ?? 'uncategorized')))
             ->countBy();
 
         $repeatedCategories = $categoryCounts->filter(fn ($count) => $count > 1)->isNotEmpty();
@@ -178,16 +184,17 @@ class GraduationReviewScreeningService
         $rawCompleted = $sanctionRecords->filter(
             fn ($r) => strtolower(trim((string) $r->status)) === 'completed'
         )->count();
-        $rawPending = $sanctionRecords->filter(
-            fn ($r) => strtolower(trim((string) $r->status)) === 'pending'
-        )->count();
+        // Open = Pending + In Progress + Overdue (mirrors the summary counter).
+        $rawPending = $sanctionRecords->filter(function ($r) {
+            return in_array(strtolower(trim((string) $r->status)), ['pending', 'in progress', 'overdue'], true);
+        })->count();
 
         if ($completed !== $rawCompleted) {
             $contradictions[] = "Screening reports {$completed} completed sanction(s), but {$rawCompleted} record(s) are marked completed.";
         }
 
         if ($pending !== $rawPending) {
-            $contradictions[] = "Screening reports {$pending} pending sanction(s), but {$rawPending} record(s) are marked pending.";
+            $contradictions[] = "Screening reports {$pending} open sanction(s), but {$rawPending} record(s) are not completed.";
         }
 
         return $contradictions;

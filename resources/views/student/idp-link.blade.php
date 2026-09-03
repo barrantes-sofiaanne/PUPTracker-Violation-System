@@ -1,13 +1,14 @@
-@extends('layouts.auth-portal', ['title' => 'Link Your PUPTracker Account', 'portal' => 'student'])
+@extends('layouts.auth-portal', ['title' => 'Connect Your PUPTracker Account', 'portal' => 'student'])
 
 @section('auth-content')
 
         <p class="module-chip">Student Module</p>
 
-        <h2>Link Your Student Account</h2>
+        <h2>Connect Your PUPTracker Account</h2>
 
         <p class="subtitle">
-            Your PUP ID was authenticated. Verify your PUPTracker student account to finish linking.
+            Your PUP ID has been successfully authenticated. To connect it to your existing PUPTracker
+            student record, enter your student number.
         </p>
 
         @if (session('info'))
@@ -21,11 +22,11 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('student.idp.link.post') }}" autocomplete="off" class="auth-login-form">
+        <form method="POST" action="{{ route('student.idp.link.post') }}" autocomplete="off" class="auth-login-form" id="connectAccountForm">
             @csrf
 
             <div class="mb-3">
-                <label class="form-label" for="student_number">PUPTracker Student Number</label>
+                <label class="form-label" for="student_number">Student Number</label>
                 <div class="input-group login-input-group">
                     <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
                     <input
@@ -43,14 +44,14 @@
                 @enderror
             </div>
 
-            <button type="submit" class="btn btn-success w-100 login-btn">
-                Link My Account
+            <button type="button" class="btn btn-success w-100 login-btn" id="continueBtn">
+                Continue
             </button>
 
             <p class="security-note">
                 <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
-                Your PUP ID is verified securely on the server. You are only confirming which
-                PUPTracker student account belongs to you.
+                Your PUP ID is verified securely on the server. You are only connecting it to the
+                PUPTracker student record that belongs to you.
             </p>
         </form>
 
@@ -58,4 +59,60 @@
             <a href="{{ route('student.login') }}">&larr; Back to Login</a>
         </div>
 
+        {{-- Confirm Student Number modal --}}
+        <div class="modal fade" id="confirmStudentNumberModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirm Student Number</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted">You entered:</p>
+                        <p class="fs-4 fw-bold text-center" id="confirmStudentNumberDisplay">—</p>
+                        <p class="text-muted text-center mb-0">Is this your correct student number?</p>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Go Back</button>
+                        <button type="button" class="btn portal-btn" id="confirmStudentNumberBtn">
+                            <i class="bi bi-check-circle me-1"></i>Yes, Continue
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('connectAccountForm');
+    const input = document.getElementById('student_number');
+    const continueBtn = document.getElementById('continueBtn');
+    const modalEl = document.getElementById('confirmStudentNumberModal');
+    if (!form || !input || !continueBtn || !modalEl) {
+        return;
+    }
+
+    const modal = new bootstrap.Modal(modalEl);
+    const display = document.getElementById('confirmStudentNumberDisplay');
+    const confirmBtn = document.getElementById('confirmStudentNumberBtn');
+
+    continueBtn.addEventListener('click', function () {
+        const value = input.value.trim();
+        if (!value) {
+            input.focus();
+            return;
+        }
+        display.textContent = value;
+        modal.show();
+    });
+
+    confirmBtn.addEventListener('click', function () {
+        modal.hide();
+        form.submit();
+    });
+});
+</script>
+@endpush

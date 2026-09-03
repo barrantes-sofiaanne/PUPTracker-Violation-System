@@ -8,10 +8,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 use App\Models\User;
 use App\Models\Student;
 use App\Models\Violation;
+use App\Models\ViolationEvidence;
 use App\Models\ViolationType;
 use App\Models\ViolationCategory;
 use App\Models\DisciplinarySanction;
@@ -22,7 +24,7 @@ use App\Models\StudentStatus;
 use App\Models\SanctionRequest;
 use App\Models\StudentSanctionRecord;
 use App\Models\AuditLog;
-
+use App\Services\EvidenceSecurityService;
 
 class ViolationController extends Controller
 {
@@ -189,6 +191,7 @@ $students = User::with([
                 'student.studentInfo.program',
                 'violationType.violationCategory',
                 'recorder.adminInfo',
+                'evidence',
             ])
             ->where('status', Violation::STATUS_PENDING)
             ->when($request->filled('search'), function ($query) use ($request) {
@@ -893,5 +896,87 @@ public function store(Request $request): JsonResponse
         compact('violations')
     );
 }
+
+    /**
+     * Serve a violation evidence file from private storage to an admin.
+     *
+     * @return \Symfony\Component\HttpFoundation\StreamedResponse
+     */
+    public function downloadEvidence(ViolationEvidence $evidence, Request $request)
+    {
+        $violation = $evidence->violation;
+
+        if (! $violation) {
+            abort(404);
+        }
+
+        $adminId = (int) Auth::guard('admin')->id();
+
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = Storage::disk((string) config('filesystems.evidence_disk', 'local'));
+
+        if (! $evidence->disk_path || ! $disk->exists($evidence->disk_path)) {
+            abort(404);
+        }
+
+        // Audit the access + record an evidence security event.
+        app(EvidenceSecurityService::class)->auditEvidenceAccess(
+            'EVIDENCE_VIEWED',
+            $evidence,
+            'admin',
+            $adminId,
+            $request,
+        );
+
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        return $disk->response(
+            $evidence->disk_path,
+            $evidence->original_name ?: basename($evidence->disk_path)
+        );
+    }
+
+    /**
+     * Return the security-event timeline for an evidence row (admin review).
+     * Events are detection indicators that require administrative review —
+     * they never assert a screenshot "confirmed" occurred.
+     */
+    public function evidenceEvents(ViolationEvidence $evidence, Request $request): JsonResponse
+    {
+        $adminId = (int) Auth::guard('admin')->id();
+
+        $events = $evidence->securityEvents()
+            ->orderBy('event_id')
+            ->get()
+            ->map(fn ($event) => [
+                'id' => $event->event_id,
+                'type' => $event->event_type,
+                'severity' => $event->severity,
+                'created_at' => optional($event->created_at)->format('M d, Y h:i A'),
+                'ip' => $event->ip_address,
+                'user_agent' => $event->user_agent,
+                'meta' => $event->meta,
+            ]);
+
+        // Viewing the security timeline is itself an audited evidence access.
+        app(EvidenceSecurityService::class)->auditEvidenceAccess(
+            'EVIDENCE_VIEWED',
+            $evidence,
+            'admin',
+            $adminId,
+            $request,
+        );
+
+        return response()->json([
+            'success' => true,
+            'evidence' => [
+                'code' => $evidence->evidence_code,
+                'student' => $evidence->violation?->student_number,
+                'captured_at' => optional($evidence->captured_at)->format('M d, Y h:i A'),
+                'method' => $evidence->capture_method,
+                'watermarked' => $evidence->watermarked,
+            ],
+            'events' => $events,
+        ]);
+    }
 
 }

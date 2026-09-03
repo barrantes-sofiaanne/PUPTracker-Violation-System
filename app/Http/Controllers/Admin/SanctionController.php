@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\DisciplinarySanction;
 use App\Models\Notification;
+use App\Models\SanctionProof;
 use App\Models\SanctionRequest;
 use App\Models\StudentSanctionRecord;
 use App\Models\Violation;
@@ -21,6 +22,14 @@ class SanctionController extends Controller
 {
     public function index()
     {
+        // Flip any In Progress/Pending sanctions past their deadline to Overdue
+        // (fires one-time notifications) before listing.
+        try {
+            app(\App\Services\SanctionOverdueService::class)->sweep();
+        } catch (\Throwable $e) {
+            // Sweep failures must never block the sanctions page.
+        }
+
         $sanctions = DisciplinarySanction::with('violationType.violationCategory')
             ->orderBy('violation_type_id')
             ->orderBy('offense_level')
@@ -222,7 +231,11 @@ class SanctionController extends Controller
 
             $pendingRecord = StudentSanctionRecord::where('student_number', $student->student_number)
                 ->where('violation_id', $latestViolation->violation_id)
-                ->where('status', 'Pending')
+                ->where(function ($q) {
+                    $q->where('status', StudentSanctionRecord::STATUS_PENDING)
+                        ->orWhere('status', StudentSanctionRecord::STATUS_IN_PROGRESS)
+                        ->orWhere('status', StudentSanctionRecord::STATUS_OVERDUE);
+                })
                 ->latest('record_id')
                 ->first();
 
@@ -232,6 +245,8 @@ class SanctionController extends Controller
                     'assigned_by_admin_id' => $adminId,
                     'date_assigned' => $scheduledDate,
                     'deadline_date' => $deadlineDate,
+                    // Approving assigns the sanction — it is now in progress.
+                    'status' => StudentSanctionRecord::STATUS_IN_PROGRESS,
                 ]);
             } else {
                 StudentSanctionRecord::create([
@@ -239,7 +254,7 @@ class SanctionController extends Controller
                     'violation_id' => $latestViolation->violation_id,
                     'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
                     'assigned_by_admin_id' => $adminId,
-                    'status' => 'Pending',
+                    'status' => StudentSanctionRecord::STATUS_IN_PROGRESS,
                     'date_assigned' => $scheduledDate,
                     'deadline_date' => $deadlineDate,
                 ]);
@@ -329,9 +344,9 @@ class SanctionController extends Controller
 
     public function acceptProof(StudentSanctionRecord $studentSanctionRecord): RedirectResponse
     {
-        if (strcasecmp((string) $studentSanctionRecord->status, 'Pending') !== 0) {
+        if (! $studentSanctionRecord->is_open) {
             return back()->withErrors([
-                'sanction_record' => 'Only pending sanctions with a submitted proof can be completed.',
+                'sanction_record' => 'Only open sanctions with a submitted proof can be completed.',
             ]);
         }
 
@@ -345,11 +360,15 @@ class SanctionController extends Controller
 
         DB::transaction(function () use ($studentSanctionRecord, $adminId): void {
             $studentSanctionRecord->update([
-                'status' => 'Completed',
+                'status' => StudentSanctionRecord::STATUS_COMPLETED,
                 'date_completed' => now(),
                 'completion_reviewed_by_admin_id' => $adminId,
                 'completion_reviewed_at' => now(),
+                'completion_remarks' => null,
             ]);
+
+            // Mark the latest submitted proof as accepted in history.
+            $this->markLatestProofReviewed($studentSanctionRecord, $adminId, 'accepted', null);
 
             try {
                 app(\App\Services\StudentNotificationService::class)->create(
@@ -378,9 +397,9 @@ class SanctionController extends Controller
 
     public function rejectProof(Request $request, StudentSanctionRecord $studentSanctionRecord): RedirectResponse
     {
-        if (strcasecmp((string) $studentSanctionRecord->status, 'Pending') !== 0) {
+        if (! $studentSanctionRecord->is_open) {
             return back()->withErrors([
-                'sanction_record' => 'Only pending sanctions with a submitted proof can be rejected.',
+                'sanction_record' => 'Only open sanctions with a submitted proof can be rejected.',
             ]);
         }
 
@@ -397,12 +416,22 @@ class SanctionController extends Controller
         $adminId = Auth::guard('admin')->id();
 
         DB::transaction(function () use ($studentSanctionRecord, $adminId, $validated): void {
+            // Rejecting a proof keeps the sanction assigned/open; it returns to
+            // In Progress (if it was In Progress/Overdue) so the student can
+            // resubmit. If it was still Pending (never assigned), keep Pending.
+            $revertTo = strcasecmp((string) $studentSanctionRecord->status, StudentSanctionRecord::STATUS_PENDING) === 0
+                ? StudentSanctionRecord::STATUS_PENDING
+                : StudentSanctionRecord::STATUS_IN_PROGRESS;
+
             $studentSanctionRecord->update([
-                'status' => 'Pending',
+                'status' => $revertTo,
                 'completion_reviewed_by_admin_id' => $adminId,
                 'completion_reviewed_at' => now(),
                 'completion_remarks' => trim($validated['reason']),
             ]);
+
+            // Mark the latest submitted proof as rejected in history.
+            $this->markLatestProofReviewed($studentSanctionRecord, $adminId, 'rejected', trim($validated['reason']));
 
             try {
                 app(\App\Services\StudentNotificationService::class)->create(
@@ -433,18 +462,18 @@ class SanctionController extends Controller
     {
         if (strcasecmp((string) $studentSanctionRecord->status, 'Completed') !== 0) {
             return back()->withErrors([
-                'sanction_record' => 'Only completed sanctions can be reverted to pending.',
+                'sanction_record' => 'Only completed sanctions can be reopened.',
             ]);
         }
 
         $adminId = Auth::guard('admin')->id();
 
         DB::transaction(function () use ($studentSanctionRecord, $adminId): void {
+            // Reverting a completed sanction reopens it as In Progress (it was
+            // already assigned). The proof history rows are retained.
             $studentSanctionRecord->update([
-                'status' => 'Pending',
+                'status' => StudentSanctionRecord::STATUS_IN_PROGRESS,
                 'date_completed' => null,
-                // Reverting reopens the proof workflow: clear the review outcome
-                // so the student can submit a fresh proof for verification.
                 'completion_reviewed_by_admin_id' => null,
                 'completion_reviewed_at' => null,
                 'completion_remarks' => null,
@@ -458,8 +487,8 @@ class SanctionController extends Controller
                 app(\App\Services\StudentNotificationService::class)->create(
                     studentNumber: $studentSanctionRecord->student_number,
                     type: 'sanction',
-                    title: 'Sanction Reverted',
-                    message: 'Your sanction status was reverted to pending by the administration. You may submit a new proof of completion for verification.',
+                    title: 'Sanction Reopened',
+                    message: 'Your completed sanction was reopened by the administration. You may submit a new proof of completion for verification.',
                     targetType: 'sanction_request',
                     targetId: (int) $studentSanctionRecord->record_id,
                 );
@@ -472,11 +501,11 @@ class SanctionController extends Controller
                 'actor_id' => $adminId,
                 'action' => 'Revert',
                 'module' => 'Sanction Records',
-                'description' => 'Reverted sanction record #' . $studentSanctionRecord->record_id . ' back to pending.',
+                'description' => 'Reopened sanction record #' . $studentSanctionRecord->record_id . ' as in progress.',
             ]);
         });
 
-        return back()->with('success', 'Completed sanction reverted to pending.');
+        return back()->with('success', 'Completed sanction reopened and set back to in progress.');
     }
 
     private function formatOffenseLevel(int $offenseCount): string
@@ -487,5 +516,59 @@ class SanctionController extends Controller
             3 => '3rd Offense',
             default => $offenseCount . 'th Offense',
         };
+    }
+
+    /**
+     * Mark the latest submitted (unreviewed) proof of a sanction record as
+     * accepted or rejected, preserving the full proof history.
+     */
+    private function markLatestProofReviewed(
+        StudentSanctionRecord $record,
+        int $adminId,
+        string $decision,
+        ?string $remarks
+    ): void {
+        $proof = SanctionProof::where('record_id', $record->record_id)
+            ->where('status', SanctionProof::STATUS_SUBMITTED)
+            ->latest('submitted_at')
+            ->latest('proof_id')
+            ->first();
+
+        if (! $proof) {
+            return;
+        }
+
+        $proof->update([
+            'status' => $decision === 'accepted'
+                ? SanctionProof::STATUS_ACCEPTED
+                : SanctionProof::STATUS_REJECTED,
+            'reviewed_by_admin_id' => $adminId,
+            'reviewed_at' => now(),
+            'review_remarks' => $remarks,
+        ]);
+    }
+
+    /**
+     * Serve the current proof-of-completion file from private storage.
+     *
+     * @return \Symfony\Component\HttpFoundation\StreamedResponse
+     */
+    public function downloadProof(StudentSanctionRecord $studentSanctionRecord)
+    {
+        if ($studentSanctionRecord->proof_path === null || $studentSanctionRecord->proof_path === '') {
+            abort(404);
+        }
+
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+
+        if (! $disk->exists($studentSanctionRecord->proof_path)) {
+            abort(404);
+        }
+
+        return $disk->response(
+            $studentSanctionRecord->proof_path,
+            $studentSanctionRecord->proof_original_name ?: basename($studentSanctionRecord->proof_path)
+        );
     }
 }

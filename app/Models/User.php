@@ -11,10 +11,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * @property int $user_id
  * @property string $student_number
- * @property string $first_name
+ * @property string|null $first_name
  * @property string|null $middle_name
- * @property string $last_name
- * @property string $email
+ * @property string|null $last_name
+ * @property string|null $name_suffix
+ * @property string|null $email
  * @property string|null $idp_subject
  * @property string|null $idp_email
  * @property int|null $gender_id
@@ -45,6 +46,7 @@ protected $fillable = [
     'first_name',
     'middle_name',
     'last_name',
+    'name_suffix',
     'email',
     'idp_subject',
     'idp_email',

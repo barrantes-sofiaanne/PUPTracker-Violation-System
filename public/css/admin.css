@@ -443,14 +443,26 @@ h6 {
     font-weight: 700;
 }
 
-.btn-primary,
-.btn-danger {
+/* Primary (highlight) — burgundy resting state, deeper PUP-gold on hover. */
+.btn-primary {
     --bs-btn-bg: var(--color-maroon);
     --bs-btn-border-color: var(--color-maroon);
-    --bs-btn-hover-bg: #5f0000;
-    --bs-btn-hover-border-color: #5f0000;
-    --bs-btn-active-bg: #4b0000;
-    --bs-btn-active-border-color: #4b0000;
+    --bs-btn-hover-bg: #b8860b;
+    --bs-btn-hover-border-color: #b8860b;
+    --bs-btn-active-bg: #9c7109;
+    --bs-btn-active-border-color: #9c7109;
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+}
+
+/* Danger stays red (destructive action — not a gold highlight). */
+.btn-danger {
+    --bs-btn-bg: #b91c1c;
+    --bs-btn-border-color: #b91c1c;
+    --bs-btn-hover-bg: #991b1b;
+    --bs-btn-hover-border-color: #991b1b;
+    --bs-btn-active-bg: #7f1d1d;
+    --bs-btn-active-border-color: #7f1d1d;
 }
 
 .btn-outline-primary {
@@ -460,7 +472,18 @@ h6 {
     --bs-btn-hover-border-color: var(--color-maroon);
 }
 
-.btn-success,
+/* Success stays green; warning keeps its amber tones. */
+.btn-success {
+    --bs-btn-bg: #1e7d3c;
+    --bs-btn-border-color: #1e7d3c;
+    --bs-btn-hover-bg: #166b32;
+    --bs-btn-hover-border-color: #166b32;
+    --bs-btn-active-bg: #125929;
+    --bs-btn-active-border-color: #125929;
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+}
+
 .btn-warning {
     --bs-btn-bg: var(--color-goldenrod);
     --bs-btn-border-color: var(--color-goldenrod);

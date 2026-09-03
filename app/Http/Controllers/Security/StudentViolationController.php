@@ -4,23 +4,38 @@ namespace App\Http\Controllers\Security;
 
 use App\Http\Controllers\Controller;
 use App\Models\DisciplinarySanction;
+use App\Models\EvidenceSecurityEvent;
 use App\Models\Program;
 use App\Models\ViolationCategory;
 use App\Models\ViolationType;
 use App\Models\Year;
+use App\Services\EvidenceSecurityService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 use App\Models\Violation;
+use App\Models\ViolationEvidence;
 use Illuminate\Support\Collection;
 
 class StudentViolationController extends Controller
 {
     private const REPORT_TIMEZONE = 'Asia/Manila';
+
+    /**
+     * Resolve the configured evidence storage disk (S3-ready on Railway).
+     */
+    private function evidenceDisk(): \Illuminate\Filesystem\FilesystemAdapter
+    {
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = Storage::disk((string) config('filesystems.evidence_disk', 'local'));
+
+        return $disk;
+    }
 
     /**
      * Display a listing of students with violations
@@ -73,6 +88,53 @@ class StudentViolationController extends Controller
         $years = Year::orderBy('year')->get(['year_id', 'year']);
 
         return view('security.violations.students', compact('students', 'categories', 'programs', 'years', 'search', 'programId', 'yearId'));
+    }
+
+    /**
+     * Display the submitting officer's own violation reports with their
+     * administrative review status (Pending / Confirmed / Rejected).
+     */
+    public function submitted(Request $request)
+    {
+        $status = (string) $request->input('status', '');
+        $status = in_array($status, ['pending', 'confirmed', 'denied', 'rejected'], true) ? $status : '';
+
+        $violations = Violation::with([
+                'student.studentInfo.program',
+                'student.studentInfo.year',
+                'student.studentInfo.section',
+                'violationType.violationCategory',
+                'evidence',
+            ])
+            ->where(function ($query) {
+                $this->applyRecorderScope($query);
+            })
+            ->when($status !== '', function ($query) use ($status) {
+                $statusValue = $status === 'rejected' ? 'denied' : $status;
+                $query->where('status', $statusValue);
+            })
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = '%' . trim($request->input('search')) . '%';
+                $query->where(function ($q) use ($search) {
+                    $q->where('student_number', 'like', $search)
+                        ->orWhereHas('student', fn ($s) => $s->where('first_name', 'like', $search)->orWhere('last_name', 'like', $search))
+                        ->orWhereHas('violationType', fn ($v) => $v->where('violation_type', 'like', $search));
+                });
+            })
+            ->latest('violation_date')
+            ->paginate(15, ['*'], 'submitted_page')
+            ->withQueryString();
+
+        $counts = [
+            'pending' => Violation::where('status', Violation::STATUS_PENDING)
+                ->where(fn ($q) => $this->applyRecorderScope($q))->count(),
+            'confirmed' => Violation::where('status', Violation::STATUS_CONFIRMED)
+                ->where(fn ($q) => $this->applyRecorderScope($q))->count(),
+            'denied' => Violation::where('status', Violation::STATUS_DENIED)
+                ->where(fn ($q) => $this->applyRecorderScope($q))->count(),
+        ];
+
+        return view('security.violations.submitted', compact('violations', 'status', 'counts'));
     }
 
     /**
@@ -210,6 +272,8 @@ class StudentViolationController extends Controller
             'violation_type_id' => ['required', 'exists:violation_type_tbl,violation_type_id'],
             'violation_date' => ['required', 'date'],
             'description' => ['required', 'string', 'max:1000'],
+            'evidence' => ['nullable', 'array', 'max:5'],
+            'evidence.*' => ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ]);
 
         $violationType = ViolationType::findOrFail($validated['violation_type_id']);
@@ -252,6 +316,69 @@ class StudentViolationController extends Controller
                 // confirmation before they count toward the student's record.
                 'status' => Violation::STATUS_PENDING,
             ]);
+
+            // Store supporting evidence privately (never public) and keep the
+            // DB rows in the same transaction so a storage failure rolls back.
+            $securityId = $security?->id;
+            $evidenceFiles = $request->allFiles()['evidence'] ?? [];
+
+            // Capture metadata is submitted as parallel arrays (one entry per
+            // staged evidence item). The camera path marks capture_method as
+            // 'camera' and records when the photo was taken. This is audit
+            // metadata only — it never proves identity.
+            $captureMethods = (array) $request->input('capture_methods', []);
+            $capturedAts = (array) $request->input('captured_ats', []);
+            $watermarked = (array) $request->input('watermarked', []);
+            $evidenceService = app(EvidenceSecurityService::class);
+
+            foreach ($evidenceFiles as $index => $evidenceFile) {
+                $evidenceCode = $evidenceService->nextEvidenceCode();
+                $directory = 'violation-evidence/' . $violation->violation_id;
+                $extension = strtolower($evidenceFile->getClientOriginalExtension());
+                // Server-side filename derived from the unique evidence code —
+                // the original filename is never trusted or used on disk.
+                $filename = $evidenceCode . '.' . ($extension !== '' ? $extension : 'bin');
+                $disk = $this->evidenceDisk();
+                $storedPath = $disk->putFileAs($directory, $evidenceFile, $filename);
+
+                if ($storedPath === false) {
+                    throw new \RuntimeException('Unable to store evidence file.');
+                }
+
+                $isCamera = strcasecmp((string) ($captureMethods[$index] ?? ''), 'camera') === 0;
+                $capturedAt = isset($capturedAts[$index]) && $capturedAts[$index] !== ''
+                    ? Carbon::parse($capturedAts[$index])
+                    : null;
+
+                $evidence = ViolationEvidence::create([
+                    'evidence_code' => $evidenceCode,
+                    'violation_id' => $violation->violation_id,
+                    'disk_path' => $storedPath,
+                    'original_name' => $evidenceFile->getClientOriginalName(),
+                    'mime_type' => $evidenceFile->getMimeType(),
+                    'capture_method' => $isCamera
+                        ? ViolationEvidence::CAPTURE_CAMERA
+                        : ViolationEvidence::CAPTURE_UPLOAD,
+                    'watermarked' => $isCamera || ! empty($watermarked[$index]),
+                    'captured_at' => $capturedAt,
+                    'file_size' => $evidenceFile->getSize(),
+                    'ip_address' => $evidenceService->clientIp($request),
+                    'user_agent' => $evidenceService->userAgent($request),
+                    'uploader_type' => 'security',
+                    'uploader_id' => $securityId,
+                ]);
+
+                $evidenceService->logEvent(
+                    EvidenceSecurityEvent::EVIDENCE_UPLOADED,
+                    $violation->violation_id,
+                    $evidence->evidence_id,
+                    'info',
+                    $request,
+                    ['method' => $evidence->capture_method, 'code' => $evidenceCode],
+                    'security',
+                    $securityId,
+                );
+            }
 
             DB::commit();
 
@@ -412,7 +539,7 @@ class StudentViolationController extends Controller
                 $detailedRecords = $studentViolations
                     ->sortByDesc('violation_date')
                     ->values()
-                    ->map(function ($record) {
+                    ->map(function (\App\Models\Violation $record) {
                         $offenseLevel = $record->offense_level ?: 'N/A';
                         $resolvedViolationType = $record->resolvedViolationType();
 
@@ -579,5 +706,123 @@ class StudentViolationController extends Controller
         }
 
         return $security->email ?: 'Security Account';
+    }
+
+    /**
+     * Accept a security/audit event reported by the browser monitoring layer
+     * during the controlled evidence capture workflow.
+     *
+     * These are DETECTION / DETERRENCE indicators (page blur, visibility
+     * change, possible screen capture, PrintScreen key, camera permission
+     * denied, camera error, security notice accepted, capture abandoned). The
+     * browser never reports a "confirmed screenshot" because browsers cannot
+     * prove that — only indicators that require administrative review.
+     */
+    public function logSecurityEvent(Request $request): JsonResponse
+    {
+        $security = Auth::guard('security')->user();
+        if (! $security) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $allowed = [
+            EvidenceSecurityEvent::CAMERA_PORTAL_OPENED,
+            EvidenceSecurityEvent::SECURITY_NOTICE_ACCEPTED,
+            EvidenceSecurityEvent::CAMERA_INITIALIZED,
+            EvidenceSecurityEvent::CAMERA_PERMISSION_DENIED,
+            EvidenceSecurityEvent::CAMERA_ERROR,
+            EvidenceSecurityEvent::EVIDENCE_CAPTURED,
+            EvidenceSecurityEvent::PAGE_BLURRED,
+            EvidenceSecurityEvent::PAGE_FOCUS_RESTORED,
+            EvidenceSecurityEvent::PAGE_VISIBILITY_CHANGED,
+            EvidenceSecurityEvent::POSSIBLE_SCREEN_CAPTURE,
+            EvidenceSecurityEvent::PRINTSCREEN_DETECTED,
+            EvidenceSecurityEvent::CAPTURE_ABANDONED,
+        ];
+
+        $eventType = (string) $request->input('event_type', '');
+        if (! in_array($eventType, $allowed, true)) {
+            return response()->json(['message' => 'Unsupported event.'], 422);
+        }
+
+        $violationId = $request->input('violation_id') ? (int) $request->input('violation_id') : null;
+        $evidenceId = $request->input('evidence_id') ? (int) $request->input('evidence_id') : null;
+        $severity = (string) $request->input('severity', 'info');
+        $severity = in_array($severity, ['info', 'warning', 'critical'], true) ? $severity : 'info';
+        $meta = $request->input('meta');
+        $meta = is_array($meta) ? $meta : (is_string($meta) && $meta !== '' ? ['detail' => $meta] : null);
+
+        app(EvidenceSecurityService::class)->logEvent(
+            $eventType,
+            $violationId,
+            $evidenceId,
+            $severity,
+            $request,
+            $meta,
+            'security',
+            (int) $security->id,
+        );
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Serve a violation evidence file from private storage.
+     *
+     * Security officers may view evidence attached to violations they recorded.
+     *
+     * @return \Symfony\Component\HttpFoundation\StreamedResponse
+     */
+    public function downloadEvidence(ViolationEvidence $evidence)
+    {
+        $violation = $evidence->violation;
+
+        if (! $violation) {
+            abort(404);
+        }
+
+        // Only the recording security officer may open it.
+        $security = Auth::guard('security')->user();
+        if (! $security || ! $this->recorderMatches($violation, $security)) {
+            abort(403);
+        }
+
+        $disk = $this->evidenceDisk();
+
+        if (! $evidence->disk_path || ! $disk->exists($evidence->disk_path)) {
+            abort(404);
+        }
+
+        // Audit the access + record an evidence security event.
+        app(EvidenceSecurityService::class)->auditEvidenceAccess(
+            'EVIDENCE_VIEWED',
+            $evidence,
+            'security',
+            (int) $security->id,
+            $request ?? request(),
+        );
+
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        return $disk->response(
+            $evidence->disk_path,
+            $evidence->original_name ?: basename($evidence->disk_path)
+        );
+    }
+
+    /**
+     * Whether the given violation was recorded by this security account.
+     */
+    private function recorderMatches(Violation $violation, $security): bool
+    {
+        $label = $this->buildSecurityAccountName($security);
+        $legacyEmailLabel = !empty($security?->email) ? 'Security: ' . $security->email : null;
+        $legacyIdLabel = 'Security #' . ($security?->id ?? 'Unknown');
+
+        return (string) $violation->recorder_type === 'security'
+            && in_array((string) $violation->recorder_name, array_filter([
+                $label,
+                $legacyEmailLabel,
+                $legacyIdLabel,
+            ]), true);
     }
 }

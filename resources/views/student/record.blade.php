@@ -374,6 +374,12 @@
 
                     </th>
 
+                    <th>
+
+                        Attachments
+
+                    </th>
+
                 </tr>
 
             </thead>
@@ -408,6 +414,31 @@
 
                         </td>
 
+                        <td>
+
+                            @php
+                                $visibleEvidence = collect($violation->evidence ?? [])
+                                    ->filter(fn ($e) => ! empty($e->disk_path));
+                            @endphp
+
+                            @if ($visibleEvidence->isNotEmpty())
+                                @foreach ($visibleEvidence as $item)
+                                    <a
+                                        href="{{ route('student.violations.evidence', $item) }}"
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="btn btn-sm btn-outline-secondary me-1 mb-1"
+                                        title="Open {{ $item->original_name ?: 'evidence' }}">
+                                        <i class="bi bi-paperclip"></i>
+                                        {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
+                                    </a>
+                                @endforeach
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
+
+                        </td>
+
                     </tr>
 
                 @empty
@@ -415,7 +446,7 @@
                     <tr>
 
                         <td
-                            colspan="4"
+                            colspan="5"
                             class="text-center py-5">
 
                             No individual violations found.
@@ -526,41 +557,39 @@
 
                             <td>
 
-                                @switch(strtolower($record->status))
+                                @php
+                                    $recStatus = strtolower(trim((string) $record->status));
+                                    $recOpen = strcasecmp((string) $record->status, 'Completed') !== 0;
+                                    $recOverdue = $recOpen && $record->deadline_date && $record->deadline_date->isPast();
+                                @endphp
 
-                                    @case('pending')
-
-                                        @if($record->has_pending_proof)
-                                            <span class="portal-badge maroon">
-                                                For Review
-                                            </span>
-                                        @else
-                                            <span class="portal-badge warning">
-                                                Pending
-                                            </span>
-                                        @endif
-
-                                        @break
-
-                                    @case('completed')
-
-                                        <span class="portal-badge success">
-
-                                            Completed
-
+                                @if($recStatus === 'pending')
+                                    @if($record->has_pending_proof)
+                                        <span class="portal-badge maroon">
+                                            For Review
                                         </span>
-
-                                        @break
-
-                                    @default
-
-                                        <span class="portal-badge muted">
-
-                                            {{ $record->status }}
-
+                                    @else
+                                        <span class="portal-badge warning">
+                                            Pending
                                         </span>
-
-                                @endswitch
+                                    @endif
+                                @elseif($recStatus === 'in progress')
+                                    <span class="portal-badge goldenrod">
+                                        In Progress
+                                    </span>
+                                @elseif($recStatus === 'overdue' || $recOverdue)
+                                    <span class="portal-badge maroon">
+                                        Overdue
+                                    </span>
+                                @elseif($recStatus === 'completed')
+                                    <span class="portal-badge success">
+                                        Completed
+                                    </span>
+                                @else
+                                    <span class="portal-badge muted">
+                                        {{ $record->status }}
+                                    </span>
+                                @endif
 
                             </td>
 
@@ -573,10 +602,10 @@
                             <td>
 
                                 @if($record->deadline_date)
-                                    <span class="fw-semibold {{ $record->status === 'Pending' && $record->deadline_date->isPast() ? 'text-danger' : '' }}">
+                                    <span class="fw-semibold {{ ($recOverdue || $recStatus === 'overdue') ? 'text-danger' : '' }}">
                                         {{ $record->deadline_date->format('M d, Y') }}
                                     </span>
-                                    @if($record->status === 'Pending' && $record->deadline_date->isPast())
+                                    @if($recOverdue || $recStatus === 'overdue')
                                         <span class="portal-badge maroon d-block mt-1">Overdue</span>
                                     @endif
                                 @else
@@ -599,7 +628,7 @@
                                         <div class="small text-success mb-1">
                                             <i class="bi bi-patch-check-fill me-1"></i>Proof accepted
                                         </div>
-                                        <a href="{{ asset($record->proof_path) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                        <a href="{{ route('student.proof.download', $record) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
                                             <i class="bi bi-paperclip me-1"></i>View Proof
                                         </a>
                                     @else
@@ -613,7 +642,7 @@
                                     </div>
 
                                     @if($record->proof_path)
-                                        <a href="{{ asset($record->proof_path) }}" target="_blank" class="btn btn-sm btn-outline-secondary mb-1">
+                                        <a href="{{ route('student.proof.download', $record) }}" target="_blank" class="btn btn-sm btn-outline-secondary mb-1">
                                             <i class="bi bi-paperclip me-1"></i>View Submitted Proof
                                         </a>
                                     @endif
@@ -624,7 +653,7 @@
                                         </div>
                                     @endif
 
-                                @elseif(strcasecmp($record->status, 'Pending') === 0)
+                                @elseif($recOpen)
 
                                     @if($record->completion_remarks)
                                         <div class="small text-danger mb-2">

@@ -65,6 +65,279 @@ class ViolationSanctionWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_security_recorded_violation_stores_evidence_privately(): void
+    {
+        $this->createTables();
+        $security = $this->createSecurity('security@example.com', 'Officer', 'One');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        \Illuminate\Support\Facades\Storage::fake('local');
+
+        $this->actingAs($security, 'security')
+            ->post(route('security.violations.store'), [
+                'student_number' => '2024-0001',
+                'violation_type_id' => 1,
+                'violation_date' => now()->format('Y-m-d H:i:s'),
+                'description' => 'Caught using a phone.',
+                'evidence' => [
+                    \Illuminate\Http\UploadedFile::fake()->image('incident.jpg'),
+                    \Illuminate\Http\UploadedFile::fake()->create('doc.pdf', 50, 'application/pdf'),
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $violation = Violation::where('student_number', '2024-0001')->first();
+        $this->assertNotNull($violation);
+
+        $this->assertDatabaseHas('violation_evidence_tbl', [
+            'violation_id' => $violation->violation_id,
+            'original_name' => 'incident.jpg',
+        ]);
+        $this->assertDatabaseHas('violation_evidence_tbl', [
+            'violation_id' => $violation->violation_id,
+            'original_name' => 'doc.pdf',
+        ]);
+
+        $this->assertSame(2, $violation->evidence()->count());
+    }
+
+    public function test_overdue_sweep_flips_past_deadline_to_overdue(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+        $student = $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $this->createDisciplinarySanction(1, '1st Offense', 'Community service 40 hours');
+
+        $violation = Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now()->subMonth(),
+            'description' => 'Caught cheating.',
+            'recorder_type' => 'admin',
+            'recorder_name' => 'Admin One',
+            'status' => 'confirmed',
+        ]);
+
+        $record = StudentSanctionRecord::create([
+            'student_number' => '2024-0001',
+            'violation_id' => $violation->violation_id,
+            'assigned_sanction_id' => 1,
+            'assigned_by_admin_id' => $admin->id,
+            'status' => \App\Models\StudentSanctionRecord::STATUS_IN_PROGRESS,
+            'deadline_date' => now()->subDays(3),
+            'date_assigned' => now()->subMonth(),
+        ]);
+
+        $flipped = app(\App\Services\SanctionOverdueService::class)->sweep();
+
+        $this->assertSame(1, $flipped);
+        $this->assertSame(\App\Models\StudentSanctionRecord::STATUS_OVERDUE, $record->fresh()->status);
+
+        // Student + admin notified once.
+        $this->assertDatabaseHas('notifications_tbl', [
+            'student_number' => '2024-0001',
+            'title' => 'Sanction Overdue',
+        ]);
+        $this->assertDatabaseHas('admin_notifications_tbl', [
+            'notification_type' => 'sanction_overdue',
+            'target_id' => $record->record_id,
+        ]);
+
+        // Idempotent: second sweep does not re-notify.
+        app(\App\Services\SanctionOverdueService::class)->sweep();
+        $this->assertSame(
+            1,
+            \App\Models\Notification::where('student_number', '2024-0001')
+                ->where('title', 'Sanction Overdue')->count()
+        );
+    }
+
+    public function test_student_can_only_open_evidence_of_confirmed_owned_violation(): void
+    {
+        $this->createTables();
+        $security = $this->createSecurity('security@example.com', 'Officer', 'One');
+        $student = $this->createStudent('2024-0001');
+        $this->createStudent('2024-0002');
+        $this->createViolationType(1, 'Cheating');
+
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        $disk->put('violation-evidence/1/EVD-2026-000001.jpg', 'fake-image-bytes');
+
+        // Pending violation with evidence → owner cannot open yet.
+        $pending = Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Caught cheating.',
+            'recorder_type' => 'security',
+            'recorder_name' => 'Officer One',
+            'status' => 'pending',
+        ]);
+        $pendingEvidence = \App\Models\ViolationEvidence::create([
+            'violation_id' => $pending->violation_id,
+            'disk_path' => 'violation-evidence/1/EVD-2026-000001.jpg',
+            'original_name' => 'incident.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 100,
+            'uploader_type' => 'security',
+            'uploader_id' => $security->id,
+        ]);
+
+        $this->actingAs($student, 'student')
+            ->get(route('student.violations.evidence', $pendingEvidence))
+            ->assertForbidden();
+
+        // Confirmed violation with evidence → owning student may open it.
+        $confirmed = Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Caught cheating.',
+            'recorder_type' => 'security',
+            'recorder_name' => 'Officer One',
+            'status' => 'confirmed',
+        ]);
+        $confirmedEvidence = \App\Models\ViolationEvidence::create([
+            'violation_id' => $confirmed->violation_id,
+            'disk_path' => 'violation-evidence/1/EVD-2026-000001.jpg',
+            'original_name' => 'incident.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 100,
+            'uploader_type' => 'security',
+            'uploader_id' => $security->id,
+        ]);
+
+        $this->actingAs($student, 'student')
+            ->get(route('student.violations.evidence', $confirmedEvidence))
+            ->assertOk();
+
+        // A DIFFERENT student may NOT open evidence of someone else's violation.
+        $other = \App\Models\User::where('student_number', '2024-0002')->first();
+        $this->actingAs($other, 'student')
+            ->get(route('student.violations.evidence', $confirmedEvidence))
+            ->assertForbidden();
+    }
+
+    public function test_security_recorded_camera_evidence_gets_unique_code_and_metadata(): void
+    {
+        $this->createTables();
+        $security = $this->createSecurity('security@example.com', 'Officer', 'One');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        \Illuminate\Support\Facades\Storage::fake('local');
+
+        $this->actingAs($security, 'security')
+            ->post(route('security.violations.store'), [
+                'student_number' => '2024-0001',
+                'violation_type_id' => 1,
+                'violation_date' => now()->format('Y-m-d H:i:s'),
+                'description' => 'Caught using a phone.',
+                'evidence' => [
+                    \Illuminate\Http\UploadedFile::fake()->image('photo.jpg'),
+                ],
+                'capture_methods' => ['camera'],
+                'captured_ats' => [now()->toIso8601String()],
+                'watermarked' => ['1'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $evidence = \App\Models\ViolationEvidence::first();
+        $this->assertNotNull($evidence);
+        $this->assertNotNull($evidence->evidence_code);
+        $this->assertMatchesRegularExpression('/^EVD-\d{4}-\d{6}$/', $evidence->evidence_code);
+        $this->assertSame('camera', $evidence->capture_method);
+        $this->assertTrue((bool) $evidence->watermarked);
+        $this->assertNotNull($evidence->captured_at);
+        $this->assertNotNull($evidence->ip_address);
+        $this->assertNotNull($evidence->user_agent);
+        // Disk path is derived from the evidence code (server-side), not the original name.
+        $this->assertStringContainsString($evidence->evidence_code, $evidence->disk_path);
+
+        // Uploaded event logged.
+        $this->assertDatabaseHas('evidence_security_events_tbl', [
+            'evidence_id' => $evidence->evidence_id,
+            'event_type' => \App\Models\EvidenceSecurityEvent::EVIDENCE_UPLOADED,
+            'actor_type' => 'security',
+            'actor_id' => $security->id,
+        ]);
+    }
+
+    public function test_security_event_endpoint_records_whitelisted_events_only(): void
+    {
+        $this->createTables();
+        $security = $this->createSecurity('security@example.com', 'Officer', 'One');
+
+        // Whitelisted event is recorded.
+        $this->actingAs($security, 'security')
+            ->postJson(route('security.violations.evidence-security-event'), [
+                'event_type' => \App\Models\EvidenceSecurityEvent::CAMERA_PERMISSION_DENIED,
+                'severity' => 'warning',
+                'meta' => ['reason' => 'denied'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('evidence_security_events_tbl', [
+            'event_type' => \App\Models\EvidenceSecurityEvent::CAMERA_PERMISSION_DENIED,
+            'severity' => 'warning',
+            'actor_type' => 'security',
+            'actor_id' => $security->id,
+        ]);
+
+        // Non-whitelisted events (e.g. a fake "SCREENSHOT_CONFIRMED") are rejected.
+        $this->actingAs($security, 'security')
+            ->postJson(route('security.violations.evidence-security-event'), [
+                'event_type' => 'SCREENSHOT_CONFIRMED',
+            ])
+            ->assertStatus(422);
+
+        $this->assertDatabaseMissing('evidence_security_events_tbl', [
+            'event_type' => 'SCREENSHOT_CONFIRMED',
+        ]);
+    }
+
+    public function test_student_sanction_request_does_not_create_record_before_approval(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+        $student = $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $this->createDisciplinarySanction(1, '1st Offense', 'Community service 40 hours');
+
+        // A confirmed violation exists so the request is valid.
+        Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Caught cheating.',
+            'recorder_type' => 'admin',
+            'recorder_name' => 'Admin One',
+            'status' => 'confirmed',
+        ]);
+
+        $this->actingAs($student, 'student')
+            ->postJson(route('student.request-sanction'), [
+                'violation_type_id' => 1,
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        // A pending SanctionRequest exists...
+        $this->assertDatabaseHas('sanction_requests_tbl', [
+            'student_number' => '2024-0001',
+            'is_active' => 1,
+        ]);
+
+        // ...but NO StudentSanctionRecord is created before admin approval.
+        $this->assertSame(0, \App\Models\StudentSanctionRecord::where('student_number', '2024-0001')->count());
+    }
+
     public function test_admin_confirms_violation_and_it_becomes_effective(): void
     {
         $this->createTables();
@@ -258,7 +531,8 @@ class ViolationSanctionWorkflowTest extends TestCase
         $record->refresh();
         $this->assertNotNull($record->proof_path);
         $this->assertNotNull($record->proof_submitted_at);
-        $this->assertSame('Pending', $record->status);
+        // Submitting a proof on a Pending (unassigned) sanction activates it.
+        $this->assertSame('In Progress', $record->status);
 
         // Admin notified of the proof submission.
         $this->assertDatabaseHas('admin_notifications_tbl', [
@@ -275,6 +549,12 @@ class ViolationSanctionWorkflowTest extends TestCase
         $record->refresh();
         $this->assertSame('Completed', $record->status);
         $this->assertNotNull($record->date_completed);
+
+        // The accepted submission is retained in the proof history.
+        $this->assertDatabaseHas('sanction_proofs_tbl', [
+            'record_id' => $record->record_id,
+            'status' => 'accepted',
+        ]);
 
         $this->assertDatabaseHas('notifications_tbl', [
             'student_number' => '2024-0001',
@@ -329,8 +609,17 @@ class ViolationSanctionWorkflowTest extends TestCase
             ->assertSessionHas('success');
 
         $record->refresh();
-        $this->assertSame('Pending', $record->status);
+        // The sanction was already active (In Progress after proof submission),
+        // so rejecting the proof keeps it In Progress for a resubmission.
+        $this->assertSame('In Progress', $record->status);
         $this->assertSame('Incomplete proof.', $record->completion_remarks);
+
+        // The rejected submission is retained in the proof history.
+        $this->assertDatabaseHas('sanction_proofs_tbl', [
+            'record_id' => $record->record_id,
+            'status' => 'rejected',
+            'review_remarks' => 'Incomplete proof.',
+        ]);
 
         $this->assertDatabaseHas('notifications_tbl', [
             'student_number' => '2024-0001',
@@ -633,6 +922,50 @@ class ViolationSanctionWorkflowTest extends TestCase
                 $table->unsignedBigInteger('completion_reviewed_by_admin_id')->nullable();
                 $table->timestamp('completion_reviewed_at')->nullable();
                 $table->text('completion_remarks')->nullable();
+            },
+            'sanction_proofs_tbl' => function (Blueprint $table): void {
+                $table->increments('proof_id');
+                $table->unsignedBigInteger('record_id')->nullable();
+                $table->string('disk_path', 500)->nullable();
+                $table->string('original_name', 255)->nullable();
+                $table->string('mime_type', 120)->nullable();
+                $table->unsignedBigInteger('file_size')->nullable();
+                $table->text('notes')->nullable();
+                $table->string('status', 20)->default('submitted');
+                $table->unsignedBigInteger('reviewed_by_admin_id')->nullable();
+                $table->timestamp('reviewed_at')->nullable();
+                $table->text('review_remarks')->nullable();
+                $table->timestamp('submitted_at')->nullable();
+            },
+            'violation_evidence_tbl' => function (Blueprint $table): void {
+                $table->increments('evidence_id');
+                $table->string('evidence_code', 32)->nullable();
+                $table->unsignedBigInteger('violation_id')->nullable();
+                $table->string('disk_path', 500)->nullable();
+                $table->string('original_name', 255)->nullable();
+                $table->string('mime_type', 120)->nullable();
+                $table->string('capture_method', 20)->nullable()->default('upload');
+                $table->boolean('watermarked')->default(false);
+                $table->timestamp('captured_at')->nullable();
+                $table->unsignedBigInteger('file_size')->nullable();
+                $table->string('ip_address', 64)->nullable();
+                $table->string('user_agent', 500)->nullable();
+                $table->string('uploader_type', 20)->nullable();
+                $table->unsignedBigInteger('uploader_id')->nullable();
+                $table->timestamp('created_at')->nullable();
+            },
+            'evidence_security_events_tbl' => function (Blueprint $table): void {
+                $table->increments('event_id');
+                $table->unsignedBigInteger('violation_id')->nullable();
+                $table->unsignedBigInteger('evidence_id')->nullable();
+                $table->string('event_type', 80);
+                $table->string('severity', 20)->default('info');
+                $table->string('actor_type', 20)->nullable();
+                $table->unsignedBigInteger('actor_id')->nullable();
+                $table->string('ip_address', 64)->nullable();
+                $table->string('user_agent', 500)->nullable();
+                $table->text('meta')->nullable();
+                $table->timestamp('created_at')->nullable();
             },
             'admin_notifications_tbl' => function (Blueprint $table): void {
                 $table->increments('admin_notification_id');

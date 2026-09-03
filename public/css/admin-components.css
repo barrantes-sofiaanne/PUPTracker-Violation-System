@@ -257,59 +257,38 @@
 }
 
 /* --------------------------------------------------------------------------
-   Gold hover — all action buttons turn the logo's gold/yellow on hover.
-   The system gold is #ffdf00 (bright) blended to goldenrod #daa520 for
-   contrast. Dark text keeps the state readable.
+   Gold hover — applied ONLY to highlight / primary action buttons.
+   The hue is a deeper goldenrod (matching the golden tone of the PUP logo)
+   rather than the bright yellow, so text stays readable and the state feels
+   intentional. Secondary (already gold) brightens toward the same tone;
+   neutral / view / link / danger keep their own states.
    -------------------------------------------------------------------------- */
-.admin-btn:not(.admin-btn-neutral):not(.admin-btn-view):not(
-        .admin-btn-link
-    ):not(.admin-btn-danger):hover,
-.admin-btn:not(.admin-btn-neutral):not(.admin-btn-view):not(
-        .admin-btn-link
-    ):not(.admin-btn-danger):focus {
-    background-color: var(--admin-goldenrod);
-    border-color: var(--admin-goldenrod);
-    color: #2b1a00;
-}
-
 .admin-btn-primary:hover,
 .admin-btn-primary:focus,
-.admin-btn-success:hover,
-.admin-btn-success:focus,
 .btn-primary:hover,
-.btn-primary:focus,
-.btn-success:hover,
-.btn-success:focus {
-    background-color: var(--admin-goldenrod) !important;
-    border-color: var(--admin-goldenrod) !important;
-    color: #2b1a00 !important;
+.btn-primary:focus {
+    background-color: #b8860b;
+    border-color: #b8860b;
+    color: #fff;
 }
 
-/* Neutral & view buttons get a gold wash instead of a full fill. */
-.admin-btn-neutral:hover,
-.admin-btn-neutral:focus,
-.admin-btn-view:hover,
-.admin-btn-view:focus {
-    background-color: rgba(218, 165, 32, 0.14);
-    border-color: var(--admin-goldenrod);
-    color: #5f0000;
-}
-
-/* Destructive buttons keep their red on hover but with a gold border accent. */
-.admin-btn-danger:hover,
-.admin-btn-danger:focus,
-.btn-danger:hover,
-.btn-danger:focus {
-    background-color: #991b1b;
-    border-color: #daa520;
+.admin-btn-primary:active,
+.btn-primary:active {
+    background-color: #9c7109;
+    border-color: #9c7109;
     color: #fff;
 }
 
 .admin-btn-secondary:hover,
 .admin-btn-secondary:focus {
-    background: linear-gradient(140deg, #ffdf00 0%, #daa520 100%);
-    border-color: #daa520;
+    background: linear-gradient(140deg, #caa52c 0%, #b8860b 100%);
+    border-color: #b8860b;
     color: #2b1a00;
+}
+
+.admin-btn-secondary:active {
+    background: #a87d0f;
+    border-color: #a87d0f;
 }
 
 /* --------------------------------------------------------------------------

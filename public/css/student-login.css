@@ -164,26 +164,11 @@ body {
 }
 
 .login-btn:hover {
-    color: #2b1a00;
+    color: #fff;
     filter: none;
-    background: linear-gradient(
-        135deg,
-        var(--login-gold) 0%,
-        var(--login-goldenrod) 100%
-    ) !important;
-    border-color: var(--login-goldenrod);
-}
-
-/* Portal/outline buttons on the auth screens also turn gold on hover. */
-.auth-content-card .portal-btn:hover,
-.auth-content-card .portal-btn:focus {
-    color: #2b1a00;
-    background: linear-gradient(
-        135deg,
-        var(--login-gold) 0%,
-        var(--login-goldenrod) 100%
-    );
-    border-color: var(--login-goldenrod);
+    background: linear-gradient(135deg, #b8860b 0%, #9c7109 100%) !important;
+    border-color: #b8860b;
+    box-shadow: 0 12px 22px rgba(184, 134, 11, 0.28);
 }
 
 .login-error {
@@ -2184,14 +2169,10 @@ html.is-navigating .auth-brand-mark::after {
 .auth-content-card .login-btn:hover,
 .auth-content-card .btn-success.login-btn:hover,
 .auth-portal-page .btn-success.login-btn:hover {
-    color: #2b1a00 !important;
+    color: #fff !important;
     filter: none;
-    background: linear-gradient(
-        135deg,
-        var(--login-gold) 0%,
-        var(--login-goldenrod) 100%
-    ) !important;
-    border-color: var(--login-goldenrod) !important;
+    background: linear-gradient(135deg, #b8860b 0%, #9c7109 100%) !important;
+    border-color: #b8860b !important;
     transform: translateY(-2px);
-    box-shadow: 0 16px 26px rgba(218, 165, 32, 0.34);
+    box-shadow: 0 16px 26px rgba(184, 134, 11, 0.32);
 }

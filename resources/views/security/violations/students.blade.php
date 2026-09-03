@@ -350,6 +350,7 @@ window.ViolationRoutes = {
     violationTypes: "{{ route('security.violations.types') }}",
     previewViolation: "{{ route('security.violations.preview') }}",
     store: "{{ route('security.violations.store') }}",
+    securityEvent: "{{ route('security.violations.evidence-security-event') }}",
 };
 
 document.addEventListener('DOMContentLoaded', function () {

@@ -13,10 +13,19 @@ use App\Models\SanctionRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\AdminNotificationService;
+use App\Models\ViolationEvidence;
 class StudentRecordController extends Controller
 {
     public function index()
     {
+        // Flip this student's In Progress/Pending sanctions past deadline to
+        // Overdue (one-time notifications) before rendering.
+        try {
+            app(\App\Services\SanctionOverdueService::class)->sweep();
+        } catch (\Throwable $e) {
+            // Sweep failures must never block the record page.
+        }
+
         /** @var User $user */
         $user = Auth::user();
 
@@ -29,6 +38,7 @@ class StudentRecordController extends Controller
        $violations = Violation::with([
     'violationType.violationCategory',
     'violationType.disciplinarySanctions',
+    'evidence',
 ])
            ->where('student_number', $user->student_number)
            ->effective()
@@ -63,7 +73,11 @@ $approvedRequests = SanctionRequest::where(
 
 $pendingSanctionTypeKeys = StudentSanctionRecord::with('violation')
     ->where('student_number', $user->student_number)
-    ->where('status', 'Pending')
+    ->where(function ($q) {
+        $q->where('status', \App\Models\StudentSanctionRecord::STATUS_PENDING)
+            ->orWhere('status', \App\Models\StudentSanctionRecord::STATUS_IN_PROGRESS)
+            ->orWhere('status', \App\Models\StudentSanctionRecord::STATUS_OVERDUE);
+    })
     ->get()
     ->flatMap(function ($record) {
         $raw = (string) ($record->violation?->violation_type ?? '');
@@ -84,7 +98,9 @@ $pendingSanctionTypeKeys = StudentSanctionRecord::with('violation')
 
 $approvedSanctionTypeKeys = StudentSanctionRecord::with('violation')
     ->where('student_number', $user->student_number)
-    ->whereIn('status', ['Pending', 'Completed'])
+    ->where(function ($q) {
+        $q->where('status', '!=', \App\Models\StudentSanctionRecord::STATUS_COMPLETED);
+    })
     ->get()
     ->flatMap(function ($record) {
         $raw = (string) ($record->violation?->violation_type ?? '');
@@ -330,12 +346,6 @@ public function requestSanction(Request $request)
 
     try {
 
-        $defaultAdminId = (int) (DB::table('admins')->min('id') ?? 0);
-
-        if ($defaultAdminId <= 0) {
-            throw new \RuntimeException('Cannot queue sanction request because no admin account is available.');
-        }
-
         $sanctionRequest = SanctionRequest::create([
 
             'student_number' => $user->student_number,
@@ -354,6 +364,11 @@ public function requestSanction(Request $request)
 
         ]);
 
+        // Validate the student has a matching confirmed violation before
+        // queueing the request. The actual StudentSanctionRecord is NOT created
+        // here — it is created only after an administrator approves the request
+        // (with the authenticated admin id and deadline). This keeps pending
+        // requests out of the sanction tab / graduation screens until approved.
         $latestViolation = Violation::where('student_number', $user->student_number)
             ->where(function ($query) use ($violationType) {
                 $query->where('violation_type', (string) $violationType->violation_type_id)
@@ -365,22 +380,6 @@ public function requestSanction(Request $request)
 
         if (!$latestViolation) {
             throw new \RuntimeException('Unable to locate the latest violation for this sanction request.');
-        }
-
-        $existingPendingRecord = StudentSanctionRecord::where('student_number', $user->student_number)
-            ->where('violation_id', $latestViolation->violation_id)
-            ->where('status', 'Pending')
-            ->first();
-
-        if (!$existingPendingRecord) {
-            StudentSanctionRecord::create([
-                'student_number' => $user->student_number,
-                'violation_id' => $latestViolation->violation_id,
-                'assigned_sanction_id' => $assignedSanction->disciplinary_sanction_id,
-                'assigned_by_admin_id' => $defaultAdminId,
-                'status' => 'Pending',
-                'date_assigned' => now(),
-            ]);
         }
 
         app(AdminNotificationService::class)->create(
@@ -411,7 +410,7 @@ public function requestSanction(Request $request)
 
             'success' => true,
 
-            'message' => 'Request submitted successfully. It is now in your Sanction Record as Pending.',
+            'message' => 'Request submitted successfully. It is now pending review by the administration.',
 
             'request_id' => $sanctionRequest->request_id,
 
@@ -461,34 +460,60 @@ public function requestSanction(Request $request)
             ], 404);
         }
 
-        if (strcasecmp((string) $record->status, 'Pending') !== 0) {
+        if (! $record->is_open) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only pending sanctions can accept a proof of completion.',
+                'message' => 'This sanction is already completed and cannot accept a new proof.',
             ], 422);
         }
 
         try {
             $file = $request->file('proof_file');
-            $directory = public_path('uploads/sanction-proofs');
-
-            if (!\Illuminate\Support\Facades\File::exists($directory)) {
-                \Illuminate\Support\Facades\File::makeDirectory($directory, 0755, true);
-            }
+            $disk = \Illuminate\Support\Facades\Storage::disk('local'); // private storage
+            $directory = 'sanction-proofs/' . $record->record_id;
 
             $extension = strtolower($file->getClientOriginalExtension());
-            $filename = 'sanction_proof_' . $record->record_id . '_' . uniqid('', true) . '.' . $extension;
-            $file->move($directory, $filename);
+            $filename = 'proof_' . $record->record_id . '_' . now()->format('Ymd_His') . '_' . uniqid('', true) . '.' . $extension;
+            $storedPath = $disk->putFileAs($directory, $file, $filename);
+
+            if ($storedPath === false) {
+                throw new \RuntimeException('Unable to store proof file.');
+            }
+
+            $notes = trim((string) $request->input('proof_notes', ''));
+
+            // If the record was never assigned (still Pending), submitting a
+            // proof implies it is now active/in progress.
+            if (strcasecmp((string) $record->status, \App\Models\StudentSanctionRecord::STATUS_PENDING) === 0) {
+                $record->status = \App\Models\StudentSanctionRecord::STATUS_IN_PROGRESS;
+            }
 
             $record->update([
-                'proof_path' => 'uploads/sanction-proofs/' . $filename,
+                'status' => $record->status,
+                'proof_path' => $storedPath,
                 'proof_original_name' => $file->getClientOriginalName(),
                 'proof_submitted_at' => now(),
-                'proof_notes' => trim((string) $request->input('proof_notes', '')),
+                'proof_notes' => $notes,
                 'completion_reviewed_by_admin_id' => null,
                 'completion_reviewed_at' => null,
                 'completion_remarks' => null,
             ]);
+
+            // Preserve per-submission proof history.
+            try {
+                \App\Models\SanctionProof::create([
+                    'record_id' => $record->record_id,
+                    'disk_path' => $storedPath,
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getMimeType(),
+                    'file_size' => $file->getSize(),
+                    'notes' => $notes,
+                    'status' => \App\Models\SanctionProof::STATUS_SUBMITTED,
+                    'submitted_at' => now(),
+                ]);
+            } catch (\Throwable $e) {
+                // A proof-history write failure must not fail the submission.
+            }
 
             // Notify the admin so they can review the submitted proof.
             try {
@@ -515,5 +540,82 @@ public function requestSanction(Request $request)
                 'message' => 'Unable to upload the proof of completion. Please try again.',
             ], 500);
         }
+    }
+
+    /**
+     * Serve a sanction proof file from private storage to the owning student.
+     *
+     * @return \Symfony\Component\HttpFoundation\StreamedResponse
+     */
+    public function downloadProof(StudentSanctionRecord $studentSanctionRecord)
+    {
+        if ((string) $studentSanctionRecord->student_number !== (string) Auth::user()->student_number) {
+            abort(403);
+        }
+
+        if ($studentSanctionRecord->proof_path === null || $studentSanctionRecord->proof_path === '') {
+            abort(404);
+        }
+
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+
+        if (! $disk->exists($studentSanctionRecord->proof_path)) {
+            abort(404);
+        }
+
+        return $disk->response(
+            $studentSanctionRecord->proof_path,
+            $studentSanctionRecord->proof_original_name ?: basename($studentSanctionRecord->proof_path)
+        );
+    }
+
+    /**
+     * Serve a violation evidence file from private storage to the owning
+     * student. Students may only open evidence once the violation has been
+     * confirmed by an administrator (it is on their official record).
+     *
+     * @return \Symfony\Component\HttpFoundation\StreamedResponse
+     */
+    public function downloadEvidence(ViolationEvidence $evidence, Request $request)
+    {
+        $violation = $evidence->violation;
+
+        if (! $violation) {
+            abort(404);
+        }
+
+        // Only the owning student may open their own evidence.
+        $studentNumber = Auth::user()?->student_number;
+        if ($studentNumber === null || (string) $violation->student_number !== (string) $studentNumber) {
+            abort(403);
+        }
+
+        // Evidence is visible to the student only once the violation is on
+        // their official record (confirmed). Pending/denied stay private.
+        if ((string) $violation->status !== Violation::STATUS_CONFIRMED) {
+            abort(403);
+        }
+
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = \Illuminate\Support\Facades\Storage::disk((string) config('filesystems.evidence_disk', 'local'));
+
+        if (! $evidence->disk_path || ! $disk->exists($evidence->disk_path)) {
+            abort(404);
+        }
+
+        // Audit the access (owning student viewing their confirmed evidence).
+        app(\App\Services\EvidenceSecurityService::class)->auditEvidenceAccess(
+            'EVIDENCE_VIEWED',
+            $evidence,
+            'student',
+            (int) (Auth::user()?->user_id ?? Auth::user()?->getAuthIdentifier()),
+            $request,
+        );
+
+        return $disk->response(
+            $evidence->disk_path,
+            $evidence->original_name ?: basename($evidence->disk_path)
+        );
     }
 }

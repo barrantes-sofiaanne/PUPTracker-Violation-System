@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Admin;
 use App\Models\Security;
 use App\Models\ViolationType;
@@ -82,6 +83,9 @@ class Violation extends Model
      * Scope: ONLY violations that count toward the official record, dashboards,
      * reports, offense levels, and the student module. Pending (awaiting admin
      * confirmation) and denied rows are excluded.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeEffective($query)
     {
@@ -94,6 +98,9 @@ class Violation extends Model
     /**
      * Scope: everything EXCEPT denied rows. Used where a recorder should still
      * see their own pending + confirmed recordings (e.g. the security module).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeNotDenied($query)
     {
@@ -105,6 +112,9 @@ class Violation extends Model
 
     /**
      * Scope: rows still awaiting admin confirmation (security-recorded only).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopePendingConfirmation($query)
     {
@@ -120,6 +130,14 @@ class Violation extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(Admin::class, 'reviewed_by_admin_id', 'id');
+    }
+
+    /**
+     * Supporting evidence attached to this violation (private storage).
+     */
+    public function evidence(): HasMany
+    {
+        return $this->hasMany(ViolationEvidence::class, 'violation_id', 'violation_id');
     }
 
     public function getViolationTypeDisplayAttribute(): string

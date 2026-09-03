@@ -413,17 +413,13 @@ body {
     box-shadow: 0 8px 20px rgba(128, 0, 0, 0.14);
 }
 
-/* Hover turns the button into the logo's gold/yellow with dark text. */
+/* Hover turns the primary CTA into a deeper goldenrod (PUP-logo gold tone). */
 .portal-btn:hover,
 .portal-btn:focus {
-    color: #2b1a00;
-    background: linear-gradient(
-        135deg,
-        #ffdf00 0%,
-        var(--portal-goldenrod) 100%
-    );
-    border-color: var(--portal-goldenrod);
-    box-shadow: 0 8px 20px rgba(218, 165, 32, 0.28);
+    color: #fff;
+    background: linear-gradient(135deg, #caa52c 0%, #b8860b 100%);
+    border-color: #b8860b;
+    box-shadow: 0 8px 20px rgba(184, 134, 11, 0.32);
 }
 
 .portal-btn-outline {
@@ -434,13 +430,9 @@ body {
 
 .portal-btn-outline:hover,
 .portal-btn-outline:focus {
-    color: #2b1a00;
-    background: linear-gradient(
-        135deg,
-        #ffdf00 0%,
-        var(--portal-goldenrod) 100%
-    );
-    border-color: var(--portal-goldenrod);
+    color: var(--portal-white);
+    background: var(--portal-maroon);
+    border-color: var(--portal-maroon);
 }
 
 .portal-badge.muted {

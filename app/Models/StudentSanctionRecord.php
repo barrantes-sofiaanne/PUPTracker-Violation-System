@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $record_id
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $violation_id
  * @property int|null $assigned_sanction_id
  * @property int|null $assigned_by_admin_id
- * @property string|null $status            Pending | Completed
+ * @property string|null $status            Pending | In Progress | Overdue | Completed
  * @property \Illuminate\Support\Carbon|null $deadline_date
  * @property \Illuminate\Support\Carbon|null $date_assigned
  * @property \Illuminate\Support\Carbon|null $date_completed
@@ -27,6 +28,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class StudentSanctionRecord extends Model
 {
     use HasFactory;
+
+    public const STATUS_PENDING = 'Pending';
+    public const STATUS_IN_PROGRESS = 'In Progress';
+    public const STATUS_OVERDUE = 'Overdue';
+    public const STATUS_COMPLETED = 'Completed';
 
     protected $table = 'student_sanction_records_tbl';
 
@@ -67,15 +73,28 @@ class StudentSanctionRecord extends Model
     |
     | A student who has satisfied a pending sanction may upload a proof of
     | completion. The admin then accepts it (record → Completed) or rejects it
-    | with a reason (record stays Pending, student may resubmit).
+    | with a reason (record stays open for the student to resubmit).
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Whether the sanction is still open (not yet completed). A student may
+     * submit a proof for any open sanction (Pending, In Progress, Overdue).
+     */
+    public function getIsOpenAttribute(): bool
+    {
+        return strcasecmp((string) $this->status, self::STATUS_COMPLETED) !== 0;
+    }
+
+    /**
+     * Whether a proof has been submitted and is awaiting admin review on an
+     * open (non-completed) sanction.
+     */
     public function getHasPendingProofAttribute(): bool
     {
         return $this->proof_path !== null
             && $this->proof_path !== ''
-            && strcasecmp((string) $this->status, 'Pending') === 0;
+            && $this->is_open;
     }
 
     public function getProofReviewerAttribute()
@@ -123,5 +142,15 @@ class StudentSanctionRecord extends Model
     public function completionReviewer(): BelongsTo
     {
         return $this->belongsTo(Admin::class, 'completion_reviewed_by_admin_id', 'id');
+    }
+
+    /**
+     * Full history of proof-of-completion submissions (newest first).
+     */
+    public function proofs(): HasMany
+    {
+        return $this->hasMany(SanctionProof::class, 'record_id', 'record_id')
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('proof_id');
     }
 }

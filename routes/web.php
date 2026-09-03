@@ -89,6 +89,18 @@ Route::post('/student/idp/link', [StudentIdpLoginController::class, 'linkAccount
     ->middleware('throttle:5,1')
     ->name('student.idp.link.post');
 
+// "Connect / Verify your PUPTracker Account" — staged preview & final submit.
+Route::get('/student/idp/link/preview', [StudentIdpLoginController::class, 'showPreview'])
+    ->name('student.idp.link.preview');
+
+Route::post('/student/idp/link/program-year', [StudentIdpLoginController::class, 'updateProgramYear'])
+    ->middleware('throttle:5,1')
+    ->name('student.idp.link.program-year');
+
+Route::post('/student/idp/link/submit', [StudentIdpLoginController::class, 'submitLink'])
+    ->middleware('throttle:5,1')
+    ->name('student.idp.link.submit');
+
 Route::post('/logout', [LoginController::class, 'logout'])
     ->name('logout');
 
@@ -211,6 +223,12 @@ Route::middleware('auth:student')
 
         Route::post('/submit-proof', [StudentRecordController::class, 'submitProof'])
             ->name('student.submit-proof');
+
+        Route::get('/sanction-records/{studentSanctionRecord}/proof', [StudentRecordController::class, 'downloadProof'])
+            ->name('student.proof.download');
+
+        Route::get('/violations/evidence/{evidence}', [StudentRecordController::class, 'downloadEvidence'])
+            ->name('student.violations.evidence');
 
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->name('student.notifications');
@@ -387,6 +405,12 @@ Route::middleware('auth:admin')
         Route::post('/violations/deny/{violation}', [ViolationController::class, 'denyViolation'])
             ->name('admin.violations.deny');
 
+        Route::get('/violations/evidence/{evidence}', [ViolationController::class, 'downloadEvidence'])
+            ->name('admin.violations.evidence');
+
+        Route::get('/violations/evidence/{evidence}/events', [ViolationController::class, 'evidenceEvents'])
+            ->name('admin.violations.evidence.events');
+
         Route::get('/sanctions', [SanctionController::class, 'index'])
             ->name('admin.sanctions.index');
 
@@ -407,6 +431,9 @@ Route::middleware('auth:admin')
 
         Route::post('/sanctions/records/{studentSanctionRecord}/revert', [SanctionController::class, 'revertRecordToPending'])
             ->name('admin.sanctions.records.revert');
+
+        Route::get('/sanctions/records/{studentSanctionRecord}/proof', [SanctionController::class, 'downloadProof'])
+            ->name('admin.sanctions.proof.download');
 
         Route::get(
             '/violations/student/{student_number}',
@@ -687,6 +714,9 @@ Route::middleware('auth:security')
         Route::get('/violations/report', [App\Http\Controllers\Security\StudentViolationController::class, 'report'])
             ->name('security.violations.report');
 
+        Route::get('/violations/submitted', [App\Http\Controllers\Security\StudentViolationController::class, 'submitted'])
+            ->name('security.violations.submitted');
+
         Route::get('/violations/student/{student_number}', [App\Http\Controllers\Security\StudentViolationController::class, 'show'])
             ->name('security.violations.show');
 
@@ -698,6 +728,12 @@ Route::middleware('auth:security')
 
         Route::post('/violations/preview', [App\Http\Controllers\Security\StudentViolationController::class, 'previewViolation'])
             ->name('security.violations.preview');
+
+        Route::get('/violations/evidence/{evidence}', [App\Http\Controllers\Security\StudentViolationController::class, 'downloadEvidence'])
+            ->name('security.violations.evidence');
+
+        Route::post('/evidence/security-event', [App\Http\Controllers\Security\StudentViolationController::class, 'logSecurityEvent'])
+            ->name('security.violations.evidence-security-event');
 
         // Search routes
         Route::get('/search/student', [App\Http\Controllers\Security\StudentViolationController::class, 'search'])
