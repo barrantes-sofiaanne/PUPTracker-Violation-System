@@ -2176,3 +2176,103 @@ html.is-navigating .auth-brand-mark::after {
     transform: translateY(-2px);
     box-shadow: 0 16px 26px rgba(184, 134, 11, 0.32);
 }
+
+/* ============================================================
+   Auth-portal Bootstrap modals (e.g. Confirm Student Number /
+   Update Information on the IDP linking flow).
+   Relocated to <body> by JS so they escape the shell's
+   isolation/backdrop-filter stacking context. Theme matches the
+   system maroon/gold UI.
+   ============================================================ */
+.auth-modal .modal-content {
+    border: 1px solid rgba(128, 0, 0, 0.16);
+    border-radius: 1.1rem;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(16, 4, 6, 0.35);
+}
+
+.auth-modal .modal-header {
+    background: linear-gradient(120deg, #800000 0%, #5f0000 62%, #daa520 180%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 1rem 1.25rem;
+}
+
+.auth-modal .modal-header .modal-title {
+    color: #fff;
+    font-weight: 800;
+    font-size: 1.05rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+.auth-modal .modal-header .modal-title i {
+    color: #ffdf00;
+}
+
+.auth-modal .modal-header .btn-close {
+    filter: invert(1) grayscale(1) brightness(200%);
+    opacity: 0.85;
+}
+
+.auth-modal .modal-body {
+    background: linear-gradient(180deg, #fffefa 0%, #fff7e3 100%);
+    color: #1f1620;
+}
+
+.auth-modal .modal-body .form-label {
+    color: #5f0000;
+    font-weight: 600;
+}
+
+.auth-modal .modal-body .form-control,
+.auth-modal .modal-body .form-select {
+    border: 1px solid rgba(128, 0, 0, 0.22);
+    border-radius: 0.7rem;
+    min-height: 44px;
+}
+
+.auth-modal .modal-body .form-control:focus,
+.auth-modal .modal-body .form-select:focus {
+    border-color: rgba(128, 0, 0, 0.5);
+    box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.11);
+}
+
+.auth-modal .modal-footer {
+    background: #fffdf6;
+    border-top: 1px solid rgba(128, 0, 0, 0.12);
+    gap: 0.5rem;
+}
+
+.auth-modal .modal-footer .btn {
+    border-radius: 0.72rem;
+    font-weight: 600;
+}
+
+.auth-modal .modal-footer .btn-outline-secondary {
+    color: #5f0000;
+    border-color: rgba(128, 0, 0, 0.28);
+}
+
+.auth-modal .modal-footer .btn-outline-secondary:hover {
+    color: #fff;
+    background: #5f0000;
+    border-color: #5f0000;
+}
+
+.auth-modal .modal-footer .portal-btn,
+.auth-modal .modal-footer .btn-success {
+    color: #fff;
+    background: linear-gradient(135deg, #800000 0%, #5f0000 100%);
+    border: 1px solid #5f0000;
+}
+
+.auth-modal .modal-footer .portal-btn:hover,
+.auth-modal .modal-footer .btn-success:hover {
+    background: linear-gradient(135deg, #b8860b 0%, #9c7109 100%);
+    border-color: #b8860b;
+}
+
+.auth-modal .modal-backdrop.show {
+    opacity: 0.55;
+}

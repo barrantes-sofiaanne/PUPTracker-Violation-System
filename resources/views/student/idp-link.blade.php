@@ -60,11 +60,11 @@
         </div>
 
         {{-- Confirm Student Number modal --}}
-        <div class="modal fade" id="confirmStudentNumberModal" tabindex="-1" aria-hidden="true">
+        <div class="modal fade auth-modal" id="confirmStudentNumberModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Confirm Student Number</h5>
+                        <h5 class="modal-title"><i class="bi bi-person-check me-2"></i>Confirm Student Number</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -93,6 +93,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalEl = document.getElementById('confirmStudentNumberModal');
     if (!form || !input || !continueBtn || !modalEl) {
         return;
+    }
+
+    // The auth portal uses isolation:isolate + backdrop-filter on its shell,
+    // which traps nested Bootstrap modals inside a low stacking context (the
+    // body-level .modal-backdrop ends up covering the dialog). Relocating the
+    // modal to <body> lets Bootstrap stack it correctly (dialog above backdrop).
+    if (modalEl.parentElement !== document.body) {
+        document.body.appendChild(modalEl);
     }
 
     const modal = new bootstrap.Modal(modalEl);

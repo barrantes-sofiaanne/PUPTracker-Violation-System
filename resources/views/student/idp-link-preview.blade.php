@@ -158,13 +158,13 @@
         </div>
 
         {{-- Program / Year correction modal --}}
-        <div class="modal fade" id="updateInfoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal fade auth-modal" id="updateInfoModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <form method="POST" action="{{ route('student.idp.link.program-year') }}">
                     @csrf
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title">Update Information</h5>
+                            <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Update Information</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
@@ -213,6 +213,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!editBtn || !modalEl) {
         return;
     }
+
+    // Relocate to <body> so Bootstrap stacks the dialog above the backdrop
+    // (the auth shell's isolation/backdrop-filter would otherwise trap it).
+    if (modalEl.parentElement !== document.body) {
+        document.body.appendChild(modalEl);
+    }
+
     const modal = new bootstrap.Modal(modalEl);
 
     editBtn.addEventListener('click', function () {
