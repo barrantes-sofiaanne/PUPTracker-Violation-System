@@ -38,6 +38,10 @@
                         <input type="text" name="last_name" class="form-control" value="{{ old('last_name', $student->last_name) }}" required>
                     </div>
                     <div class="col-md-4">
+                        <label class="form-label">Name Suffix</label>
+                        <input type="text" name="name_suffix" class="form-control" value="{{ old('name_suffix', $student->name_suffix) }}" placeholder="e.g. Jr., Sr., III">
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label">Email</label>
                         <input type="email" name="email" class="form-control" value="{{ old('email', $student->email) }}" required>
                     </div>

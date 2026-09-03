@@ -19,9 +19,7 @@
             <tr>
                 <th>Name</th>
                 <td>
-                    {{ $student->last_name }},
-                    {{ $student->first_name }}
-                    {{ $student->middle_name }}
+                    {{ $student->formal_name ?: '-' }}
                 </td>
 
                 <th>Program</th>

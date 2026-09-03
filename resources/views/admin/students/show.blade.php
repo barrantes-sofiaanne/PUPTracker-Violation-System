@@ -26,7 +26,7 @@
                     </p>
                     <p class="mb-3">
                         <strong>Name</strong><br>
-                        {{ $student->last_name }}, {{ $student->first_name }} {{ $student->middle_name }}
+                        {{ $student->formal_name ?: '—' }}
                     </p>
                     <p class="mb-3">
                         <strong>Email</strong><br>

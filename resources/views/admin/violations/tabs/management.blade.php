@@ -273,14 +273,7 @@
 
                     <td>
 
-                        {{ $student->last_name }},
-                        {{ $student->first_name }}
-
-                        @if($student->middle_name)
-
-                            {{ $student->middle_name }}
-
-                        @endif
+                        {{ $student->formal_name ?: '-' }}
 
                     </td>
 

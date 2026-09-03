@@ -6,7 +6,7 @@
 
 <div class="container-fluid">
 
-    <x-admin.page-header title="Graduation Disciplinary Review" :description="$student->last_name . ', ' . $student->first_name . ' ' . $student->middle_name . ' · ' . $student->student_number">
+    <x-admin.page-header title="Graduation Disciplinary Review" :description="$student->formal_name . ' · ' . $student->student_number">
         <x-slot name="actions">
             <a href="{{ route('admin.graduation-review.index') }}" class="admin-btn admin-btn-neutral">
                 <i class="bi bi-arrow-left"></i> Back

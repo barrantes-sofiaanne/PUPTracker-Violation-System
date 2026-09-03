@@ -8,7 +8,7 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <small class="text-muted d-block">Student Name</small>
-                    <div class="fw-semibold">{{ trim(($student->last_name ?? '') . ', ' . ($student->first_name ?? '') . ' ' . ($student->middle_name ?? '')) }}</div>
+                    <div class="fw-semibold">{{ $student->formal_name ?: '-' }}</div>
                 </div>
                 <div class="col-md-6">
                     <small class="text-muted d-block">Student Number</small>

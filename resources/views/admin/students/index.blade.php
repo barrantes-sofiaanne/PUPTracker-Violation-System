@@ -206,7 +206,12 @@
                                 @forelse($students as $student)
                                     <tr>
                                         <td class="fw-semibold">{{ $student->student_number }}</td>
-                                        <td>{{ $student->last_name }}</td>
+                                        <td>
+                                            {{ $student->last_name }}
+                                            @if(trim((string) $student->name_suffix) !== '')
+                                                <span class="text-muted">{{ trim((string) $student->name_suffix) }}</span>
+                                            @endif
+                                        </td>
                                         <td>{{ $student->first_name }}</td>
                                         <td>{{ $student->middle_name ?: '—' }}</td>
                                         <td>{{ $student->email }}</td>
@@ -238,6 +243,7 @@
                                                     data-first="{{ $student->first_name }}"
                                                     data-middle="{{ $student->middle_name }}"
                                                     data-last="{{ $student->last_name }}"
+                                                    data-suffix="{{ $student->name_suffix }}"
                                                     data-email="{{ $student->email }}"
                                                     data-program="{{ $student->program_id }}"
                                                     data-year="{{ $student->year_id }}"
@@ -479,9 +485,10 @@
             <div class="modal-body admin-modal-body"><div class="row g-3">
                 <div class="col-md-6"><label class="form-label">Student Number</label><input name="student_number" class="form-control" required></div>
                 <div class="col-md-6"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
-                <div class="col-md-4"><label class="form-label">First Name</label><input name="first_name" class="form-control" required></div>
-                <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middle_name" class="form-control"></div>
-                <div class="col-md-4"><label class="form-label">Last Name</label><input name="last_name" class="form-control" required></div>
+                <div class="col-md-3"><label class="form-label">First Name</label><input name="first_name" class="form-control" required></div>
+                <div class="col-md-3"><label class="form-label">Middle Name</label><input name="middle_name" class="form-control"></div>
+                <div class="col-md-3"><label class="form-label">Last Name</label><input name="last_name" class="form-control" required></div>
+                <div class="col-md-3"><label class="form-label">Name Suffix</label><input name="name_suffix" class="form-control" placeholder="e.g. Jr., Sr., III"></div>
                 <div class="col-md-6"><label class="form-label">Program</label><select name="program_id" class="form-select" required onchange="toggleLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
                 <div class="col-md-3"><label class="form-label">Year</label><select name="year_id" class="form-select" required>@foreach($years as $year)<option value="{{ $year->year_id }}">{{ $year->year }}</option>@endforeach</select></div>
                 <div class="col-md-3"><label class="form-label">Section</label><select name="section_id" class="form-select" required>@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
@@ -547,11 +554,12 @@
         <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="editStudentModalLabel">Edit Student</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body admin-modal-body"><div class="row g-3">
             <div class="col-md-6"><label class="form-label">Student Number</label><input id="student_number" class="form-control" readonly></div>
-            <div class="col-md-6"><label class="form-label">First Name</label><input type="text" name="first_name" id="first_name" class="form-control"></div>
-            <div class="col-md-6"><label class="form-label">Middle Name</label><input type="text" name="middle_name" id="middle_name" class="form-control"></div>
-            <div class="col-md-6"><label class="form-label">Last Name</label><input type="text" name="last_name" id="last_name" class="form-control"></div>
-            <div class="col-md-6"><label class="form-label">Email</label><input type="email" name="email" id="email" class="form-control"></div>
-            <div class="col-md-6"><label class="form-label">Program</label><select name="program_id" id="program_id" class="form-select" onchange="toggleEditLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
+            <div class="col-md-4"><label class="form-label">First Name</label><input type="text" name="first_name" id="first_name" class="form-control"></div>
+            <div class="col-md-4"><label class="form-label">Middle Name</label><input type="text" name="middle_name" id="middle_name" class="form-control"></div>
+            <div class="col-md-4"><label class="form-label">Last Name</label><input type="text" name="last_name" id="last_name" class="form-control"></div>
+            <div class="col-md-4"><label class="form-label">Name Suffix</label><input type="text" name="name_suffix" id="name_suffix" class="form-control" placeholder="e.g. Jr., Sr., III"></div>
+            <div class="col-md-4"><label class="form-label">Email</label><input type="email" name="email" id="email" class="form-control"></div>
+            <div class="col-md-4"><label class="form-label">Program</label><select name="program_id" id="program_id" class="form-select" onchange="toggleEditLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Year</label><select name="year_id" id="year_id" class="form-select">@foreach($years as $year)<option value="{{ $year->year_id }}">{{ $year->year }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Section</label><select name="section_id" id="section_id" class="form-select">@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Gender</label><select name="gender_id" id="gender_id" class="form-select">@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
@@ -691,6 +699,7 @@ document.querySelectorAll('.editStudentBtn').forEach(function (button) {
         document.getElementById('first_name').value = this.dataset.first;
         document.getElementById('middle_name').value = this.dataset.middle;
         document.getElementById('last_name').value = this.dataset.last;
+        document.getElementById('name_suffix').value = this.dataset.suffix || '';
         document.getElementById('email').value = this.dataset.email;
         document.getElementById('program_id').value = this.dataset.program;
         document.getElementById('year_id').value = this.dataset.year;
@@ -825,7 +834,7 @@ const importTemplateBaseUrl = "{{ route('admin.users.import.template') }}";
 const importAccountsModal = document.getElementById('importAccountsModal');
 const importGuides = {
     student_create_activate: {
-        columns: ['student_number', 'first_name', 'middle_name', 'last_name', 'email', 'program', 'year', 'section', 'gender', 'ladderized'],
+        columns: ['student_number', 'first_name', 'middle_name', 'last_name', 'name_suffix', 'email', 'program', 'year', 'section', 'gender', 'ladderized'],
         help: 'Program, year, section, and gender can use names (e.g., BSIT, 1, 1A, Male). Ladderized accepts Yes/No or 1/0.',
     },
     student_deactivate_students: {

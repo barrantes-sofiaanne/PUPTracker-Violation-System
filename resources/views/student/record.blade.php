@@ -28,9 +28,7 @@
                     <div class="row align-items-center">
                         <div class="col-md-7">
                             <h4 class="mb-3 fw-bold">
-                                {{ $user->first_name }}
-                                {{ $user->middle_name }}
-                                {{ $user->last_name }}
+                                {{ $user->full_name ?: '—' }}
                             </h4>
                             <p class="mb-2">
                                 <strong>Student Number:</strong>

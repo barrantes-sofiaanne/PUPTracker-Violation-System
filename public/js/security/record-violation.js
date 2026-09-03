@@ -854,6 +854,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Start/stop a live clock so the default time stays current while open.
     modalElement.addEventListener("show.bs.modal", function () {
+        // Every open is a fresh Record Violation wizard — always begin at the
+        // Student step so the Back/Next/Submit footer buttons are shown with the
+        // correct visibility (they start hidden in the markup).
+        setStep(1);
         setCurrentPhTime();
         if (phTimeInterval) {
             clearInterval(phTimeInterval);

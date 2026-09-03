@@ -632,6 +632,43 @@ class AdminIdpLinkingTest extends TestCase
         $this->assertGuest('student');
     }
 
+    public function test_full_name_and_formal_name_accessors_include_suffix(): void
+    {
+        $student = $this->createStudent([
+            'first_name' => 'Juan',
+            'middle_name' => 'Dela',
+            'last_name' => 'Cruz',
+            'name_suffix' => 'Jr.',
+        ]);
+
+        $this->assertSame('Juan Dela Cruz Jr.', $student->full_name);
+        $this->assertSame('Cruz, Juan Dela, Jr.', $student->formal_name);
+    }
+
+    public function test_name_accessors_handle_blank_suffix_and_blank_names(): void
+    {
+        // No suffix, middle name blank.
+        $student = $this->createStudent([
+            'first_name' => 'Maria',
+            'middle_name' => '',
+            'last_name' => 'Santos',
+            'name_suffix' => null,
+        ]);
+        $this->assertSame('Maria Santos', $student->full_name);
+        $this->assertSame('Santos, Maria', $student->formal_name);
+
+        // Blank names entirely (pre-first-IDP-login state).
+        $blank = $this->createStudent([
+            'student_number' => '2026-00004',
+            'first_name' => null,
+            'middle_name' => null,
+            'last_name' => null,
+            'name_suffix' => null,
+        ]);
+        $this->assertSame('', $blank->full_name);
+        $this->assertSame('', $blank->formal_name);
+    }
+
     // ------------------------------------------------------------------
     // Schema
     // ------------------------------------------------------------------

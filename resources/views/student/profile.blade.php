@@ -57,11 +57,7 @@
                             <i class="bi bi-person" aria-hidden="true"></i> Full Name
                         </div>
                         <div class="profile-info-value">
-                            {{ $user->first_name }}
-                            @if($user->middle_name)
-                                {{ $user->middle_name }}
-                            @endif
-                            {{ $user->last_name }}
+                            {{ $user->full_name ?: '—' }}
                         </div>
                     </div>
 

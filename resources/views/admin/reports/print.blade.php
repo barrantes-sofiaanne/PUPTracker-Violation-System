@@ -194,7 +194,7 @@
         @php
             $firstRow = $studentRows->first()['record'] ?? null;
             $studentName = $firstRow
-                ? trim((string) ($firstRow->student?->last_name ?? '') . ', ' . (string) ($firstRow->student?->first_name ?? '') . ' ' . (string) ($firstRow->student?->middle_name ?? ''))
+                ? trim((string) ($firstRow->student?->formal_name ?? ''))
                 : '-';
         @endphp
 

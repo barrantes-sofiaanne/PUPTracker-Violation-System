@@ -246,4 +246,45 @@ public function getStudentStatusIdAttribute()
 {
     return $this->studentInfo?->student_status_id;
 }
+
+/**
+ * Full name in "First Middle Last Suffix" order.
+ * Example: Juan Dela Cruz Jr.
+ */
+public function getFullNameAttribute(): string
+{
+    return trim(implode(' ', array_filter([
+        $this->first_name,
+        $this->middle_name,
+        $this->last_name,
+        $this->name_suffix,
+    ], fn ($part) => trim((string) $part) !== '')));
+}
+
+/**
+ * Formal display name in "Last, First Middle Suffix" order.
+ * Example: Cruz, Juan Dela Jr.
+ */
+public function getFormalNameAttribute(): string
+{
+    $given = trim(implode(' ', array_filter([
+        $this->first_name,
+        $this->middle_name,
+    ], fn ($part) => trim((string) $part) !== '')));
+
+    $suffix = trim((string) $this->name_suffix);
+    $suffix = $suffix !== '' ? ', ' . $suffix : '';
+
+    $last = trim((string) $this->last_name);
+
+    if ($last === '' && $given === '') {
+        return $suffix !== '' ? $suffix : '';
+    }
+
+    if ($last === '') {
+        return $given . $suffix;
+    }
+
+    return trim($last . ', ' . $given . $suffix);
+}
 }
