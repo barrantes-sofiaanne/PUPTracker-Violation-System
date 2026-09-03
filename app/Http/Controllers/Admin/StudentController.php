@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AdminInfo;
-use App\Models\AuditLog;
 use App\Models\Gender;
 use App\Models\Program;
 use App\Models\Role;
@@ -15,7 +14,6 @@ use App\Models\Section;
 use App\Models\Status;
 use App\Models\StudentStatus;
 use App\Models\User;
-use App\Models\UserManagementHistory;
 use App\Models\Year;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -917,6 +915,8 @@ class StudentController extends Controller
         $adminId = $admin instanceof Admin ? $admin->id : null;
         $adminEmail = $admin instanceof Admin ? $admin->email : 'unknown';
 
+        $previousSubject = (string) ($student->idp_subject ?? '');
+
         $student->forceFill([
             'idp_subject' => $idpSubject,
             'idp_email' => $request->filled('idp_email')
@@ -925,14 +925,26 @@ class StudentController extends Controller
             'idp_connected_at' => $student->idp_connected_at ?? now(),
         ])->save();
 
-        AuditLog::create([
+        // IDP linking is both an accountability event (audit_logs) and an
+        // account-lifecycle change (user_management_histories).
+        app(\App\Services\AuditLogService::class)->userAccountChange(
+            userId: $student->getKey(),
+            actorId: $adminId,
+            accountType: 'student',
+            action: 'IDP_LINKED',
+            changes: [
+                ['field' => 'IDP Subject', 'from' => $previousSubject, 'to' => $idpSubject],
+            ],
+            displayLabel: $student->student_number,
+        );
+
+        app(\App\Services\AuditLogService::class)->audit([
             'actor_type' => 'admin',
             'actor_id' => $adminId,
             'action' => 'Link IDP Account',
             'module' => 'Students',
             'description' => 'Linked IDP Account ID to student ' . $student->student_number . ' by ' . $adminEmail . '.',
-            'created_at' => now(),
-        ]);
+        ], $request);
 
         return back()->with('success', 'IDP Account linked to this student successfully.');
     }
@@ -952,20 +964,33 @@ class StudentController extends Controller
         $adminId = $admin instanceof Admin ? $admin->id : null;
         $adminEmail = $admin instanceof Admin ? $admin->email : 'unknown';
 
+        $previousSubject = (string) ($student->idp_subject ?? '');
+
         $student->forceFill([
             'idp_subject' => null,
             'idp_email' => null,
             'idp_connected_at' => null,
         ])->save();
 
-        AuditLog::create([
+        // IDP unlinking is both an accountability event and a lifecycle change.
+        app(\App\Services\AuditLogService::class)->userAccountChange(
+            userId: $student->getKey(),
+            actorId: $adminId,
+            accountType: 'student',
+            action: 'IDP_UNLINKED',
+            changes: [
+                ['field' => 'IDP Subject', 'from' => $previousSubject, 'to' => ''],
+            ],
+            displayLabel: $student->student_number,
+        );
+
+        app(\App\Services\AuditLogService::class)->audit([
             'actor_type' => 'admin',
             'actor_id' => $adminId,
             'action' => 'Unlink IDP Account',
             'module' => 'Students',
             'description' => 'Unlinked IDP Account from student ' . $student->student_number . ' by ' . $adminEmail . '.',
-            'created_at' => now(),
-        ]);
+        ], $request);
 
         return back()->with('success', 'IDP Account unlinked from this student.');
     }
@@ -1365,50 +1390,14 @@ class StudentController extends Controller
         $adminId = $admin instanceof Admin ? $admin->id : null;
         $userDisplayName = $this->resolveUserDisplayName($accountType, $userId, $userEmail);
 
-        $historyDetails = $action . ' ' . $accountType . ' account ' . $userDisplayName . '.';
-
-        if (Schema::hasTable('user_management_histories')) {
-            try {
-                UserManagementHistory::create([
-                    'user_id' => $userId,
-                    'performed_by' => $adminId,
-                    'action' => $action . ' ' . ucfirst($accountType) . ' Account',
-                    'details' => $historyDetails,
-                    'changes' => $changes,
-                    'created_at' => now(),
-                ]);
-            } catch (\Throwable $e) {
-                // Never block account operations because history recording failed.
-            }
-        }
-
-        $description = $historyDetails;
-        if (! empty($changes)) {
-            $parts = array_map(function (array $change): string {
-                if (str_contains((string) ($change['to'] ?? ''), '(deleted)')) {
-                    return $change['field'] . ': "' . $change['from'] . '" (deleted)';
-                }
-
-                return $change['field'] . ' from "' . $change['from'] . '" to "' . $change['to'] . '"';
-            }, $changes);
-
-            $description .= ' Changes: ' . implode('; ', $parts) . '.';
-        }
-
-        if (Schema::hasTable('audit_logs')) {
-            try {
-                AuditLog::create([
-                    'actor_type' => 'admin',
-                    'actor_id' => $adminId,
-                    'action' => $action . ' ' . ucfirst($accountType) . ' Account',
-                    'module' => 'User Management',
-                    'description' => $description,
-                    'created_at' => now(),
-                ]);
-            } catch (\Throwable $e) {
-                // Never block account operations because audit recording failed.
-            }
-        }
+        app(\App\Services\AuditLogService::class)->userAccountChange(
+            userId: $userId,
+            actorId: $adminId,
+            accountType: $accountType,
+            action: $action,
+            changes: $changes,
+            displayLabel: $userDisplayName,
+        );
     }
 
     /**
@@ -1420,13 +1409,9 @@ class StudentController extends Controller
      */
     private function auditUserAction(string $action, string $description): void
     {
-        if (! Schema::hasTable('audit_logs')) {
-            return;
-        }
-
         $admin = Auth::guard('admin')->user();
 
-        AuditLog::create([
+        app(\App\Services\AuditLogService::class)->audit([
             'actor_type' => 'admin',
             'actor_id' => $admin instanceof Admin ? $admin->id : null,
             'action' => $action,

@@ -605,6 +605,9 @@ Route::middleware('auth:admin')
         Route::get('/audit-logs', [AuditLogController::class, 'index'])
             ->name('admin.audit-logs');
 
+        Route::get('/audit-logs/export', [AuditLogController::class, 'export'])
+            ->name('admin.audit-logs.export');
+
         Route::get('/user-management-history', [UserManagementHistoryController::class, 'index'])
             ->name('admin.user-management-history');
 
@@ -618,6 +621,24 @@ Route::middleware('auth:admin')
                 Route::get('/audit-trail', function () {
                     return redirect()->route('admin.audit-logs');
                 })->name('audit-trail');
+
+                /*
+                |--------------------------------------------------------------------------
+                | Evidence Security Events (Super Admin)
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get('/evidence-security-events', [SuperAdminController::class, 'evidenceSecurityEvents'])
+                    ->name('evidence-security-events');
+
+                /*
+                |--------------------------------------------------------------------------
+                | System Logs (Super Admin) — reads the Laravel application log
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get('/system-logs', [SuperAdminController::class, 'systemLogs'])
+                    ->name('system-logs');
 
                 Route::get('/maintenance-configuration', [SuperAdminController::class, 'maintenanceConfiguration'])
                     ->name('maintenance');

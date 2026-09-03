@@ -98,6 +98,107 @@ class SuperAdminController extends Controller
         return view('admin.super-admin.audit-trail', compact('logs', 'actorTypes', 'modules'));
     }
 
+    /**
+     * Global Evidence Security Events viewer (Super Admin).
+     *
+     * These rows are the evidence-specific security log (WHAT happened to the
+     * evidence). This is a read-only list with filters; event rows are only ever
+     * written by the evidence capture/access flow.
+     */
+    public function evidenceSecurityEvents(Request $request)
+    {
+        $query = \App\Models\EvidenceSecurityEvent::query()
+            ->with(['violation', 'evidence'])
+            ->latest('created_at');
+
+        if ($request->filled('event_type')) {
+            $query->where('event_type', $request->string('event_type')->toString());
+        }
+
+        if ($request->filled('severity')) {
+            $query->where('severity', $request->string('severity')->toString());
+        }
+
+        if ($request->filled('actor_type')) {
+            $query->where('actor_type', $request->string('actor_type')->toString());
+        }
+
+        if ($request->filled('evidence_id')) {
+            $query->where('evidence_id', (int) $request->string('evidence_id')->toString());
+        }
+
+        if ($request->filled('keyword')) {
+            $keyword = '%' . $request->string('keyword')->toString() . '%';
+            $query->where(function ($q) use ($keyword): void {
+                $q->where('event_type', 'like', $keyword)
+                    ->orWhere('ip_address', 'like', $keyword);
+            });
+        }
+
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->string('from')->toString());
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->string('to')->toString());
+        }
+
+        $events = $query->paginate(25)->withQueryString();
+
+        $eventTypes = \App\Models\EvidenceSecurityEvent::query()
+            ->select('event_type')->distinct()->orderBy('event_type')->pluck('event_type');
+
+        $severities = \App\Models\EvidenceSecurityEvent::query()
+            ->select('severity')->distinct()->orderBy('severity')->pluck('severity');
+
+        return view('admin.super-admin.evidence-security-events', compact('events', 'eventTypes', 'severities'));
+    }
+
+    /**
+     * System Logs viewer (Super Admin only).
+     *
+     * Reads the Laravel application log file for technical diagnostics. This is
+     * intentionally NOT exposed to Normal Admins. No secrets are ever rendered:
+     * the view shows the tail of the log with the latest entries only.
+     */
+    public function systemLogs(Request $request)
+    {
+        $channel = (string) config('logging.default', 'single');
+        $path = $channel === 'daily'
+            ? storage_path('logs/laravel-' . now()->format('Y-m-d') . '.log')
+            : storage_path('logs/laravel.log');
+
+        // Try stderr/stack channel fallbacks to the conventional single file.
+        if (! is_file($path)) {
+            $path = storage_path('logs/laravel.log');
+        }
+
+        $raw = is_file($path) ? (string) file_get_contents($path) : '';
+
+        // Only show the most recent N bytes / lines (operational tail).
+        $maxBytes = 256 * 1024; // 256 KB
+        if (strlen($raw) > $maxBytes) {
+            $raw = substr($raw, -$maxBytes);
+        }
+
+        $lines = collect(explode("\n", $raw))
+            ->filter(fn ($line) => trim((string) $line) !== '')
+            ->reverse()
+            ->take(300)
+            ->reverse()
+            ->values();
+
+        $level = $request->string('level', '')->toString();
+        if ($level !== '') {
+            $needle = strtoupper($level) . ':';
+            $lines = $lines->filter(fn ($line) => str_contains((string) $line, $needle))->values();
+        }
+
+        $levels = ['DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL'];
+
+        return view('admin.super-admin.system-logs', compact('lines', 'level', 'levels', 'path'));
+    }
+
     public function maintenanceConfiguration()
     {
         $maintenanceStatus = app()->isDownForMaintenance();

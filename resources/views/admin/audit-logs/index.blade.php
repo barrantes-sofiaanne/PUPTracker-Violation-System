@@ -6,7 +6,7 @@
 <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
         <h2 class="fw-bold mb-1">Audit Logs</h2>
-        <p class="text-muted mb-0">Review system-wide administrative actions and security activity.</p>
+        <p class="text-muted mb-0">Review administrative actions and security activity.</p>
     </div>
     <a href="{{ route('admin.dashboard') }}" class="admin-btn admin-btn-neutral">
         <i class="bi bi-arrow-left" aria-hidden="true"></i>
@@ -14,10 +14,35 @@
     </a>
 </div>
 
+@if($isSuperAdmin ?? false)
+    <div class="mb-3 d-flex justify-content-end">
+        <a href="{{ route('admin.audit-logs.export', request()->query()) }}" class="admin-btn admin-btn-secondary">
+            <i class="bi bi-download me-1"></i>Export CSV
+        </a>
+    </div>
+@endif
+
+@if(! ($isSuperAdmin ?? false))
+    <div class="alert alert-info small mb-3">
+        <i class="bi bi-shield-lock me-1"></i>
+        You are viewing <strong>operational audit activity</strong>. Privileged administrative activity
+        (maintenance, backup, system configuration, and other Super Admin actions) is not shown here.
+    </div>
+@endif
+
 <div class="card shadow-sm border-0 mb-4 admin-filter-card">
     <div class="card-body">
         <form method="GET" action="{{ route('admin.audit-logs') }}" class="row g-3 admin-filter-form">
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label for="from" class="admin-filter-label">From</label>
+                <input id="from" type="date" name="from" value="{{ request('from') }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label for="to" class="admin-filter-label">To</label>
+                <input id="to" type="date" name="to" value="{{ request('to') }}" class="form-control">
+            </div>
+            @if($isSuperAdmin ?? false)
+            <div class="col-md-2">
                 <label for="actor_type" class="admin-filter-label">Actor Type</label>
                 <select id="actor_type" name="actor_type" class="form-select">
                     <option value="">All</option>
@@ -26,7 +51,8 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-3">
+            @endif
+            <div class="col-md-2">
                 <label for="module" class="admin-filter-label">Module</label>
                 <select id="module" name="module" class="form-select">
                     <option value="">All</option>
@@ -35,12 +61,12 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label for="keyword" class="admin-filter-label">Keyword</label>
                 <input id="keyword" name="keyword" value="{{ request('keyword') }}" class="form-control" placeholder="Search action or description">
             </div>
-            <div class="col-md-2 d-flex align-items-end gap-2">
-                <button class="admin-btn admin-btn-primary w-100" type="submit"><i class="bi bi-funnel"></i> Filter</button>
+            <div class="col-md-1 d-flex align-items-end gap-2">
+                <button class="admin-btn admin-btn-primary w-100" type="submit" title="Filter"><i class="bi bi-funnel"></i></button>
             </div>
         </form>
     </div>

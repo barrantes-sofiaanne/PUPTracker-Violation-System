@@ -20,6 +20,8 @@ class AuditLog extends Model
         'action',
         'module',
         'description',
+        'ip_address',
+        'user_agent',
         'created_at',
     ];
 

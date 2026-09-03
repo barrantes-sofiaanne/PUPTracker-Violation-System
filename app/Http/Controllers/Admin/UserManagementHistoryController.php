@@ -7,14 +7,52 @@ use App\Models\Admin;
 use App\Models\Security;
 use App\Models\User;
 use App\Models\UserManagementHistory;
+use Illuminate\Http\Request;
 
 class UserManagementHistoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $history = UserManagementHistory::latest('created_at')->paginate(15)->withQueryString();
+        /** @var \App\Models\Admin $admin */
+        $admin = auth('admin')->user();
+        $isSuperAdmin = $admin->isItAdministrator();
 
-        return view('admin.user-management-history.index', compact('history'));
+        $query = UserManagementHistory::latest('created_at');
+
+        // Normal Admin: only student/security operational history is visible.
+        // Admin-account lifecycle + role/permission changes are privileged and
+        // are excluded server-side (not just hidden in the UI).
+        if (! $isSuperAdmin) {
+            $query->where(function ($q): void {
+                $q->where('action', 'like', '%Student Account%')
+                    ->orWhere('action', 'like', '%Security Account%');
+            });
+        }
+
+        // Filters.
+        if ($request->filled('action')) {
+            $query->where('action', 'like', '%' . $request->string('action')->toString() . '%');
+        }
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', (int) $request->string('user_id')->toString());
+        }
+
+        if ($request->filled('performed_by')) {
+            $query->where('performed_by', (int) $request->string('performed_by')->toString());
+        }
+
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->string('from')->toString());
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->string('to')->toString());
+        }
+
+        $history = $query->paginate(15)->withQueryString();
+
+        return view('admin.user-management-history.index', compact('history', 'isSuperAdmin'));
     }
 
     /**

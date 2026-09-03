@@ -232,8 +232,24 @@
 
         @if($isItAdministrator)
             <li>
+                <a href="{{ route('admin.super-admin.evidence-security-events') }}" class="{{ request()->routeIs('admin.super-admin.evidence-security-events') ? 'active' : '' }}">
+                    <i class="bi bi-camera-video"></i>
+                    Evidence Security Events
+                </a>
+            </li>
+        @endif
+
+        @if($isItAdministrator)
+            <li>
                 <a href="{{ route('admin.super-admin.email-incidents.index') }}" class="{{ request()->routeIs('admin.super-admin.email-incidents*') ? 'active' : '' }}">
-                    <i class="bi bi-exclamation-octagon"></i>
+                    <i class="bi bi-envelope-exclamation"></i>
+                    Email Incidents
+                </a>
+            </li>
+
+            <li>
+                <a href="{{ route('admin.super-admin.system-logs') }}" class="{{ request()->routeIs('admin.super-admin.system-logs') ? 'active' : '' }}">
+                    <i class="bi bi-terminal"></i>
                     System Logs
                 </a>
             </li>

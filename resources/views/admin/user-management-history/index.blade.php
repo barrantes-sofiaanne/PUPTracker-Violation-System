@@ -14,6 +14,42 @@
     </a>
 </div>
 
+@if(! ($isSuperAdmin ?? false))
+    <div class="alert alert-info small mb-3">
+        <i class="bi bi-shield-lock me-1"></i>
+        You are viewing <strong>student and security account history</strong>. Admin-account lifecycle and
+        role/permission changes are privileged and not shown here.
+    </div>
+@endif
+
+<div class="card shadow-sm border-0 mb-4 admin-filter-card">
+    <div class="card-body">
+        <form method="GET" action="{{ route('admin.user-management-history') }}" class="row g-3 admin-filter-form">
+            <div class="col-md-2">
+                <label for="from" class="admin-filter-label">From</label>
+                <input id="from" type="date" name="from" value="{{ request('from') }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label for="to" class="admin-filter-label">To</label>
+                <input id="to" type="date" name="to" value="{{ request('to') }}" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label for="action" class="admin-filter-label">Action</label>
+                <input id="action" name="action" value="{{ request('action') }}" class="form-control" placeholder="e.g. Create / Update Student">
+            </div>
+            @if($isSuperAdmin ?? false)
+            <div class="col-md-3">
+                <label for="user_id" class="admin-filter-label">User ID</label>
+                <input id="user_id" name="user_id" value="{{ request('user_id') }}" class="form-control" placeholder="e.g. 123">
+            </div>
+            @endif
+            <div class="col-md-1 d-flex align-items-end">
+                <button class="admin-btn admin-btn-primary w-100" type="submit" title="Filter"><i class="bi bi-funnel"></i></button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white">
         <span class="text-muted small">
