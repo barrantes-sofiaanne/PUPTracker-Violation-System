@@ -32,13 +32,22 @@ class SecurityHeadersMiddleware
             "style-src {$localhost} 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;",
             "font-src {$localhost} data: https://cdn.jsdelivr.net https://fonts.gstatic.com;",
             "connect-src {$localhost} https://cdn.jsdelivr.net;",
+            // Live camera preview + captured-image blob playback (evidence
+            // capture) must be allowed; blob: covers the object URL used to
+            // preview the just-captured photo.
+            "media-src {$localhost} blob:;",
         ]);
 
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Content-Security-Policy', $csp);
+        // Camera access is used by the evidence-capture workflow (Security and
+        // Admin record-violation forms capture a photo through the user's own
+        // device camera). 'camera=self' permits getUserMedia only when the page
+        // is served from this site's own origin. Microphone/geolocation stay
+        // disabled. The browser will still prompt the user for the actual grant.
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
-        $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
         $response->headers->set('X-Permitted-Cross-Domain-Policies', 'none');
 
         // Always set HSTS header (production uses HTTPS)

@@ -72,6 +72,24 @@
                     </thead>
                     <tbody>
                         @forelse($violations as $violation)
+                            @php
+                                // Build the evidence payload in plain PHP (NOT inside the
+                                // HTML attribute) — Blade's @json parser cannot balance a
+                                // multi-line arrow function + array literal, which used to
+                                // generate mismatched PHP and a 500 ParseError.
+                                $evidencePayload = $violation->evidence->map(function ($ev) {
+                                    return [
+                                        'id' => $ev->evidence_id,
+                                        'code' => $ev->evidence_code ?: ('EVD #' . $ev->evidence_id),
+                                        'name' => $ev->original_name ?: 'Evidence',
+                                        'is_image' => (bool) $ev->is_image,
+                                        'method' => $ev->capture_method,
+                                        'watermarked' => (bool) $ev->watermarked,
+                                        'url' => route('admin.violations.evidence', $ev),
+                                        'events_url' => route('admin.violations.evidence.events', $ev),
+                                    ];
+                                })->values()->all();
+                            @endphp
                             <tr @if((int) $violation->violation_id === (int) $highlightId) class="table-warning" @endif>
                                 <td>{{ $violation->violation_id }}</td>
                                 <td>{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') : '-' }}</td>
@@ -96,16 +114,7 @@
                                         data-date="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') : '-' }}"
                                         data-description="{{ $violation->description ?: 'No remarks recorded.' }}"
                                         data-recorded-by="{{ $violation->recorded_by_display }}"
-                                        data-evidence='@json($violation->evidence->map(fn ($ev) => [
-                                            "id" => $ev->evidence_id,
-                                            "code" => $ev->evidence_code ?: ("EVD #" . $ev->evidence_id),
-                                            "name" => $ev->original_name ?: "Evidence",
-                                            "is_image" => $ev->is_image,
-                                            "method" => $ev->capture_method,
-                                            "watermarked" => (bool) $ev->watermarked,
-                                            "url" => route("admin.violations.evidence", $ev),
-                                            "events_url" => route("admin.violations.evidence.events", $ev),
-                                        ]))'>
+                                        data-evidence='@json($evidencePayload)'>
                                         <i class="bi bi-eye me-1"></i>Review
                                     </button>
                                 </td>
