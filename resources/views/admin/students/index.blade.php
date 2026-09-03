@@ -484,15 +484,10 @@
             <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createStudentModalLabel">Create Student Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body admin-modal-body"><div class="row g-3">
                 <div class="col-md-6"><label class="form-label">Student Number</label><input name="student_number" class="form-control" required></div>
-                <div class="col-md-6"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
-                <div class="col-md-3"><label class="form-label">First Name</label><input name="first_name" class="form-control" required></div>
-                <div class="col-md-3"><label class="form-label">Middle Name</label><input name="middle_name" class="form-control"></div>
-                <div class="col-md-3"><label class="form-label">Last Name</label><input name="last_name" class="form-control" required></div>
-                <div class="col-md-3"><label class="form-label">Name Suffix</label><input name="name_suffix" class="form-control" placeholder="e.g. Jr., Sr., III"></div>
+                <div class="col-md-6"><label class="form-label">Gender</label><select name="gender_id" class="form-select" required>@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
                 <div class="col-md-6"><label class="form-label">Program</label><select name="program_id" class="form-select" required onchange="toggleLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
                 <div class="col-md-3"><label class="form-label">Year</label><select name="year_id" class="form-select" required>@foreach($years as $year)<option value="{{ $year->year_id }}">{{ $year->year }}</option>@endforeach</select></div>
                 <div class="col-md-3"><label class="form-label">Section</label><select name="section_id" class="form-select" required>@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
-                <div class="col-md-6"><label class="form-label">Gender</label><select name="gender_id" class="form-select" required>@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
                 <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" class="form-select" required>@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
                 <div class="col-12 d-none" id="createLadderizedWrap">
                     <label class="form-label d-block">Ladderized</label>
@@ -505,7 +500,12 @@
                         <label class="form-check-label" for="createLadderizedNo">No</label>
                     </div>
                 </div>
-                <div class="col-12"><small class="text-muted">Student passwords are managed by the PUP Identity Provider (IDP).</small></div>
+                <div class="col-12">
+                    <div class="alert alert-info small mb-0 py-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Name and email are managed by the PUP ID and are added when the student connects their PUP ID account. Passwords are also managed by the PUP Identity Provider (IDP).
+                    </div>
+                </div>
             </div></div>
             <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Create Student</button></div>
         </form>
@@ -554,11 +554,11 @@
         <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="editStudentModalLabel">Edit Student</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body admin-modal-body"><div class="row g-3">
             <div class="col-md-6"><label class="form-label">Student Number</label><input id="student_number" class="form-control" readonly></div>
-            <div class="col-md-4"><label class="form-label">First Name</label><input type="text" name="first_name" id="first_name" class="form-control"></div>
-            <div class="col-md-4"><label class="form-label">Middle Name</label><input type="text" name="middle_name" id="middle_name" class="form-control"></div>
-            <div class="col-md-4"><label class="form-label">Last Name</label><input type="text" name="last_name" id="last_name" class="form-control"></div>
-            <div class="col-md-4"><label class="form-label">Name Suffix</label><input type="text" name="name_suffix" id="name_suffix" class="form-control" placeholder="e.g. Jr., Sr., III"></div>
-            <div class="col-md-4"><label class="form-label">Email</label><input type="email" name="email" id="email" class="form-control"></div>
+            <div class="col-md-4"><label class="form-label">First Name</label><input type="text" id="first_name" class="form-control" readonly></div>
+            <div class="col-md-4"><label class="form-label">Middle Name</label><input type="text" id="middle_name" class="form-control" readonly></div>
+            <div class="col-md-4"><label class="form-label">Last Name</label><input type="text" id="last_name" class="form-control" readonly></div>
+            <div class="col-md-4"><label class="form-label">Name Suffix</label><input type="text" id="name_suffix" class="form-control" placeholder="—" readonly></div>
+            <div class="col-md-4"><label class="form-label">Email</label><input type="email" id="email" class="form-control" readonly></div>
             <div class="col-md-4"><label class="form-label">Program</label><select name="program_id" id="program_id" class="form-select" onchange="toggleEditLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Year</label><select name="year_id" id="year_id" class="form-select">@foreach($years as $year)<option value="{{ $year->year_id }}">{{ $year->year }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Section</label><select name="section_id" id="section_id" class="form-select">@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
@@ -575,7 +575,12 @@
                     <label class="form-check-label" for="editLadderizedNo">No</label>
                 </div>
             </div>
-            <div class="col-12"><small class="text-muted">Student passwords are managed by the PUP Identity Provider (IDP).</small></div>
+            <div class="col-12">
+                <div class="alert alert-info small mb-0 py-2">
+                    <i class="bi bi-shield-lock me-1"></i>
+                    Name, suffix, and email are managed by the PUP ID and cannot be edited here. Passwords are also managed by the PUP Identity Provider (IDP).
+                </div>
+            </div>
         </div></div>
         <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Update Student</button></div>
     </form>

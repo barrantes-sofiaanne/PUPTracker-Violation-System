@@ -25,25 +25,25 @@
                         <label class="form-label">Student Number</label>
                         <input type="text" class="form-control" value="{{ $student->student_number }}" readonly>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">First Name</label>
-                        <input type="text" name="first_name" class="form-control" value="{{ old('first_name', $student->first_name) }}" required>
+                        <input type="text" class="form-control" value="{{ $student->first_name ?? '—' }}" readonly>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">Middle Name</label>
-                        <input type="text" name="middle_name" class="form-control" value="{{ old('middle_name', $student->middle_name) }}">
+                        <input type="text" class="form-control" value="{{ $student->middle_name ?? '—' }}" readonly>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">Last Name</label>
-                        <input type="text" name="last_name" class="form-control" value="{{ old('last_name', $student->last_name) }}" required>
+                        <input type="text" class="form-control" value="{{ $student->last_name ?? '—' }}" readonly>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">Name Suffix</label>
-                        <input type="text" name="name_suffix" class="form-control" value="{{ old('name_suffix', $student->name_suffix) }}" placeholder="e.g. Jr., Sr., III">
+                        <input type="text" class="form-control" value="{{ $student->name_suffix ?: '—' }}" readonly>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Email</label>
-                        <input type="email" name="email" class="form-control" value="{{ old('email', $student->email) }}" required>
+                        <input type="email" class="form-control" value="{{ $student->email ?? '—' }}" readonly>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Program</label>
@@ -99,6 +99,13 @@
                                 </option>
                             @endforeach
                         </select>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <div class="alert alert-info small mb-0 py-2">
+                        <i class="bi bi-shield-lock me-1"></i>
+                        Name, suffix, and email are managed by the PUP ID and cannot be edited here. Passwords are also managed by the PUP Identity Provider (IDP).
                     </div>
                 </div>
 

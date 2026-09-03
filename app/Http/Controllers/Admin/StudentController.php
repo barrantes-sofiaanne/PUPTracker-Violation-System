@@ -160,11 +160,6 @@ class StudentController extends Controller
     {
         $validated = $request->validate([
             'student_number' => 'required|string|max:50|unique:users_tbl,student_number',
-            'first_name' => 'required|string|max:50',
-            'middle_name' => 'nullable|string|max:50',
-            'last_name' => 'required|string|max:50',
-            'name_suffix' => 'nullable|string|max:32',
-            'email' => 'required|email|max:255|unique:users_tbl,email',
             'program_id' => 'required|exists:program_tbl,program_id',
             'year_id' => 'required|exists:year_tbl,year_id',
             'section_id' => 'required|exists:section_tbl,section_id',
@@ -186,13 +181,14 @@ class StudentController extends Controller
 
             // Student passwords are managed by the PUP Identity Provider (IDP),
             // so no local password is configured for student accounts.
+            //
+            // Identity fields (first_name, middle_name, last_name, name_suffix,
+            // email) are intentionally NOT set here. The PUP ID (IDP) is the
+            // authoritative source for identity, and they are populated when the
+            // student links their PUPTracker account to their PUP ID for the
+            // first time. The admin only creates the enrollment record.
             $student = User::create([
                 'student_number' => $validated['student_number'],
-                'first_name' => $validated['first_name'],
-                'middle_name' => $validated['middle_name'] ?? null,
-                'last_name' => $validated['last_name'],
-                'name_suffix' => $validated['name_suffix'] ?? null,
-                'email' => $validated['email'],
                 'gender_id' => $validated['gender_id'],
                 'status_id' => $validated['status_id'],
                 'roles_id' => 2,
@@ -214,11 +210,11 @@ class StudentController extends Controller
             'student',
             'Create',
             $student?->user_id,
-            $validated['email']
+            $student?->email
         );
 
         return redirect()->route('admin.students', ['tab' => 'students'])
-            ->with('success', 'Student account created successfully.');
+            ->with('success', 'Student account created successfully. The student will connect their PUP ID to complete their profile.');
     }
 
     public function storeAdmin(Request $request)
@@ -764,11 +760,6 @@ class StudentController extends Controller
             ->firstOrFail();
 
         $request->validate([
-            'first_name' => 'required|max:50',
-            'middle_name' => 'nullable|max:50',
-            'last_name' => 'required|max:50',
-            'name_suffix' => 'nullable|max:32',
-            'email' => 'required|email',
             'program_id' => 'required',
             'year_id' => 'required',
             'section_id' => 'required',
@@ -778,8 +769,11 @@ class StudentController extends Controller
         ]);
 
         // Student passwords are managed by the PUP Identity Provider (IDP), so
-        // the local password is never updated here.
-        $studentEmailBefore = $student->email;
+        // the local password is never updated here. Identity fields (first_name,
+        // middle_name, last_name, name_suffix, email) are also managed by the
+        // IDP and are NOT editable by an administrator — they are only set when
+        // the student links their PUP ID. Only academic/enrollment fields may be
+        // corrected below.
         $studentInfoBefore = $student->studentInfo ? [
             'program_id' => $student->studentInfo->program_id,
             'year_id' => $student->studentInfo->year_id,
@@ -789,11 +783,6 @@ class StudentController extends Controller
         ] : [];
 
         $student->update([
-            'first_name' => $request->input('first_name'),
-            'middle_name' => $request->input('middle_name'),
-            'last_name' => $request->input('last_name'),
-            'name_suffix' => $request->input('name_suffix'),
-            'email' => $request->input('email'),
             'gender_id' => $request->input('gender_id'),
             'status_id' => $request->input('status_id'),
         ]);
@@ -823,7 +812,7 @@ class StudentController extends Controller
             'Update',
             $student->getKey(),
             $student->email,
-            $this->collectStudentChanges($studentEmailBefore, $studentInfoBefore, $student, $studentInfo, $request)
+            $this->collectStudentChanges($studentInfoBefore, $student, $studentInfo, $request)
         );
 
         return redirect()
@@ -833,10 +822,10 @@ class StudentController extends Controller
 
     /**
      * Build the list of changed fields for a student update, capturing
-     * before/after values (e.g. First Name from "Sofia" to "Mika").
+     * before/after values. Identity fields are excluded (they are managed by
+     * the IDP, not editable by admins), so only enrollment fields appear.
      */
     private function collectStudentChanges(
-        string $emailBefore,
         array $infoBefore,
         User $student,
         $studentInfo,
@@ -845,11 +834,6 @@ class StudentController extends Controller
         $changes = [];
 
         $studentFieldMap = [
-            'first_name' => 'First Name',
-            'middle_name' => 'Middle Name',
-            'last_name' => 'Last Name',
-            'name_suffix' => 'Name Suffix',
-            'email' => 'Email',
             'gender_id' => 'Gender',
             'status_id' => 'Status',
         ];
@@ -1070,7 +1054,7 @@ class StudentController extends Controller
         $studentNumber = $row['student_number'] ?? null;
         $email = $row['email'] ?? null;
 
-        if (empty($studentNumber) || empty($email)) {
+        if (empty($studentNumber)) {
             return 0;
         }
 
@@ -1097,18 +1081,33 @@ class StudentController extends Controller
 
         // Student passwords are managed by the PUP Identity Provider (IDP), so
         // no local password is configured for imported student accounts.
-        $student = User::create([
+        //
+        // Identity fields are managed by the IDP. Names/email are only stored
+        // here when the source file actually provides them (registrar bulk
+        // data); otherwise they stay null until the student links their PUP ID.
+        $identity = [];
+        foreach ([
+            'first_name' => 'first_name',
+            'middle_name' => 'middle_name',
+            'last_name' => 'last_name',
+            'name_suffix' => 'name_suffix',
+        ] as $field => $sourceKey) {
+            $value = $row[$sourceKey] ?? null;
+            if ($value !== null && trim((string) $value) !== '') {
+                $identity[$field] = trim((string) $value);
+            }
+        }
+        if ($email !== null && trim((string) $email) !== '') {
+            $identity['email'] = trim((string) $email);
+        }
+
+        $student = User::create(array_merge([
             'student_number' => $studentNumber,
-            'first_name' => $row['first_name'] ?? '',
-            'middle_name' => $row['middle_name'] ?? null,
-            'last_name' => $row['last_name'] ?? '',
-            'name_suffix' => !empty($row['name_suffix']) ? trim((string) $row['name_suffix']) : null,
-            'email' => $email,
             'gender_id' => $genderId,
             'status_id' => $statusId,
             'roles_id' => 2,
             'password_hash' => '',
-        ]);
+        ], $identity));
 
         $student->studentInfo()->create([
             'program_id' => $programId,
