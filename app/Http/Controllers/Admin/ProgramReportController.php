@@ -97,7 +97,7 @@ class ProgramReportController extends Controller
 
         try {
             $students = $this->programReport->previewGraduating($program, $years, $ladderized, $additional);
-        } catch (\InvalidArgumentException $exception) {
+        } catch (InvalidArgumentException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }
 

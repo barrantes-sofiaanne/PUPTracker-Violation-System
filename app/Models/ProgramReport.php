@@ -7,6 +7,30 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Stores a generated Program Sanction Summary Report (history/audit layer).
+ *
+ * @property int $report_id
+ * @property int|null $program_id
+ * @property string|null $academic_year
+ * @property string|null $report_type
+ * @property string|null $report_mode
+ * @property string|null $degree_type
+ * @property int|null $graduating_year
+ * @property array|null $admission_years
+ * @property int|null $ladderized
+ * @property array|null $additional_students
+ * @property int|null $generated_by_admin_id
+ * @property \Illuminate\Support\Carbon|null $generated_at
+ * @property string|null $report_status
+ * @property array|null $statistics_json
+ * @property array|null $violation_breakdown
+ * @property array|null $repeated_violations
+ * @property array|null $outstanding_students
+ * @property array|null $manual_review_students
+ * @property string|null $ai_narrative
+ * @property string|null $ai_model
+ * @property bool|null $ai_failed
+ * @property-read Program|null $program
+ * @property-read Admin|null $generatedBy
  */
 class ProgramReport extends Model
 {

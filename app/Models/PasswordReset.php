@@ -11,6 +11,14 @@ use Illuminate\Database\Eloquent\Builder;
  * Tokens are stored hashed; the plaintext token is only ever sent to the
  * account holder via email. Each row is bound to a guard + account primary
  * key so the recovery attempt is identified by the token alone.
+ *
+ * @property int $id
+ * @property string|null $guard
+ * @property int|null $account_id
+ * @property string|null $token_hash
+ * @property \Illuminate\Support\Carbon|null $expires_at
+ * @property \Illuminate\Support\Carbon|null $used_at
+ * @property \Illuminate\Support\Carbon|null $created_at
  */
 class PasswordReset extends Model
 {

@@ -8,6 +8,7 @@ use App\Models\AnnouncementAttachment;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -62,7 +63,7 @@ class AnnouncementAttachmentTest extends TestCase
         $this->assertSame($admin->id, (int) $attachment->uploaded_by);
 
         // File stored on the private disk (not public).
-        Storage::disk('local')->assertExists($attachment->storage_path);
+        $this->privateDisk()->assertExists($attachment->storage_path);
         $this->assertStringStartsWith('announcements/', $attachment->storage_path);
 
         $this->assertDatabaseHas('audit_logs', [
@@ -326,7 +327,7 @@ class AnnouncementAttachmentTest extends TestCase
             ]);
 
         $attachment = $announcement->attachments()->first();
-        /** @var \App\Models\AnnouncementAttachment|null $attachment */
+        /** @var AnnouncementAttachment|null $attachment */
 
         // Tamper: re-point the attachment to an announcement that no longer
         // exists (simulating a replay of an old URL after the announcement is
@@ -361,7 +362,7 @@ class AnnouncementAttachmentTest extends TestCase
         $attachment = $announcement->attachments()->first();
 
         // Remove the physical object (simulates a storage-level loss).
-        Storage::disk('local')->delete($attachment->storage_path);
+        $this->privateDisk()->delete($attachment->storage_path);
 
         $student = $this->createStudent('2024-0001');
         $this->actingAs($student, 'student')
@@ -389,7 +390,7 @@ class AnnouncementAttachmentTest extends TestCase
 
         $attachment = $announcement->attachments()->first();
         $path = $attachment->storage_path;
-        Storage::disk('local')->assertExists($path);
+        $this->privateDisk()->assertExists($path);
 
         $this->actingAs($admin, 'admin')
             ->delete(route('admin.announcements.attachments.destroy', $attachment))
@@ -397,7 +398,7 @@ class AnnouncementAttachmentTest extends TestCase
 
         // Metadata removed + object removed + audited.
         $this->assertDatabaseMissing('announcement_attachments', ['attachment_id' => $attachment->attachment_id]);
-        Storage::disk('local')->assertMissing($path);
+        $this->privateDisk()->assertMissing($path);
         $this->assertDatabaseHas('audit_logs', [
             'action' => 'ATTACHMENT_DELETED',
             'module' => 'Announcement',
@@ -427,7 +428,7 @@ class AnnouncementAttachmentTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseHas('announcement_attachments', ['attachment_id' => $attachment->attachment_id]);
-        Storage::disk('local')->assertExists($path);
+        $this->privateDisk()->assertExists($path);
     }
 
     // ------------------------------------------------------------------
@@ -458,7 +459,7 @@ class AnnouncementAttachmentTest extends TestCase
         $this->assertDatabaseMissing('announcements_tbl', ['announcement_id' => $announcement->announcement_id]);
         $this->assertSame(0, AnnouncementAttachment::where('announcement_id', $announcement->announcement_id)->count());
         foreach ($paths as $path) {
-            Storage::disk('local')->assertMissing($path);
+            $this->privateDisk()->assertMissing($path);
         }
     }
 
@@ -521,7 +522,7 @@ class AnnouncementAttachmentTest extends TestCase
 
         foreach ($announcement->attachments as $attachment) {
             $this->assertStringStartsWith('announcements/', $attachment->storage_path);
-            Storage::disk('local')->assertExists($attachment->storage_path);
+            $this->privateDisk()->assertExists($attachment->storage_path);
         }
     }
 
@@ -637,6 +638,19 @@ class AnnouncementAttachmentTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    /**
+     * The fake private disk used by these tests (Storage::fake('local')).
+     * Typed as FilesystemAdapter so intelephense recognizes the test-only
+     * assertExists()/assertMissing() helpers added by Storage::fake().
+     */
+    private function privateDisk(): FilesystemAdapter
+    {
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = Storage::disk('local');
+
+        return $disk;
     }
 
     private function ensureTablesForTests(): void

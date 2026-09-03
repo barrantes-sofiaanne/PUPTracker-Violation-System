@@ -23,7 +23,7 @@ class AnnouncementController extends Controller
             ->paginate(10);
 
         $admin = Auth::guard('admin')->user();
-        /** @var \App\Models\Admin|null $admin */
+        /** @var Admin|null $admin */
         $admin = $admin instanceof Admin ? $admin : null;
 
         $myAnnouncements = Announcement::with(['adminInfo', 'attachments'])
@@ -64,7 +64,7 @@ class AnnouncementController extends Controller
         ]);
 
         $admin = Auth::guard('admin')->user();
-        /** @var \App\Models\Admin|null $admin */
+        /** @var Admin|null $admin */
         $admin = $admin instanceof Admin ? $admin : null;
         $canPublishLoginModal = $admin?->isItAdministrator() ?? false;
 
@@ -155,7 +155,7 @@ class AnnouncementController extends Controller
         ]);
 
         $admin = Auth::guard('admin')->user();
-        /** @var \App\Models\Admin|null $admin */
+        /** @var Admin|null $admin */
         $admin = $admin instanceof Admin ? $admin : null;
         $canPublishLoginModal = $admin?->isItAdministrator() ?? false;
 
@@ -325,7 +325,7 @@ class AnnouncementController extends Controller
     protected function authorizeAnnouncementOwner(Announcement $announcement): void
     {
         $admin = Auth::guard('admin')->user();
-        /** @var \App\Models\Admin|null $admin */
+        /** @var Admin|null $admin */
         $admin = $admin instanceof Admin ? $admin : null;
 
         if (! $admin) {

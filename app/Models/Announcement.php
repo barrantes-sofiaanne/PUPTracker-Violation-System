@@ -15,6 +15,8 @@ use App\Models\AdminInfo;
  * @property string $title
  * @property string $content
  * @property string|null $attachment_path
+ * @property bool $show_on_login
+ * @property \Illuminate\Support\Carbon|null $login_modal_expires_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read Admin|null $admin

@@ -5,6 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $program_id
+ * @property string|null $program_name
+ * @property string|null $degree_type
+ */
 class Program extends Model
 {
     protected $table = 'program_tbl';
