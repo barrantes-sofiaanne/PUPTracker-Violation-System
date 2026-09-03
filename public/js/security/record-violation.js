@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const captureReviewPanel = document.getElementById("captureReviewPanel");
     const cameraWrap = document.getElementById("cameraWrap");
     const cameraPreview = document.getElementById("cameraPreview");
+    const flipCameraBtn = document.getElementById("flipCameraBtn");
     const liveWatermarkStudent = document.getElementById(
         "liveWatermarkStudent",
     );
@@ -164,6 +165,12 @@ document.addEventListener("DOMContentLoaded", function () {
     let capturedImageBlob = null;
     let capturedImageObjectUrl = null;
     let liveClockInterval = null;
+    // Current camera facing mode: 'user' (front) or 'environment' (back).
+    // Defaults to the front camera; the flip button switches between them.
+    let cameraFacingMode = "user";
+    // Optional explicit deviceId (when the browser exposes multiple cameras
+    // that are not cleanly split into front/back via facingMode).
+    let cameraDeviceId = null;
 
     const phNow = () => {
         return new Date(
@@ -216,6 +223,9 @@ document.addEventListener("DOMContentLoaded", function () {
         if (captureReviewPanel) {
             captureReviewPanel.classList.add("d-none");
         }
+        if (flipCameraBtn) {
+            flipCameraBtn.classList.add("d-none");
+        }
     };
 
     const showCameraLive = () => {
@@ -227,6 +237,11 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         if (cameraLivePanel) {
             cameraLivePanel.classList.remove("d-none");
+        }
+        // The flip control is only meaningful while the stream is live.
+        if (flipCameraBtn) {
+            flipCameraBtn.classList.add("d-flex");
+            flipCameraBtn.classList.remove("d-none");
         }
     };
 
@@ -319,36 +334,31 @@ document.addEventListener("DOMContentLoaded", function () {
     openCameraBtn &&
         openCameraBtn.addEventListener("click", openSecurityNotice);
 
-    const startCamera = () => {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            reportSecurityEvent(
-                "CAMERA_ERROR",
-                { reason: "API unsupported" },
-                "warning",
-            );
-            showAlert(
-                "error",
-                "Camera unsupported",
-                "This browser does not support camera access (getUserMedia). You can still attach a PDF document.",
-            );
-            showCameraIdle();
-            return;
+    // Core camera start. `deviceId` (when provided) pins an exact camera;
+    // otherwise `facingMode` ('user' | 'environment') is requested as ideal.
+    const startStream = (facingMode, deviceId) => {
+        if (facingMode) {
+            cameraFacingMode = facingMode;
         }
-
         showCameraLive();
         if (capturePhotoBtn) {
             capturePhotoBtn.disabled = true; // enabled only after stream is live
         }
 
+        const videoConstraint = deviceId
+            ? { deviceId: { exact: deviceId } }
+            : { facingMode: { ideal: cameraFacingMode } };
+
         navigator.mediaDevices
             .getUserMedia({
-                video: { facingMode: "user" },
+                video: videoConstraint,
                 audio: false,
             })
             .then(function (stream) {
                 cameraStream = stream;
                 cameraActive = true;
                 cameraPausedByInterruption = false;
+                cameraDeviceId = deviceId || null;
                 if (cameraPreview) {
                     cameraPreview.srcObject = stream;
                 }
@@ -362,6 +372,17 @@ document.addEventListener("DOMContentLoaded", function () {
             })
             .catch(function (error) {
                 cameraActive = false;
+                if (error && error.name === "OverconstrainedError") {
+                    // The requested facingMode / device is not available here.
+                    // Enumerate and pick a concrete camera.
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        { reason: String(error.name) },
+                        "warning",
+                    );
+                    enumerateAndStartFallback();
+                    return;
+                }
                 let reason = "Camera unavailable";
                 if (error && error.name === "NotAllowedError") {
                     reason = "Permission denied";
@@ -401,6 +422,94 @@ document.addEventListener("DOMContentLoaded", function () {
             });
     };
 
+    // Public entry point used by the Open Camera / retake / initial flows.
+    // Clears any pinned deviceId so the browser resolves via facingMode.
+    const startCamera = (facingMode) => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            reportSecurityEvent(
+                "CAMERA_ERROR",
+                { reason: "API unsupported" },
+                "warning",
+            );
+            showAlert(
+                "error",
+                "Camera unsupported",
+                "This browser does not support camera access (getUserMedia). You can still attach a PDF document.",
+            );
+            showCameraIdle();
+            return;
+        }
+        cameraDeviceId = null;
+        startStream(facingMode || cameraFacingMode, null);
+    };
+
+    // Enumerate available video inputs and start with a concrete device,
+    // falling back gracefully when facingMode is not honoured (e.g.
+    // single-camera desktops or unusual mobile browsers). When a flip is
+    // requested we rotate to the NEXT video input so the button still works on
+    // devices that only expose several generic cameras without a usable
+    // facingMode label.
+    const enumerateAndStartFallback = () => {
+        if (
+            !navigator.mediaDevices ||
+            !navigator.mediaDevices.enumerateDevices
+        ) {
+            showCameraIdle();
+            return;
+        }
+        navigator.mediaDevices
+            .enumerateDevices()
+            .then(function (devices) {
+                const videoInputs = devices.filter(function (device) {
+                    return device.kind === "videoinput";
+                });
+                if (videoInputs.length === 0) {
+                    showCameraIdle();
+                    return;
+                }
+                // If we already have an active deviceId, try the next camera in
+                // the list so a flip visibly switches on multi-camera devices
+                // that do not expose a facingMode label.
+                let preferred = null;
+                if (cameraDeviceId) {
+                    const currentIndex = videoInputs.findIndex(function (device) {
+                        return device.deviceId === cameraDeviceId;
+                    });
+                    const nextDevice =
+                        videoInputs[(currentIndex + 1) % videoInputs.length];
+                    if (nextDevice) {
+                        preferred = nextDevice;
+                    }
+                }
+                if (!preferred) {
+                    // Otherwise prefer a labeled front/back match for the
+                    // current facingMode, falling back to the first camera.
+                    preferred = videoInputs.find(function (device) {
+                        return (
+                            device.label &&
+                            (cameraFacingMode === "environment"
+                                ? /back|rear|environment/i.test(device.label)
+                                : /front|user/i.test(device.label))
+                        );
+                    }) || videoInputs[0];
+                }
+
+                const chosenDeviceId = preferred && preferred.deviceId
+                    ? preferred.deviceId
+                    : null;
+
+                if (!chosenDeviceId) {
+                    showCameraIdle();
+                    return;
+                }
+
+                startStream(cameraFacingMode, chosenDeviceId);
+            })
+            .catch(function () {
+                showCameraIdle();
+            });
+    };
+
     const stopCamera = () => {
         stopLiveClock();
         if (cameraStream) {
@@ -430,6 +539,86 @@ document.addEventListener("DOMContentLoaded", function () {
             stopCamera();
         });
 
+    // Flip between the front and back camera. The most reliable approach is to
+    // enumerate the physical video inputs and start the NEXT one (rotating).
+    // Most phones expose a front and a back camera, so each tap swaps them.
+    // On a single-camera desktop the enumeration yields one device and the tap
+    // simply restarts that same camera (no visible effect, which is expected).
+    flipCameraBtn &&
+        flipCameraBtn.addEventListener("click", function () {
+            // Cannot flip while paused for a possible screen-capture /
+            // interruption — the user must return to the window first.
+            if (!cameraActive || cameraPausedByInterruption) {
+                return;
+            }
+            if (
+                !navigator.mediaDevices ||
+                !navigator.mediaDevices.enumerateDevices
+            ) {
+                return;
+            }
+            reportSecurityEvent(
+                "CAMERA_FLIP",
+                { from: cameraDeviceId || cameraFacingMode },
+                "info",
+            );
+            navigator.mediaDevices
+                .enumerateDevices()
+                .then(function (devices) {
+                    const videoInputs = devices.filter(function (device) {
+                        return device.kind === "videoinput";
+                    });
+                    if (videoInputs.length === 0) {
+                        return;
+                    }
+
+                    // Determine the current index. When a concrete device was
+                    // active use it; otherwise derive from facingMode label.
+                    let currentIndex = -1;
+                    if (cameraDeviceId) {
+                        currentIndex = videoInputs.findIndex(function (device) {
+                            return device.deviceId === cameraDeviceId;
+                        });
+                    }
+                    if (currentIndex === -1) {
+                        currentIndex = videoInputs.findIndex(function (device) {
+                            return (
+                                device.label &&
+                                (cameraFacingMode === "environment"
+                                    ? /back|rear|environment/i.test(
+                                          device.label,
+                                      )
+                                    : /front|user/i.test(device.label))
+                            );
+                        });
+                    }
+                    // Rotate to the next camera in the list.
+                    const nextIndex = (currentIndex + 1) % videoInputs.length;
+                    const nextDevice = videoInputs[nextIndex];
+                    if (!nextDevice || !nextDevice.deviceId) {
+                        return;
+                    }
+
+                    stopCamera();
+                    // Flip the facing-mode bookkeeping too so the watermark /
+                    // labels stay consistent with the likely camera.
+                    cameraFacingMode =
+                        cameraFacingMode === "environment"
+                            ? "user"
+                            : "environment";
+                    startStream(cameraFacingMode, nextDevice.deviceId);
+                })
+                .catch(function () {
+                    // If enumeration fails, fall back to a facingMode toggle.
+                    stopCamera();
+                    const nextMode =
+                        cameraFacingMode === "environment"
+                            ? "user"
+                            : "environment";
+                    startStream(nextMode, null);
+                });
+        });
+
     // Interruption handling — pause capture, blur/hide the preview, log event.
     const handleInterruption = (kind, meta) => {
         const isPrtSc = kind === "prtsc";
@@ -437,6 +626,10 @@ document.addEventListener("DOMContentLoaded", function () {
             cameraPausedByInterruption = true;
             if (capturePhotoBtn) {
                 capturePhotoBtn.disabled = true;
+            }
+            if (flipCameraBtn) {
+                flipCameraBtn.classList.add("d-none");
+                flipCameraBtn.classList.remove("d-flex");
             }
             if (cameraPreview) {
                 cameraPreview.classList.add("camera-obscured");
@@ -470,6 +663,10 @@ document.addEventListener("DOMContentLoaded", function () {
             if (cameraInterruptedOverlay) {
                 cameraInterruptedOverlay.classList.add("d-none");
                 cameraInterruptedOverlay.classList.remove("d-flex");
+            }
+            if (flipCameraBtn) {
+                flipCameraBtn.classList.remove("d-none");
+                flipCameraBtn.classList.add("d-flex");
             }
             // Capture re-enabled because the page is active again.
             if (capturePhotoBtn && cameraActive) {

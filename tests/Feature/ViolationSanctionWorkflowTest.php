@@ -614,6 +614,14 @@ class ViolationSanctionWorkflowTest extends TestCase
         $this->assertSame('In Progress', $record->status);
         $this->assertSame('Incomplete proof.', $record->completion_remarks);
 
+        // The current-proof pointers must be cleared so the student can submit
+        // a NEW proof and the admin no longer sees the old file as pending.
+        $this->assertNull($record->proof_path);
+        $this->assertNull($record->proof_original_name);
+        $this->assertNull($record->proof_submitted_at);
+        $this->assertFalse($record->has_pending_proof);
+        $this->assertTrue($record->is_open);
+
         // The rejected submission is retained in the proof history.
         $this->assertDatabaseHas('sanction_proofs_tbl', [
             'record_id' => $record->record_id,
@@ -625,6 +633,22 @@ class ViolationSanctionWorkflowTest extends TestCase
             'student_number' => '2024-0001',
             'notification_type' => 'sanction',
         ]);
+
+        // The student may now resubmit a fresh proof (record is open and no
+        // pending proof is blocking the submission).
+        $file2 = UploadedFile::fake()->create('proof2.pdf', 60, 'application/pdf');
+        $this->actingAs($student, 'student')
+            ->post(route('student.submit-proof'), [
+                'record_id' => $record->record_id,
+                'proof_file' => $file2,
+                'proof_notes' => 'Resubmitted after rejection.',
+            ])
+            ->assertOk();
+
+        $record->refresh();
+        $this->assertNotNull($record->proof_path);
+        $this->assertTrue($record->has_pending_proof);
+        $this->assertSame('proof2.pdf', $record->proof_original_name);
     }
 
     public function test_reject_proof_requires_reason(): void

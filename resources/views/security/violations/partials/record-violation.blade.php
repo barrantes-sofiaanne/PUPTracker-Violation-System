@@ -327,6 +327,16 @@
                                             <div id="cameraLivePanel" class="d-none">
                                                 <div id="cameraWrap" class="position-relative rounded-3 overflow-hidden bg-black" style="aspect-ratio:4/3;">
                                                     <video id="cameraPreview" autoplay playsinline muted class="w-100 h-100 object-fit-cover"></video>
+                                                    {{-- Flip between front and back camera (mobile). Only visible while the stream is live. --}}
+                                                    <button
+                                                        type="button"
+                                                        id="flipCameraBtn"
+                                                        class="position-absolute top-0 end-0 m-2 btn btn-sm btn-light rounded-circle d-none align-items-center justify-content-center"
+                                                        style="width:40px;height:40px;box-shadow:0 2px 8px rgba(0,0,0,0.4);z-index:5;"
+                                                        title="Switch camera (front/back)"
+                                                        aria-label="Switch camera">
+                                                        <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+                                                    </button>
                                                     {{-- Live watermark overlay is a real-time preview; the FINAL watermark is baked into the captured image via canvas. --}}
                                                     <div id="liveWatermarkOverlay" class="position-absolute bottom-0 start-0 end-0 px-2 py-1 text-white small" style="background:rgba(0,0,0,0.55);font-family:ui-monospace,monospace;pointer-events:none;">
                                                         PUPTracker &nbsp;|&nbsp; <span id="liveWatermarkStudent">—</span> &nbsp;|&nbsp; <span id="liveWatermarkTime">--/--/---- --:--</span>

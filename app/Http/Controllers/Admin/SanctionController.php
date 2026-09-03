@@ -423,8 +423,19 @@ class SanctionController extends Controller
                 ? StudentSanctionRecord::STATUS_PENDING
                 : StudentSanctionRecord::STATUS_IN_PROGRESS;
 
+            // Clear the "current proof" pointers so BOTH the admin and student
+            // views stop treating the old (now rejected) file as pending review.
+            // The rejected file's metadata + review outcome are preserved in the
+            // sanction_proofs_tbl history rows, so nothing is lost. Clearing
+            // proof_path also makes has_pending_proof() false again, which is
+            // what lets the student resubmit a new proof from the student side
+            // and lets the admin side show the record as awaiting a new proof.
             $studentSanctionRecord->update([
                 'status' => $revertTo,
+                'proof_path' => null,
+                'proof_original_name' => null,
+                'proof_submitted_at' => null,
+                'proof_notes' => null,
                 'completion_reviewed_by_admin_id' => $adminId,
                 'completion_reviewed_at' => now(),
                 'completion_remarks' => trim($validated['reason']),

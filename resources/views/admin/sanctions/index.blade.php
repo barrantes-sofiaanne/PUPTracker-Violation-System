@@ -303,6 +303,12 @@
                                                 <a href="{{ route('admin.sanctions.proof.download', $record) }}" target="_blank" class="admin-btn admin-btn-view admin-btn-sm">
                                                     <i class="bi bi-eye me-1"></i>View Proof
                                                 </a>
+                                            @elseif($isOpen && $record->completion_remarks)
+                                                <div class="small text-danger mb-1">
+                                                    <i class="bi bi-x-circle me-1"></i>Previous proof rejected:
+                                                    {{ $record->completion_remarks }}
+                                                </div>
+                                                <span class="text-muted small">Awaiting new proof</span>
                                             @else
                                                 <span class="text-muted small">—</span>
                                             @endif
@@ -324,6 +330,8 @@
                                                     data-bs-target="#rejectProofModal">
                                                     Reject
                                                 </button>
+                                            @elseif($isOpen && $record->completion_remarks)
+                                                <span class="text-muted small">Awaiting resubmission</span>
                                             @elseif($isOpen)
                                                 <span class="text-muted small">Awaiting proof</span>
                                             @elseif(strcasecmp((string) $record->status, 'Completed') === 0)
