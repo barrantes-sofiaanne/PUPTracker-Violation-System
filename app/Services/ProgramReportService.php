@@ -41,7 +41,8 @@ class ProgramReportService
         ?string $academicYear = null,
         string $reportMode = 'regular',
         array $graduatingYears = [],
-        ?int $ladderized = null
+        ?int $ladderized = null,
+        array $additionalStudents = []
     ): Collection {
         $query = User::query()
             ->with([
@@ -61,22 +62,46 @@ class ProgramReportService
                 fn ($year) => is_numeric($year) && (int) $year >= 1900 && (int) $year <= now()->year
             )));
 
-            if ($years === []) {
-                throw new InvalidArgumentException('Select at least one admission year for the graduating report.');
+            $explicit = array_values(array_unique(array_filter(
+                array_map(fn ($v) => trim((string) $v), $additionalStudents),
+                fn ($v) => $v !== ''
+            )));
+
+            if ($years === [] && $explicit === []) {
+                throw new InvalidArgumentException('Select at least one admission year (or add a specific student) for the graduating report.');
             }
 
-            $query->where(function ($q) use ($years): void {
-                foreach ($years as $year) {
-                    $q->orWhere('student_number', 'like', $year . '%');
+            // The graduating cohort is the UNION of:
+            //   - students whose student_number starts with a selected
+            //     admission year, and
+            //   - specific students explicitly added by number.
+            $query->where(function ($q) use ($years, $explicit): void {
+                if ($years !== []) {
+                    $q->where(function ($inner) use ($years): void {
+                        foreach ($years as $year) {
+                            $inner->orWhere('student_number', 'like', $year . '%');
+                        }
+                    });
+                }
+
+                if ($explicit !== []) {
+                    $q->orWhereIn('student_number', $explicit);
                 }
             });
 
             // Ladderized filter: the last digit of the student number encodes
-            // ladderized (1) vs non-ladderized (0) status.
+            // ladderized (1) vs non-ladderized (0) status. Applies only to the
+            // year-prefix subset; an explicitly added student is always kept.
             if ($ladderized === 1) {
-                $query->where('student_number', 'like', '%1');
+                $query->where(function ($q) use ($explicit): void {
+                    $q->where('student_number', 'like', '%1')
+                        ->orWhereIn('student_number', $explicit);
+                });
             } elseif ($ladderized === 0) {
-                $query->where('student_number', 'like', '%0');
+                $query->where(function ($q) use ($explicit): void {
+                    $q->where('student_number', 'like', '%0')
+                        ->orWhereIn('student_number', $explicit);
+                });
             }
         } else {
             if ($academicYear === null || trim($academicYear) === '') {
@@ -96,9 +121,9 @@ class ProgramReportService
      * Preview the students that would be included in a graduating report for
      * the given admission year(s) and program (no screening — raw list).
      */
-    public function previewGraduating(Program $program, array $graduatingYears, ?int $ladderized = null): Collection
+    public function previewGraduating(Program $program, array $graduatingYears, ?int $ladderized = null, array $additionalStudents = []): Collection
     {
-        return $this->studentsFor($program, null, 'graduating', $graduatingYears, $ladderized);
+        return $this->studentsFor($program, null, 'graduating', $graduatingYears, $ladderized, $additionalStudents);
     }
 
     /**
@@ -110,9 +135,10 @@ class ProgramReportService
         string $reportType = 'full',
         string $reportMode = 'regular',
         array $graduatingYears = [],
-        ?int $ladderized = null
+        ?int $ladderized = null,
+        array $additionalStudents = []
     ): array {
-        $students = $this->studentsFor($program, $academicYear, $reportMode, $graduatingYears, $ladderized);
+        $students = $this->studentsFor($program, $academicYear, $reportMode, $graduatingYears, $ladderized, $additionalStudents);
 
         $screened = $students
             ->map(fn (User $student) => $this->screening->screenStudent($student))

@@ -25,6 +25,10 @@
             0 => ' · Non-Ladderized Only (student # ends in 0)',
             default => '',
         };
+        // Specific students explicitly added by number (returnees / re-admits).
+        $additionalStudents = $isGraduating && is_array($report->additional_students)
+            ? array_values(array_filter($report->additional_students))
+            : [];
     @endphp
 
     <x-admin.page-header title="Program Sanction Report" :description="$report->program?->program_name . ($isGraduating ? ' · Graduating Students' : ' · Cohort ' . $report->academic_year)">
@@ -150,7 +154,12 @@
         <div class="alert alert-info mb-4">
             <strong>Applied eligibility:</strong>
             Graduating students are identified by the admission year(s) encoded in the first four digits of their student number:
-            <strong>{{ $admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: $report->academic_year) }}</strong>.
+            <strong>{{ $admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: $report->academic_year) }}</strong>
+            @if($additionalStudents !== [])
+                plus specifically added students: <strong>{{ implode(', ', $additionalStudents) }}</strong>.
+            @else
+                .
+            @endif
             Eligibility is determined by the system records, not AI.
         </div>
     @endif

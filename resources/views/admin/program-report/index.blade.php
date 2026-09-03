@@ -93,16 +93,46 @@
                             </div>
                             <div class="col-md-3">
                                 <button type="button" class="admin-btn admin-btn-neutral w-100" id="addGraduatingYearBtn">
-                                    <i class="bi bi-plus-lg me-1"></i> Add Year
+                                    <i class="bi bi-plus-lg me-1"></i> Add More Years
                                 </button>
                             </div>
-                            <div class="col-md-4">
-                                <input type="number" class="form-control" id="customGraduatingYear" min="1900" max="{{ now()->year }}" placeholder="Manual year (e.g. 2019)">
+                            <div class="col-md-4 text-muted small align-self-center">
+                                <i class="bi bi-info-circle me-1"></i>Pick a year from the list, then click <strong>Add More Years</strong>.
                             </div>
                         </div>
 
                         <div class="d-flex flex-wrap gap-2 mt-3" id="selectedGraduatingYears">
                             {{-- Selected admission years render here as removable chips + hidden inputs --}}
+                        </div>
+
+                        {{-- Add a specific student by search --}}
+                        <div class="mt-4 border-top pt-3">
+                            <label class="admin-filter-label mb-1">
+                                <i class="bi bi-person-plus me-1"></i> Add a Specific Student
+                            </label>
+                            <p class="text-muted small mb-2">
+                                Search a student by number or name within the selected program and add them to the graduating list
+                                (e.g. returnees / re-admits whose number does not start with the admission years above).
+                            </p>
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control" id="studentSearchInput" placeholder="Search student number or name..." autocomplete="off">
+                                    <div class="list-group mt-1 d-none" id="studentSearchResults"></div>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="button" class="admin-btn admin-btn-neutral w-100" id="addSpecificStudentBtn">
+                                        <i class="bi bi-person-plus me-1"></i> Add Student
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="button" class="admin-btn admin-btn-neutral w-100" id="clearStudentSearchBtn">
+                                        <i class="bi bi-x-lg me-1"></i> Clear
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 mt-3" id="selectedSpecificStudents">
+                                {{-- Selected specific students render here as removable chips + hidden inputs --}}
+                            </div>
                         </div>
 
                         {{-- Ladderized filter — shown only for BSOA/BSIT in graduating mode --}}
@@ -130,7 +160,7 @@
                         </div>
 
                         <div class="d-flex align-items-center gap-2 mt-3 flex-wrap">
-                            <button type="button" class="admin-btn admin-btn-primary" id="previewGraduatingBtn" data-preview-url="{{ route('admin.program-report.preview-graduating') }}">
+                            <button type="button" class="admin-btn admin-btn-primary" id="previewGraduatingBtn" data-preview-url="{{ route('admin.program-report.preview-graduating') }}" data-search-url="{{ route('admin.program-report.search-students') }}">
                                 <i class="bi bi-search me-1"></i> Preview Students
                             </button>
                             <span class="text-muted small" id="previewSummary"></span>
@@ -190,7 +220,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const graduatingWrap = document.getElementById('graduatingYearsWrap');
     const yearSelect = document.getElementById('graduatingYearSelect');
     const addYearBtn = document.getElementById('addGraduatingYearBtn');
-    const customYearInput = document.getElementById('customGraduatingYear');
     const selectedYearsContainer = document.getElementById('selectedGraduatingYears');
     const previewBtn = document.getElementById('previewGraduatingBtn');
     const previewWrap = document.getElementById('graduatingPreviewWrap');
@@ -198,9 +227,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const previewSummary = document.getElementById('previewSummary');
     const ladderizedWrap = document.getElementById('ladderizedWrap');
 
+    // Specific-student search controls.
+    const studentSearchInput = document.getElementById('studentSearchInput');
+    const studentSearchResults = document.getElementById('studentSearchResults');
+    const addSpecificStudentBtn = document.getElementById('addSpecificStudentBtn');
+    const clearStudentSearchBtn = document.getElementById('clearStudentSearchBtn');
+    const selectedSpecificStudentsContainer = document.getElementById('selectedSpecificStudents');
+
     // Read server-side data from data-* attributes (no Blade directives in JS).
     const defaultGraduatingYear = yearSelect.dataset.defaultYear || '2022';
     const previewUrl = previewBtn.dataset.previewUrl || '';
+    const searchStudentsUrl = previewBtn.dataset.searchUrl || '';
     let ladderizedPrograms = [];
     try {
         ladderizedPrograms = JSON.parse(program.dataset.ladderizedPrograms || '[]') || [];
@@ -212,6 +249,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Seed the default admission year (2022) as a selected chip.
     const seededYear = String(defaultGraduatingYear);
     let selectedYears = [];
+    let selectedStudents = []; // { student_number, label }
 
     // Load any previously selected years from old input (validation redirect).
     document.querySelectorAll('#selectedGraduatingYears input[name="graduating_years[]"]').forEach(function (input) {
@@ -223,6 +261,14 @@ document.addEventListener('DOMContentLoaded', function () {
         selectedYears.push(seededYear);
     }
     renderSelectedYears();
+
+    // Load any previously selected specific students from old input.
+    document.querySelectorAll('#selectedSpecificStudents input[name="additional_students[]"]').forEach(function (input) {
+        if (input.value && !selectedStudents.some(function (s) { return s.student_number === input.value; })) {
+            selectedStudents.push({ student_number: input.value, label: input.value });
+        }
+    });
+    renderSelectedStudents();
 
     function isLadderizedProgram() {
         const option = program?.selectedOptions[0];
@@ -304,20 +350,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (selectedYears.includes(y)) { alert('Year ' + y + ' is already added.'); return; }
         selectedYears.push(y);
         renderSelectedYears();
-        customYearInput.value = '';
+        yearSelect.value = '';
     }
 
     addYearBtn?.addEventListener('click', function () {
         const fromSelect = yearSelect.value;
-        const fromCustom = customYearInput.value.trim();
-        addYear(fromCustom || fromSelect);
-    });
-
-    customYearInput?.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addYear(customYearInput.value.trim());
-        }
+        addYear(fromSelect);
     });
 
     selectedYearsContainer?.addEventListener('click', function (e) {
@@ -333,10 +371,133 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // ---- Specific student chips (search & add) ----
+    function renderSelectedStudents() {
+        if (!selectedSpecificStudentsContainer) return;
+        selectedSpecificStudentsContainer.innerHTML = '';
+        selectedStudents.forEach(function (s) {
+            const chip = document.createElement('span');
+            chip.className = 'badge rounded-pill text-bg-secondary px-3 py-2 d-inline-flex align-items-center gap-2';
+            chip.innerHTML = '<i class="bi bi-person-fill"></i>' + s.label +
+                ' <button type="button" class="btn-close btn-close-white remove-specific-student" style="font-size:0.6rem" data-student="' + s.student_number + '" aria-label="Remove ' + s.label + '"></button>';
+
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'additional_students[]';
+            hidden.value = s.student_number;
+
+            chip.appendChild(hidden);
+            selectedSpecificStudentsContainer.appendChild(chip);
+        });
+    }
+
+    function addSpecificStudent(student) {
+        if (!student || !student.student_number) return;
+        if (selectedStudents.some(function (s) { return s.student_number === student.student_number; })) {
+            alert('Student ' + student.student_number + ' is already in the list.');
+            return;
+        }
+        selectedStudents.push({ student_number: student.student_number, label: (student.name ? student.name + ' (' + student.student_number + ')' : student.student_number) });
+        renderSelectedStudents();
+        studentSearchInput.value = '';
+        studentSearchResults.classList.add('d-none');
+        studentSearchResults.innerHTML = '';
+    }
+
+    let studentSearchTimer = null;
+    studentSearchInput?.addEventListener('input', function () {
+        clearTimeout(studentSearchTimer);
+        const keyword = this.value.trim();
+        if (keyword.length < 2) {
+            studentSearchResults.classList.add('d-none');
+            studentSearchResults.innerHTML = '';
+            return;
+        }
+        studentSearchTimer = setTimeout(function () {
+            const programId = program.value;
+            if (!programId) {
+                alert('Select a program first.');
+                return;
+            }
+            fetch(searchStudentsUrl + '?program_id=' + encodeURIComponent(programId) + '&search=' + encodeURIComponent(keyword), {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+            })
+                .then(function (resp) { return resp.json(); })
+                .then(function (data) {
+                    const list = data.students || [];
+                    studentSearchResults.innerHTML = '';
+                    if (list.length === 0) {
+                        studentSearchResults.innerHTML = '<button type="button" class="list-group-item list-group-item-action text-muted" disabled>No matching students.</button>';
+                    } else {
+                        list.forEach(function (s) {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'list-group-item list-group-item-action py-1 px-2 small';
+                            btn.innerHTML = '<strong>' + s.student_number + '</strong> &mdash; ' + s.name + ' <span class="text-muted">(' + s.program + ' &middot; ' + (s.year || '-') + ')</span>';
+                            btn.addEventListener('click', function () { addSpecificStudent(s); });
+                            studentSearchResults.appendChild(btn);
+                        });
+                    }
+                    studentSearchResults.classList.remove('d-none');
+                })
+                .catch(function () {
+                    studentSearchResults.innerHTML = '<button type="button" class="list-group-item list-group-item-action text-muted" disabled>Search failed.</button>';
+                    studentSearchResults.classList.remove('d-none');
+                });
+        }, 300);
+    });
+
+    addSpecificStudentBtn?.addEventListener('click', function () {
+        const keyword = studentSearchInput.value.trim();
+        if (keyword.length === 0) {
+            alert('Type a student number or name to search first.');
+            return;
+        }
+        // If the user typed an exact student number, add it directly.
+        if (/^\S+$/.test(keyword)) {
+            const programId = program.value;
+            if (!programId) { alert('Select a program first.'); return; }
+            fetch(searchStudentsUrl + '?program_id=' + encodeURIComponent(programId) + '&search=' + encodeURIComponent(keyword), {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+            })
+                .then(function (resp) { return resp.json(); })
+                .then(function (data) {
+                    const matches = (data.students || []).filter(function (s) {
+                        return s.student_number === keyword || (s.name || '').toLowerCase().indexOf(keyword.toLowerCase()) !== -1;
+                    });
+                    if (matches.length === 0) {
+                        alert('No matching student found. Check the program and student number/name.');
+                        return;
+                    }
+                    matches.forEach(addSpecificStudent);
+                })
+                .catch(function () { alert('Search failed. Please try again.'); });
+            return;
+        }
+        alert('Search results appear below. Click a result to add it to the list.');
+    });
+
+    clearStudentSearchBtn?.addEventListener('click', function () {
+        studentSearchInput.value = '';
+        studentSearchResults.classList.add('d-none');
+        studentSearchResults.innerHTML = '';
+    });
+
+    selectedSpecificStudentsContainer?.addEventListener('click', function (e) {
+        const btn = e.target.closest('.remove-specific-student');
+        if (!btn) return;
+        const studentNumber = btn.dataset.student;
+        selectedStudents = selectedStudents.filter(function (s) { return s.student_number !== studentNumber; });
+        renderSelectedStudents();
+    });
+
     previewBtn?.addEventListener('click', async function () {
         const programId = program.value;
         if (!programId) { alert('Select a program first.'); return; }
-        if (selectedYears.length === 0) { alert('Add at least one admission year.'); return; }
+        if (selectedYears.length === 0 && selectedStudents.length === 0) {
+            alert('Add at least one admission year or one specific student.');
+            return;
+        }
 
         previewBtn.disabled = true;
         previewBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Loading...';
@@ -355,6 +516,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: JSON.stringify({
                     program_id: programId,
                     graduating_years: selectedYears,
+                    additional_students: selectedStudents.map(function (s) { return s.student_number; }),
                     ladderized: getSelectedLadderized(),
                 }),
             });
@@ -365,10 +527,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const ladderizedLabel = data.ladderized_filter === 1 ? ' (Ladderized: Yes)' : (data.ladderized_filter === 0 ? ' (Ladderized: No)' : '');
-            previewSummary.textContent = data.total + ' student(s) match the selected admission year(s)' + ladderizedLabel + '.';
+            previewSummary.textContent = data.total + ' student(s) in the graduating list (admission years + specific students)' + ladderizedLabel + '.';
 
             if (data.total === 0) {
-                previewBody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">No students match the selected admission year(s).</td></tr>';
+                previewBody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">No students match the selected admission years / specific students.</td></tr>';
                 return;
             }
 

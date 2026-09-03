@@ -584,6 +584,9 @@ Route::middleware('auth:admin')
         Route::post('/program-report/preview-graduating', [App\Http\Controllers\Admin\ProgramReportController::class, 'previewGraduating'])
             ->name('admin.program-report.preview-graduating');
 
+        Route::get('/program-report/search-students', [App\Http\Controllers\Admin\ProgramReportController::class, 'searchStudents'])
+            ->name('admin.program-report.search-students');
+
         Route::post('/program-report/{reportId}/ai-summary', [App\Http\Controllers\Admin\ProgramReportController::class, 'generateAi'])
             ->whereNumber('reportId')
             ->name('admin.program-report.ai-summary');

@@ -23,6 +23,7 @@ class ProgramReport extends Model
         'graduating_year',
         'admission_years',
         'ladderized',
+        'additional_students',
         'generated_by_admin_id',
         'generated_at',
         'report_status',
@@ -49,6 +50,7 @@ class ProgramReport extends Model
         // in the admission_years JSON column.
         'graduating_year' => 'integer',
         'admission_years' => 'array',
+        'additional_students' => 'array',
         'ladderized' => 'integer',
     ];
 

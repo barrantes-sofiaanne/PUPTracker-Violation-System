@@ -96,8 +96,14 @@
                                                 0 => ' · Non-Ladderized',
                                                 default => '',
                                             };
+                                            $additionalStudents = is_array($report->additional_students)
+                                                ? array_values(array_filter($report->additional_students))
+                                                : [];
                                         @endphp
                                         Admitted {{ $admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: '—') }}{{ $ladderizedLabel }}
+                                        @if($additionalStudents !== [])
+                                            <span class="d-block text-muted">+ {{ count($additionalStudents) }} specific student(s)</span>
+                                        @endif
                                     @else
                                         {{ $report->academic_year ?: '—' }}
                                     @endif
