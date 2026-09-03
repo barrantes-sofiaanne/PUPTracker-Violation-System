@@ -30,7 +30,8 @@ class MfaService
         ?string $totpSecret = null,
         bool $totpEnabled = false,
         ?string $backupCodesJson = null,
-        ?string $backupCodesUsedJson = null
+        ?string $backupCodesUsedJson = null,
+        bool $remember = false
     ): void
     {
         $isAdminSecurityFlow = in_array($guard, ['admin', 'security'], true);
@@ -62,6 +63,7 @@ class MfaService
             'stage' => $isAdminSecurityFlow ? 'select' : 'code',
             'backup_codes' => $hasBackupCodes ? $backupCodes : [],
             'backup_codes_used' => $hasBackupCodes ? $backupCodesUsed : [],
+            'remember' => $remember && $isAdminSecurityFlow,
             'code_hash' => null,
             'expires_at' => null,
             'resend_available_at' => null,

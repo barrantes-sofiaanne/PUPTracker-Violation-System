@@ -68,6 +68,14 @@ return [
             'report' => false,
         ],
 
+        'announcements' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'serve' => true,
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*
@@ -85,6 +93,22 @@ return [
     | EVIDENCE_STORAGE_DISK=evidence.
     */
     'evidence_disk' => env('EVIDENCE_STORAGE_DISK', 'local'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Announcement attachments disk
+    |--------------------------------------------------------------------------
+    |
+    | Announcement attachments are stored privately and are never placed in the
+    | web root. Default is the private local disk (storage/app/private) served
+    | only through the authorized attachment routes below.
+    |
+    | For Railway production, set ANNOUNCEMENT_STORAGE_DISK=s3 and configure the
+    | AWS_* variables (private bucket) to use S3-compatible object storage.
+    | The 'announcements' disk definition above is a private local alias used
+    | when ANNOUNCEMENT_STORAGE_DISK=announcements.
+    */
+    'announcements_disk' => env('ANNOUNCEMENT_STORAGE_DISK', 'local'),
 
     /*
     |--------------------------------------------------------------------------

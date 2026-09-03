@@ -82,7 +82,15 @@ class MfaController extends Controller
             return redirect()->route('home')->with('error', 'Unable to complete verification. Please login again.');
         }
 
-        Auth::guard($guard)->login($user);
+        // If the user ticked "Remember me" on the (admin/security) login form,
+        // log them in with Laravel's recaller cookie so this browser is treated
+        // as a trusted device for the per-guard remember duration (30 days).
+        // After that window the cookie expires and a full login + MFA is required
+        // again. Only privileged (admin/security) challenges may set remember;
+        // student logins never carry the flag (MfaService normalizes it to false).
+        $remember = (bool) ($pending['remember'] ?? false);
+
+        Auth::guard($guard)->login($user, $remember);
         $request->session()->regenerate();
         $mfaService->clear($request);
 

@@ -24,12 +24,44 @@
                             <span class="portal-badge muted">{{ optional($announcement->created_at)->format('M d, Y') }}</span>
                         </div>
                         <p class="mb-0" style="white-space: pre-line; color: #3c3134;">{{ $announcement->content }}</p>
-                        @if($announcement->attachment_path)
+
+                        @php
+                            $hasSecure = $announcement->attachments->isNotEmpty();
+                            $hasLegacy = (bool) $announcement->attachment_path;
+                        @endphp
+
+                        @if($hasSecure || $hasLegacy)
                             <div class="mt-3">
-                                <a href="{{ asset($announcement->attachment_path) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm portal-btn-outline">
-                                    <i class="bi bi-paperclip me-1"></i>
-                                    View Attachment
-                                </a>
+                                <div class="fw-semibold small text-uppercase text-muted mb-2">Attachments</div>
+                                @foreach($announcement->attachments as $file)
+                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 border rounded p-2 mb-2 bg-white">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="bi {{ $file->is_image ? 'bi-file-earmark-image' : 'bi-file-earmark-text' }} fs-4 text-maroon"></i>
+                                            <div>
+                                                <div class="fw-semibold small">{{ $file->original_filename }}</div>
+                                                <div class="text-muted small">
+                                                    {{ $file->is_image ? 'IMAGE' : strtoupper((string) \Illuminate\Support\Str::after((string) $file->mime_type, '/')) }}
+                                                    @if($file->human_size !== '0 B') &bull; {{ $file->human_size }} @endif
+                                                    @if($file->created_at) &bull; Uploaded {{ $file->created_at->format('M d, Y') }} @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <a href="{{ route('announcements.attachments.show', $file) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye me-1"></i>View
+                                            </a>
+                                            <a href="{{ route('announcements.attachments.download', $file) }}" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-download me-1"></i>Download
+                                            </a>
+                                        </div>
+                                    </div>
+                                @endforeach
+                                @if($hasLegacy)
+                                    <a href="{{ asset($announcement->attachment_path) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm portal-btn-outline">
+                                        <i class="bi bi-paperclip me-1"></i>
+                                        View Attachment
+                                    </a>
+                                @endif
                             </div>
                         @endif
                     </div>

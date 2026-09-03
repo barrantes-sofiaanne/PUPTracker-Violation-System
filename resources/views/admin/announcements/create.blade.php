@@ -29,9 +29,19 @@
             </div>
 
             <div class="mb-4">
-                <label for="attachment" class="form-label">Attachment</label>
-                <input class="form-control" type="file" id="attachment" name="attachment" accept=".jpg,.jpeg,.png,.gif,.pdf">
-                <div class="form-text">Supported formats: JPG, PNG, GIF, PDF. Maximum size 5MB.</div>
+                <label for="attachments" class="form-label">Attachments</label>
+                <input
+                    class="form-control"
+                    type="file"
+                    id="attachments"
+                    name="attachments[]"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png"
+                    multiple>
+                <div class="form-text">
+                    Supported formats: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, JPEG, PNG.
+                    Maximum size per file 10MB, up to {{ \App\Services\AnnouncementAttachmentService::MAX_ATTACHMENTS }} files.
+                    Files are stored securely and are only accessible to authorized users.
+                </div>
             </div>
 
             @if(Auth::guard('admin')->user()?->isItAdministrator())

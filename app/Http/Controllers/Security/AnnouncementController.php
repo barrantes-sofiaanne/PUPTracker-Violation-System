@@ -9,7 +9,7 @@ class AnnouncementController extends Controller
 {
     public function index()
     {
-        $announcements = Announcement::latest('created_at')->get();
+        $announcements = Announcement::with('attachments')->latest('created_at')->get();
 
         return view('security.announcements.index', compact('announcements'));
     }

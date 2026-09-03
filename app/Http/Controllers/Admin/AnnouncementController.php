@@ -5,16 +5,20 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Announcement;
+use App\Models\AnnouncementAttachment;
 use App\Models\AdminNotification;
+use App\Services\AnnouncementAttachmentService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\View\View;
 
 class AnnouncementController extends Controller
 {
     public function index()
     {
-        $announcements = Announcement::with('adminInfo')
+        $announcements = Announcement::with(['adminInfo', 'attachments'])
             ->latest('created_at')
             ->paginate(10);
 
@@ -22,7 +26,7 @@ class AnnouncementController extends Controller
         /** @var \App\Models\Admin|null $admin */
         $admin = $admin instanceof Admin ? $admin : null;
 
-        $myAnnouncements = Announcement::with('adminInfo')
+        $myAnnouncements = Announcement::with(['adminInfo', 'attachments'])
             ->where('admin_id', $admin?->getKey())
             ->latest('created_at')
             ->paginate(10, ['*'], 'my_page');
@@ -30,7 +34,9 @@ class AnnouncementController extends Controller
         $unreadNotificationCount = AdminNotification::where('is_read', false)->count();
         $announcementStats = [
             'total' => Announcement::count(),
-            'with_attachments' => Announcement::whereNotNull('attachment_path')->count(),
+            'with_attachments' => Announcement::whereNotNull('attachment_path')
+                ->orWhereHas('attachments')
+                ->count(),
         ];
 
         return view(
@@ -49,6 +55,8 @@ class AnnouncementController extends Controller
         $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string'],
+            'attachments' => ['nullable', 'array', 'max:' . AnnouncementAttachmentService::MAX_ATTACHMENTS],
+            'attachments.*' => $this->attachmentFileRules(),
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,pdf', 'max:5120'],
             'show_on_login' => ['nullable', 'boolean'],
             'login_modal_duration' => ['nullable', 'in:1_week,1_month,custom'],
@@ -67,13 +75,17 @@ class AnnouncementController extends Controller
             'admin_id' => $admin?->getKey(),
             'title' => $request->input('title'),
             'content' => $request->input('content'),
-            'attachment_path' => $this->saveAttachment($request),
+            'attachment_path' => null,
             'show_on_login' => $showOnLogin,
             'login_modal_expires_at' => $showOnLogin
                 ? $this->resolveLoginModalExpiry($request)
                 : null,
         ]);
         $announcement->save();
+
+        // Store the new secure multi-attachments.
+        $service = app(AnnouncementAttachmentService::class);
+        $this->storeUploadedFiles($service, $announcement, $request->file('attachments', []), $admin, $request);
 
         // Notify students about the new announcement (target-aware).
         $this->notifyStudentsOfAnnouncement($announcement);
@@ -121,6 +133,8 @@ class AnnouncementController extends Controller
     {
         $this->authorizeAnnouncementOwner($announcement);
 
+        $announcement->load('attachments');
+
         return view('admin.announcements.edit', compact('announcement'));
     }
 
@@ -131,6 +145,8 @@ class AnnouncementController extends Controller
         $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string'],
+            'attachments' => ['nullable', 'array', 'max:' . AnnouncementAttachmentService::MAX_ATTACHMENTS],
+            'attachments.*' => $this->attachmentFileRules(),
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,pdf', 'max:5120'],
             'remove_attachment' => ['nullable', 'boolean'],
             'show_on_login' => ['nullable', 'boolean'],
@@ -145,16 +161,18 @@ class AnnouncementController extends Controller
 
         $showOnLogin = $canPublishLoginModal && $request->boolean('show_on_login');
 
+        // Legacy single-attachment handling (backward compatible with the old
+        // public/uploads/announcements flow used by pre-existing rows).
         $attachmentPath = $announcement->getAttribute('attachment_path');
 
         if ($request->has('remove_attachment') && $request->boolean('remove_attachment')) {
-            $this->deleteAttachment($attachmentPath);
+            $this->deleteLegacyAttachment($attachmentPath);
             $attachmentPath = null;
         }
 
         if ($request->hasFile('attachment')) {
-            $this->deleteAttachment($attachmentPath);
-            $attachmentPath = $this->saveAttachment($request);
+            $this->deleteLegacyAttachment($attachmentPath);
+            $attachmentPath = $this->saveLegacyAttachment($request);
         }
 
         $announcement->forceFill([
@@ -168,6 +186,10 @@ class AnnouncementController extends Controller
         ]);
         $announcement->save();
 
+        // Store any newly-added secure attachments.
+        $service = app(AnnouncementAttachmentService::class);
+        $this->storeUploadedFiles($service, $announcement, $request->file('attachments', []), $admin, $request);
+
         return redirect()
             ->route('admin.announcements')
             ->with('success', 'Announcement updated successfully.');
@@ -177,7 +199,16 @@ class AnnouncementController extends Controller
     {
         $this->authorizeAnnouncementOwner($announcement);
 
-        $this->deleteAttachment($announcement->getAttribute('attachment_path'));
+        // Remove secure attachments (objects + metadata + audit).
+        app(AnnouncementAttachmentService::class)->deleteAnnouncementAttachments(
+            $announcement,
+            $this->currentAdmin(),
+            request(),
+        );
+
+        // Remove the legacy single attachment file, if any.
+        $this->deleteLegacyAttachment($announcement->getAttribute('attachment_path'));
+
         $announcement->delete();
 
         return redirect()
@@ -187,7 +218,104 @@ class AnnouncementController extends Controller
 
     public function show(Announcement $announcement)
     {
+        $announcement->load('attachments');
+
         return view('admin.announcements.show', compact('announcement'));
+    }
+
+    /**
+     * Add one or more attachments to an existing announcement.
+     */
+    public function storeAttachment(Request $request, Announcement $announcement): RedirectResponse
+    {
+        $this->authorizeAnnouncementOwner($announcement);
+
+        $request->validate([
+            'attachments' => ['required', 'array', 'max:' . AnnouncementAttachmentService::MAX_ATTACHMENTS],
+            'attachments.*' => $this->attachmentFileRules(),
+        ]);
+
+        $admin = $this->currentAdmin();
+        $service = app(AnnouncementAttachmentService::class);
+
+        $stored = $this->storeUploadedFiles($service, $announcement, $request->file('attachments', []), $admin, $request);
+
+        if ($stored === 0) {
+            return back()->with('error', 'No attachment was uploaded. Check the file type and size.');
+        }
+
+        return back()->with('success', $stored . ' attachment(s) added successfully.');
+    }
+
+    /**
+     * Delete a single secure attachment.
+     */
+    public function destroyAttachment(AnnouncementAttachment $attachment): RedirectResponse
+    {
+        $announcement = $attachment->announcement;
+
+        if (! $announcement) {
+            abort(404, 'Attachment does not belong to a valid announcement.');
+        }
+
+        $this->authorizeAnnouncementOwner($announcement);
+
+        $deleted = app(AnnouncementAttachmentService::class)->deleteAttachment(
+            $attachment,
+            $this->currentAdmin(),
+            request(),
+        );
+
+        if (! $deleted) {
+            return back()->with('error', 'Unable to remove the attachment. Please try again.');
+        }
+
+        return back()->with('success', 'Attachment removed successfully.');
+    }
+
+    // ------------------------------------------------------------------
+    // Secure attachment helpers
+    // ------------------------------------------------------------------
+
+    protected function attachmentFileRules(): array
+    {
+        return app(AnnouncementAttachmentService::class)->singleFileRules();
+    }
+
+    /**
+     * Store the uploaded secure attachment files (multiple). Returns count.
+     *
+     * @param  \Illuminate\Http\UploadedFile[]  $files
+     */
+    protected function storeUploadedFiles(
+        AnnouncementAttachmentService $service,
+        Announcement $announcement,
+        array $files,
+        ?Admin $admin,
+        ?Request $request,
+    ): int {
+        $stored = 0;
+
+        foreach ($files as $file) {
+            if (! $file instanceof \Illuminate\Http\UploadedFile) {
+                continue;
+            }
+
+            $attachment = $service->storeUploaded($announcement, $file, $admin, $request);
+
+            if ($attachment) {
+                $stored++;
+            }
+        }
+
+        return $stored;
+    }
+
+    protected function currentAdmin(): ?Admin
+    {
+        $admin = Auth::guard('admin')->user();
+
+        return $admin instanceof Admin ? $admin : null;
     }
 
     /**
@@ -211,25 +339,6 @@ class AnnouncementController extends Controller
         if ((int) $announcement->admin_id !== (int) $admin->getKey()) {
             abort(403, 'You can only edit or delete announcements you created.');
         }
-    }
-
-    protected function saveAttachment(Request $request)
-    {
-        if (! $request->hasFile('attachment')) {
-            return null;
-        }
-
-        $file = $request->file('attachment');
-        $directory = public_path('uploads/announcements');
-
-        if (! File::exists($directory)) {
-            File::makeDirectory($directory, 0755, true);
-        }
-
-        $filename = uniqid('announcement_', true) . '.' . $file->getClientOriginalExtension();
-        $file->move($directory, $filename);
-
-        return "uploads/announcements/{$filename}";
     }
 
     /**
@@ -263,7 +372,37 @@ class AnnouncementController extends Controller
         return \Illuminate\Support\Carbon::now()->addWeek()->endOfDay();
     }
 
-    protected function deleteAttachment(?string $path)
+    // ------------------------------------------------------------------
+    // Legacy single-attachment helpers (kept for backward compatibility
+    // with announcements that predate the secure attachment system)
+    // ------------------------------------------------------------------
+
+    /**
+     * Save a legacy single attachment to public/uploads/announcements.
+     */
+    protected function saveLegacyAttachment(Request $request): ?string
+    {
+        if (! $request->hasFile('attachment')) {
+            return null;
+        }
+
+        $file = $request->file('attachment');
+        $directory = public_path('uploads/announcements');
+
+        if (! File::exists($directory)) {
+            File::makeDirectory($directory, 0755, true);
+        }
+
+        $filename = uniqid('announcement_', true) . '.' . $file->getClientOriginalExtension();
+        $file->move($directory, $filename);
+
+        return "uploads/announcements/{$filename}";
+    }
+
+    /**
+     * Delete a legacy single attachment file, if present.
+     */
+    protected function deleteLegacyAttachment(?string $path): void
     {
         if (! $path) {
             return;

@@ -63,7 +63,8 @@ class AdminLoginController extends Controller
                     $admin->mfa_totp_secret,
                     (bool) $admin->mfa_totp_enabled,
                     $admin->mfa_backup_codes,
-                    $admin->mfa_backup_codes_used
+                    $admin->mfa_backup_codes_used,
+                    $request->boolean('remember')
                 );
                 Log::info('Admin login: MFA challenge started successfully');
             } catch (\Throwable $exception) {

@@ -19,15 +19,51 @@
                     </div>
                     <div>{!! nl2br(e($loginAnnouncementModal->content)) !!}</div>
 
-                    @if($loginAnnouncementModal->attachment_path)
+                    @php
+                        $secureModalAttachments = $loginAnnouncementModal->attachments ?? collect();
+                    @endphp
+
+                    @if($secureModalAttachments->isNotEmpty() || $loginAnnouncementModal->attachment_path)
                         <hr>
-                        <a
-                            href="{{ asset($loginAnnouncementModal->attachment_path) }}"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="btn btn-outline-primary btn-sm">
-                            View Attachment
-                        </a>
+                        <div class="d-flex flex-column gap-2">
+                            @foreach($secureModalAttachments as $file)
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 border rounded p-2">
+                                    <div class="d-flex align-items-center gap-2 small">
+                                        <i class="bi {{ $file->is_image ? 'bi-file-earmark-image' : 'bi-file-earmark-text' }} text-maroon fs-5"></i>
+                                        <div>
+                                            <div class="fw-semibold">{{ $file->original_filename }}</div>
+                                            <div class="text-muted">
+                                                {{ strtoupper((string) \Illuminate\Support\Str::after((string) $file->mime_type, '/')) }}
+                                                @if($file->human_size !== '0 B') &bull; {{ $file->human_size }} @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <a
+                                            href="{{ route('announcements.attachments.show', $file) }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </a>
+                                        <a
+                                            href="{{ route('announcements.attachments.download', $file) }}"
+                                            class="btn btn-outline-secondary btn-sm">
+                                            <i class="bi bi-download me-1"></i>Download
+                                        </a>
+                                    </div>
+                                </div>
+                            @endforeach
+                            @if($loginAnnouncementModal->attachment_path)
+                                <a
+                                    href="{{ asset($loginAnnouncementModal->attachment_path) }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="btn btn-outline-primary btn-sm align-self-start">
+                                    View Attachment
+                                </a>
+                            @endif
+                        </div>
                     @endif
                 </div>
                 <div class="modal-footer">

@@ -51,7 +51,8 @@ class SecurityLoginController extends Controller
                 $security->mfa_totp_secret,
                 (bool) $security->mfa_totp_enabled,
                 $security->mfa_backup_codes,
-                $security->mfa_backup_codes_used
+                $security->mfa_backup_codes_used,
+                $request->boolean('remember')
             );
         } catch (\Throwable $exception) {
             Log::error('Security MFA challenge initialization failed.', [

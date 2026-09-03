@@ -200,6 +200,27 @@ Route::middleware('auth:admin,security')
             ->name('totp.disable');
     });
 
+/*
+|--------------------------------------------------------------------------
+| Announcement Attachments (shared authorized access)
+|--------------------------------------------------------------------------
+|
+| Announcement attachments are stored on a PRIVATE disk and are served only
+| through these controlled endpoints. Any authenticated user (student,
+| security, or admin) may access the attachment of a published announcement.
+| Authorization is enforced server-side on every request; the file is never
+| served from the public web root and there is no permanent direct
+| object-storage URL.
+*/
+
+Route::middleware('auth:student,security,admin')
+    ->group(function () {
+        Route::get('/announcements/attachments/{attachment}', [App\Http\Controllers\AnnouncementAttachmentController::class, 'show'])
+            ->name('announcements.attachments.show');
+
+        Route::get('/announcements/attachments/{attachment}/download', [App\Http\Controllers\AnnouncementAttachmentController::class, 'download'])
+            ->name('announcements.attachments.download');
+    });
 
 
 /*
@@ -508,6 +529,15 @@ Route::middleware('auth:admin')
 
         Route::post('/announcements', [AdminAnnouncementController::class, 'store'])
             ->name('admin.announcements.store');
+
+        // Secure announcement attachments (private storage, authorized access).
+        // These MUST be declared before the wildcard {announcement} show route
+        // below so "attachments" is not treated as an announcement id.
+        Route::post('/announcements/{announcement}/attachments', [AdminAnnouncementController::class, 'storeAttachment'])
+            ->name('admin.announcements.attachments.store');
+
+        Route::delete('/announcements/attachments/{attachment}', [AdminAnnouncementController::class, 'destroyAttachment'])
+            ->name('admin.announcements.attachments.destroy');
 
         Route::get('/announcements/{announcement}', [AdminAnnouncementController::class, 'show'])
             ->name('admin.announcements.show');

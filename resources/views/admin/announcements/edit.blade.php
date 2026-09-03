@@ -30,14 +30,77 @@
             </div>
 
             <div class="mb-4">
-                <label for="attachment" class="form-label">Attachment</label>
-                <input class="form-control" type="file" id="attachment" name="attachment" accept=".jpg,.jpeg,.png,.gif,.pdf">
-                <div class="form-text">Upload a new file to replace the current attachment.</div>
+                <label for="attachments" class="form-label">Add Attachments</label>
+                <input
+                    class="form-control"
+                    type="file"
+                    id="attachments"
+                    name="attachments[]"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png"
+                    multiple>
+                <div class="form-text">
+                    Add one or more files. Supported formats: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, JPEG, PNG.
+                    Maximum size per file 10MB. Files are stored securely.
+                </div>
             </div>
+
+            @php
+                $secureAttachments = $announcement->attachments ?? collect();
+            @endphp
+
+            @if($secureAttachments->isNotEmpty())
+                <div class="mb-4 p-3 bg-light rounded border">
+                    <strong class="d-block mb-2">Current attachments</strong>
+                    <ul class="list-unstyled mb-0">
+                        @foreach($secureAttachments as $secure)
+                            <li class="d-flex align-items-center justify-content-between flex-wrap gap-2 py-2 border-bottom">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi {{ $secure->is_image ? 'bi-file-earmark-image' : 'bi-file-earmark-text' }} text-maroon fs-5"></i>
+                                    <div>
+                                        <div class="fw-semibold small">{{ $secure->original_filename }}</div>
+                                        <div class="text-muted small">
+                                            {{ strtoupper($secure->mime_type ? \Illuminate\Support\Str::after($secure->mime_type, '/') : 'file') }}
+                                            &bull; {{ $secure->human_size }}
+                                            &bull; Uploaded {{ optional($secure->created_at)->format('M d, Y') }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <a
+                                        href="{{ route('announcements.attachments.show', $secure) }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="admin-btn admin-btn-view admin-btn-sm">
+                                        <i class="bi bi-eye me-1"></i>View
+                                    </a>
+                                    <a
+                                        href="{{ route('announcements.attachments.download', $secure) }}"
+                                        class="admin-btn admin-btn-view admin-btn-sm">
+                                        <i class="bi bi-download me-1"></i>Download
+                                    </a>
+                                    <form
+                                        action="{{ route('admin.announcements.attachments.destroy', $secure) }}"
+                                        method="POST"
+                                        class="d-inline-block"
+                                        data-confirm="Remove this attachment? The file will be permanently deleted."
+                                        data-confirm-title="Remove Attachment?"
+                                        data-confirm-confirm-label="Remove">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="admin-btn admin-btn-danger admin-btn-sm">
+                                            <i class="bi bi-trash me-1"></i>Remove
+                                        </button>
+                                    </form>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
             @if($announcement->attachment_path)
                 <div class="mb-4 p-3 bg-light rounded border">
-                    <strong>Current attachment:</strong>
+                    <strong>Legacy attachment:</strong>
                     <div>
                         <a href="{{ asset($announcement->attachment_path) }}" target="_blank">View current file</a>
                     </div>

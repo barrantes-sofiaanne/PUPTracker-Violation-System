@@ -95,11 +95,16 @@
                         </thead>
                         <tbody>
                             @forelse($announcements as $announcement)
+                                @php
+                                    $attachmentCount = $announcement->attachments->count();
+                                @endphp
                                 <tr>
                                     <td>
                                         <div class="fw-semibold">{{ $announcement->title }}</div>
-                                        @if($announcement->attachment_path)
-                                            <span class="badge bg-secondary mt-2">Attachment</span>
+                                        @if($attachmentCount > 0 || $announcement->attachment_path)
+                                            <span class="badge bg-secondary mt-2">
+                                                <i class="bi bi-paperclip me-1"></i>{{ $attachmentCount > 0 ? $attachmentCount . ' attachment(s)' : 'Attachment' }}
+                                            </span>
                                         @endif
                                         @if($announcement->show_on_login)
                                             <span class="badge bg-info text-dark mt-2">Login Modal</span>
@@ -113,18 +118,9 @@
                                     </td>
                                     <td>{{ optional($announcement->created_at)->format('M d, Y h:i A') }}</td>
                                     <td class="text-end">
-                                        <button
-                                            type="button"
-                                            class="admin-btn admin-btn-view admin-btn-sm announcement-view-btn"
-                                            data-title="{{ e($announcement->title) }}"
-                                            data-author="{{ optional($announcement->adminInfo)->firstname ? optional($announcement->adminInfo)->firstname . ' ' . optional($announcement->adminInfo)->lastname : 'Admin #' . $announcement->admin_id }}"
-                                            data-created="{{ optional($announcement->created_at)->format('F d, Y h:i A') }}"
-                                            data-content="{{ e($announcement->content) }}"
-                                            data-attachment="{{ $announcement->attachment_path ? asset($announcement->attachment_path) : '' }}"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#announcementViewModal">
+                                        <a href="{{ route('admin.announcements.show', $announcement) }}" class="admin-btn admin-btn-view admin-btn-sm">
                                             <i class="bi bi-eye me-1"></i>View
-                                        </button>
+                                        </a>
                                     </td>
                                 </tr>
                             @empty
@@ -156,11 +152,16 @@
                         </thead>
                         <tbody>
                             @forelse($myAnnouncements as $announcement)
+                                @php
+                                    $attachmentCount = $announcement->attachments->count();
+                                @endphp
                                 <tr>
                                     <td>
                                         <div class="fw-semibold">{{ $announcement->title }}</div>
-                                        @if($announcement->attachment_path)
-                                            <span class="badge bg-secondary mt-2">Attachment</span>
+                                        @if($attachmentCount > 0 || $announcement->attachment_path)
+                                            <span class="badge bg-secondary mt-2">
+                                                <i class="bi bi-paperclip me-1"></i>{{ $attachmentCount > 0 ? $attachmentCount . ' attachment(s)' : 'Attachment' }}
+                                            </span>
                                         @endif
                                         <div class="text-muted small mt-2">
                                             {{ Str::limit(strip_tags($announcement->content), 80) }}
@@ -200,64 +201,4 @@
     </div>
 </div>
 
-{{-- Announcement view modal --}}
-<div class="modal fade" id="announcementViewModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="announcementViewTitle">Announcement</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="text-muted small mb-3">
-                    <span id="announcementViewAuthor"></span>
-                    <span class="mx-1">•</span>
-                    <span id="announcementViewCreated"></span>
-                </div>
-                <p class="mb-0" style="white-space: pre-line;" id="announcementViewContent"></p>
-            </div>
-            <div class="modal-footer">
-                <a href="#" target="_blank" rel="noopener noreferrer" class="admin-btn admin-btn-view d-none" id="announcementViewAttachment">
-                    <i class="bi bi-paperclip me-1"></i>View Attachment
-                </a>
-                <button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 @endsection
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const modal = document.getElementById('announcementViewModal');
-    if (!modal) {
-        return;
-    }
-
-    const titleEl = document.getElementById('announcementViewTitle');
-    const authorEl = document.getElementById('announcementViewAuthor');
-    const createdEl = document.getElementById('announcementViewCreated');
-    const contentEl = document.getElementById('announcementViewContent');
-    const attachmentEl = document.getElementById('announcementViewAttachment');
-
-    document.querySelectorAll('.announcement-view-btn').forEach(function (button) {
-        button.addEventListener('click', function () {
-            titleEl.textContent = button.dataset.title || 'Announcement';
-            authorEl.textContent = button.dataset.author ? 'By ' + button.dataset.author : '';
-            createdEl.textContent = button.dataset.created || '';
-            contentEl.textContent = button.dataset.content || '';
-
-            if (button.dataset.attachment) {
-                attachmentEl.href = button.dataset.attachment;
-                attachmentEl.classList.remove('d-none');
-            } else {
-                attachmentEl.href = '#';
-                attachmentEl.classList.add('d-none');
-            }
-        });
-    });
-});
-</script>
-@endpush

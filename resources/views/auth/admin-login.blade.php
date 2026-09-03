@@ -86,6 +86,21 @@
 
             </div>
 
+            <div class="remember-row">
+                <div class="form-check remember-check">
+                    <input
+                        type="checkbox"
+                        class="form-check-input"
+                        id="rememberMe"
+                        name="remember"
+                        value="1"
+                        @checked(old('remember'))>
+                    <label class="form-check-label remember-label" for="rememberMe">
+                        Remember me for 30 days
+                    </label>
+                </div>
+            </div>
+
             <button
                 type="submit"
                 class="btn btn-success w-100 login-btn">

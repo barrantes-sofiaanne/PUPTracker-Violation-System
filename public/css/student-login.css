@@ -2093,6 +2093,64 @@ html.is-navigating .auth-brand-mark::after {
     box-shadow: 0 20px 30px rgba(128, 0, 0, 0.33);
 }
 
+/* Remember me (30-day trusted device) row for the Administrator and Security
+   login forms. The checkbox label is interactive text (it can toggle the box),
+   so it keeps the maroon accent and the same typographic rhythm as the rest of
+   the auth card. */
+.auth-content-card[data-portal="admin"] .remember-row,
+.auth-content-card[data-portal="security"] .remember-row {
+    margin: 0.4rem 0.1rem 0.35rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.auth-content-card[data-portal="admin"] .remember-check,
+.auth-content-card[data-portal="security"] .remember-check {
+    margin-bottom: 0;
+    min-height: auto;
+}
+
+.auth-content-card[data-portal="admin"] .remember-check .form-check-input,
+.auth-content-card[data-portal="security"] .remember-check .form-check-input {
+    border-color: rgba(128, 0, 0, 0.4);
+    cursor: pointer;
+}
+
+.auth-content-card[data-portal="admin"]
+    .remember-check
+    .form-check-input:checked,
+.auth-content-card[data-portal="security"]
+    .remember-check
+    .form-check-input:checked {
+    background-color: #800000;
+    border-color: #800000;
+}
+
+.auth-content-card[data-portal="admin"] .remember-check .form-check-input:focus,
+.auth-content-card[data-portal="security"]
+    .remember-check
+    .form-check-input:focus {
+    border-color: rgba(128, 0, 0, 0.58);
+    box-shadow: 0 0 0 0.18rem rgba(128, 0, 0, 0.13);
+}
+
+.auth-content-card[data-portal="admin"] .remember-label,
+.auth-content-card[data-portal="security"] .remember-label {
+    color: #3a2a2a;
+    font-weight: 600;
+    font-size: 0.86rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.auth-content-card[data-portal="admin"] .remember-label:hover,
+.auth-content-card[data-portal="security"] .remember-label:hover {
+    color: #800000;
+}
+
 .auth-content-card[data-portal="admin"] .footer-links,
 .auth-content-card[data-portal="security"] .footer-links {
     padding-top: 0.55rem;

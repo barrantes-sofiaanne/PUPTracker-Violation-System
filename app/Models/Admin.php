@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Schema;
  * @property string $username
  * @property string $email
  * @property string $password
+ * @property string|null $remember_token
  * @property string|null $mfa_totp_secret
  * @property bool $mfa_totp_enabled
  */
@@ -26,6 +27,7 @@ class Admin extends Authenticatable
         'username',
         'email',
         'password',
+        'remember_token',
         'mfa_totp_secret',
         'mfa_totp_enabled',
         'mfa_backup_codes',

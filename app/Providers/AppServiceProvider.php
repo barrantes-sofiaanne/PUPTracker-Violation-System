@@ -50,6 +50,7 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 $announcement = Announcement::query()
+                    ->with('attachments')
                     ->where('show_on_login', true)
                     ->where(function ($query): void {
                         $query->whereNull('login_modal_expires_at')

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
@@ -409,15 +410,33 @@ class ForgotPasswordController extends Controller
     private function revokeSessions(string $guard, Admin|Security|User $account): void
     {
         try {
-            if (!Schema::hasTable('sessions')) {
-                return;
+            if (Schema::hasTable('sessions')) {
+                DB::table('sessions')
+                    ->where('user_id', $account->getKey())
+                    ->delete();
             }
 
-            DB::table('sessions')
-                ->where('user_id', $account->getKey())
-                ->delete();
+            // Rotate the "remember me" token as well. Deleting the DB sessions
+            // kills live sessions, but the remember token also lives in each
+            // browser's recaller cookie; without rotation a stolen (or simply
+            // pre-existing) remember cookie would stay valid after a password
+            // reset. Rotating it here invalidates every trusted device so the
+            // account must be logged into again (password + MFA) everywhere.
+            // (For students the remember token is disabled — the set is a no-op;
+            // and if the table predates the remember_token column we skip it.)
+            $rememberTokenName = $account->getRememberTokenName();
+            $table = $account->getTable();
 
-            Log::info('Sessions revoked after password reset.', [
+            if (
+                $rememberTokenName !== ''
+                && Schema::hasTable($table)
+                && Schema::hasColumn($table, $rememberTokenName)
+            ) {
+                $account->setRememberToken(Str::random(60));
+                $account->save();
+            }
+
+            Log::info('Sessions and remember tokens revoked after password reset.', [
                 'guard' => $guard,
                 'account_id' => $account->getKey(),
             ]);

@@ -12,6 +12,7 @@ use App\Models\Security;
 use App\Models\SecurityInfo;
 use App\Models\Section;
 use App\Models\Status;
+use App\Models\StudentInfo;
 use App\Models\StudentStatus;
 use App\Models\User;
 use App\Models\Year;
@@ -826,7 +827,7 @@ class StudentController extends Controller
     private function collectStudentChanges(
         array $infoBefore,
         User $student,
-        $studentInfo,
+        StudentInfo $studentInfo,
         Request $request
     ): array {
         $changes = [];
@@ -953,6 +954,7 @@ class StudentController extends Controller
      * Administrator-assisted IDP unlink.
      *
      * Removes the IDP binding from a student. Used to correct a mistaken link.
+     * This is the single unlinkIdpAccount method on this controller.
      */
     public function unlinkIdpAccount(Request $request, string $student_number)
     {

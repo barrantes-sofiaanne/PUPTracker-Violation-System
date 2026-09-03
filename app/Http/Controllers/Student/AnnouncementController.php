@@ -9,7 +9,8 @@ class AnnouncementController extends Controller
 {
     public function index()
     {
-        $announcements = Announcement::latest('created_at')
+        $announcements = Announcement::with('attachments')
+            ->latest('created_at')
             ->paginate(10);
 
         return view(

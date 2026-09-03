@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Admin;
 use App\Models\AdminInfo;
 
@@ -18,6 +19,7 @@ use App\Models\AdminInfo;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read Admin|null $admin
  * @property-read AdminInfo|null $adminInfo
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, AnnouncementAttachment> $attachments
  */
 class Announcement extends Model
 {
@@ -49,5 +51,13 @@ class Announcement extends Model
     public function adminInfo(): BelongsTo
     {
         return $this->belongsTo(AdminInfo::class, 'admin_id');
+    }
+
+    /**
+     * Multiple attachments for this announcement.
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(AnnouncementAttachment::class, 'announcement_id', 'announcement_id');
     }
 }
