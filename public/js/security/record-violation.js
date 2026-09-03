@@ -472,9 +472,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 // that do not expose a facingMode label.
                 let preferred = null;
                 if (cameraDeviceId) {
-                    const currentIndex = videoInputs.findIndex(function (device) {
-                        return device.deviceId === cameraDeviceId;
-                    });
+                    const currentIndex = videoInputs.findIndex(
+                        function (device) {
+                            return device.deviceId === cameraDeviceId;
+                        },
+                    );
                     const nextDevice =
                         videoInputs[(currentIndex + 1) % videoInputs.length];
                     if (nextDevice) {
@@ -484,19 +486,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (!preferred) {
                     // Otherwise prefer a labeled front/back match for the
                     // current facingMode, falling back to the first camera.
-                    preferred = videoInputs.find(function (device) {
-                        return (
-                            device.label &&
-                            (cameraFacingMode === "environment"
-                                ? /back|rear|environment/i.test(device.label)
-                                : /front|user/i.test(device.label))
-                        );
-                    }) || videoInputs[0];
+                    preferred =
+                        videoInputs.find(function (device) {
+                            return (
+                                device.label &&
+                                (cameraFacingMode === "environment"
+                                    ? /back|rear|environment/i.test(
+                                          device.label,
+                                      )
+                                    : /front|user/i.test(device.label))
+                            );
+                        }) || videoInputs[0];
                 }
 
-                const chosenDeviceId = preferred && preferred.deviceId
-                    ? preferred.deviceId
-                    : null;
+                const chosenDeviceId =
+                    preferred && preferred.deviceId ? preferred.deviceId : null;
 
                 if (!chosenDeviceId) {
                     showCameraIdle();
