@@ -52,20 +52,60 @@
             <div class="card-body">
                 <h5>Database Backup</h5>
                 <p class="mb-1">
-                    <span class="badge {{ ($backupHealthy ?? false) ? 'bg-success' : 'bg-warning text-dark' }}">
-                        {{ ($backupHealthy ?? false) ? '✓ Healthy' : 'No recent record' }}
-                    </span>
+                    @if(($backupHealthy ?? false))
+                        <span class="badge bg-success">✓ Healthy</span>
+                    @else
+                        <span class="badge bg-warning text-dark">⚠ Attention Required</span>
+                    @endif
                 </p>
+
                 <p class="text-muted mb-1">
                     Last backup:
                     <strong>
-                        {{ $latestBackup?->completed_at?->format('M d, Y h:i A') ?: 'No record yet' }}
+                        {{ $lastSuccessfulBackup?->completed_at?->format('M d, Y h:i A') ?: 'No record yet' }}
                     </strong>
                 </p>
-                @if($latestBackup)
-                    <p class="text-muted mb-1"><strong>{{ $latestBackup->backup_name }}</strong></p>
+                @if($lastSuccessfulBackup)
+                    <p class="text-muted mb-1">
+                        Last backup type: <strong>{{ $lastSuccessfulBackup->typeLabel() }}</strong>
+                    </p>
+                    <p class="text-muted mb-1">
+                        Integrity:
+                        @if($lastSuccessfulBackup->isChecksumVerified())
+                            <span class="badge bg-success">SHA-256 VERIFIED</span>
+                        @elseif($lastSuccessfulBackup->isSuccessful())
+                            <span class="badge bg-secondary">Not verified</span>
+                        @else
+                            <span class="badge bg-danger">Failed</span>
+                        @endif
+                    </p>
                 @endif
-                <p class="text-muted mb-3">Destination: Cloudflare R2</p>
+
+                <p class="text-muted mb-1">
+                    Last successful full:
+                    <strong>{{ $lastSuccessfulFull?->completed_at?->format('M d, Y h:i A') ?: 'None yet' }}</strong>
+                </p>
+                <p class="text-muted mb-1">
+                    Next full backup:
+                    <strong>
+                        {{ $nextFullDue?->format('M d, Y') ?: '—' }}
+                        @if($fullOverdue ?? false)
+                            <span class="badge bg-warning text-dark">overdue</span>
+                        @endif
+                    </strong>
+                </p>
+
+                @if(($lastFailedBackup ?? null) && ! ($backupHealthy ?? false))
+                    <p class="text-danger mb-1">
+                        Last failed attempt:
+                        <strong>{{ $lastFailedBackup->completed_at?->format('M d, Y h:i A') }}</strong>
+                    </p>
+                    @if($lastFailedBackup->error_message)
+                        <p class="text-danger small mb-1">{{ \Illuminate\Support\Str::limit($lastFailedBackup->error_message, 120) }}</p>
+                    @endif
+                @endif
+
+                <p class="text-muted mb-3">Destination: Cloudflare R2 (private)</p>
                 <a href="{{ route('admin.super-admin.backups.index') }}" class="admin-btn admin-btn-primary admin-btn-sm">View Backup History</a>
             </div>
         </div>

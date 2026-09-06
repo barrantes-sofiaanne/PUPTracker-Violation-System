@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -11,6 +12,27 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (Schedule $schedule): void {
+        // Single daily backup job at 02:00 AM (Asia/Manila). The job itself
+        // decides FULL vs INCREMENTAL vs DAILY_SNAPSHOT based on the elapsed
+        // time since the last successful FULL backup (never calendar dates).
+        $schedule->command('backup:run')
+            ->dailyAt('02:00')
+            ->timezone('Asia/Manila')
+            ->withoutOverlapping(3600)
+            ->onOneServer()
+            ->appendOutputTo(storage_path('logs/backup-scheduler.log'));
+
+        // Chain-aware retention. Runs as a DRY RUN by default (nothing deleted)
+        // so a Super Admin can review the plan. Auto-delete only if explicitly
+        // enabled (BACKUP_RETENTION_AUTO_DELETE=true).
+        $schedule->command('backup:prune' . (config('backup.retention.auto_delete') ? ' --force' : ''))
+            ->dailyAt('03:30')
+            ->timezone('Asia/Manila')
+            ->withoutOverlapping(3600)
+            ->onOneServer()
+            ->appendOutputTo(storage_path('logs/backup-scheduler.log'));
+    })
  ->withMiddleware(function (Middleware $middleware) {
     $middleware->trustProxies(at: '*');
 

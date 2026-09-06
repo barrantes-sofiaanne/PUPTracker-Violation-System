@@ -37,12 +37,41 @@ class SuperAdminController extends Controller
             : false;
 
         // Backup status: latest recorded outcome from backup_history.
-        $latestBackup = \App\Models\BackupHistory::query()
-            ->latest('completed_at')
-            ->first();
-        $backupHealthy = $latestBackup
-            && $latestBackup->isSuccessful()
-            && \Illuminate\Support\Carbon::parse($latestBackup->completed_at)->isAfter(now()->subDays(2));
+        // Guarded so the dashboard never breaks when the table is absent.
+        $backupTableExists = \Illuminate\Support\Facades\Schema::hasTable('backup_history');
+
+        $latestBackup = $backupTableExists
+            ? \App\Models\BackupHistory::query()->latest('completed_at')->first()
+            : null;
+
+        $lastSuccessfulBackup = $backupTableExists
+            ? \App\Models\BackupHistory::query()->successful()->latest('completed_at')->first()
+            : null;
+
+        $lastSuccessfulFull = $backupTableExists
+            ? \App\Models\BackupHistory::query()->successful()->full()->latest('completed_at')->first()
+            : null;
+
+        $lastFailedBackup = $backupTableExists
+            ? \App\Models\BackupHistory::query()->failed()->latest('completed_at')->first()
+            : null;
+
+        $backupIntervalDays = max(1, (int) config('backup.full_interval_days', 14));
+
+        // "Healthy" requires a recent successful backup AND no recent failure.
+        $recentSuccess = $lastSuccessfulBackup
+            && \Illuminate\Support\Carbon::parse($lastSuccessfulBackup->completed_at)->isAfter(now()->subDays(2));
+        $recentFailure = $lastFailedBackup
+            && \Illuminate\Support\Carbon::parse($lastFailedBackup->completed_at)->isAfter(now()->subDays(2));
+        $backupHealthy = $recentSuccess && ! $recentFailure;
+
+        // Next FULL due is computed from the last SUCCESSFUL FULL (elapsed time,
+        // never calendar dates).
+        $nextFullDue = $lastSuccessfulFull
+            ? \Illuminate\Support\Carbon::parse($lastSuccessfulFull->completed_at)->addDays($backupIntervalDays)
+            : null;
+        $fullOverdue = $lastSuccessfulFull === null
+            || $nextFullDue->isPast();
 
         return view('admin.super-admin.dashboard', compact(
             'totalLogs',
@@ -55,7 +84,13 @@ class SuperAdminController extends Controller
             'maintenanceNextReview',
             'maintenanceUpToDate',
             'latestBackup',
-            'backupHealthy'
+            'backupHealthy',
+            'lastSuccessfulBackup',
+            'lastSuccessfulFull',
+            'lastFailedBackup',
+            'backupIntervalDays',
+            'nextFullDue',
+            'fullOverdue'
         ));
     }
 

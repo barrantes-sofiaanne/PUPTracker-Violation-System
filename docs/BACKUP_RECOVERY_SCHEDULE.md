@@ -1,569 +1,278 @@
-# Data Backup and Recovery Schedule
+# PUPTracker Violation System — Database Backup & Recovery
 
-**PUPTracker Violation System**
+**Last updated:** 2026-09-06
+**Status:** Implemented
 
-## Overview
-
-This document establishes the backup and disaster recovery procedures for the PUPTracker Violation System, ensuring data protection, integrity, and availability in case of system failures or data loss incidents.
-
-**Last Updated:** July 31, 2026
-**Version:** 1.0
-**Effective Date:** August 1, 2026
-
-## Implementation Status
-
-- Status: Implemented and Active
-- Verification Date: 2026-08-01
-- Owner: Database Administrator
-- Evidence Reference: docs/CORRECTIVE_AND_TREATMENT_PLAN_STATUS.md
+This document describes the ACTUAL database backup implementation in this
+repository. It intentionally does **not** claim features the deployment cannot
+provide (notably TRUE incremental backups).
 
 ---
 
-## 1. Backup Strategy Overview
+## 1. Backup types
 
-### 1.1 Backup Approach
+| Type             | Meaning                                                                                                                                          | When it runs                                                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `FULL`           | Complete, compressed logical snapshot of the whole database (tables + data + triggers + routines + events). Establishes a new recovery baseline. | Once every **14 days**, measured from the **last SUCCESSFUL FULL** backup. Also runs when there is no successful FULL yet. |
+| `INCREMENTAL`    | TRUE MySQL binary-log incremental (changes since the previous backup / binlog position).                                                         | Only when the MySQL server exposes **readable, archivable binary logs** (see §3).                                          |
+| `DAILY_SNAPSHOT` | Safe fallback: a complete logical snapshot taken every day when binary logging is NOT available.                                                 | Every other day (when a FULL is not due and TRUE incremental is impossible).                                               |
 
-The PUPTracker system employs a **3-2-1 Backup Strategy**:
+A daily logical `mysqldump` is **never** labelled "incremental".
 
-- **3** copies of data (production + 2 backups)
-- **2** different storage media types (local + cloud)
-- **1** offsite copy (geographic redundancy)
+### 1.1 The daily decision
 
-### 1.2 Data Classification
+A single scheduled job (`php artisan backup:run`) runs once per day at **02:00
+Asia/Manila**. It decides the type like this:
 
-| Classification | Importance               | Backup Frequency | Retention | Examples                                    |
-| -------------- | ------------------------ | ---------------- | --------- | ------------------------------------------- |
-| **Critical**   | Essential for operations | Every 6 hours    | 30 days   | User accounts, violation records, sanctions |
-| **Important**  | Business operations      | Daily            | 14 days   | Student records, announcements, audit logs  |
-| **Standard**   | Regular operations       | Weekly           | 8 weeks   | Session data, temporary files, logs         |
-| **Archive**    | Historical data          | Monthly          | 1 year    | Old reports, archived records               |
+1. Find the latest **SUCCESSFUL** `FULL` backup (`backup_history` where
+   `status=success` and `backup_type=full`, ordered by `completed_at`).
+2. If none exists → create a **FULL**.
+3. If 14+ days have passed since that successful FULL → create a **FULL**.
+4. Otherwise → create an **INCREMENTAL** if binary logs are supported.
+5. Otherwise → create a **DAILY_SNAPSHOT**.
 
----
+The 14-day window is elapsed time from the last successful FULL — never a
+hard-coded calendar date (not the 1st/15th).
 
-## 2. Backup Schedule
-
-### 2.1 Full Backup Schedule
-
-| Type                 | Frequency     | Time (UTC+8)               | Duration | Storage      | Retention |
-| -------------------- | ------------- | -------------------------- | -------- | ------------ | --------- |
-| **Full Database**    | Daily         | 02:00 - 03:00              | ~1 hour  | 500GB+       | 30 days   |
-| **Full File System** | Weekly        | Saturday 03:00             | ~2 hours | 2TB+         | 8 weeks   |
-| **Incremental**      | Every 6 hours | 02:00, 08:00, 14:00, 20:00 | ~10 min  | 200GB        | 7 days    |
-| **Transaction Log**  | Every 30 min  | Continuous                 | N/A      | 50GB         | 24 hours  |
-| **Offsite Sync**     | Daily         | 04:00                      | ~1 hour  | Cloud        | 30 days   |
-| **Archive Backup**   | Monthly       | 1st of month, 02:00        | Variable | Tape/Archive | 1 year    |
-
-### 2.2 Daily Backup Timeline
-
-```
-00:00 - Database warm backup starts
-02:00 - Full database backup starts (transaction lock begins)
-02:30 - File system backup starts
-02:45 - Transaction log backup starts
-03:00 - Full backup completion
-03:15 - Offsite replication begins
-04:00 - All backups completed, verification begins
-```
+**Failures do not reset the interval.** If a FULL is attempted on day 14 and
+fails, the next run still sees that the last successful FULL is day 0 and keeps
+trying until a FULL succeeds.
 
 ---
 
-## 3. Backup Components
+## 2. TRUE incremental support (binary logs)
 
-### 3.1 Database Backup
+A TRUE incremental backup requires:
 
-**Database:** MySQL/MariaDB
-**Size:** ~100-200GB
-**Backup Method:** mysqldump with binary log position tracking
+- `log_bin = ON`
+- `SHOW BINARY LOGS` succeeds (logs exist and are readable)
+- `binlog_format` is `ROW`, `STATEMENT`, or `MIXED`
+- the actual binary-log **bytes** are copied/mounted into a directory the app
+  can read (`BACKUP_BINLOG_ARCHIVE_DIR`)
+- the `mysqlbinlog` client is reachable (`BACKUP_MYSQLBINLOG_PATH`)
+
+The system probes this at runtime (`php artisan backup:status`, and internally
+before every decision) using:
 
 ```sql
--- Daily full backup script
-mysqldump \
-  --single-transaction \
-  --quick \
-  --lock-tables=false \
-  --verbose \
-  --routines \
-  --triggers \
-  --all-databases > backup_$(date +%Y%m%d_%H%M%S).sql
+SHOW VARIABLES LIKE 'log_bin';
+SHOW VARIABLES LIKE 'binlog_format';
+SHOW BINARY LOGS;
 ```
 
-**Backup Files:**
+### 2.1 Railway limitation — safe fallback
 
-- Location: `/backups/database/daily/`
-- Naming: `database_YYYYMMDD_HHMMSS.sql.gz`
-- Compression: gzip (reduces size 70-80%)
+Railway's **managed MySQL does not expose readable binary-log files** to the
+application container. In that environment the probe reports _unavailable_, so
+the system does **not** fake incremental backups. It uses:
 
-### 3.2 File System Backup
+> True MySQL incremental backups require binary-log support. When binary
+> logging is unavailable, the system uses daily logical snapshots
+> (`DAILY_SNAPSHOT`) as the safe fallback.
 
-**Components Backed Up:**
-
-- `/app/` - Application code
-- `/storage/` - User uploads, session data
-- `/config/` - Configuration files
-- `/resources/` - Views, assets
-- `/database/migrations/` - Database schema changes
-- `/public/uploads/` - Student photos, documents
-
-**Excluded Directories:**
-
-- `/node_modules/` (can be regenerated)
-- `/vendor/` (can be regenerated via composer)
-- `/bootstrap/cache/` (application cache)
-- `/storage/logs/` (application logs, kept separately)
-- `/temp/` (temporary files)
-
-**Backup Method:** Incremental tar/rsync
-
-```bash
-# Full backup
-tar -czf backup_files_full_$(date +%Y%m%d).tar.gz \
-  --exclude=node_modules \
-  --exclude=vendor \
-  --exclude=bootstrap/cache \
-  /var/www/pup-tracker
-
-# Incremental using rsync
-rsync -avz --delete \
-  --exclude=node_modules \
-  --exclude=vendor \
-  /var/www/pup-tracker/ \
-  /backups/filesystem/incremental/
-```
-
-### 3.3 Configuration Backup
-
-Critical files backed up hourly:
-
-- `.env` (encrypted) - Environment variables
-- `config/*.php` - Application configuration
-- `.htaccess` - Web server rules
-- `nginx.conf` - Nginx configuration
-- Database credentials (encrypted)
-
-### 3.4 Audit Log Backup
-
-**Frequency:** Daily
-**Retention:** 1 year
-**Components:**
-
-- Application audit logs
-- Database transaction logs
-- System logs
-- Access logs
+The UI never labels a daily snapshot as "incremental".
 
 ---
 
-## 4. Storage Infrastructure
+## 3. How a backup is created and recorded
 
-### 4.1 Primary Storage (Local)
-
-| Tier             | Capacity | Location         | Purpose                        | RPO      | RTO     |
-| ---------------- | -------- | ---------------- | ------------------------------ | -------- | ------- |
-| **Hot Storage**  | 500GB    | NAS on-site      | Last 7 days, immediate restore | 6 hours  | 15 min  |
-| **Warm Storage** | 2TB      | Secondary server | Last 30 days, quick restore    | 24 hours | 1 hour  |
-| **Cold Storage** | Archive  | Off-site vault   | Long-term archive, rare access | Monthly  | 4 hours |
-
-### 4.2 Cloud Storage (Secondary)
-
-**Provider:** AWS S3 / Azure Blob / Google Cloud Storage
-**Redundancy:** Geo-redundant storage (cross-region)
-**Encryption:** AES-256 at rest, TLS in transit
-
-**Tier Structure:**
-
-- **S3 Standard:** Last 30 days backups (warm)
-- **S3 Intelligent-Tiering:** 30-90 days (transitioning)
-- **S3 Glacier:** 90+ days (archive)
-
-### 4.3 Storage Allocation
+Required flow (a backup is **not** successful merely because a file was made):
 
 ```
-Total Backup Capacity: 3TB
-├── Hot Backup (7 days): 500GB
-├── Warm Backup (23 days): 1TB
-├── Cloud Backup (30 days): 800GB
-└── Archive (yearly): 700GB
+BACKUP STARTED
+   -> DATABASE EXPORT (mysqldump --single-transaction --routines --triggers --events)
+   -> COMPRESSION (gzip, streamed)
+   -> CHECKSUM (SHA-256)
+   -> UPLOAD TO CLOUDFLARE R2 (private)
+   -> VERIFY OBJECT EXISTS
+   -> (optional) DOWNLOAD + RE-HASH (BACKUP_VERIFY_DOWNLOAD=true)
+   -> RECORD SUCCESS in backup_history
 ```
+
+Any failure records `status=failed` with a sanitized `error_message`, timestamps,
+and **no** `verified_at`; it does not update the "last successful full".
+
+Artisan commands:
+
+| Command                     | Purpose                                                                                        |
+| --------------------------- | ---------------------------------------------------------------------------------------------- |
+| `php artisan backup:run`    | Run the daily backup (decides FULL / INCREMENTAL / DAILY_SNAPSHOT). `--type=` forces one type. |
+| `php artisan backup:status` | Read-only status: binlog support, next FULL due, latest history.                               |
+| `php artisan backup:prune`  | Chain-aware retention (dry run by default; `--force` deletes).                                 |
+| `php artisan backup:report` | Record an externally-produced backup result (backward compatible).                             |
 
 ---
 
-## 5. Backup Verification Procedures
-
-### 5.1 Automated Verification
-
-**Performed:** Immediately after each backup
-
-1. **File Integrity Check**
-
-    ```bash
-    md5sum backup_file.sql.gz > backup_file.sql.gz.md5
-    md5sum -c backup_file.sql.gz.md5
-    ```
-
-2. **Database Integrity**
-
-    ```sql
-    -- Check database integrity
-    CHECK TABLE table_name;
-    SHOW ENGINE INNODB STATUS;
-    ```
-
-3. **Backup Completeness**
-    - Verify backup file size (within ±10% of expected)
-    - Confirm all tables included
-    - Verify compression ratio
-
-### 5.2 Periodic Test Restores
-
-| Frequency         | Scope                        | Procedure                               |
-| ----------------- | ---------------------------- | --------------------------------------- |
-| **Weekly**        | Test 1 random database table | Restore to staging, verify data         |
-| **Monthly**       | Full database restore        | Restore to separate instance, run tests |
-| **Quarterly**     | Full system restore          | Complete DR exercise, measure RTO       |
-| **Semi-Annually** | Full offsite backup restore  | Test cloud backup accessibility         |
-
-**Test Restore Checklist:**
-
-- [ ] Backup accessible and readable
-- [ ] Restore completes without errors
-- [ ] Data integrity verified (row count, checksums)
-- [ ] All foreign keys valid
-- [ ] Application starts successfully
-- [ ] Critical features functional
-- [ ] Performance acceptable
-- [ ] Test results documented
-
----
-
-## 6. Recovery Time Objectives (RTO) and Recovery Point Objectives (RPO)
-
-### 6.1 Service Level Targets
-
-| Incident Type            | RTO      | RPO      | Backup Used               | Notification  |
-| ------------------------ | -------- | -------- | ------------------------- | ------------- |
-| **Disk Failure**         | 15 min   | 6 hours  | Hot backup                | Immediate     |
-| **Corruption**           | 30 min   | 24 hours | Warm backup               | Within 1 hour |
-| **Malware/Breach**       | 2 hours  | 24 hours | Daily backup pre-incident | Within 30 min |
-| **Ransomware**           | 4 hours  | 1 week   | Multiple backups          | Within 15 min |
-| **Catastrophic Failure** | 24 hours | 24 hours | Offsite backup            | Within 1 hour |
-
-### 6.2 Recovery Procedures
-
-**Stage 1: Assessment (0-15 minutes)**
-
-- Identify incident type and scope
-- Assess impact on operations
-- Determine recovery point needed
-- Activate recovery team
-
-**Stage 2: Preparation (15-30 minutes)**
-
-- Retrieve appropriate backup
-- Prepare recovery environment
-- Verify backup integrity
-- Notify stakeholders
-
-**Stage 3: Recovery (30 min - 4 hours)**
-
-- Restore database from backup
-- Restore file system
-- Restart services
-- Verify system functionality
-
-**Stage 4: Verification (4-6 hours)**
-
-- Run smoke tests
-- Verify data accuracy
-- Confirm all services operational
-- Document recovery details
-
-**Stage 5: Post-Recovery (6+ hours)**
-
-- Restore from most recent backup post-incident
-- Verify data consistency
-- Return to normal operations
-- Conduct incident review
-
----
-
-## 7. Disaster Recovery Plan
-
-### 7.1 Disaster Recovery Sites
-
-**Primary Site:** Production data center (on-campus)
-**Secondary Site:** Cloud-hosted replica (AWS/Azure)
-**Tertiary Site:** Offsite tape storage (secure vault)
-
-### 7.2 DR Exercise Schedule
-
-| Frequency         | Type             | Scope                    | Resources  |
-| ----------------- | ---------------- | ------------------------ | ---------- |
-| **Monthly**       | Tabletop         | DR procedures review     | 1-2 hours  |
-| **Quarterly**     | Partial failover | Single system component  | 4-6 hours  |
-| **Semi-Annually** | Full failover    | Complete system recovery | 8-12 hours |
-| **Annually**      | Full DR test     | End-to-end recovery      | 24 hours   |
-
-### 7.3 DR Contact List
-
-| Role           | Name   | Phone   | Email   | Backup        |
-| -------------- | ------ | ------- | ------- | ------------- |
-| DR Coordinator | [Name] | [Phone] | [Email] | [Backup Name] |
-| Database Admin | [Name] | [Phone] | [Email] | [Backup Name] |
-| System Admin   | [Name] | [Phone] | [Email] | [Backup Name] |
-| IT Manager     | [Name] | [Phone] | [Email] | [Backup Name] |
-| CTO            | [Name] | [Phone] | [Email] | [Backup Name] |
-
----
-
-## 8. Backup Restore Procedures
-
-### 8.1 Full Database Restore
-
-```bash
-#!/bin/bash
-# Full Database Restore Script
-
-BACKUP_FILE=$1
-BACKUP_DATE=$(date '+%Y%m%d_%H%M%S')
-
-# 1. Verify backup integrity
-echo "Verifying backup integrity..."
-md5sum -c "${BACKUP_FILE}.md5" || { echo "Backup corrupted!"; exit 1; }
-
-# 2. Stop application (optional, for consistency)
-sudo systemctl stop apache2
-sleep 5
-
-# 3. Backup current database
-echo "Backing up current database..."
-mysqldump --single-transaction --all-databases | gzip > current_backup_${BACKUP_DATE}.sql.gz
-
-# 4. Restore from backup
-echo "Restoring database from backup..."
-gunzip < "${BACKUP_FILE}" | mysql -u root -p
-
-# 5. Verify restoration
-echo "Verifying restoration..."
-mysql -e "SELECT COUNT(*) as table_count FROM information_schema.TABLES WHERE TABLE_SCHEMA != 'information_schema' AND TABLE_SCHEMA != 'mysql' AND TABLE_SCHEMA != 'performance_schema';"
-
-# 6. Restart application
-echo "Restarting application..."
-sudo systemctl start apache2
-php artisan cache:clear
-
-echo "Database restore completed at ${BACKUP_DATE}"
-```
-
-### 8.2 Partial Table Restore
-
-```sql
--- Restore specific table from backup
-CREATE TABLE table_name_temp LIKE table_name;
--- Load from backup dump
-SOURCE backup_file_partial.sql;
--- Compare and merge if needed
-```
-
-### 8.3 File System Restore
-
-```bash
-# Extract files from backup
-tar -xzf backup_files_$(date +%Y%m%d).tar.gz -C /restore/path/
-
-# Or using rsync
-rsync -avz /backups/filesystem/incremental/ /restore/path/
-```
-
----
-
-## 9. Backup Monitoring and Reporting
-
-### 9.1 Daily Backup Report
-
-**Sent To:** IT Management, Security Team
-**Time:** 06:00 AM daily
-
-**Report Contents:**
-
-- Backup completion status (✓/✗)
-- Backup size (GB)
-- Backup duration (minutes)
-- Success/failure reason (if failed)
-- Next scheduled backup time
-- Critical alerts (if any)
-
-### 9.2 Backup Dashboard
-
-**Monitored Metrics:**
-
-- Last successful backup timestamp
-- Next scheduled backup countdown
-- Backup success rate (7-day rolling)
-- Backup storage utilization (%)
-- Recovery time estimate
-
-### 9.3 Failure Alerts
-
-**Threshold:** If backup fails or takes 2x expected duration
-**Alert Method:** Email, SMS, Slack
-**Escalation:**
-
-- If failure persists 2 hours → Page on-call DBA
-- If failure persists 4 hours → Page IT Manager
-
----
-
-## 10. Compliance and Documentation
-
-### 10.1 Regulatory Compliance
-
-**Applicable Standards:**
-
-- ISO/IEC 27001 (Information Security Management)
-- ISO/IEC 27035 (Incident Management)
-- NIST Cybersecurity Framework (Data Protection)
-- PCI DSS (if processing payment data)
-- GDPR (if serving EU users)
-
-**Compliance Checklist:**
-
-- [ ] Backup encryption enabled
-- [ ] Access controls documented
-- [ ] Regular restore tests performed
-- [ ] Audit trail maintained
-- [ ] Data retention policy enforced
-- [ ] Disaster recovery tested
-- [ ] Compliance audits scheduled
-
-### 10.2 Documentation and Logs
-
-**Maintained Documents:**
-
-- Backup schedule (this document)
-- Backup procedures manual
-- Recovery runbooks
-- Disaster recovery plan
-- Incident response procedures
-- Compliance certification
-
-**Audit Trail:**
-
-```sql
--- Backup audit log table
-CREATE TABLE backup_audit_log (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    backup_id VARCHAR(100),
-    backup_type ENUM('Full', 'Incremental', 'Differential'),
-    start_time DATETIME,
-    end_time DATETIME,
-    backup_size_gb DECIMAL(10, 2),
-    file_count INT,
-    status ENUM('Success', 'Failed', 'Partial'),
-    checksum VARCHAR(255),
-    restored BOOLEAN DEFAULT FALSE,
-    restore_date DATETIME,
-    verified BOOLEAN DEFAULT FALSE,
-    verify_date DATETIME,
-    notes TEXT,
-    performed_by VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### 10.3 Annual Review
-
-**Review Schedule:** Last week of June annually
-**Attendees:** IT Director, Database Admin, Security Lead, Compliance Officer
-
-**Review Items:**
-
-- Backup retention policy effectiveness
-- Storage capacity requirements
-- Recovery procedures updates
-- Technology upgrades needed
-- Compliance status
-- Incident lessons learned
-- Budget allocation
-
----
-
-## 11. Emergency Contacts and Escalation
-
-### 11.1 Backup Escalation Process
+## 4. Storage — Cloudflare R2 (private)
+
+Backups reuse the **existing** S3-compatible disk (`s3` in
+`config/filesystems.php`), which points at the private Cloudflare R2 bucket via
+the environment variables the project already uses:
+
+- `AWS_ENDPOINT` (R2: `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`)
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_DEFAULT_REGION=auto`
+- `AWS_BUCKET` (private bucket)
+
+There is **no second** R2/cloud disk and **no** new cloud provider. Backups stay
+**private**: the `s3` disk has no public URL mapping, backup objects are never
+placed under `storage/app/public`, and there is no public download route.
+
+Object layout inside the bucket (prefix configurable):
 
 ```
-LEVEL 1 (Backup Admin, 0-1 hour)
-  ↓ (Unresolved)
-LEVEL 2 (DBA Lead, 1-2 hours)
-  ↓ (Unresolved)
-LEVEL 3 (IT Manager, 2-4 hours)
-  ↓ (Unresolved)
-LEVEL 4 (CTO, 4+ hours)
+database-backups/
+├── full/2026/09/full_2026-09-15_020000.sql.gz
+├── incremental/2026/09/incremental_2026-09-16_020000.sql.gz   (binlog path only)
+└── snapshot/2026/09/snapshot_2026-09-16_020000.sql.gz           (fallback path)
 ```
 
-### 11.2 Critical Contacts
-
-**24/7 On-Call Support:**
-
-- Main: (02) 9999-8888 ext. Security
-- DBA On-Call: [Phone Number]
-- Emergency: [Emergency Number]
-
-**Email Escalation:**
-
-- Backup Issues: backups@pup.edu.ph
-- Security Issues: security@pup.edu.ph
-- Urgent Issues: urgent-support@pup.edu.ph
+For local development / tests set `BACKUP_STORAGE_DISK=backups` (private local
+folder `storage/app/backups`). In production set `BACKUP_STORAGE_DISK=s3`.
 
 ---
 
-## 12. Appendix
+## 5. Backup history
 
-### 12.1 Backup Commands Reference
+The existing `backup_history` table and `BackupHistory` model are reused (no
+second table). An additive migration
+`2026_09_06_000001_add_backup_policy_fields_to_backup_history.php` added:
 
-```bash
-# MySQL Full Backup
-mysqldump -u root -p --all-databases | gzip > backup.sql.gz
+- `backup_type` (`full` | `incremental` | `daily_snapshot`)
+- `parent_backup_id` (recovery-chain parent / base FULL)
+- `checksum`, `checksum_algorithm`
+- `verified_at`
+- `storage_path`
+- `binlog_file_start`, `binlog_position_start`, `binlog_file_end`,
+  `binlog_position_end`, `binlog_timestamp_start`, `binlog_timestamp_end`
 
-# Incremental with Rsync
-rsync -avz --delete /source/ /destination/
+The migration is additive and reversible and preserves existing rows.
 
-# Generate Checksum
-md5sum backup_file > backup_file.md5
-
-# List Backup Contents
-tar -tzf backup.tar.gz
-
-# Test Backup Restoration (dry-run)
-tar -tzf backup.tar.gz > /dev/null && echo "Backup OK"
-```
-
-### 12.2 Recovery Time Estimation
-
-**Database Size → Recovery Time:**
-
-- 1-10 GB: 5-10 minutes
-- 10-50 GB: 10-30 minutes
-- 50-100 GB: 30-60 minutes
-- 100-500 GB: 1-4 hours
-- 500+ GB: 4-8 hours
-
-(Assuming gigabit network and modern hardware)
-
-### 12.3 Backup Capacity Planning
-
-**Annual Growth Estimate:** 15-20%
-**Current Capacity:** 3TB
-**Capacity Review:** Quarterly
-**Expansion Timeline:** When reaching 80% utilization
+The Super Admin backup history UI shows type, status, start/completion time,
+size, destination, integrity/checksum state, verification time, error messages,
+and the parent/base backup.
 
 ---
 
-**Document Version Control:**
+## 6. Integrity / checksum
 
-| Version | Date       | Changes          | Author  |
-| ------- | ---------- | ---------------- | ------- |
-| 1.0     | 2026-07-31 | Initial document | Copilot |
+- Every successful backup records a **SHA-256** checksum (`checksum_algorithm=SHA-256`).
+- The checksum is computed over the compressed object before upload.
+- When `BACKUP_VERIFY_DOWNLOAD=true` the uploaded object is downloaded and
+  re-hashed after upload to prove byte-for-byte integrity.
+- `verified_at` is recorded **only after** the object existence check passes.
+- Checksums never contain credentials.
 
-**Next Review Date:** August 1, 2027
-**Last Reviewed:** July 31, 2026
+---
+
+## 7. Security
+
+- Backup files are private; no public URL / route.
+- R2 credentials are environment variables only, never in source control or JS.
+- DB credentials are never written to logs or error messages; `MYSQL_PWD` is
+  used for the dump sub-process (never `--password=` on the command line).
+- Raw SQL dumps are never written to application logs.
+- No user input becomes a shell command: sub-processes run with argument arrays
+  (Symfony Process, shell-less).
+- The report endpoint is protected by `BACKUP_REPORT_TOKEN` compared with
+  `hash_equals`. The token stays server-side.
+- Backup history is treated as audit data and is only reachable by Super Admins
+  (`super.admin` middleware). Students and normal admins cannot access backups.
+
+---
+
+## 8. Retention
+
+Defaults (configurable in `.env`):
+
+- Daily snapshots: 30 days
+- Incrementals: 30 days
+- FULL backups: 90 days
+
+Retention is **chain-aware**: a FULL backup is never deleted while a retained
+incremental recovery chain still depends on it. Because automatic deletion is
+risky, `php artisan backup:prune` runs as a **dry run** by default and only
+deletes with `--force` after a Super Admin reviews the plan.
+`BACKUP_RETENTION_AUTO_DELETE=false` keeps the scheduled prune non-destructive.
+
+---
+
+## 9. Restore procedure
+
+### 9.1 FULL + INCREMENTAL (binlog path, when available)
+
+```
+1. Restore the most recent FULL backup into a target database.
+2. Apply each subsequent INCREMENTAL (in chain order, from its parent boundary).
+3. Verify the database (row counts / important tables).
+4. Return to service.
+```
+
+### 9.2 DAILY SNAPSHOT fallback
+
+```
+1. Choose the desired snapshot.
+2. Restore it into the target database.
+3. Verify the database.
+4. Return to service.
+```
+
+### 9.3 Safe restore / restore testing (never touches production)
+
+There is **no** destructive one-click production restore. To validate a backup
+without affecting production:
+
+1. Download the object from R2 (private).
+2. Verify its SHA-256 checksum against `backup_history`.
+3. Decompress.
+4. Restore into an **isolated temporary database**.
+5. Run schema validation.
+6. Check important tables (`users_tbl`, `student_info_tbl`, `violation_tbl`,
+   `violation_type_tbl`, `violation_category_tbl`, `violation_evidence_tbl`,
+   `student_sanction_records_tbl`, `disciplinary_sanctions`, `audit_logs`,
+   `backup_history`).
+7. Verify row counts where appropriate.
+8. Confirm the application can connect.
+9. Delete the temporary restore database.
+
+---
+
+## 10. Required environment variables
+
+| Variable                            | Purpose                                        | Example              |
+| ----------------------------------- | ---------------------------------------------- | -------------------- |
+| `BACKUP_STORAGE_DISK`               | `s3` (R2) or `backups` (local/test)            | `s3`                 |
+| `BACKUP_STORAGE_PREFIX`             | Object prefix in the bucket                    | `database-backups`   |
+| `BACKUP_FULL_INTERVAL_DAYS`         | Full interval from last successful FULL        | `14`                 |
+| `BACKUP_MYSQLDUMP_PATH`             | mysqldump binary                               | `mysqldump`          |
+| `BACKUP_BINLOG_ENABLED`             | Allow binlog probing                           | `true`               |
+| `BACKUP_BINLOG_VERIFY`              | Require confirmation before "incremental"      | `true`               |
+| `BACKUP_BINLOG_ARCHIVE_DIR`         | Readable binlog directory (self-managed MySQL) | _(empty on Railway)_ |
+| `BACKUP_MYSQLBINLOG_PATH`           | mysqlbinlog client                             | `mysqlbinlog`        |
+| `BACKUP_VERIFY_DOWNLOAD`            | Download + re-hash after upload                | `false`              |
+| `BACKUP_RETENTION_FULL_DAYS`        | Keep FULLs (days)                              | `90`                 |
+| `BACKUP_RETENTION_INCREMENTAL_DAYS` | Keep incrementals (days)                       | `30`                 |
+| `BACKUP_RETENTION_SNAPSHOT_DAYS`    | Keep snapshots (days)                          | `30`                 |
+| `BACKUP_RETENTION_AUTO_DELETE`      | Allow auto prune (else dry-run)                | `false`              |
+| `BACKUP_REPORT_TOKEN`               | Shared token for the report webhook            | _(secret)_           |
+
+R2/cloud variables (existing): `AWS_ENDPOINT`, `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `AWS_BUCKET`.
+
+All are documented in `.env.example` without real credentials.
+
+---
+
+## 11. Railway deployment notes
+
+- The scheduler runs `php artisan backup:run` at 02:00 Asia/Manila and
+  `php artisan backup:prune` (dry run) at 03:30. On Railway, a worker/repeatable
+  service should run `php artisan schedule:work` (or a cron line calling
+  `php artisan schedule:run` every minute).
+- `mysqldump` must be present in the runtime image.
+- The web/worker process must be able to reach R2 (network egress) with the
+  AWS/R2 variables set.
+- Railway managed MySQL: binary logs are not accessible to the container, so
+  the app uses DAILY_SNAPSHOT. To enable TRUE incrementals you would need a
+  MySQL deployment that exposes/copies binary logs into `BACKUP_BINLOG_ARCHIVE_DIR`.

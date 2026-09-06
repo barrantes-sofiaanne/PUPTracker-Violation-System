@@ -76,6 +76,18 @@ return [
             'report' => false,
         ],
 
+        // PRIVATE local backup store used for tests / offline development.
+        // In production the 's3' disk above (S3-compatible driver) points at
+        // the private Cloudflare R2 bucket via the AWS_ENDPOINT/AWS_* vars.
+        // Backup objects are never placed on a public disk.
+        'backups' => [
+            'driver' => 'local',
+            'root' => storage_path('app/backups'),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*
@@ -124,5 +136,17 @@ return [
     'links' => [
         public_path('storage') => storage_path('app/public'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Backup disk
+    |--------------------------------------------------------------------------
+    |
+    | The default backup store is the S3-compatible 's3' disk configured above
+    | (Cloudflare R2). Set BACKUP_STORAGE_DISK=s3 in production. For local
+    | development/tests set BACKUP_STORAGE_DISK=backups to use the private
+    | 'backups' local disk. Backups are ALWAYS private.
+    */
+    'backup_disk' => env('BACKUP_STORAGE_DISK', 's3'),
 
 ];
