@@ -37,7 +37,8 @@ class SuperAdminController extends Controller
             : false;
 
         // Backup status: latest recorded outcome from backup_history.
-        // Guarded so the dashboard never breaks when the table is absent.
+        // Guarded so the dashboard never breaks when the table/columns are
+        // absent (pre-policy deployments that have not run the migration yet).
         $backupTableExists = \Illuminate\Support\Facades\Schema::hasTable('backup_history');
 
         $latestBackup = $backupTableExists
@@ -48,9 +49,11 @@ class SuperAdminController extends Controller
             ? \App\Models\BackupHistory::query()->successful()->latest('completed_at')->first()
             : null;
 
-        $lastSuccessfulFull = $backupTableExists
+        // Only query "full" when the type column exists (avoids a SQL error on
+        // schemas that predate the backup-policy migration).
+        $lastSuccessfulFull = ($backupTableExists && \App\Models\BackupHistory::hasColumn('backup_type'))
             ? \App\Models\BackupHistory::query()->successful()->full()->latest('completed_at')->first()
-            : null;
+            : $lastSuccessfulBackup;
 
         $lastFailedBackup = $backupTableExists
             ? \App\Models\BackupHistory::query()->failed()->latest('completed_at')->first()

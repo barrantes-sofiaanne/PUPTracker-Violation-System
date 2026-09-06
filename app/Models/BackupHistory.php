@@ -94,7 +94,36 @@ class BackupHistory extends Model
 
     public function scopeFull($query)
     {
-        return $query->where('backup_type', self::TYPE_FULL);
+        // Backwards/schema-compatible: only filter on backup_type when the
+        // column actually exists (pre-policy deployments / legacy tables).
+        if (self::hasColumn('backup_type')) {
+            return $query->where('backup_type', self::TYPE_FULL);
+        }
+
+        // Without a type column we cannot distinguish a FULL from other rows;
+        // fall back to all successful rows so the UI never breaks.
+        return $query->where('status', self::STATUS_SUCCESS);
+    }
+
+    /**
+     * Cache-aware column existence check that never throws on a missing table.
+     */
+    public static function hasColumn(string $column): bool
+    {
+        static $columns = [];
+
+        try {
+            if (! \Illuminate\Support\Facades\Schema::hasTable('backup_history')) {
+                return false;
+            }
+            if (! array_key_exists($column, $columns)) {
+                $columns[$column] = \Illuminate\Support\Facades\Schema::hasColumn('backup_history', $column);
+            }
+
+            return $columns[$column];
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     public function parent(): BelongsTo

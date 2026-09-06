@@ -75,10 +75,18 @@ class ReportBackupResult extends Command
             ->latest('id')
             ->first();
 
+        // Only write columns that exist on the current schema (pre-policy
+        // deployments that have not run the migration must not break).
+        $writeable = array_filter(
+            $attributes,
+            fn ($value, $key) => BackupHistory::hasColumn($key),
+            ARRAY_FILTER_USE_BOTH
+        );
+
         if ($backup) {
-            $backup->forceFill($attributes)->save();
+            $backup->forceFill($writeable)->save();
         } else {
-            $backup = BackupHistory::create($attributes);
+            $backup = BackupHistory::create($writeable);
         }
 
         if (Schema::hasTable('audit_logs')) {

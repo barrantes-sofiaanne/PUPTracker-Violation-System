@@ -23,7 +23,10 @@ class BackupHistoryController extends Controller
         }
 
         if ($request->filled('type')) {
-            $query->where('backup_type', $request->string('type')->toString());
+            // Only filter by type when the column exists (pre-policy schemas).
+            if (\App\Models\BackupHistory::hasColumn('backup_type')) {
+                $query->where('backup_type', $request->string('type')->toString());
+            }
         }
 
         if ($request->filled('search')) {
@@ -132,10 +135,14 @@ class BackupHistoryController extends Controller
             ->first();
 
         if ($existing) {
-            $existing->forceFill($attributes)->save();
+            // Do not attempt to write columns that do not exist on legacy
+            // schemas (pre-policy deployment that has not migrated yet).
+            $writeable = array_filter($attributes, fn ($value, $key) => BackupHistory::hasColumn($key), ARRAY_FILTER_USE_BOTH);
+            $existing->forceFill($writeable)->save();
             $backup = $existing;
         } else {
-            $backup = BackupHistory::create($attributes);
+            $writeable = array_filter($attributes, fn ($value, $key) => BackupHistory::hasColumn($key), ARRAY_FILTER_USE_BOTH);
+            $backup = BackupHistory::create($writeable);
         }
 
         // Record an audit entry so this also shows up in Audit Logs.
