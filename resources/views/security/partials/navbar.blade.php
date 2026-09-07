@@ -38,7 +38,9 @@
                 $securityUnreadCount = 0;
                 try {
                     if (\Illuminate\Support\Facades\Schema::hasTable('notifications_tbl')) {
-                        $securityNotificationQuery = \App\Models\Notification::where('recipient_type', 'security');
+                        $securityId = auth('security')->id();
+                        $securityNotificationQuery = \App\Models\Notification::query()
+                            ->forRecipient('security', $securityId);
                         $securityRecentNotifications = (clone $securityNotificationQuery)->latest('created_at')->take(5)->get();
                         $securityUnreadCount = (clone $securityNotificationQuery)->where('is_read', false)->count();
                     }

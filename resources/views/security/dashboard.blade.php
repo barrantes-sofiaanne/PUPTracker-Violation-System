@@ -247,23 +247,6 @@
 
     </div>
 
-    {{-- Quick Actions --}}
-    <div class="mb-4">
-        <div class="card portal-card">
-            <div class="card-body">
-                <h5 class="fw-bold mb-3">Quick Actions</h5>
-                <div class="d-flex gap-2 flex-wrap">
-                    <a href="{{ route('security.violations.students') }}" class="btn portal-btn">
-                        <i class="bi bi-people-fill me-2"></i>View Student Violations
-                    </a>
-                    <button class="btn portal-btn-outline" data-bs-toggle="modal" data-bs-target="#searchModal">
-                        <i class="bi bi-search me-2"></i>Search Student
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     {{-- Search Bar --}}
     <div class="search-bar-container">
         <div class="card portal-card">
@@ -288,6 +271,34 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- Violations Recorded by Me -- Chart --}}
+    <div class="mb-4">
+        <div class="card portal-card">
+            <div class="card-header card-header-custom d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                <h5 class="fw-bold mb-0">Violations Recorded by Me</h5>
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <select id="chartPeriod" class="form-select form-select-sm" style="width:auto;">
+                        <option value="week" selected>This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="year">This Year</option>
+                        <option value="all">All Time</option>
+                    </select>
+                    <select id="chartStatus" class="form-select form-select-sm" style="width:auto;">
+                        <option value="">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="denied">Denied</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="myViolationsChart" height="220"
+                    data-chart-url="{{ route('security.dashboard.chart-data') }}"></canvas>
+                <p class="text-muted small mb-0 mt-2" id="myViolationsChartMeta"></p>
             </div>
         </div>
     </div>
@@ -593,6 +604,106 @@ document.addEventListener('DOMContentLoaded', function () {
             bar.setAttribute('aria-valuenow', safeWidth.toString());
         }
     });
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('myViolationsChart');
+    if (!canvas) {
+        return;
+    }
+
+    const chartUrl = canvas.dataset.chartUrl || '';
+    const periodSelect = document.getElementById('chartPeriod');
+    const statusSelect = document.getElementById('chartStatus');
+    const meta = document.getElementById('myViolationsChartMeta');
+
+    const palette = ['#800000', '#a31515', '#daa520', '#f0c447', '#5f0000', '#c9981f', '#7a0f1e', '#e6c36a', '#8e1d29', '#b8860b'];
+
+    let myViolationsChart = null;
+
+    function fetchAndRender() {
+        if (!chartUrl) {
+            return;
+        }
+
+        const params = new URLSearchParams({
+            period: periodSelect ? periodSelect.value : 'week',
+            status: statusSelect ? statusSelect.value : '',
+        });
+
+        fetch(chartUrl + '?' + params.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                Accept: 'application/json',
+            },
+        })
+            .then(function (res) {
+                return res.json();
+            })
+            .then(function (data) {
+                if (!data || !Array.isArray(data.labels) || !Array.isArray(data.values)) {
+                    return;
+                }
+
+                if (myViolationsChart) {
+                    myViolationsChart.data.labels = data.labels;
+                    myViolationsChart.data.datasets[0].data = data.values;
+                    myViolationsChart.data.datasets[0].backgroundColor = data.values.map(function (_, i) {
+                        return palette[i % palette.length];
+                    });
+                    myViolationsChart.update();
+                } else {
+                    myViolationsChart = new Chart(canvas, {
+                        type: 'bar',
+                        data: {
+                            labels: data.labels,
+                            datasets: [{
+                                label: 'Violations recorded by me',
+                                data: data.values,
+                                backgroundColor: data.values.map(function (_, i) {
+                                    return palette[i % palette.length];
+                                }),
+                                borderWidth: 1,
+                            }],
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                            },
+                            scales: {
+                                y: { beginAtZero: true, ticks: { precision: 0 } },
+                            },
+                        },
+                    });
+                }
+
+                if (meta) {
+                    const statusLabel = statusSelect && statusSelect.value
+                        ? statusSelect.options[statusSelect.selectedIndex].text
+                        : 'All statuses';
+                    meta.textContent = 'Total: ' + (data.total ?? 0) + ' violation(s) · ' + statusLabel;
+                }
+            })
+            .catch(function () {
+                if (meta) {
+                    meta.textContent = 'Unable to load chart data.';
+                }
+            });
+    }
+
+    if (periodSelect) {
+        periodSelect.addEventListener('change', fetchAndRender);
+    }
+    if (statusSelect) {
+        statusSelect.addEventListener('change', fetchAndRender);
+    }
+
+    fetchAndRender();
 });
 </script>
 @endpush

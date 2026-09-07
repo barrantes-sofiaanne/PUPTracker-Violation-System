@@ -12,11 +12,13 @@ class NotificationController extends Controller
 {
     public function index()
     {
-        $notifications = Notification::where('recipient_type', 'security')
+        $securityId = auth('security')->id();
+
+        $notifications = Notification::forRecipient('security', $securityId)
             ->latest('created_at')
             ->paginate(15);
 
-        $unreadCount = Notification::where('recipient_type', 'security')
+        $unreadCount = Notification::forRecipient('security', $securityId)
             ->where('is_read', false)
             ->count();
 
@@ -66,7 +68,7 @@ class NotificationController extends Controller
      */
     public function markAllRead(): Response
     {
-        Notification::where('recipient_type', 'security')
+        Notification::forRecipient('security', auth('security')->id())
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
@@ -79,7 +81,7 @@ class NotificationController extends Controller
     public function unreadCount(): Response
     {
         return response()->json([
-            'unread_count' => Notification::where('recipient_type', 'security')
+            'unread_count' => Notification::forRecipient('security', auth('security')->id())
                 ->where('is_read', false)
                 ->count(),
         ]);
@@ -87,6 +89,12 @@ class NotificationController extends Controller
 
     private function authorizeNotification(Notification $notification): void
     {
-        abort_unless((string) ($notification->recipient_type ?? '') === 'security', 403);
+        $securityId = auth('security')->id();
+
+        $isSecurity = (string) ($notification->recipient_type ?? '') === 'security';
+        $isBroadcast = $notification->recipient_id === null;
+        $isOwned = (int) $notification->recipient_id === (int) $securityId;
+
+        abort_unless($isSecurity && ($isBroadcast || $isOwned), 403);
     }
 }

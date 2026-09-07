@@ -761,6 +761,9 @@ Route::middleware('auth:security')
         Route::get('/dashboard', [SecurityDashboardController::class, 'index'])
             ->name('security.dashboard');
 
+        Route::get('/dashboard/chart-data', [SecurityDashboardController::class, 'chartData'])
+            ->name('security.dashboard.chart-data');
+
         // Student violations routes
         Route::get('/violations/students', [App\Http\Controllers\Security\StudentViolationController::class, 'index'])
             ->name('security.violations.students');

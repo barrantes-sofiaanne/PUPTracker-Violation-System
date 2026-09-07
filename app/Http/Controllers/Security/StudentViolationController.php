@@ -302,8 +302,9 @@ class StudentViolationController extends Controller
 
             $security = Auth::guard('security')->user();
             $securityLabel = $this->buildSecurityAccountName($security);
+            $securityId = $security?->id;
 
-            $violation = Violation::create([
+            $violationData = [
                 'student_number' => $validated['student_number'],
                 'violation_type' => $violationType->violation_type_id,
                 'violation_date' => $validated['violation_date'],
@@ -315,11 +316,18 @@ class StudentViolationController extends Controller
                 // Security-recorded violations are sent to the admin for
                 // confirmation before they count toward the student's record.
                 'status' => Violation::STATUS_PENDING,
-            ]);
+            ];
+
+            // Persist the exact recording security account so notifications about
+            // this violation can be addressed to the right officer.
+            if ($securityId !== null && \Illuminate\Support\Facades\Schema::hasColumn('violation_tbl', 'recorded_by_security_id')) {
+                $violationData['recorded_by_security_id'] = $securityId;
+            }
+
+            $violation = Violation::create($violationData);
 
             // Store supporting evidence privately (never public) and keep the
             // DB rows in the same transaction so a storage failure rolls back.
-            $securityId = $security?->id;
             $evidenceFiles = $request->allFiles()['evidence'] ?? [];
 
             // Capture metadata is submitted as parallel arrays (one entry per

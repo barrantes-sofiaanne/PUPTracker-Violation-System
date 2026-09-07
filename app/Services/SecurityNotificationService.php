@@ -20,6 +20,12 @@ class SecurityNotificationService
 {
     /**
      * Create a security notification after the underlying action succeeded.
+     *
+     * @param  int|null  $recipientId  The security account id the notification is
+     *                                 addressed to. When null the row is a
+     *                                 broadcast to all security officers (used
+     *                                 only for pre-policy / backward-compat rows;
+     *                                 new code should always pass the exact id).
      */
     public function create(
         string $type,
@@ -27,7 +33,8 @@ class SecurityNotificationService
         string $message,
         string $targetType,
         int $targetId,
-        ?string $link = null
+        ?string $link = null,
+        ?int $recipientId = null
     ): Notification {
         $data = [
             'message' => $message,
@@ -49,6 +56,9 @@ class SecurityNotificationService
         }
         if (Schema::hasColumn('notifications_tbl', 'target_id')) {
             $data['target_id'] = $targetId;
+        }
+        if (Schema::hasColumn('notifications_tbl', 'recipient_id')) {
+            $data['recipient_id'] = $recipientId;
         }
         if ($link !== null && Schema::hasColumn('notifications_tbl', 'link')) {
             $data['link'] = $link;

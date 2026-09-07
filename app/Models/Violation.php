@@ -39,6 +39,7 @@ class Violation extends Model
         'recorder_id',
         'recorder_type',
         'recorder_name',
+        'recorded_by_security_id',
         'status',
         'reviewed_by_admin_id',
         'reviewed_at',
@@ -278,6 +279,20 @@ public function recorder(): BelongsTo
     return $this->belongsTo(
         Admin::class,
         'recorder_id',
+        'id'
+    );
+}
+
+/**
+ * The security account that recorded this violation (security-recorded rows).
+ * Null for admin-recorded or legacy rows. This is the reliable key used to
+ * target notifications to the exact recording officer.
+ */
+public function recordingSecurity(): BelongsTo
+{
+    return $this->belongsTo(
+        Security::class,
+        'recorded_by_security_id',
         'id'
     );
 }

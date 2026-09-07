@@ -299,6 +299,12 @@ $students = User::with([
             ?? 'the recorded violation';
         $reason = trim((string) $violation->review_remarks);
 
+        // The security officer who recorded this violation. New recordings carry
+        // recorded_by_security_id; legacy rows (null) keep the notification a
+        // broadcast so no officer is silently missed.
+        $recordingSecurityId = (int) ($violation->recorded_by_security_id ?? 0);
+        $recordingSecurityId = $recordingSecurityId > 0 ? $recordingSecurityId : null;
+
         if ($decision === 'confirmed') {
             // Notify the student their violation is now on their record.
             try {
@@ -322,6 +328,7 @@ $students = User::with([
                     message: 'The violation you recorded for ' . $studentName . ' (' . ($violation->student_number ?? '') . ') has been confirmed by the administrator.',
                     targetType: 'violation',
                     targetId: (int) $violation->violation_id,
+                    recipientId: $recordingSecurityId,
                 );
             } catch (\Throwable $e) {
                 // Notification must never break the confirmation.
@@ -349,6 +356,7 @@ $students = User::with([
                     message: 'The violation you recorded for ' . $studentName . ' (' . ($violation->student_number ?? '') . ') was denied by the administrator. Reason: ' . ($reason !== '' ? $reason : 'No reason provided.'),
                     targetType: 'violation',
                     targetId: (int) $violation->violation_id,
+                    recipientId: $recordingSecurityId,
                 );
             } catch (\Throwable $e) {
                 // Notification must never break the denial.

@@ -180,13 +180,26 @@
 
     </div>
 
-    {{-- Bottom Row: Weekly Trend --}}
+    {{-- Bottom Row: Violation Trend --}}
     <div class="row g-3">
         <div class="col-12">
             <div class="card shadow-sm border-0">
-                <div class="card-header card-header-custom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <h5 class="fw-bold mb-0">Weekly Violation Trend</h5>
-                    <small class="text-muted"><i class="bi bi-arrow-repeat me-1"></i>Updates automatically</small>
+                <div class="card-header card-header-custom d-flex flex-column flex-md-row justify-content-between align-items-md-center flex-wrap gap-2">
+                    <h5 class="fw-bold mb-0">Violation Trend</h5>
+                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                        <select id="chartPeriod" class="form-select form-select-sm" style="width:auto;">
+                            <option value="week" selected>This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="year">This Year</option>
+                            <option value="all">All Time</option>
+                        </select>
+                        <select id="chartStatus" class="form-select form-select-sm" style="width:auto;">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="denied">Denied</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="card-body">
                     @php
@@ -200,6 +213,7 @@
                             data-labels="{{ json_encode($trendLabels) }}"
                             data-values="{{ json_encode($trendValues) }}"
                             data-chart-data-url="{{ route('admin.dashboard.chart-data') }}"></canvas>
+                        <p class="text-muted small mb-0 mt-2" id="violationTrendMeta"></p>
                     </div>
                 </div>
             </div>

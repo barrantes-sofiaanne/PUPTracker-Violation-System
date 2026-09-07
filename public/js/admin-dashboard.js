@@ -58,6 +58,9 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         var chartDataUrl = weeklyCanvas.dataset.chartDataUrl || "";
+        var periodSelect = document.getElementById("chartPeriod");
+        var statusSelect = document.getElementById("chartStatus");
+        var trendMeta = document.getElementById("violationTrendMeta");
 
         window.weeklyViolationChart = new Chart(weeklyCanvas, {
             type: "bar",
@@ -65,7 +68,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 labels: initialLabels,
                 datasets: [
                     {
-                        label: "Violations this week",
+                        label: "Violations",
                         data: initialData,
                         backgroundColor: initialLabels.map(function (_, i) {
                             return trendColors[i % trendColors.length];
@@ -89,46 +92,68 @@ document.addEventListener("DOMContentLoaded", function () {
             },
         });
 
+        function loadViolationTrend() {
+            if (!chartDataUrl) {
+                return;
+            }
+
+            var params = new URLSearchParams({
+                period: periodSelect ? periodSelect.value : "week",
+                status: statusSelect ? statusSelect.value : "",
+            });
+
+            fetch(chartDataUrl + "?" + params.toString(), {
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                    Accept: "application/json",
+                },
+            })
+                .then(function (res) {
+                    return res.json();
+                })
+                .then(function (data) {
+                    if (
+                        !data ||
+                        !Array.isArray(data.labels) ||
+                        !Array.isArray(data.values)
+                    ) {
+                        return;
+                    }
+
+                    window.weeklyViolationChart.data.labels = data.labels;
+                    window.weeklyViolationChart.data.datasets[0].data =
+                        data.values;
+                    window.weeklyViolationChart.data.datasets[0].backgroundColor =
+                        data.values.map(function (_, i) {
+                            return trendColors[i % trendColors.length];
+                        });
+                    window.weeklyViolationChart.data.datasets[0].borderColor =
+                        data.values.map(function (_, i) {
+                            return trendColors[i % trendColors.length];
+                        });
+                    window.weeklyViolationChart.update();
+
+                    if (trendMeta) {
+                        trendMeta.textContent =
+                            "Total: " + (data.total || 0) + " violation(s)";
+                    }
+                })
+                .catch(function () {
+                    /* keep last data on transient errors */
+                });
+        }
+
+        // Re-render when the filters change.
+        if (periodSelect) {
+            periodSelect.addEventListener("change", loadViolationTrend);
+        }
+        if (statusSelect) {
+            statusSelect.addEventListener("change", loadViolationTrend);
+        }
+
         // Real-time refresh: poll for fresh dashboard data every 60s.
         if (chartDataUrl) {
-            setInterval(function () {
-                fetch(chartDataUrl, {
-                    headers: {
-                        "X-Requested-With": "XMLHttpRequest",
-                        Accept: "application/json",
-                    },
-                })
-                    .then(function (res) {
-                        return res.json();
-                    })
-                    .then(function (data) {
-                        if (!data || !Array.isArray(data)) {
-                            return;
-                        }
-                        if (
-                            !Array.isArray(data.labels) ||
-                            !Array.isArray(data.values)
-                        ) {
-                            return;
-                        }
-
-                        window.weeklyViolationChart.data.labels = data.labels;
-                        window.weeklyViolationChart.data.datasets[0].data =
-                            data.values;
-                        window.weeklyViolationChart.data.datasets[0].backgroundColor =
-                            data.values.map(function (_, i) {
-                                return trendColors[i % trendColors.length];
-                            });
-                        window.weeklyViolationChart.data.datasets[0].borderColor =
-                            data.values.map(function (_, i) {
-                                return trendColors[i % trendColors.length];
-                            });
-                        window.weeklyViolationChart.update();
-                    })
-                    .catch(function () {
-                        /* keep last data on transient errors */
-                    });
-            }, 60000);
+            setInterval(loadViolationTrend, 60000);
         }
     }
 
