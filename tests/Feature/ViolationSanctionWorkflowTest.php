@@ -730,7 +730,7 @@ class ViolationSanctionWorkflowTest extends TestCase
         ]);
     }
 
-    public function test_security_violation_notification_opens_student_violation_page(): void
+    public function test_security_confirmed_violation_notification_opens_student_violation_page(): void
     {
         $this->createTables();
         $admin = $this->createAdmin('admin@example.com');
@@ -745,13 +745,13 @@ class ViolationSanctionWorkflowTest extends TestCase
             'description' => 'Caught cheating.',
             'recorder_type' => 'security',
             'recorder_name' => 'Officer One',
-            'status' => 'denied',
+            'status' => 'confirmed',
         ]);
 
         $notification = Notification::create([
             'student_number' => '',
-            'message' => 'The violation you recorded was denied.',
-            'title' => 'Violation Rejected',
+            'message' => 'The violation you recorded was confirmed.',
+            'title' => 'Violation Confirmed',
             'notification_type' => 'violation',
             'recipient_type' => 'security',
             'target_type' => 'violation',
@@ -762,11 +762,168 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $this->actingAs($security, 'security')
             ->get(route('security.notifications.open', $notification))
-            ->assertRedirectContains('security/violations/student/2024-0001');
+            ->assertRedirectContains('security/violations/student/2024-0001')
+            ->assertRedirectContains('highlight_violation=' . $violation->violation_id);
 
         $this->assertDatabaseHas('notifications_tbl', [
             'notification_id' => $notification->notification_id,
             'is_read' => true,
+        ]);
+    }
+
+    public function test_security_pending_or_denied_violation_notification_opens_submitted_page(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+        $security = $this->createSecurity('security@example.com', 'Officer', 'One');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        foreach (['pending', 'denied'] as $status) {
+            $violation = Violation::create([
+                'student_number' => '2024-0001',
+                'violation_type' => 1,
+                'violation_date' => now(),
+                'description' => 'Caught cheating.',
+                'recorder_type' => 'security',
+                'recorder_name' => 'Officer One',
+                'status' => $status,
+            ]);
+
+            $notification = Notification::create([
+                'student_number' => '',
+                'message' => 'The violation you recorded was ' . $status . '.',
+                'title' => 'Violation ' . ucfirst($status),
+                'notification_type' => 'violation',
+                'recipient_type' => 'security',
+                'target_type' => 'violation',
+                'target_id' => $violation->violation_id,
+                'is_read' => false,
+                'created_at' => now(),
+            ]);
+
+            $this->actingAs($security, 'security')
+                ->get(route('security.notifications.open', $notification))
+                ->assertRedirectContains('security/violations/submitted')
+                ->assertRedirectContains('highlight_violation=' . $violation->violation_id);
+
+            $this->assertDatabaseHas('notifications_tbl', [
+                'notification_id' => $notification->notification_id,
+                'is_read' => true,
+            ]);
+        }
+    }
+
+    public function test_pending_violation_is_not_shown_on_the_security_student_record_page(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+        $security = $this->createSecurity('security@example.com', 'Officer', 'One');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        // Pending (unconfirmed) violation - must NOT reflect on the record page.
+        Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Pending record',
+            'recorder_type' => 'security',
+            'recorder_name' => 'Officer One',
+            'status' => 'pending',
+        ]);
+
+        // Confirmed violation - should be visible.
+        Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now()->subDay(),
+            'description' => 'Confirmed record',
+            'recorder_type' => 'security',
+            'recorder_name' => 'Officer One',
+            'status' => 'confirmed',
+        ]);
+
+        $this->actingAs($security, 'security')
+            ->get(route('security.violations.show', '2024-0001'))
+            ->assertOk()
+            ->assertSee('Confirmed record')
+            ->assertDontSee('Pending record');
+    }
+
+    public function test_security_can_resubmit_a_denied_violation_as_new_pending(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+        $security = $this->createSecurity('security@example.com', 'Officer', 'One');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        $denied = Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Original description.',
+            'recorder_type' => 'security',
+            'recorder_name' => 'Officer One',
+            'status' => 'denied',
+            'review_remarks' => 'Missing evidence.',
+        ]);
+
+        $this->actingAs($security, 'security')
+            ->post(route('security.violations.resubmit', $denied->violation_id), [
+                'violation_date' => now()->format('Y-m-d H:i:s'),
+                'description' => 'Corrected description with evidence.',
+            ])
+            ->assertRedirect();
+
+        // Original denied row is preserved.
+        $this->assertDatabaseHas('violation_tbl', [
+            'violation_id' => $denied->violation_id,
+            'status' => 'denied',
+        ]);
+
+        // A new PENDING violation was created for the same student/type.
+        $this->assertDatabaseHas('violation_tbl', [
+            'student_number' => '2024-0001',
+            'status' => 'pending',
+            'description' => 'Corrected description with evidence.',
+        ]);
+
+        $new = Violation::where('status', 'pending')->where('student_number', '2024-0001')->first();
+        $this->assertNotNull($new);
+        $this->assertNotSame($denied->violation_id, $new->violation_id);
+    }
+
+    public function test_security_cannot_resubmit_a_confirmed_violation(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+        $security = $this->createSecurity('security@example.com', 'Officer', 'One');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        $confirmed = Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Already confirmed.',
+            'recorder_type' => 'security',
+            'recorder_name' => 'Officer One',
+            'status' => 'confirmed',
+        ]);
+
+        $this->actingAs($security, 'security')
+            ->from(route('security.violations.submitted'))
+            ->post(route('security.violations.resubmit', $confirmed->violation_id), [
+                'violation_date' => now()->format('Y-m-d H:i:s'),
+                'description' => 'Should not work.',
+            ])
+            ->assertSessionHasErrors('violation');
+
+        $this->assertDatabaseMissing('violation_tbl', [
+            'student_number' => '2024-0001',
+            'status' => 'pending',
         ]);
     }
 
@@ -810,7 +967,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
     private function createStudent(string $studentNumber)
     {
-        return \App\Models\User::create([
+        $user = \App\Models\User::create([
             'student_number' => $studentNumber,
             'first_name' => 'Juan',
             'last_name' => 'Dela Cruz',
@@ -819,6 +976,17 @@ class ViolationSanctionWorkflowTest extends TestCase
             'roles_id' => 2,
             'status_id' => 1,
         ]);
+
+        if (Schema::hasTable('student_info_tbl')) {
+            DB::table('student_info_tbl')->insert([
+                'user_id' => $user->user_id,
+                'program_id' => null,
+                'year_id' => null,
+                'section_id' => null,
+            ]);
+        }
+
+        return $user;
     }
 
     private function createViolationType(int $id, string $type): void
@@ -880,6 +1048,25 @@ class ViolationSanctionWorkflowTest extends TestCase
                 $table->unsignedInteger('roles_id')->nullable();
                 $table->unsignedInteger('status_id')->nullable();
                 $table->timestamps();
+            },
+            'student_info_tbl' => function (Blueprint $table): void {
+                $table->unsignedBigInteger('user_id')->primary();
+                $table->unsignedBigInteger('program_id')->nullable();
+                $table->unsignedBigInteger('year_id')->nullable();
+                $table->unsignedBigInteger('section_id')->nullable();
+                $table->unsignedBigInteger('student_status_id')->nullable();
+            },
+            'program_tbl' => function (Blueprint $table): void {
+                $table->increments('program_id');
+                $table->string('program_name')->nullable();
+            },
+            'year_tbl' => function (Blueprint $table): void {
+                $table->increments('year_id');
+                $table->string('year')->nullable();
+            },
+            'section_tbl' => function (Blueprint $table): void {
+                $table->increments('section_id');
+                $table->string('section_name')->nullable();
             },
             'roles_tbl' => function (Blueprint $table): void {
                 $table->increments('roles_id');

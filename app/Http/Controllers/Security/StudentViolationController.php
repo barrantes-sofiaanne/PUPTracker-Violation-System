@@ -134,25 +134,49 @@ class StudentViolationController extends Controller
                 ->where(fn ($q) => $this->applyRecorderScope($q))->count(),
         ];
 
-        return view('security.violations.submitted', compact('violations', 'status', 'counts'));
+        // When arriving from a notification deep link, highlight the referenced
+        // violation row (only if it is on the currently loaded page).
+        $highlightViolationId = (int) $request->integer('highlight_violation');
+        if ($highlightViolationId > 0
+            && ! $violations->getCollection()->contains('violation_id', $highlightViolationId)) {
+            $highlightViolationId = 0;
+        }
+
+        return view('security.violations.submitted', compact('violations', 'status', 'counts', 'highlightViolationId'));
     }
 
     /**
-     * Display violations for a specific student
+     * Display violations for a specific student.
+     *
+     * Only violations that actually reflect on the student's official record
+     * are shown here (confirmed). Pending/unconfirmed recordings are tracked in
+     * "Submitted Violations" and are intentionally NOT shown on the student
+     * record page until the administrator confirms them. Denied/rejected rows
+     * are handled through the resubmit flow in Submitted Violations.
      */
     public function show(string $student_number)
     {
         $student = User::where('student_number', $student_number)
             ->with(['violations' => function ($query) {
                 $this->applyRecorderScope($query);
+                // Only confirmed rows reflect on the student's record.
+                $query->where('status', Violation::STATUS_CONFIRMED);
                 $query->latest('violation_date');
             }, 'violations.violationType.violationCategory'])
             ->firstOrFail();
 
         $violations = $student->violations;
+
+        // A confirmed violation may be highlighted when arriving from a
+        // notification deep link.
+        $highlightViolationId = (int) request()->integer('highlight_violation');
+        if ($highlightViolationId > 0 && $violations->doesntContain('violation_id', $highlightViolationId)) {
+            $highlightViolationId = 0;
+        }
+
         $violationStats = $this->getViolationStats($student_number);
 
-        return view('security.violations.show', compact('student', 'violations', 'violationStats'));
+        return view('security.violations.show', compact('student', 'violations', 'violationStats', 'highlightViolationId'));
     }
 
     /**
@@ -328,65 +352,7 @@ class StudentViolationController extends Controller
 
             // Store supporting evidence privately (never public) and keep the
             // DB rows in the same transaction so a storage failure rolls back.
-            $evidenceFiles = $request->allFiles()['evidence'] ?? [];
-
-            // Capture metadata is submitted as parallel arrays (one entry per
-            // staged evidence item). The camera path marks capture_method as
-            // 'camera' and records when the photo was taken. This is audit
-            // metadata only — it never proves identity.
-            $captureMethods = (array) $request->input('capture_methods', []);
-            $capturedAts = (array) $request->input('captured_ats', []);
-            $watermarked = (array) $request->input('watermarked', []);
-            $evidenceService = app(EvidenceSecurityService::class);
-
-            foreach ($evidenceFiles as $index => $evidenceFile) {
-                $evidenceCode = $evidenceService->nextEvidenceCode();
-                $directory = 'violation-evidence/' . $violation->violation_id;
-                $extension = strtolower($evidenceFile->getClientOriginalExtension());
-                // Server-side filename derived from the unique evidence code —
-                // the original filename is never trusted or used on disk.
-                $filename = $evidenceCode . '.' . ($extension !== '' ? $extension : 'bin');
-                $disk = $this->evidenceDisk();
-                $storedPath = $disk->putFileAs($directory, $evidenceFile, $filename);
-
-                if ($storedPath === false) {
-                    throw new \RuntimeException('Unable to store evidence file.');
-                }
-
-                $isCamera = strcasecmp((string) ($captureMethods[$index] ?? ''), 'camera') === 0;
-                $capturedAt = isset($capturedAts[$index]) && $capturedAts[$index] !== ''
-                    ? Carbon::parse($capturedAts[$index])
-                    : null;
-
-                $evidence = ViolationEvidence::create([
-                    'evidence_code' => $evidenceCode,
-                    'violation_id' => $violation->violation_id,
-                    'disk_path' => $storedPath,
-                    'original_name' => $evidenceFile->getClientOriginalName(),
-                    'mime_type' => $evidenceFile->getMimeType(),
-                    'capture_method' => $isCamera
-                        ? ViolationEvidence::CAPTURE_CAMERA
-                        : ViolationEvidence::CAPTURE_UPLOAD,
-                    'watermarked' => $isCamera || ! empty($watermarked[$index]),
-                    'captured_at' => $capturedAt,
-                    'file_size' => $evidenceFile->getSize(),
-                    'ip_address' => $evidenceService->clientIp($request),
-                    'user_agent' => $evidenceService->userAgent($request),
-                    'uploader_type' => 'security',
-                    'uploader_id' => $securityId,
-                ]);
-
-                $evidenceService->logEvent(
-                    EvidenceSecurityEvent::EVIDENCE_UPLOADED,
-                    $violation->violation_id,
-                    $evidence->evidence_id,
-                    'info',
-                    $request,
-                    ['method' => $evidence->capture_method, 'code' => $evidenceCode],
-                    'security',
-                    $securityId,
-                );
-            }
+            $this->storeEvidence($violation, $request, $security, $securityId);
 
             DB::commit();
 
@@ -423,6 +389,167 @@ class StudentViolationController extends Controller
                 'line' => $exception->getLine(),
                 'file' => basename($exception->getFile()),
             ], 500);
+        }
+    }
+
+    /**
+     * Resubmit a previously REJECTED (denied) violation with corrections.
+     *
+     * Only the recording security officer may resubmit, and only while the
+     * original row is still denied. A resubmission creates a NEW pending
+     * violation for the same student + violation type with the corrected
+     * details and any new evidence. The original denied row is preserved for
+     * audit. Same-day resubmission after rejection is allowed (the denied row
+     * does not count as an effective violation).
+     */
+    public function resubmitViolation(Request $request, int $violationId)
+    {
+        $security = Auth::guard('security')->user();
+        if (! $security) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $original = Violation::query()->find($violationId);
+
+        if (! $original) {
+            return back()->withErrors(['violation' => 'Violation not found.']);
+        }
+
+        if (strtolower((string) $original->status) !== Violation::STATUS_DENIED) {
+            return back()->withErrors(['violation' => 'Only a rejected violation can be resubmitted.']);
+        }
+
+        if (! $this->recorderMatches($original, $security)) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'violation_date' => ['required', 'date'],
+            'description' => ['required', 'string', 'max:1000'],
+            'evidence' => ['nullable', 'array', 'max:5'],
+            'evidence.*' => ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+        ]);
+
+        $violationType = $original->resolvedViolationType() ?? ViolationType::find($original->violation_type);
+
+        DB::beginTransaction();
+
+        try {
+            $securityLabel = $this->buildSecurityAccountName($security);
+            $securityId = $security->id;
+
+            $violationData = [
+                'student_number' => $original->student_number,
+                'violation_type' => $violationType?->violation_type_id ?? $original->violation_type,
+                'violation_date' => $validated['violation_date'],
+                'description' => trim($validated['description']),
+                'recorder_id' => null,
+                'recorder_type' => 'security',
+                'recorder_name' => $securityLabel,
+                'status' => Violation::STATUS_PENDING,
+            ];
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('violation_tbl', 'recorded_by_security_id')) {
+                $violationData['recorded_by_security_id'] = $securityId;
+            }
+
+            $violation = Violation::create($violationData);
+
+            $this->storeEvidence($violation, $request, $security, $securityId);
+
+            DB::commit();
+
+            // Notify admins a (corrected) violation is awaiting confirmation.
+            try {
+                $studentName = trim(($original->student?->first_name ?? '') . ' ' . ($original->student?->last_name ?? ''));
+                $studentName = $studentName !== '' ? $studentName : ($original->student_number ?? 'a student');
+                $typeLabel = $violationType?->violation_type ?? 'the recorded violation';
+
+                app(\App\Services\AdminNotificationService::class)->create(
+                    type: 'violation_confirmation',
+                    title: 'Violation Resubmitted for Confirmation',
+                    message: 'Security resubmitted a corrected violation for ' . $studentName . ' (' . $original->student_number . '): ' . $typeLabel . '. Confirm or deny this violation.',
+                    targetType: 'violation',
+                    targetId: (int) $violation->violation_id,
+                );
+            } catch (\Throwable $e) {
+                // Notification must never break the resubmission.
+            }
+
+            return back()->with('success', 'Violation resubmitted successfully. It has been sent to the administrator for confirmation.');
+        } catch (\Throwable $exception) {
+            DB::rollBack();
+
+            return back()->withErrors([
+                'violation' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Store uploaded evidence for a violation privately and record audit/security
+     * events. Runs inside the caller's DB transaction.
+     */
+    private function storeEvidence(Violation $violation, Request $request, $security, ?int $securityId): void
+    {
+        $evidenceFiles = $request->allFiles()['evidence'] ?? [];
+
+        // Capture metadata is submitted as parallel arrays (one entry per
+        // staged evidence item). The camera path marks capture_method as
+        // 'camera' and records when the photo was taken. This is audit
+        // metadata only — it never proves identity.
+        $captureMethods = (array) $request->input('capture_methods', []);
+        $capturedAts = (array) $request->input('captured_ats', []);
+        $watermarked = (array) $request->input('watermarked', []);
+        $evidenceService = app(EvidenceSecurityService::class);
+
+        foreach ($evidenceFiles as $index => $evidenceFile) {
+            $evidenceCode = $evidenceService->nextEvidenceCode();
+            $directory = 'violation-evidence/' . $violation->violation_id;
+            $extension = strtolower($evidenceFile->getClientOriginalExtension());
+            // Server-side filename derived from the unique evidence code —
+            // the original filename is never trusted or used on disk.
+            $filename = $evidenceCode . '.' . ($extension !== '' ? $extension : 'bin');
+            $disk = $this->evidenceDisk();
+            $storedPath = $disk->putFileAs($directory, $evidenceFile, $filename);
+
+            if ($storedPath === false) {
+                throw new \RuntimeException('Unable to store evidence file.');
+            }
+
+            $isCamera = strcasecmp((string) ($captureMethods[$index] ?? ''), 'camera') === 0;
+            $capturedAt = isset($capturedAts[$index]) && $capturedAts[$index] !== ''
+                ? Carbon::parse($capturedAts[$index])
+                : null;
+
+            $evidence = ViolationEvidence::create([
+                'evidence_code' => $evidenceCode,
+                'violation_id' => $violation->violation_id,
+                'disk_path' => $storedPath,
+                'original_name' => $evidenceFile->getClientOriginalName(),
+                'mime_type' => $evidenceFile->getMimeType(),
+                'capture_method' => $isCamera
+                    ? ViolationEvidence::CAPTURE_CAMERA
+                    : ViolationEvidence::CAPTURE_UPLOAD,
+                'watermarked' => $isCamera || ! empty($watermarked[$index]),
+                'captured_at' => $capturedAt,
+                'file_size' => $evidenceFile->getSize(),
+                'ip_address' => $evidenceService->clientIp($request),
+                'user_agent' => $evidenceService->userAgent($request),
+                'uploader_type' => 'security',
+                'uploader_id' => $securityId,
+            ]);
+
+            $evidenceService->logEvent(
+                EvidenceSecurityEvent::EVIDENCE_UPLOADED,
+                $violation->violation_id,
+                $evidence->evidence_id,
+                'info',
+                $request,
+                ['method' => $evidence->capture_method, 'code' => $evidenceCode],
+                'security',
+                $securityId,
+            );
         }
     }
 
@@ -465,6 +592,8 @@ class StudentViolationController extends Controller
             ->where(function ($query) {
                 $this->applyRecorderScope($query);
             })
+            // Only confirmed violations reflect on the official student record.
+            ->where('status', Violation::STATUS_CONFIRMED)
             ->with(['violationType.violationCategory']);
 
         $byCategory = (clone $violations)

@@ -196,6 +196,23 @@
         background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
         border-radius: 0.95rem;
         border-left: 4px solid #7a0f1e;
+        transition: box-shadow 0.3s ease, transform 0.3s ease;
+    }
+
+    /* Highlighted violation (opened from a notification deep link). */
+    .violation-item-highlight {
+        border-left-color: #c9981f;
+        box-shadow: 0 0 0 3px rgba(201, 152, 31, 0.45), 0 10px 22px rgba(122, 15, 30, 0.18);
+        transform: translateY(-1px);
+    }
+
+    .violation-item-highlight.is-highlighted {
+        animation: violationHighlightPulse 2.4s ease-in-out 1;
+    }
+
+    @keyframes violationHighlightPulse {
+        0% { background: rgba(201, 152, 31, 0.35); }
+        100% { background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%); }
     }
     
     .violation-item::before {
@@ -361,9 +378,11 @@
             @if($violations->count() > 0)
             <div class="violation-timeline">
                 @foreach($violations as $violation)
-                <div class="violation-item">
+                <div class="violation-item @if(($highlightViolationId ?? 0) > 0 && (int) $violation->violation_id === (int) $highlightViolationId) violation-item-highlight @endif"
+                     data-violation-id="{{ $violation->violation_id }}">
                     <div class="violation-title">
                         {{ $violation->violation_type_display }}
+                        <span class="badge bg-success ms-2">Confirmed</span>
                     </div>
                     <div class="violation-meta">
                         <i class="bi bi-calendar"></i>
@@ -386,7 +405,7 @@
             @else
             <div class="text-center py-5">
                 <i class="bi bi-check-circle display-4" style="color: var(--portal-goldenrod);"></i>
-                <p class="mt-3" style="color: #67585c;">No violation records found.</p>
+                <p class="mt-3" style="color: #67585c;">No confirmed violation records found.</p>
             </div>
             @endif
         </div>
@@ -397,6 +416,14 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // If a violation is highlighted (e.g. opened from a notification), scroll
+    // it into view and pulse its background.
+    const highlighted = document.querySelector('.violation-item-highlight');
+    if (highlighted) {
+        highlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        highlighted.classList.add('is-highlighted');
+    }
+
     document.querySelectorAll('[data-progress-width]').forEach(function (bar) {
         const width = parseFloat(bar.getAttribute('data-progress-width'));
         if (!Number.isNaN(width)) {

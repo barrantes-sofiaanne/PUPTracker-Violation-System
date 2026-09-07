@@ -2,6 +2,20 @@
 
 @section('title', 'Submitted Violations')
 
+@push('styles')
+<style>
+    tr.resubmit-highlight {
+        animation: submittedRowFlash 2.6s ease-in-out 1;
+        box-shadow: inset 0 0 0 3px rgba(201, 152, 31, 0.5);
+    }
+
+    @keyframes submittedRowFlash {
+        0% { background: rgba(201, 152, 31, 0.4); }
+        100% { background: transparent; }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid py-1">
     <div class="page-header-modern d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
@@ -64,7 +78,8 @@
                     </thead>
                     <tbody>
                         @forelse($violations as $violation)
-                            <tr>
+                            <tr class="{{ ($highlightViolationId ?? 0) > 0 && (int) $violation->violation_id === (int) $highlightViolationId ? 'resubmit-highlight' : '' }}"
+                                data-violation-id="{{ $violation->violation_id }}">
                                 <td>{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') : '-' }}</td>
                                 <td>
                                     <strong>{{ $violation->student_number }}</strong>
@@ -98,7 +113,19 @@
                                     @endif
                                 </td>
                                 <td class="text-end">
-                                    @if($violation->review_remarks)
+                                    @if($vStatus === 'denied')
+                                        <button type="button"
+                                            class="btn btn-sm admin-btn admin-btn-warning resubmit-trigger"
+                                            data-violation-id="{{ $violation->violation_id }}"
+                                            data-student-number="{{ $violation->student_number }}"
+                                            data-student-name="{{ optional($violation->student)->last_name ?? '' }}, {{ optional($violation->student)->first_name ?? '' }}"
+                                            data-violation-type="{{ optional($violation->violationType)->violation_type ?? $violation->violation_type_display }}"
+                                            data-violation-date="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d\TH:i') : '' }}"
+                                            data-description="{{ $violation->description ?? '' }}"
+                                            data-reason="{{ $violation->review_remarks ?? '' }}">
+                                            <i class="bi bi-arrow-repeat me-1"></i>Resubmit
+                                        </button>
+                                    @elseif($violation->review_remarks)
                                         <span class="small text-muted" title="{{ $violation->review_remarks }}">{{ \Illuminate\Support\Str::limit($violation->review_remarks, 60) }}</span>
                                     @else
                                         <span class="text-muted small">—</span>
@@ -121,4 +148,94 @@
         @endif
     </div>
 </div>
+
+{{-- Resubmit Rejected Violation Modal --}}
+<div class="modal fade" id="resubmitViolationModal" tabindex="-1" aria-labelledby="resubmitViolationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #7a0f1e 0%, #4a0209 100%);">
+                <h5 class="modal-title fw-bold" id="resubmitViolationModalLabel">
+                    <i class="bi bi-arrow-repeat me-2"></i>Resubmit Violation
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="resubmitViolationForm" method="POST" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" id="resubmitViolationId" name="violation_id">
+                <div class="modal-body">
+                    <div class="alert alert-warning small">
+                        <strong><i class="bi bi-info-circle me-1"></i>Administrator's reason for rejection:</strong>
+                        <div id="resubmitReason" class="mt-1">—</div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Student</label>
+                            <input type="text" id="resubmitStudent" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Violation Type</label>
+                            <input type="text" id="resubmitViolationType" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Violation Date &amp; Time</label>
+                            <input type="datetime-local" id="resubmitViolationDate" name="violation_date" class="form-control" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+                            <textarea id="resubmitDescription" name="description" class="form-control" rows="4" required placeholder="Enter the corrected violation description"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Supporting Evidence (optional)</label>
+                            <input type="file" id="resubmitEvidence" name="evidence[]" class="form-control" accept=".jpg,.jpeg,.png,.pdf" multiple>
+                            <div class="form-text">JPG, PNG or PDF. Max 5 files, up to 5 MB each.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn portal-btn" id="resubmitSubmitBtn">
+                        <i class="bi bi-send me-1"></i>Resubmit for Review
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Scroll to + highlight a row when arriving from a notification deep link.
+    const highlightedRow = document.querySelector('tr.resubmit-highlight');
+    if (highlightedRow) {
+        highlightedRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    const modal = document.getElementById('resubmitViolationModal');
+    const form = document.getElementById('resubmitViolationForm');
+    if (!modal || !form) {
+        return;
+    }
+
+    const modalInstance = function () {
+        return bootstrap.Modal.getOrCreateInstance(modal);
+    };
+
+    document.querySelectorAll('.resubmit-trigger').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.getElementById('resubmitViolationId').value = btn.dataset.violationId;
+            document.getElementById('resubmitStudent').value = (btn.dataset.studentName || '') + ' (' + (btn.dataset.studentNumber || '') + ')';
+            document.getElementById('resubmitViolationType').value = btn.dataset.violationType || '';
+            document.getElementById('resubmitViolationDate').value = btn.dataset.violationDate || '';
+            document.getElementById('resubmitDescription').value = btn.dataset.description || '';
+            document.getElementById('resubmitReason').textContent = btn.dataset.reason || 'No reason provided.';
+            document.getElementById('resubmitEvidence').value = '';
+            form.action = "{{ url('security/violations') }}" + "/" + btn.dataset.violationId + "/resubmit";
+            modalInstance().show();
+        });
+    });
+});
+</script>
+@endpush
 @endsection

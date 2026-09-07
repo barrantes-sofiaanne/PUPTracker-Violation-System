@@ -81,16 +81,35 @@ class SecurityNotificationService
 
     private function violationUrl(int $targetId): ?string
     {
-        if (! Route::has('security.violations.show')) {
-            return null;
-        }
-
         $violation = Violation::query()->find($targetId);
 
         if (! $violation) {
             return null;
         }
 
-        return route('security.violations.show', ['student_number' => $violation->student_number]);
+        // A CONFIRMED violation reflects on the student's record page, so the
+        // notification deep-links there and highlights the exact violation.
+        if (strtolower((string) $violation->status) === Violation::STATUS_CONFIRMED) {
+            if (! Route::has('security.violations.show')) {
+                return null;
+            }
+
+            return route('security.violations.show', [
+                'student_number' => $violation->student_number,
+                'highlight_violation' => $violation->violation_id,
+            ]);
+        }
+
+        // PENDING (awaiting admin confirmation) and DENIED violations do NOT
+        // reflect on the student record page; the officer tracks them under
+        // Submitted Violations, so the notification lands there and highlights
+        // the row.
+        if (! Route::has('security.violations.submitted')) {
+            return null;
+        }
+
+        return route('security.violations.submitted', [
+            'highlight_violation' => $violation->violation_id,
+        ]);
     }
 }

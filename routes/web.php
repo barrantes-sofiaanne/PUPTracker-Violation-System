@@ -780,6 +780,10 @@ Route::middleware('auth:security')
         Route::post('/violations/store', [App\Http\Controllers\Security\StudentViolationController::class, 'store'])
             ->name('security.violations.store');
 
+        Route::post('/violations/{violation}/resubmit', [App\Http\Controllers\Security\StudentViolationController::class, 'resubmitViolation'])
+            ->whereNumber('violation')
+            ->name('security.violations.resubmit');
+
         Route::get('/violations/types', [App\Http\Controllers\Security\StudentViolationController::class, 'getViolationTypes'])
             ->name('security.violations.types');
 
