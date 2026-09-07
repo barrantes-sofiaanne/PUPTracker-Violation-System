@@ -107,7 +107,9 @@ class StudentViolationController extends Controller
                 'evidence',
             ])
             ->where(function ($query) {
-                $this->applyRecorderScope($query);
+                // Submitted Violations is the officer's tracker for Pending,
+                // Confirmed AND Rejected submissions, so denied rows are shown.
+                $this->applyRecorderScope($query, true);
             })
             ->when($status !== '', function ($query) use ($status) {
                 $statusValue = $status === 'rejected' ? 'denied' : $status;
@@ -127,11 +129,11 @@ class StudentViolationController extends Controller
 
         $counts = [
             'pending' => Violation::where('status', Violation::STATUS_PENDING)
-                ->where(fn ($q) => $this->applyRecorderScope($q))->count(),
+                ->where(fn ($q) => $this->applyRecorderScope($q, true))->count(),
             'confirmed' => Violation::where('status', Violation::STATUS_CONFIRMED)
-                ->where(fn ($q) => $this->applyRecorderScope($q))->count(),
+                ->where(fn ($q) => $this->applyRecorderScope($q, true))->count(),
             'denied' => Violation::where('status', Violation::STATUS_DENIED)
-                ->where(fn ($q) => $this->applyRecorderScope($q))->count(),
+                ->where(fn ($q) => $this->applyRecorderScope($q, true))->count(),
         ];
 
         // When arriving from a notification deep link, highlight the referenced
@@ -793,7 +795,7 @@ class StudentViolationController extends Controller
         return "{$count}{$suffix} Offense";
     }
 
-    private function applyRecorderScope($query): void
+    private function applyRecorderScope($query, bool $includeDenied = false): void
     {
         $security = Auth::guard('security')->user();
         $securityLabel = $this->buildSecurityAccountName($security);
@@ -808,10 +810,15 @@ class StudentViolationController extends Controller
                 if ($legacySecurityEmailLabel !== null) {
                     $innerQuery->orWhere('recorder_name', $legacySecurityEmailLabel);
                 }
-            })
-            // Denied violations are not real violations; the officer still sees
-            // their pending (awaiting admin confirmation) and confirmed rows.
-            ->notDenied();
+            });
+
+        // Denied violations are not real violations, so by default they are
+        // excluded from the officer's record/dashboard views. The "Submitted
+        // Violations" tracker opts in ($includeDenied = true) because officers
+        // must see their rejected submissions there in order to resubmit them.
+        if (! $includeDenied) {
+            $query->notDenied();
+        }
     }
 
     private function buildSecurityRecorderLabel($securityId, ?string $email): string
