@@ -437,11 +437,17 @@ public function show(Request $request, string $student_number)
                 ->latest('request_date')
                 ->first();
 
+            $sanctionText = strtolower((string) ($disciplinarySanction?->disciplinary_sanction ?? ''));
+            $violationStatus = str_contains($sanctionText, 'warning')
+                ? 'Warning'
+                : ($disciplinarySanction ? 'Sanction' : 'Unknown');
+
             return [
                 'category' => optional(optional($latest->violationType)->violationCategory)->category_name,
                 'violation_type' => $latest->violation_type,
                 'offense_level' => $offenseLevel,
                 'status' => $sanctionRequest?->status ?? 'No Request',
+                'violation_status' => $violationStatus,
                 'remarks' => $records->count() > 1
                     ? '(Multiple instances - see log)'
                     : ($latest->description ?: '-'),

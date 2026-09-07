@@ -12,6 +12,7 @@ use App\Models\SanctionRequest;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Services\AdminNotificationService;
 use App\Models\ViolationEvidence;
 class StudentRecordController extends Controller
@@ -441,7 +442,13 @@ public function requestSanction(Request $request)
     {
         $request->validate([
             'record_id' => ['required', 'integer'],
-            'proof_file' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,pdf,doc,docx', 'max:5120'],
+            'proof_file' => [
+                'required',
+                'file',
+                'mimes:jpg,jpeg,png,gif,pdf,doc,docx',
+                'mimetypes:image/jpeg,image/png,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'max:5120',
+            ],
             'proof_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -469,7 +476,7 @@ public function requestSanction(Request $request)
 
         try {
             $file = $request->file('proof_file');
-            $disk = \Illuminate\Support\Facades\Storage::disk('local'); // private storage
+            $disk = \Illuminate\Support\Facades\Storage::disk((string) config('filesystems.evidence_disk', 'local'));
             $directory = 'sanction-proofs/' . $record->record_id;
 
             $extension = strtolower($file->getClientOriginalExtension());
@@ -535,6 +542,11 @@ public function requestSanction(Request $request)
                 'record_id' => $record->record_id,
             ]);
         } catch (\Throwable $e) {
+            Log::error('Student sanction proof upload failed', [
+                'record_id' => $record->record_id ?? null,
+                'error' => \Illuminate\Support\Str::limit($e->getMessage(), 300),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Unable to upload the proof of completion. Please try again.',
@@ -558,7 +570,7 @@ public function requestSanction(Request $request)
         }
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        $disk = \Illuminate\Support\Facades\Storage::disk((string) config('filesystems.evidence_disk', 'local'));
 
         if (! $disk->exists($studentSanctionRecord->proof_path)) {
             abort(404);

@@ -86,7 +86,7 @@
 
         <li>
 
-            <a href="{{ route('admin.violations.index') }}" class="{{ request()->routeIs('admin.violations*') ? 'active' : '' }}">
+            <a href="{{ route('admin.violations.index') }}" class="{{ request()->routeIs('admin.violations*') && !request()->routeIs('admin.violations.confirmations') ? 'active' : '' }}">
 
                 <i class="bi bi-exclamation-octagon"></i>
 

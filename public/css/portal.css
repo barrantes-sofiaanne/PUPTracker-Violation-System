@@ -763,3 +763,61 @@ body {
         flex: 1 1 100%;
     }
 }
+
+/* Shared mobile contract: every portal table remains usable without forcing
+   the page itself wider than the viewport. */
+.portal-main .table-responsive {
+    max-width: 100%;
+    overscroll-behavior-inline: contain;
+}
+
+.portal-main .table-responsive > table {
+    min-width: 42rem;
+    margin-bottom: 0;
+}
+
+.portal-main .table th,
+.portal-main .table td {
+    vertical-align: middle;
+}
+
+.portal-main .table td.text-end {
+    white-space: normal;
+    min-width: 7rem;
+}
+
+.portal-main .table td.text-end .btn,
+.portal-main .table td.text-end .admin-btn,
+.portal-main .table td.text-end .portal-btn,
+.portal-main .table td.text-end .portal-btn-outline {
+    margin: 0.15rem;
+}
+
+.portal-main .modal-dialog {
+    width: calc(100% - 1rem);
+    max-width: 960px;
+    margin: 0.5rem auto;
+}
+
+.portal-main .modal-body {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 575.98px) {
+    .portal-main .table-responsive > table {
+        min-width: 36rem;
+    }
+
+    .portal-main .table td.text-end .btn,
+    .portal-main .table td.text-end .admin-btn,
+    .portal-main .table td.text-end .portal-btn,
+    .portal-main .table td.text-end .portal-btn-outline {
+        display: block;
+        width: 100%;
+        margin: 0.25rem 0;
+    }
+
+    .portal-main .modal-dialog {
+        margin: 0.25rem auto;
+    }
+}

@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var trendMeta = document.getElementById("violationTrendMeta");
 
         window.weeklyViolationChart = new Chart(weeklyCanvas, {
-            type: "bar",
+            type: "pie",
             data: {
                 labels: initialLabels,
                 datasets: [
@@ -73,10 +73,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         backgroundColor: initialLabels.map(function (_, i) {
                             return trendColors[i % trendColors.length];
                         }),
-                        borderColor: initialLabels.map(function (_, i) {
-                            return trendColors[i % trendColors.length];
-                        }),
-                        borderWidth: 1,
+                        borderColor: "#fffaf0",
+                        borderWidth: 2,
                     },
                 ],
             },
@@ -84,11 +82,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: true,
+                        position: "bottom",
+                    },
                 },
-                scales: {
-                    y: { beginAtZero: true, ticks: { precision: 0 } },
-                },
+                scales: {},
             },
         });
 
@@ -128,9 +127,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             return trendColors[i % trendColors.length];
                         });
                     window.weeklyViolationChart.data.datasets[0].borderColor =
-                        data.values.map(function (_, i) {
-                            return trendColors[i % trendColors.length];
-                        });
+                        "#fffaf0";
                     window.weeklyViolationChart.update();
 
                     if (trendMeta) {

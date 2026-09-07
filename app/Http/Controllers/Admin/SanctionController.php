@@ -159,11 +159,17 @@ class SanctionController extends Controller
                 ->orderBy('disciplinary_sanction_id')
                 ->first();
 
+        $suggestedDeadline = $this->deadlineFromSanctionText(
+            $assignedSanction?->disciplinary_sanction,
+            now()->startOfDay()
+        );
+
         return view('admin.sanctions.request', compact(
             'sanctionRequest',
             'latestViolation',
             'offenseLevel',
-            'assignedSanction'
+            'assignedSanction',
+            'suggestedDeadline'
         ));
     }
 
@@ -186,7 +192,7 @@ class SanctionController extends Controller
             ? Carbon::parse($validated['deadline_date'])->endOfDay()
             : null;
 
-        DB::transaction(function () use ($sanctionRequest, $adminId, $scheduledDate, $deadlineDate): void {
+        DB::transaction(function () use ($sanctionRequest, $adminId, $scheduledDate, &$deadlineDate): void {
             $student = $sanctionRequest->student;
             $violationType = $sanctionRequest->violationType;
 
@@ -228,6 +234,14 @@ class SanctionController extends Controller
                     'sanction_request' => 'Warning-level violations should remain in the individual violations log and cannot be moved to sanction records.',
                 ]);
             }
+
+            // A manually entered deadline always wins. Otherwise derive one
+            // from durations stated in the sanction (e.g. "one month
+            // suspension" or "one week community service").
+            $deadlineDate ??= $this->deadlineFromSanctionText(
+                $assignedSanction?->disciplinary_sanction,
+                $scheduledDate
+            );
 
             $pendingRecord = StudentSanctionRecord::where('student_number', $student->student_number)
                 ->where('violation_id', $latestViolation->violation_id)
@@ -519,6 +533,60 @@ class SanctionController extends Controller
         return back()->with('success', 'Completed sanction reopened and set back to in progress.');
     }
 
+    /**
+     * Derive a completion deadline from a sanction description when it states
+     * a calendar duration, such as "one month suspension" or "two weeks
+     * community service". Returns null for sanctions without a date-like
+     * duration, leaving the administrator's field optional.
+     */
+    private function deadlineFromSanctionText(?string $sanctionText, Carbon $start): ?Carbon
+    {
+        $text = strtolower(trim((string) $sanctionText));
+        if ($text === '') {
+            return null;
+        }
+
+        $numberWords = [
+            'a' => 1,
+            'an' => 1,
+            'one' => 1,
+            'two' => 2,
+            'three' => 3,
+            'four' => 4,
+            'five' => 5,
+            'six' => 6,
+            'seven' => 7,
+            'eight' => 8,
+            'nine' => 9,
+            'ten' => 10,
+            'eleven' => 11,
+            'twelve' => 12,
+        ];
+
+        if (! preg_match('/\b(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(day|week|month|year)s?\b/i', $text, $matches)) {
+            return null;
+        }
+
+        $amount = is_numeric($matches[1])
+            ? (int) $matches[1]
+            : ($numberWords[strtolower($matches[1])] ?? null);
+
+        if ($amount === null || $amount < 1 || $amount > 3650) {
+            return null;
+        }
+
+        $unit = strtolower($matches[2]);
+        $deadline = $start->copy()->startOfDay();
+
+        return match ($unit) {
+            'day' => $deadline->addDays($amount)->endOfDay(),
+            'week' => $deadline->addWeeks($amount)->endOfDay(),
+            'month' => $deadline->addMonths($amount)->endOfDay(),
+            'year' => $deadline->addYears($amount)->endOfDay(),
+            default => null,
+        };
+    }
+
     private function formatOffenseLevel(int $offenseCount): string
     {
         return match ($offenseCount) {
@@ -571,7 +639,7 @@ class SanctionController extends Controller
         }
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        $disk = \Illuminate\Support\Facades\Storage::disk((string) config('filesystems.evidence_disk', 'local'));
 
         if (! $disk->exists($studentSanctionRecord->proof_path)) {
             abort(404);

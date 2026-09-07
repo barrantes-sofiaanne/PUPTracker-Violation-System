@@ -53,19 +53,74 @@
 
             @if($sanctionRequest->is_active)
                 <div class="border-top mt-4 pt-4">
-                    <form action="{{ route('admin.sanctions.requests.approve', $sanctionRequest) }}" method="POST" class="d-flex flex-wrap align-items-end gap-2">
+                    <form action="{{ route('admin.sanctions.requests.approve', $sanctionRequest) }}" method="POST" class="d-flex flex-wrap align-items-end gap-2" data-sanction-text="{{ $assignedSanction?->disciplinary_sanction ?? '' }}">
                         @csrf
                         <div>
                             <label for="notification_date" class="admin-filter-label">Notification / Date Assigned</label>
                             <input type="date" id="notification_date" name="notification_date" class="form-control" value="{{ now()->format('Y-m-d') }}" required>
                         </div>
-                        <div>
-                            <label for="deadline_date" class="admin-filter-label">Deadline (if needed)</label>
-                            <input type="date" id="deadline_date" name="deadline_date" class="form-control" value="">
-                            <small class="text-muted">Optional completion deadline shown to the student.</small>
+                            <div>
+                                <label for="deadline_date" class="admin-filter-label">Deadline (if needed)</label>
+                                <input type="date" id="deadline_date" name="deadline_date" class="form-control" value="{{ $suggestedDeadline?->format('Y-m-d') }}">
+                                <small class="text-muted" id="deadlineHelp">Auto-filled from the stated sanction duration when available. You can adjust it.</small>
                         </div>
                         <button type="submit" class="admin-btn admin-btn-success"><i class="bi bi-check2-circle"></i>Approve &amp; Notify</button>
                     </form>
+                        @push('scripts')
+                        <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('form[data-sanction-text]');
+        const notificationDate = document.getElementById('notification_date');
+        const deadlineDate = document.getElementById('deadline_date');
+        const deadlineHelp = document.getElementById('deadlineHelp');
+
+        if (!form || !notificationDate || !deadlineDate) {
+            return;
+        }
+
+        const words = {
+            a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5,
+            six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+        };
+        const pattern = /\b(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(day|week|month|year)s?\b/i;
+        let manuallyEdited = false;
+
+        function suggestedDeadline() {
+            const match = String(form.dataset.sanctionText || '').toLowerCase().match(pattern);
+            const start = notificationDate.value ? new Date(notificationDate.value + 'T00:00:00') : null;
+            if (!match || !start || Number.isNaN(start.getTime())) {
+                return '';
+            }
+
+            const amount = /^\d+$/.test(match[1]) ? Number(match[1]) : words[match[1]];
+            if (!amount || amount < 1) {
+                return '';
+            }
+
+            if (match[2] === 'day') start.setDate(start.getDate() + amount);
+            if (match[2] === 'week') start.setDate(start.getDate() + amount * 7);
+            if (match[2] === 'month') start.setMonth(start.getMonth() + amount);
+            if (match[2] === 'year') start.setFullYear(start.getFullYear() + amount);
+
+            return start.toISOString().slice(0, 10);
+        }
+
+        deadlineDate.addEventListener('input', function () {
+            manuallyEdited = deadlineDate.value !== '';
+        });
+
+        notificationDate.addEventListener('change', function () {
+            if (!manuallyEdited) {
+                deadlineDate.value = suggestedDeadline();
+            }
+        });
+
+        if (!deadlineDate.value) {
+            deadlineDate.value = suggestedDeadline();
+        }
+    });
+    </script>
+    @endpush
                     <form action="{{ route('admin.sanctions.requests.decline', $sanctionRequest) }}" method="POST" class="mt-2">
                         @csrf
                         <button type="submit" class="admin-btn admin-btn-danger"><i class="bi bi-x-circle"></i>Decline Request</button>

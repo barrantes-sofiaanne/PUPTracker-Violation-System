@@ -191,7 +191,6 @@
                             <option value="week" selected>This Week</option>
                             <option value="month">This Month</option>
                             <option value="year">This Year</option>
-                            <option value="all">All Time</option>
                         </select>
                         <select id="chartStatus" class="form-select form-select-sm" style="width:auto;">
                             <option value="">All Statuses</option>

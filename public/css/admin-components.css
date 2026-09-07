@@ -225,6 +225,48 @@
     border-color: #7f1d1d;
 }
 
+/* Confirmation queue tables retain their full comparison width inside a
+   horizontal scroller instead of widening the entire mobile page. */
+.admin-confirmations-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-confirmations-table-wrap > table {
+    min-width: 58rem;
+    margin-bottom: 0;
+}
+
+.admin-confirmations-table-wrap th,
+.admin-confirmations-table-wrap td {
+    vertical-align: middle;
+}
+
+.admin-confirmations-table-wrap td:nth-child(5) {
+    min-width: 16rem;
+    white-space: normal;
+}
+
+.admin-confirmations-table-wrap td:last-child {
+    min-width: 8rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+    .admin-confirmations-table-wrap > table {
+        min-width: 52rem;
+    }
+
+    .admin-confirmations-table-wrap td:last-child .admin-btn {
+        display: block;
+        width: 100%;
+        margin: 0.2rem 0;
+    }
+}
+
 /* View — consistent icon + label */
 .admin-btn-view {
     background-color: #fff;

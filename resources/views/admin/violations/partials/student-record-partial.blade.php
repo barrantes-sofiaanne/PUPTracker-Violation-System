@@ -45,11 +45,11 @@
             <thead class="table-light">
                 <tr>
                     <th>Category</th>
-                    <th>Violation</th>
+                    <th>Violation Type</th>
                     <th>Offense Level</th>
-                    <th>Sanction</th>
                     <th>Status</th>
                     <th>Remarks</th>
+                    <th>Disciplinary Sanction</th>
                 </tr>
             </thead>
             <tbody>
@@ -58,20 +58,18 @@
                         <td>{{ $item['category'] ?? '-' }}</td>
                         <td>{{ $item['violation_type'] }}</td>
                         <td><span class="admin-badge admin-badge-gold">{{ $item['offense_level'] }}</span></td>
-                        <td>{{ $item['sanction'] }}</td>
                         <td>
-                            @php $status = strtolower($item['status']); @endphp
-                            @if($status == 'approved')
-                                <x-admin.badge status="approved" />
-                            @elseif($status == 'pending')
-                                <x-admin.badge status="pending" />
-                            @elseif($status == 'rejected' || $status == 'declined')
-                                <x-admin.badge status="rejected" />
+                            @php $status = strtolower((string) ($item['violation_status'] ?? 'unknown')); @endphp
+                            @if($status === 'sanction')
+                                <x-admin.badge status="info" label="Sanction" />
+                            @elseif($status === 'warning')
+                                <x-admin.badge status="warning" label="Warning" />
                             @else
-                                <x-admin.badge status="gray" :label="$item['status']" />
+                                <x-admin.badge status="gray" label="Unknown" />
                             @endif
                         </td>
                         <td>{{ $item['remarks'] }}</td>
+                        <td>{{ $item['sanction'] }}</td>
                     </tr>
                 @empty
                     <tr>
