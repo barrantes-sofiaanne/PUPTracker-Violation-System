@@ -40,33 +40,41 @@
                 </div>
                 <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
                     <p class="text-muted">
-                        Before you continue, please review the summary of our privacy practices and the
-                        terms &amp; conditions governing your use of the PUPTracker Violation System.
+                        Please review the PUP Privacy Statement and Terms of Use before continuing to use the
+                        PUPTracker Violation System.
                     </p>
 
                     <h6 class="fw-semibold mt-3"><i class="bi bi-eye me-1"></i> Privacy</h6>
                     <p class="text-muted small mb-2">
-                        The system collects and processes your personal and academic information
-                        (e.g. name, student/employee number, email, disciplinary records) strictly for
-                        official university purposes — tracking violations, managing sanctions, generating
-                        reports, and issuing announcements. Your data is kept confidential, access is
-                        restricted to authorized personnel, and it is never sold or shared beyond what is
-                        required by university policy and applicable law.
+                        Your personal and academic information is collected and processed only for official
+                        university purposes. It is kept confidential and is never shared beyond what university
+                        policy and applicable law allow.
                     </p>
 
-                    <h6 class="fw-semibold mt-3"><i class="bi bi-file-earmark-text me-1"></i> Terms &amp; Conditions</h6>
+                    <h6 class="fw-semibold mt-3"><i class="bi bi-file-earmark-text me-1"></i> Terms of Use</h6>
                     <p class="text-muted small mb-2">
-                        By using this system you agree to provide accurate information, use the system only
-                        for its intended academic and administrative purpose, keep your account credentials
-                        secure, and not attempt to access, alter, or misuse records you are not authorized to
-                        view. All activities are monitored and logged for security and accountability.
-                        Misuse may result in disciplinary or administrative action.
+                        Use this system only for its intended academic and administrative purpose, keep your
+                        account secure, and do not access or alter records you are not authorized to view.
                     </p>
+
+                    <p class="mb-1">For full details, please read:</p>
+                    <ul class="mb-2">
+                        <li>
+                            <a href="https://www.pup.edu.ph/privacy/" target="_blank" rel="noopener noreferrer">
+                                PUP Privacy Statement <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://www.pup.edu.ph/terms/" target="_blank" rel="noopener noreferrer">
+                                PUP Terms of Use <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        </li>
+                    </ul>
 
                     <p class="text-muted small mb-0">
                         By clicking <strong>I Agree</strong>, you acknowledge that you have read and understood
-                        the summary above. If you do not agree, click <strong>I Disagree</strong> and you will
-                        be logged out of the system.
+                        the PUP Privacy Statement and Terms of Use. If you do not agree, click
+                        <strong>I Disagree</strong> and you will be logged out of the system.
                     </p>
                 </div>
                 <div class="modal-footer justify-content-between">

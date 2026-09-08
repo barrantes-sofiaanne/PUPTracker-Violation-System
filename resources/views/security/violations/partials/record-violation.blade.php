@@ -139,7 +139,7 @@
                     <small class="opacity-75">Search a student and record a disciplinary violation.</small>
                 </div>
 
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <form id="violationForm">

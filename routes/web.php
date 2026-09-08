@@ -105,9 +105,11 @@ Route::post('/logout', [LoginController::class, 'logout'])
     ->name('logout');
 
 Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])
+    ->middleware('guest:admin')
     ->name('admin.login');
 
 Route::post('/admin/login', [AdminLoginController::class, 'login'])
+    ->middleware('guest:admin')
     ->middleware('throttle:5,1')
     ->name('admin.login.post');
 

@@ -86,6 +86,7 @@ protected $fillable = [
             'new_until'                => 'datetime',
             'idp_connected_at'         => 'datetime',
             'idp_last_login_at'        => 'datetime',
+            'mfa_totp_secret'          => 'encrypted',
             'mfa_totp_enabled'         => 'boolean',
         ];
     }

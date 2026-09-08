@@ -22,6 +22,10 @@ use App\Models\ViolationType;
  * @property int|null $reviewed_by_admin_id
  * @property \Illuminate\Support\Carbon|null $reviewed_at
  * @property string|null $review_remarks
+ * @property-read string $violation_type_display         Accessor: resolved violation type name
+ * @property-read string $violation_category_display     Accessor: resolved category name (or N/A)
+ * @property-read string $offense_level                 Accessor: formatted offense level (e.g. "1st Offense")
+ * @property-read string $recorded_by_display           Accessor: human-readable recorder name
  */
 class Violation extends Model
 {

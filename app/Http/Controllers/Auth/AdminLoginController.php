@@ -20,18 +20,15 @@ class AdminLoginController extends Controller
     public function login(Request $request, MfaService $mfaService)
     {
         try {
-            Log::info('Admin login attempt started', ['email' => $request->input('email')]);
-            
             $request->validate([
                 'email' => 'required|email',
                 'password' => 'required',
             ]);
 
-            Log::info('Admin login validation passed');
-            
+            $emailMask = $this->maskEmail((string) $request->input('email'));
+            Log::info('Admin login attempt started', ['email_masked' => $emailMask]);
+
             $admin = Admin::where('email', $request->email)->first();
-            
-            Log::info('Admin lookup result', ['found' => !is_null($admin), 'email' => $request->email]);
 
             if (!$admin || !Hash::check($request->password, $admin->password)) {
                 Log::info('Admin login: invalid credentials');
@@ -86,11 +83,8 @@ class AdminLoginController extends Controller
                 ->with('success', 'Continue with multi-factor verification.');
         } catch (\Throwable $exception) {
             Log::error('Admin login controller error - UNCAUGHT', [
-                'email' => $request->input('email'),
+                'admin_id' => $admin->id ?? null,
                 'error' => $exception->getMessage(),
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
-                'trace' => $exception->getTraceAsString(),
             ]);
 
             return back()
@@ -110,5 +104,29 @@ class AdminLoginController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('admin.login');
+    }
+
+    /**
+     * Privacy-preserving email representation for logs (e.g. "a***@example.com").
+     */
+    protected function maskEmail(string $email): string
+    {
+        $email = trim($email);
+
+        if ($email === '') {
+            return '';
+        }
+
+        $parts = explode('@', $email, 2);
+        $local = $parts[0] ?? '';
+        $domain = $parts[1] ?? '';
+
+        if ($local === '') {
+            return $domain !== '' ? '*@' . $domain : '';
+        }
+
+        $localMasked = (string) $local[0] . str_repeat('*', max(1, strlen($local) - 1));
+
+        return $domain !== '' ? $localMasked . '@' . $domain : $localMasked;
     }
 }

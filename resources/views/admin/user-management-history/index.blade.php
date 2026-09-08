@@ -44,7 +44,7 @@
             </div>
             @endif
             <div class="col-md-1 d-flex align-items-end">
-                <button class="admin-btn admin-btn-primary w-100" type="submit" title="Filter"><i class="bi bi-funnel"></i></button>
+                <button class="admin-btn admin-btn-primary w-100" type="submit" title="Filter" aria-label="Filter"><i class="bi bi-funnel" aria-hidden="true"></i></button>
             </div>
         </form>
     </div>

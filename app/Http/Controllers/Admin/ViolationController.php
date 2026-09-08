@@ -742,46 +742,9 @@ $previousCount = Violation::where(
     |--------------------------------------------------------------------------
     */
 
-public function store(Request $request): JsonResponse
+public function store(\App\Http\Requests\StoreViolationRequest $request): JsonResponse
 {
-    $validated = $request->validate([
-
-        'student_number' => [
-            'required',
-            'exists:users_tbl,student_number'
-        ],
-
-        'violation_type_id' => [
-            'required',
-            'exists:violation_type_tbl,violation_type_id'
-        ],
-
-        'violation_date' => [
-            'required',
-            'date'
-        ],
-
-        'description' => [
-            'required',
-            'string',
-            'max:1000'
-        ],
-
-        // Evidence is optional and reuses the existing evidence subsystem
-        // (camera-captured photos + secure PDF uploads), up to 5 files, 5MB
-        // each, matching the security portal's rules.
-        'evidence' => [
-            'nullable',
-            'array',
-            'max:5',
-        ],
-        'evidence.*' => [
-            'file',
-            'mimes:jpg,jpeg,png,pdf',
-            'max:5120',
-        ],
-
-    ]);
+    $validated = $request->validated();
 
     $violationType = ViolationType::findOrFail(
         $validated['violation_type_id']
@@ -897,15 +860,20 @@ public function store(Request $request): JsonResponse
 
         } catch (\Throwable $exception) {
 
-    DB::rollBack();
+            DB::rollBack();
 
-    return response()->json([
-        'message' => $exception->getMessage(),
-        'line' => $exception->getLine(),
-        'file' => basename($exception->getFile())
-    ], 500);
-}
-}
+            // Log full technical detail server-side only; never leak internal
+            // paths/lines/messages to the client.
+            Log::error('Admin violation store failed', [
+                'student_number' => $request->input('student_number'),
+                'error' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+            ]);
+
+            return \App\Support\Responses::unexpectedError();
+        }
+    }
 
     /**
      * Store uploaded/captured evidence for an admin-recorded violation,

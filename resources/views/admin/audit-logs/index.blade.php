@@ -66,7 +66,7 @@
                 <input id="keyword" name="keyword" value="{{ request('keyword') }}" class="form-control" placeholder="Search action or description">
             </div>
             <div class="col-md-1 d-flex align-items-end gap-2">
-                <button class="admin-btn admin-btn-primary w-100" type="submit" title="Filter"><i class="bi bi-funnel"></i></button>
+                <button class="admin-btn admin-btn-primary w-100" type="submit" title="Filter" aria-label="Filter"><i class="bi bi-funnel" aria-hidden="true"></i></button>
             </div>
         </form>
     </div>

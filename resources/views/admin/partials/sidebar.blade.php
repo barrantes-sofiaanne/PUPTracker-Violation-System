@@ -13,6 +13,7 @@
 
         <img
             src="{{ asset('assets/images/SystemLogo_w/name.png') }}"
+            alt="PUPTracker"
             width="60">
 
         <h5 class="mt-2">

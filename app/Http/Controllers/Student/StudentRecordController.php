@@ -397,13 +397,14 @@ public function requestSanction(Request $request)
 
         DB::rollBack();
 
-        return response()->json([
+        Log::error('Student sanction request failed', [
+            'student_number' => $user->student_number ?? null,
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ]);
 
-            'success' => false,
-
-            'message' => $e->getMessage()
-
-        ], 500);
+        return \App\Support\Responses::unexpectedErrorFlag();
 
     }
 }

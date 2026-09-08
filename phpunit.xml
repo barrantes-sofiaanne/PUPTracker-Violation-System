@@ -32,5 +32,10 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- Tests run against the local (faked) private disk, never the real
+             S3/R2 bucket. Production disk selection comes from .env. -->
+        <env name="EVIDENCE_STORAGE_DISK" value="local"/>
+        <env name="ANNOUNCEMENT_STORAGE_DISK" value="local"/>
+        <env name="BACKUP_STORAGE_DISK" value="backups"/>
     </php>
 </phpunit>

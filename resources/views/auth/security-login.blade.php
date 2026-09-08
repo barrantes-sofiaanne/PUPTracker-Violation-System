@@ -26,13 +26,14 @@
 
             <div class="mb-3">
 
-                <label class="form-label">
+                <label class="form-label" for="email">
                     Email
                 </label>
 
                 <div class="input-group login-input-group">
                     <span class="input-group-text"><i class="bi bi-envelope"></i></span>
                     <input
+                        id="email"
                         type="email"
                         name="email"
                         class="form-control @error('email') is-invalid @enderror"
@@ -51,7 +52,7 @@
 
             <div class="mb-4">
 
-                <label class="form-label">
+                <label class="form-label" for="password">
                     Password
                 </label>
 

@@ -35,6 +35,7 @@ class Security extends Authenticatable
     ];
 
     protected $casts = [
+        'mfa_totp_secret' => 'encrypted',
         'mfa_totp_enabled' => 'boolean',
         'reset_token_expires_at' => 'datetime',
     ];

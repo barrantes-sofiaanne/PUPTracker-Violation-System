@@ -31,7 +31,8 @@
                     <button
                         type="button"
                         class="btn-close"
-                        data-bs-dismiss="modal"></button>
+                        data-bs-dismiss="modal"
+                        aria-label="Close"></button>
 
                 </div>
 

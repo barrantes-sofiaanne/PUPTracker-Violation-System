@@ -481,7 +481,7 @@
     <div class="modal-dialog modal-lg"><div class="modal-content admin-modal-content">
         <form method="POST" action="{{ route('admin.students.store') }}">
             @csrf
-            <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createStudentModalLabel">Create Student Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createStudentModalLabel">Create Student Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
             <div class="modal-body admin-modal-body"><div class="row g-3">
                 <div class="col-md-6"><label class="form-label">Student Number</label><input name="student_number" class="form-control" required></div>
                 <div class="col-md-6"><label class="form-label">Gender</label><select name="gender_id" class="form-select" required>@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
@@ -516,7 +516,7 @@
     <div class="modal-dialog"><div class="modal-content admin-modal-content">
         <form method="POST" action="{{ route('admin.users.admins.store') }}">
             @csrf
-            <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createAdminModalLabel">Create Admin Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createAdminModalLabel">Create Admin Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
             <div class="modal-body admin-modal-body"><div class="row g-3">
                 <div class="col-12"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" class="form-control" required></div>
@@ -535,7 +535,7 @@
     <div class="modal-dialog"><div class="modal-content admin-modal-content">
         <form method="POST" action="{{ route('admin.users.security.store') }}">
             @csrf
-            <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createSecurityModalLabel">Create Security Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createSecurityModalLabel">Create Security Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
             <div class="modal-body admin-modal-body"><div class="row g-3">
                 <div class="col-12"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" class="form-control" required></div>
@@ -551,7 +551,7 @@
 
 <div class="modal fade admin-modal" id="editStudentModal" tabindex="-1" aria-labelledby="editStudentModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog modal-lg"><div class="modal-content admin-modal-content">
     <form id="editStudentForm" method="POST">@csrf @method('PUT')
-        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="editStudentModalLabel">Edit Student</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="editStudentModalLabel">Edit Student</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
         <div class="modal-body admin-modal-body"><div class="row g-3">
             <div class="col-md-6"><label class="form-label">Student Number</label><input id="student_number" class="form-control" readonly></div>
             <div class="col-md-4"><label class="form-label">First Name</label><input type="text" id="first_name" class="form-control" readonly></div>
@@ -588,7 +588,7 @@
 
 <div class="modal fade admin-modal" id="deleteStudentModal" tabindex="-1" aria-labelledby="deleteStudentModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog"><div class="modal-content admin-modal-content">
     <form method="POST" id="deleteStudentForm">@csrf @method('DELETE')
-        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="deleteStudentModalLabel">Delete Student</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="deleteStudentModalLabel">Delete Student</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
         <div class="modal-body admin-modal-body"><p>Are you sure you want to delete <strong id="studentDeleteName"></strong>?</p></div>
         <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-danger">Delete</button></div>
     </form>
@@ -596,7 +596,7 @@
 
 <div class="modal fade admin-modal" id="editAdminModal" tabindex="-1" aria-labelledby="editAdminModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog"><div class="modal-content admin-modal-content">
     <form method="POST" id="editAdminForm">@csrf @method('PUT')
-        <div class="modal-header"><h5 class="modal-title">Edit Admin</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header"><h5 class="modal-title">Edit Admin</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
         <div class="modal-body"><div class="row g-3">
             <div class="col-12"><label class="form-label">Email</label><input name="email" id="admin_email" type="email" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="admin_firstname" class="form-control" required></div>
@@ -611,7 +611,7 @@
 
 <div class="modal fade admin-modal" id="deleteAdminModal" tabindex="-1" aria-labelledby="deleteAdminModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog"><div class="modal-content admin-modal-content">
     <form method="POST" id="deleteAdminForm">@csrf @method('DELETE')
-        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="deleteAdminModalLabel">Delete Admin</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="deleteAdminModalLabel">Delete Admin</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
         <div class="modal-body admin-modal-body"><p>Are you sure you want to delete <strong id="adminDeleteName"></strong>?</p></div>
         <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-danger">Delete</button></div>
     </form>
@@ -619,7 +619,7 @@
 
 <div class="modal fade admin-modal" id="editSecurityModal" tabindex="-1" aria-labelledby="editSecurityModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog"><div class="modal-content admin-modal-content">
     <form method="POST" id="editSecurityForm">@csrf @method('PUT')
-        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="editSecurityModalLabel">Edit Security</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="editSecurityModalLabel">Edit Security</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
         <div class="modal-body admin-modal-body"><div class="row g-3">
             <div class="col-12"><label class="form-label">Email</label><input name="email" id="security_email" type="email" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="security_firstname" class="form-control" required></div>
@@ -633,7 +633,7 @@
 
 <div class="modal fade admin-modal" id="deleteSecurityModal" tabindex="-1" aria-labelledby="deleteSecurityModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog"><div class="modal-content admin-modal-content">
     <form method="POST" id="deleteSecurityForm">@csrf @method('DELETE')
-        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="deleteSecurityModalLabel">Delete Security</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="deleteSecurityModalLabel">Delete Security</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
         <div class="modal-body admin-modal-body"><p>Are you sure you want to delete <strong id="securityDeleteName"></strong>?</p></div>
         <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-danger">Delete</button></div>
     </form>
@@ -644,7 +644,7 @@
         @csrf
         <div class="modal-header import-modal-header">
             <h5 class="modal-title mb-0" id="importModalTitle">Import Student Data</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body import-modal-body">
             <p class="import-modal-subtitle">Choose an import action and upload your file.</p>

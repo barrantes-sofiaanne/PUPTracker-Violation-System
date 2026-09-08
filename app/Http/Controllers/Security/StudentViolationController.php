@@ -16,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 use App\Models\Violation;
@@ -291,16 +292,9 @@ class StudentViolationController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(\App\Http\Requests\StoreViolationRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'student_number' => ['required', 'exists:users_tbl,student_number'],
-            'violation_type_id' => ['required', 'exists:violation_type_tbl,violation_type_id'],
-            'violation_date' => ['required', 'date'],
-            'description' => ['required', 'string', 'max:1000'],
-            'evidence' => ['nullable', 'array', 'max:5'],
-            'evidence.*' => ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-        ]);
+        $validated = $request->validated();
 
         $violationType = ViolationType::findOrFail($validated['violation_type_id']);
 
@@ -386,11 +380,15 @@ class StudentViolationController extends Controller
         } catch (\Throwable $exception) {
             DB::rollBack();
 
-            return response()->json([
-                'message' => $exception->getMessage(),
+            // Log technical detail server-side only; never leak to the client.
+            Log::error('Security violation store failed', [
+                'student_number' => $request->input('student_number'),
+                'error' => $exception->getMessage(),
+                'file' => $exception->getFile(),
                 'line' => $exception->getLine(),
-                'file' => basename($exception->getFile()),
-            ], 500);
+            ]);
+
+            return \App\Support\Responses::unexpectedError();
         }
     }
 
@@ -482,8 +480,16 @@ class StudentViolationController extends Controller
         } catch (\Throwable $exception) {
             DB::rollBack();
 
+            Log::error('Security violation resubmit failed', [
+                'violation_id' => $violationId,
+                'student_number' => $original?->student_number,
+                'error' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+            ]);
+
             return back()->withErrors([
-                'violation' => $exception->getMessage(),
+                'violation' => 'Unable to resubmit the violation. Please try again later.',
             ]);
         }
     }
@@ -678,7 +684,7 @@ class StudentViolationController extends Controller
                 $detailedRecords = $studentViolations
                     ->sortByDesc('violation_date')
                     ->values()
-                    ->map(function (\App\Models\Violation $record) {
+                    ->map(function (Violation $record) {
                         $offenseLevel = $record->offense_level ?: 'N/A';
                         $resolvedViolationType = $record->resolvedViolationType();
 

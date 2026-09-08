@@ -30,6 +30,210 @@ use Tests\TestCase;
  */
 class ViolationSanctionWorkflowTest extends TestCase
 {
+    public function test_admin_violation_store_does_not_leak_internal_exception_details(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        // Force the store's catch (\Throwable) path.
+        \App\Models\Violation::creating(function (): void {
+            throw new \RuntimeException('INTERNAL_DB_DETAILS secret-path/File.php:42');
+        });
+
+        $response = $this->actingAs($admin, 'admin')
+            ->postJson(route('admin.violations.store'), [
+                'student_number' => '2024-0001',
+                'violation_type_id' => 1,
+                'violation_date' => now()->format('Y-m-d H:i:s'),
+                'description' => 'trigger',
+            ]);
+
+        $response->assertStatus(500);
+        $body = $response->getContent();
+
+        $this->assertStringNotContainsString('INTERNAL_DB_DETAILS', $body);
+        $this->assertStringNotContainsString('File.php', $body);
+        $this->assertStringNotContainsString('secret-path', $body);
+        $this->assertStringNotContainsString('SQLSTATE', $body);
+        $this->assertStringContainsString('An unexpected error occurred', $body);
+
+        \App\Models\Violation::flushEventListeners();
+    }
+
+    public function test_security_violation_store_does_not_leak_internal_exception_details(): void
+    {
+        $this->createTables();
+        $security = $this->createSecurity('security@example.com', 'Officer', 'One');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        \App\Models\Violation::creating(function (): void {
+            throw new \RuntimeException('INTERNAL_SECRET /app/File.php:77');
+        });
+
+        $response = $this->actingAs($security, 'security')
+            ->postJson(route('security.violations.store'), [
+                'student_number' => '2024-0001',
+                'violation_type_id' => 1,
+                'violation_date' => now()->format('Y-m-d H:i:s'),
+                'description' => 'trigger',
+            ]);
+
+        $response->assertStatus(500);
+        $body = $response->getContent();
+
+        $this->assertStringNotContainsString('INTERNAL_SECRET', $body);
+        $this->assertStringNotContainsString('File.php', $body);
+        $this->assertStringNotContainsString('/app/', $body);
+        $this->assertStringNotContainsString('SQLSTATE', $body);
+        $this->assertStringContainsString('An unexpected error occurred', $body);
+
+        \App\Models\Violation::flushEventListeners();
+    }
+
+    public function test_student_sanction_request_does_not_leak_internal_exception_details(): void
+    {
+        $this->createTables();
+        $student = $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $this->createDisciplinarySanction(1, '1st Offense', 'Community service 40 hours');
+
+        Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'x',
+            'status' => 'confirmed',
+        ]);
+
+        // Force the requestSanction catch (\Exception) path.
+        \App\Models\SanctionRequest::creating(function (): void {
+            throw new \RuntimeException('INTERNAL_SANCTION /secret/db.php:99');
+        });
+
+        $response = $this->actingAs($student, 'student')
+            ->postJson(route('student.request-sanction'), [
+                'violation_type_id' => 1,
+            ]);
+
+        $response->assertStatus(500);
+        $body = $response->getContent();
+
+        $this->assertStringNotContainsString('INTERNAL_SANCTION', $body);
+        $this->assertStringNotContainsString('/secret/', $body);
+        $this->assertStringNotContainsString('db.php', $body);
+        $this->assertStringNotContainsString('SQLSTATE', $body);
+        $this->assertStringContainsString('An unexpected error occurred', $body);
+
+        \App\Models\SanctionRequest::flushEventListeners();
+    }
+
+
+    public function test_admin_record_violation_partial_includes_evidence_and_review_steps(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+
+        $categories = \App\Models\ViolationCategory::all();
+
+        $this->actingAs($admin, 'admin');
+
+        $html = view('admin.violations.partials.record-violation', [
+            'categories' => $categories,
+        ])->render();
+
+        // The Evidence step (with camera + staged evidence) must be present.
+        $this->assertStringContainsString('id="evidenceStep"', $html);
+        $this->assertStringContainsString('id="cameraPreview"', $html);
+        $this->assertStringContainsString('id="capturePhotoBtn"', $html);
+        $this->assertStringContainsString('id="evidencePreviewList"', $html);
+        $this->assertStringContainsString('id="securityNoticeModal"', $html);
+
+        // The Review step must be present.
+        $this->assertStringContainsString('id="reviewStep"', $html);
+        $this->assertStringContainsString('id="reviewStudentNumber"', $html);
+        $this->assertStringContainsString('id="reviewViolationType"', $html);
+        $this->assertStringContainsString('id="reviewEvidenceSummary"', $html);
+        $this->assertStringContainsString('id="reviewRecordedBy"', $html);
+
+        // The step indicator now includes Evidence + Review.
+        $this->assertStringContainsString('id="evidenceStepIndicator"', $html);
+        $this->assertStringContainsString('id="reviewStepIndicator"', $html);
+    }
+
+    public function test_student_record_page_renders_request_sanction_state_correctly(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+
+        // Student A: an eligible violation (sanctionable, no prior request).
+        $eligibleStudent = $this->createStudent('2024-0101');
+        $typeA = ViolationType::create([
+            'violation_type' => 'Cheating A',
+            'violation_category_id' => 1,
+        ]);
+        $this->createDisciplinarySanction($typeA->violation_type_id, '1st Offense', 'Community service 40 hours');
+        Violation::create([
+            'student_number' => '2024-0101',
+            'violation_type' => $typeA->violation_type_id,
+            'violation_date' => now(),
+            'description' => 'Caught cheating.',
+            'recorder_type' => 'admin',
+            'recorder_name' => 'Admin One',
+            'status' => 'confirmed',
+        ]);
+
+        $eligibleContent = $this->actingAs($eligibleStudent, 'student')
+            ->get(route('student.record'))
+            ->assertOk()
+            ->getContent();
+        // The button must appear for this eligible (sanctionable) violation.
+        $this->assertStringContainsString('request-sanction-btn', $eligibleContent);
+        $this->assertStringContainsString('Request Sanction', $eligibleContent);
+
+        // Student B: a violation type that already has a COMPLETED sanction.
+        $completedStudent = $this->createStudent('2024-0102');
+        $typeB = ViolationType::create([
+            'violation_type' => 'Vandalism B',
+            'violation_category_id' => 1,
+        ]);
+        $this->createDisciplinarySanction($typeB->violation_type_id, '1st Offense', 'Community service 20 hours');
+        $completedViolation = Violation::create([
+            'student_number' => '2024-0102',
+            'violation_type' => $typeB->violation_type_id,
+            'violation_date' => now(),
+            'description' => 'Vandalism.',
+            'recorder_type' => 'admin',
+            'recorder_name' => 'Admin One',
+            'status' => 'confirmed',
+        ]);
+        StudentSanctionRecord::create([
+            'student_number' => '2024-0102',
+            'violation_id' => $completedViolation->violation_id,
+            'assigned_sanction_id' => $this->assignedSanctionIdForType($typeB->violation_type_id),
+            'assigned_by_admin_id' => $admin->id,
+            'status' => \App\Models\StudentSanctionRecord::STATUS_COMPLETED,
+            'date_assigned' => now()->subMonth(),
+            'date_completed' => now(),
+        ]);
+
+        $completedContent = $this->actingAs($completedStudent, 'student')
+            ->get(route('student.record'))
+            ->assertOk()
+            ->getContent();
+        // A completed sanction must NOT allow another request.
+        $this->assertStringNotContainsString('request-sanction-btn', $completedContent);
+        // The completed sanction is visible in the Sanction Record tab.
+        $this->assertStringContainsString('Your Sanction Records', $completedContent);
+    }
+
+    private function assignedSanctionIdForType(int $typeId): int
+    {
+        return (int) DisciplinarySanction::where('violation_type_id', $typeId)->value('disciplinary_sanction_id');
+    }
+
     public function test_security_recorded_violation_is_pending_and_notifies_admin(): void
     {
         $this->createTables();
@@ -266,6 +470,86 @@ class ViolationSanctionWorkflowTest extends TestCase
             'actor_type' => 'security',
             'actor_id' => $security->id,
         ]);
+    }
+
+    public function test_admin_recorded_violation_with_camera_evidence_stores_evidence_and_admin_actor(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $this->createDisciplinarySanction(1, '1st Offense', 'Community service 40 hours');
+
+        \Illuminate\Support\Facades\Storage::fake('local');
+
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.violations.store'), [
+                'student_number' => '2024-0001',
+                'violation_type_id' => 1,
+                'violation_date' => now()->format('Y-m-d H:i:s'),
+                'description' => 'Caught cheating (admin).',
+                'evidence' => [
+                    \Illuminate\Http\UploadedFile::fake()->image('photo.jpg'),
+                ],
+                'capture_methods' => ['camera'],
+                'captured_ats' => [now()->toIso8601String()],
+                'watermarked' => ['1'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        // The violation is recorded as CONFIRMED with the admin recorder.
+        $violation = Violation::where('student_number', '2024-0001')->first();
+        $this->assertNotNull($violation);
+        $this->assertSame('confirmed', $violation->status);
+        $this->assertSame('admin', $violation->recorder_type);
+        $this->assertSame($admin->id, $violation->recorder_id);
+
+        // Evidence was stored via the existing evidence subsystem.
+        $evidence = \App\Models\ViolationEvidence::first();
+        $this->assertNotNull($evidence);
+        $this->assertNotNull($evidence->evidence_code);
+        $this->assertMatchesRegularExpression('/^EVD-\d{4}-\d{6}$/', $evidence->evidence_code);
+        $this->assertSame('camera', $evidence->capture_method);
+        $this->assertTrue((bool) $evidence->watermarked);
+        $this->assertSame('admin', $evidence->uploader_type);
+        $this->assertSame($admin->id, $evidence->uploader_id);
+        $this->assertStringContainsString($evidence->evidence_code, $evidence->disk_path);
+
+        // Evidence upload security event logged with the admin actor.
+        $this->assertDatabaseHas('evidence_security_events_tbl', [
+            'evidence_id' => $evidence->evidence_id,
+            'event_type' => \App\Models\EvidenceSecurityEvent::EVIDENCE_UPLOADED,
+            'actor_type' => 'admin',
+            'actor_id' => $admin->id,
+        ]);
+    }
+
+    public function test_admin_evidence_security_event_endpoint_records_whitelisted_events(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+
+        $this->actingAs($admin, 'admin')
+            ->postJson(route('admin.violations.evidence-security-event'), [
+                'event_type' => \App\Models\EvidenceSecurityEvent::CAMERA_INITIALIZED,
+                'severity' => 'info',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('evidence_security_events_tbl', [
+            'event_type' => \App\Models\EvidenceSecurityEvent::CAMERA_INITIALIZED,
+            'actor_type' => 'admin',
+            'actor_id' => $admin->id,
+        ]);
+
+        // Unsupported event types are rejected (matches the security portal).
+        $this->actingAs($admin, 'admin')
+            ->postJson(route('admin.violations.evidence-security-event'), [
+                'event_type' => 'NOT_A_REAL_EVENT',
+            ])
+            ->assertStatus(422);
     }
 
     public function test_security_event_endpoint_records_whitelisted_events_only(): void
@@ -1174,6 +1458,13 @@ class ViolationSanctionWorkflowTest extends TestCase
                 $table->string('email');
                 $table->string('password');
                 $table->boolean('mfa_totp_enabled')->default(false);
+            },
+            'admin_info_tbl' => function (Blueprint $table): void {
+                $table->increments('id');
+                $table->unsignedBigInteger('admin_id')->nullable();
+                $table->string('firstname')->nullable();
+                $table->string('middlename')->nullable();
+                $table->string('lastname')->nullable();
             },
             'security' => function (Blueprint $table): void {
                 $table->increments('id');
