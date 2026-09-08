@@ -72,36 +72,12 @@ $approvedRequests = SanctionRequest::where(
 ->map(fn ($value) => (string) $value)
 ->toArray();
 
-$pendingSanctionTypeKeys = StudentSanctionRecord::with('violation')
+// Violation types that already have ANY assigned sanction record (open or
+// completed). Once a violation type has entered the sanction workflow it
+// belongs in the Sanction Record tab only and must NOT be re-requestable
+// (including after the sanction has been completed).
+$assignedSanctionTypeKeys = StudentSanctionRecord::with('violation')
     ->where('student_number', $user->student_number)
-    ->where(function ($q) {
-        $q->where('status', \App\Models\StudentSanctionRecord::STATUS_PENDING)
-            ->orWhere('status', \App\Models\StudentSanctionRecord::STATUS_IN_PROGRESS)
-            ->orWhere('status', \App\Models\StudentSanctionRecord::STATUS_OVERDUE);
-    })
-    ->get()
-    ->flatMap(function ($record) {
-        $raw = (string) ($record->violation?->violation_type ?? '');
-        $resolvedTypeId = (string) ($record->violation?->resolvedViolationType()?->violation_type_id ?? '');
-        $resolvedTypeName = (string) ($record->violation?->resolvedViolationType()?->violation_type ?? '');
-
-        return array_filter([
-            $raw,
-            strtolower($raw),
-            $resolvedTypeId,
-            $resolvedTypeName,
-            strtolower($resolvedTypeName),
-        ]);
-    })
-    ->unique()
-    ->values()
-    ->toArray();
-
-$approvedSanctionTypeKeys = StudentSanctionRecord::with('violation')
-    ->where('student_number', $user->student_number)
-    ->where(function ($q) {
-        $q->where('status', '!=', \App\Models\StudentSanctionRecord::STATUS_COMPLETED);
-    })
     ->get()
     ->flatMap(function ($record) {
         $raw = (string) ($record->violation?->violation_type ?? '');
@@ -199,11 +175,11 @@ foreach ($groupedViolations as $records) {
     }
 
     if (
-        $matchesViolationType($first, $pendingSanctionTypeKeys)
-        || $matchesViolationType($first, $approvedRequests)
-        || $matchesViolationType($first, $approvedSanctionTypeKeys)
+        $matchesViolationType($first, $approvedRequests)
+        || $matchesViolationType($first, $assignedSanctionTypeKeys)
     ) {
-        // Once a violation enters sanction workflow, it should be shown only in Sanction Record.
+        // Once a violation enters sanction workflow (open OR completed), it
+        // should be shown only in Sanction Record and not be re-requestable.
         continue;
     }
 
