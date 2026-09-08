@@ -24,6 +24,7 @@ use App\Models\StudentStatus;
 use App\Models\SanctionRequest;
 use App\Models\StudentSanctionRecord;
 use App\Models\AuditLog;
+use App\Models\EvidenceSecurityEvent;
 use App\Services\EvidenceSecurityService;
 
 class ViolationController extends Controller
@@ -766,6 +767,20 @@ public function store(Request $request): JsonResponse
             'max:1000'
         ],
 
+        // Evidence is optional and reuses the existing evidence subsystem
+        // (camera-captured photos + secure PDF uploads), up to 5 files, 5MB
+        // each, matching the security portal's rules.
+        'evidence' => [
+            'nullable',
+            'array',
+            'max:5',
+        ],
+        'evidence.*' => [
+            'file',
+            'mimes:jpg,jpeg,png,pdf',
+            'max:5120',
+        ],
+
     ]);
 
     $violationType = ViolationType::findOrFail(
@@ -852,6 +867,12 @@ public function store(Request $request): JsonResponse
                 'reviewed_at' => now(),
             ]);
 
+            // Persist any captured/uploaded evidence using the existing
+            // evidence subsystem (private storage, evidence codes, security
+            // events). Runs inside the same transaction so a storage failure
+            // rolls back the violation too.
+            $this->storeEvidence($violation, $request, (int) Auth::guard('admin')->id());
+
             DB::commit();
 
             // Notify the student about the recorded violation (target-aware).
@@ -886,6 +907,74 @@ public function store(Request $request): JsonResponse
 }
 }
 
+    /**
+     * Store uploaded/captured evidence for an admin-recorded violation,
+     * privately, with a unique evidence code and evidence security event.
+     * Runs inside the caller's DB transaction.
+     */
+    private function storeEvidence(Violation $violation, Request $request, int $adminId): void
+    {
+        $evidenceFiles = $request->allFiles()['evidence'] ?? [];
+
+        if ($evidenceFiles === []) {
+            return;
+        }
+
+        $captureMethods = (array) $request->input('capture_methods', []);
+        $capturedAts = (array) $request->input('captured_ats', []);
+        $watermarked = (array) $request->input('watermarked', []);
+        $evidenceService = app(EvidenceSecurityService::class);
+
+        foreach ($evidenceFiles as $index => $evidenceFile) {
+            $evidenceCode = $evidenceService->nextEvidenceCode();
+            $directory = 'violation-evidence/' . $violation->violation_id;
+            $extension = strtolower($evidenceFile->getClientOriginalExtension());
+            // Server-side filename derived from the unique evidence code — the
+            // original filename is never trusted or used on disk.
+            $filename = $evidenceCode . '.' . ($extension !== '' ? $extension : 'bin');
+            $disk = $evidenceService->evidenceDisk();
+            $storedPath = $disk->putFileAs($directory, $evidenceFile, $filename);
+
+            if ($storedPath === false) {
+                throw new \RuntimeException('Unable to store evidence file.');
+            }
+
+            $isCamera = strcasecmp((string) ($captureMethods[$index] ?? ''), 'camera') === 0;
+            $capturedAt = isset($capturedAts[$index]) && $capturedAts[$index] !== ''
+                ? \Carbon\Carbon::parse($capturedAts[$index])
+                : null;
+
+            $evidence = ViolationEvidence::create([
+                'evidence_code' => $evidenceCode,
+                'violation_id' => $violation->violation_id,
+                'disk_path' => $storedPath,
+                'original_name' => $evidenceFile->getClientOriginalName(),
+                'mime_type' => $evidenceFile->getMimeType(),
+                'capture_method' => $isCamera
+                    ? ViolationEvidence::CAPTURE_CAMERA
+                    : ViolationEvidence::CAPTURE_UPLOAD,
+                'watermarked' => $isCamera || ! empty($watermarked[$index]),
+                'captured_at' => $capturedAt,
+                'file_size' => $evidenceFile->getSize(),
+                'ip_address' => $evidenceService->clientIp($request),
+                'user_agent' => $evidenceService->userAgent($request),
+                'uploader_type' => 'admin',
+                'uploader_id' => $adminId,
+            ]);
+
+            $evidenceService->logEvent(
+                EvidenceSecurityEvent::EVIDENCE_UPLOADED,
+                $violation->violation_id,
+                $evidence->evidence_id,
+                'info',
+                $request,
+                ['method' => $evidence->capture_method, 'code' => $evidenceCode],
+                'admin',
+                $adminId,
+            );
+        }
+    }
+
     public function history(Request $request)
 {
     $violations = Violation::with([
@@ -910,6 +999,59 @@ public function store(Request $request): JsonResponse
         compact('violations')
     );
 }
+
+    /**
+     * Record an evidence security event from the admin record-violation
+     * camera capture flow (mirror of the security portal's endpoint, but
+     * admin-guarded). These are detection/deterrence indicators only.
+     */
+    public function logEvidenceSecurityEvent(Request $request): JsonResponse
+    {
+        $admin = Auth::guard('admin')->user();
+        if (! $admin) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $allowed = [
+            EvidenceSecurityEvent::CAMERA_PORTAL_OPENED,
+            EvidenceSecurityEvent::SECURITY_NOTICE_ACCEPTED,
+            EvidenceSecurityEvent::CAMERA_INITIALIZED,
+            EvidenceSecurityEvent::CAMERA_PERMISSION_DENIED,
+            EvidenceSecurityEvent::CAMERA_ERROR,
+            EvidenceSecurityEvent::EVIDENCE_CAPTURED,
+            EvidenceSecurityEvent::PAGE_BLURRED,
+            EvidenceSecurityEvent::PAGE_FOCUS_RESTORED,
+            EvidenceSecurityEvent::PAGE_VISIBILITY_CHANGED,
+            EvidenceSecurityEvent::POSSIBLE_SCREEN_CAPTURE,
+            EvidenceSecurityEvent::PRINTSCREEN_DETECTED,
+            EvidenceSecurityEvent::CAPTURE_ABANDONED,
+        ];
+
+        $eventType = (string) $request->input('event_type', '');
+        if (! in_array($eventType, $allowed, true)) {
+            return response()->json(['message' => 'Unsupported event.'], 422);
+        }
+
+        $violationId = $request->input('violation_id') ? (int) $request->input('violation_id') : null;
+        $evidenceId = $request->input('evidence_id') ? (int) $request->input('evidence_id') : null;
+        $severity = (string) $request->input('severity', 'info');
+        $severity = in_array($severity, ['info', 'warning', 'critical'], true) ? $severity : 'info';
+        $meta = $request->input('meta');
+        $meta = is_array($meta) ? $meta : (is_string($meta) && $meta !== '' ? ['detail' => $meta] : null);
+
+        app(EvidenceSecurityService::class)->logEvent(
+            $eventType,
+            $violationId,
+            $evidenceId,
+            $severity,
+            $request,
+            $meta,
+            'admin',
+            (int) $admin->id,
+        );
+
+        return response()->json(['success' => true]);
+    }
 
     /**
      * Serve a violation evidence file from private storage to an admin.

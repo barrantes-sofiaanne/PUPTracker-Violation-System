@@ -399,6 +399,9 @@ Route::middleware('auth:admin')
         Route::post('/violations', [ViolationController::class, 'store'])
             ->name('admin.violations.store');
 
+        Route::post('/violations/evidence/security-event', [ViolationController::class, 'logEvidenceSecurityEvent'])
+            ->name('admin.violations.evidence-security-event');
+
         Route::get('/violations/types', [ViolationController::class, 'getViolationTypes'])
             ->name('admin.violations.types');
 

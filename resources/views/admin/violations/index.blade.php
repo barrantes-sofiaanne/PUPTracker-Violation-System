@@ -183,6 +183,8 @@ window.ViolationRoutes = {
 
     store: "{{ route('admin.violations.store') }}",
 
+    securityEvent: "{{ route('admin.violations.evidence-security-event') }}",
+
     categoryIndex: "{{ route('admin.violation-categories.index') }}",
 
     categoryStore: "{{ route('admin.violation-categories.store') }}",
