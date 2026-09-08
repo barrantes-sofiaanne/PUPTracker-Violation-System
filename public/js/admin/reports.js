@@ -200,23 +200,7 @@ function showError() {
 }
 
 function initializeExportButtons() {
-    const printButton = document.getElementById("printReport");
-    const excelButton = document.getElementById("exportExcel");
     const pdfButton = document.getElementById("exportPdf");
-
-    if (printButton) {
-        printButton.addEventListener("click", function () {
-            window.print();
-        });
-    }
-
-    if (excelButton) {
-        excelButton.addEventListener("click", function () {
-            const params = new URLSearchParams(new FormData(filterForm));
-            window.location =
-                window.ReportRoutes.excel + "?" + params.toString();
-        });
-    }
 
     if (pdfButton) {
         pdfButton.addEventListener("click", function () {

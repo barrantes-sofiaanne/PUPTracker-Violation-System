@@ -562,6 +562,92 @@ class ViolationSanctionWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_student_can_submit_jpg_proof_of_completion(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+        $student = $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $this->createDisciplinarySanction(1, '1st Offense', 'Community service 40 hours');
+
+        $violation = Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Caught cheating.',
+            'recorder_type' => 'admin',
+            'recorder_name' => 'Admin One',
+            'status' => 'confirmed',
+        ]);
+
+        $record = StudentSanctionRecord::create([
+            'student_number' => '2024-0001',
+            'violation_id' => $violation->violation_id,
+            'assigned_sanction_id' => 1,
+            'assigned_by_admin_id' => $admin->id,
+            'status' => 'In Progress',
+            'deadline_date' => now()->addMonth(),
+            'date_assigned' => now(),
+        ]);
+
+        $file = UploadedFile::fake()->image('proof.jpg', 640, 480);
+
+        $this->actingAs($student, 'student')
+            ->postJson(route('student.submit-proof'), [
+                'record_id' => $record->record_id,
+                'proof_file' => $file,
+                'proof_notes' => 'JPG proof submitted.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('student_sanction_records_tbl', [
+            'record_id' => $record->record_id,
+            'proof_original_name' => 'proof.jpg',
+        ]);
+    }
+
+    public function test_sanction_duration_auto_sets_deadline_when_admin_omits_one(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $this->createDisciplinarySanction(1, '1st Offense', 'One month suspension');
+
+        Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Confirmed violation.',
+            'recorder_type' => 'admin',
+            'recorder_name' => 'Admin One',
+            'status' => 'confirmed',
+        ]);
+
+        $request = SanctionRequest::create([
+            'student_number' => '2024-0001',
+            'violation_type_id' => 1,
+            'request_date' => now(),
+            'is_active' => true,
+            'status' => 'Pending',
+        ]);
+
+        $assignedDate = now()->startOfDay();
+
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.sanctions.requests.approve', $request), [
+                'notification_date' => $assignedDate->format('Y-m-d'),
+            ])
+            ->assertSessionHas('success');
+
+        $record = StudentSanctionRecord::where('student_number', '2024-0001')->firstOrFail();
+        $this->assertSame(
+            $assignedDate->copy()->addMonth()->toDateString(),
+            $record->deadline_date->toDateString()
+        );
+    }
+
     public function test_admin_rejects_proof_with_reason_and_student_can_resubmit(): void
     {
         $this->createTables();
@@ -895,6 +981,31 @@ class ViolationSanctionWorkflowTest extends TestCase
         $this->assertNotSame($denied->violation_id, $new->violation_id);
     }
 
+    public function test_denied_violation_is_visible_in_security_submitted_rejected_tab(): void
+    {
+        $this->createTables();
+        $security = $this->createSecurity('security@example.com', 'Officer', 'One');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Rejected violation remains traceable.',
+            'recorder_type' => 'security',
+            'recorder_name' => 'Officer One',
+            'status' => Violation::STATUS_DENIED,
+            'review_remarks' => 'Please attach clearer evidence.',
+        ]);
+
+        $this->actingAs($security, 'security')
+            ->get(route('security.violations.submitted', ['status' => 'rejected']))
+            ->assertOk()
+            ->assertSee('Rejected violation remains traceable.')
+            ->assertSee('Please attach clearer evidence.');
+    }
+
     public function test_security_cannot_resubmit_a_confirmed_violation(): void
     {
         $this->createTables();
@@ -925,6 +1036,52 @@ class ViolationSanctionWorkflowTest extends TestCase
             'student_number' => '2024-0001',
             'status' => 'pending',
         ]);
+    }
+
+    public function test_resubmitted_violation_appears_on_record_after_admin_confirms_it(): void
+    {
+        $this->createTables();
+        $admin = $this->createAdmin('admin@example.com');
+        $security = $this->createSecurity('security@example.com', 'Officer', 'One');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        $denied = Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Original description.',
+            'recorder_type' => 'security',
+            'recorder_name' => 'Officer One',
+            'status' => Violation::STATUS_DENIED,
+            'review_remarks' => 'Correct the description.',
+        ]);
+
+        $this->actingAs($security, 'security')
+            ->post(route('security.violations.resubmit', $denied->violation_id), [
+                'violation_date' => now()->format('Y-m-d H:i:s'),
+                'description' => 'Corrected description.',
+            ])
+            ->assertRedirect();
+
+        $resubmitted = Violation::where('status', Violation::STATUS_PENDING)
+            ->where('description', 'Corrected description.')
+            ->firstOrFail();
+
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.violations.confirm', $resubmitted->violation_id))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('violation_tbl', [
+            'violation_id' => $resubmitted->violation_id,
+            'status' => Violation::STATUS_CONFIRMED,
+        ]);
+
+        $this->actingAs($security, 'security')
+            ->get(route('security.violations.show', '2024-0001'))
+            ->assertOk()
+            ->assertSee('Corrected description.')
+            ->assertDontSee('Original description.');
     }
 
     /*

@@ -27,14 +27,16 @@ class ProgramReportService
      * All students for a program report (no limit).
      *
      * - regular mode: filters by the academic year label (year_tbl).
-     * - graduating mode: filters by the admission year(s) encoded in the
-     *   first 4 digits of each student's student_number (e.g. "2022-xxxx"
-     *   => admitted 2022, expected to graduate this cycle).
+     * - graduating mode: filters by the program's graduating YEAR LEVEL
+     *   (student_info_tbl.year_id -> year_tbl.year). The required level is
+     *   derived from the program degree type: 4th Year for Bachelor's /
+     *   Ladderized Bachelor programs and 3rd Year for Diploma programs.
+     *   Specific students added manually by number are always included.
      *
      * Optional $ladderized filter (graduating mode, BSOA/BSIT only):
      *   null = include both ladderized and non-ladderized
-     *   1    = additionally require the LAST digit of the student number to be 1
-     *   0    = additionally require the LAST digit of the student number to be 0
+     *   1    = only students whose student_info_tbl.ladderized flag is 1
+     *   0    = only students whose student_info_tbl.ladderized flag is 0
      */
     public function studentsFor(
         Program $program,
@@ -56,31 +58,36 @@ class ProgramReportService
             ->whereHas('studentInfo', fn ($q) => $q->where('program_id', $program->program_id));
 
         if ($reportMode === 'graduating') {
-            // First 4 digits of the student number = admission year.
-            $years = array_values(array_unique(array_filter(
-                array_map('trim', $graduatingYears),
-                fn ($year) => is_numeric($year) && (int) $year >= 1900 && (int) $year <= now()->year
-            )));
-
             $explicit = array_values(array_unique(array_filter(
                 array_map(fn ($v) => trim((string) $v), $additionalStudents),
                 fn ($v) => $v !== ''
             )));
 
-            if ($years === [] && $explicit === []) {
-                throw new InvalidArgumentException('Select at least one admission year (or add a specific student) for the graduating report.');
+            // Automatic eligibility: the program's graduating YEAR LEVEL
+            // (4th Year for Bachelor's / Ladderized Bachelor, 3rd Year for
+            // Diploma). Student-number prefixes are NOT used.
+            $graduatingLevel = $program->graduatingYear();
+
+            if ($graduatingLevel === null && $explicit === []) {
+                throw new InvalidArgumentException(
+                    'The selected program has no recognized degree type, so no students can be auto-selected. Add specific students manually instead.'
+                );
             }
 
             // The graduating cohort is the UNION of:
-            //   - students whose student_number starts with a selected
-            //     admission year, and
+            //   - students whose YEAR LEVEL matches the program's graduating
+            //     level (Bachelor/ladderized => 4th Year, Diploma => 3rd Year), and
             //   - specific students explicitly added by number.
-            $query->where(function ($q) use ($years, $explicit): void {
-                if ($years !== []) {
-                    $q->where(function ($inner) use ($years): void {
-                        foreach ($years as $year) {
-                            $inner->orWhere('student_number', 'like', $year . '%');
-                        }
+            $query->where(function ($q) use ($graduatingLevel, $explicit): void {
+                if ($graduatingLevel !== null) {
+                    $q->where(function ($inner) use ($graduatingLevel): void {
+                        $inner->whereHas('studentInfo.year', function ($yearQuery) use ($graduatingLevel): void {
+                            // year_tbl.year stores ordinal labels such as
+                            // "4th Year" (or a plain "4"). Match on the leading
+                            // level number portably across MySQL and SQLite.
+                            $yearQuery->where('year', (string) $graduatingLevel)
+                                ->orWhere('year', 'like', $graduatingLevel . '%');
+                        });
                     });
                 }
 
@@ -89,17 +96,16 @@ class ProgramReportService
                 }
             });
 
-            // Ladderized filter: the last digit of the student number encodes
-            // ladderized (1) vs non-ladderized (0) status. Applies only to the
-            // year-prefix subset; an explicitly added student is always kept.
+            // Ladderized filter uses the real ladderized flag on
+            // student_info_tbl. A specifically added student is always kept.
             if ($ladderized === 1) {
                 $query->where(function ($q) use ($explicit): void {
-                    $q->where('student_number', 'like', '%1')
+                    $q->whereHas('studentInfo', fn ($info) => $info->where('ladderized', 1))
                         ->orWhereIn('student_number', $explicit);
                 });
             } elseif ($ladderized === 0) {
                 $query->where(function ($q) use ($explicit): void {
-                    $q->where('student_number', 'like', '%0')
+                    $q->whereHas('studentInfo', fn ($info) => $info->where('ladderized', 0))
                         ->orWhereIn('student_number', $explicit);
                 });
             }
@@ -119,9 +125,11 @@ class ProgramReportService
 
     /**
      * Preview the students that would be included in a graduating report for
-     * the given admission year(s) and program (no screening — raw list).
+     * the given program (no screening — raw list). The graduating cohort is
+     * determined by the program's graduating YEAR LEVEL; specific students
+     * added manually by number are always included.
      */
-    public function previewGraduating(Program $program, array $graduatingYears, ?int $ladderized = null, array $additionalStudents = []): Collection
+    public function previewGraduating(Program $program, array $graduatingYears = [], ?int $ladderized = null, array $additionalStudents = []): Collection
     {
         return $this->studentsFor($program, null, 'graduating', $graduatingYears, $ladderized, $additionalStudents);
     }
@@ -177,13 +185,12 @@ class ProgramReportService
             'report_type' => $reportType,
             'report_mode' => $reportMode,
             'degree_type' => $program->normalizedDegreeType(),
-            // graduating_year column is an INT (tinyint). For graduating mode
-            // store the first (oldest) admission year as an int; the FULL list
-            // of admission years lives in the admission_years JSON column.
-            'graduating_year' => $reportMode === 'graduating'
-                ? (int) (min($graduatingYears) ?? 0)
-                : $program->graduatingYear(),
-            'admission_years' => $reportMode === 'graduating' ? $graduatingYears : [],
+            // graduating_year stores the graduating YEAR LEVEL (4 = Bachelor's
+            // / Ladderized Bachelor, 3 = Diploma). Admission years no longer
+            // drive graduating eligibility (year level does), so the
+            // admission_years JSON column is empty.
+            'graduating_year' => $program->graduatingYear(),
+            'admission_years' => [],
             'students_with_violations' => $filtered->filter(fn ($s) => (int) $s['total_violations'] > 0)->count(),
             'students' => $filtered->all(),
             'total_students' => $filtered->count(),

@@ -62,4 +62,16 @@ class Announcement extends Model
     {
         return $this->hasMany(AnnouncementAttachment::class, 'announcement_id', 'announcement_id');
     }
+
+    /**
+     * Safe HTML for rendering announcement content.
+     *
+     * Content saved through the controller is already server-side sanitized.
+     * This accessor re-sanitizes defensively (so legacy/malformed rows can
+     * never inject script) and converts legacy plain-text rows into paragraphs.
+     */
+    public function getRenderedContentAttribute(): string
+    {
+        return app(\App\Services\AnnouncementContentSanitizer::class)->sanitize((string) $this->content);
+    }
 }

@@ -34,17 +34,18 @@
     @php
         $stats = $report->statistics_json ?? [];
         $isGraduating = $report->report_mode === 'graduating';
-        $admissionYears = $isGraduating
-            ? (is_array($report->admission_years) && $report->admission_years !== []
-                ? $report->admission_years
-                : array_values(array_filter(array_map('trim', explode(',', (string) ($report->academic_year ?? ''))))))
-            : [];
+        // For graduating reports the applied criterion is the graduating YEAR
+        // LEVEL (graduating_year: 4 = Bachelor's / Ladderized Bachelor,
+        // 3 = Diploma); the academic_year column holds the ordinal label.
         $appliedYearLabel = $isGraduating
-            ? 'Admitted ' . ($admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: '—'))
+            ? ($report->academic_year
+                ?: ((int) ($report->graduating_year ?? 0) > 0
+                    ? ((int) $report->graduating_year) . 'th Year'
+                    : '—'))
             : ($report->academic_year ?: 'All configured years');
         $ladderizedLabel = match (optional($report)->ladderized) {
-            1 => 'Ladderized Only (student # ends in 1)',
-            0 => 'Non-Ladderized Only (student # ends in 0)',
+            1 => 'Ladderized Only',
+            0 => 'Non-Ladderized Only',
             default => '',
         };
         $additionalStudents = $isGraduating && is_array($report->additional_students)

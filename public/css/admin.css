@@ -1361,3 +1361,53 @@ thead.secondary-light th,
         padding-right: 1rem;
     }
 }
+
+/* ==========================================================================
+   Announcement rich-text (Quill) editor
+   ========================================================================== */
+.announcement-quill-editor {
+    background: #fff;
+    border-radius: 0.6rem;
+    min-height: 180px;
+}
+
+.announcement-quill-editor .ql-toolbar {
+    border-radius: 0.6rem 0.6rem 0 0;
+    border: 1px solid #d8cdd1;
+}
+
+.announcement-quill-editor .ql-container {
+    min-height: 140px;
+    border-radius: 0 0 0.6rem 0.6rem;
+    border: 1px solid #d8cdd1;
+    border-top: 0;
+    font-size: 0.98rem;
+    font-family: inherit;
+}
+
+.announcement-quill-editor .ql-editor {
+    min-height: 140px;
+    color: #3c3134;
+    line-height: 1.7;
+}
+
+/* Announcement rendered content (sanitized HTML) */
+.announcement-rendered-content {
+    color: #3c3134;
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+}
+
+.announcement-rendered-content p {
+    margin: 0 0 0.85rem;
+}
+
+.announcement-rendered-content ul,
+.announcement-rendered-content ol {
+    padding-left: 1.4rem;
+    margin: 0 0 0.85rem;
+}
+
+.announcement-rendered-content a {
+    color: #0d5aa7;
+}

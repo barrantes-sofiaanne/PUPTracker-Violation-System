@@ -9,20 +9,18 @@
     @php
         $stats = $report->statistics_json ?? [];
         $isGraduating = $report->report_mode === 'graduating';
-        // For graduating reports the FULL admission-year list is stored in
-        // admission_years (JSON); graduating_year holds the first year only.
-        $admissionYears = $isGraduating
-            ? (is_array($report->admission_years) && $report->admission_years !== []
-                ? $report->admission_years
-                : array_values(array_filter(array_map('trim', explode(',', (string) ($report->academic_year ?? ''))))))
-            : [];
+        // For graduating reports the applied criterion is the graduating YEAR
+        // LEVEL stored in graduating_year (4 = Bachelor's / Ladderized
+        // Bachelor, 3 = Diploma). The academic_year column holds the ordinal
+        // label (e.g. "4th Year") for display.
+        $graduatingLevel = $isGraduating ? (int) ($report->graduating_year ?? 0) : 0;
         $appliedYearLabel = $isGraduating
-            ? 'Admitted ' . ($admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: '—'))
+            ? ($report->academic_year ?: ($graduatingLevel > 0 ? $graduatingLevel . 'th Year' : '—'))
             : ($report->academic_year ?: 'All configured years');
         // Ladderized filter note (BSOA/BSIT graduating reports).
         $ladderizedLabel = match (optional($report)->ladderized) {
-            1 => ' · Ladderized Only (student # ends in 1)',
-            0 => ' · Non-Ladderized Only (student # ends in 0)',
+            1 => ' · Ladderized Only',
+            0 => ' · Non-Ladderized Only',
             default => '',
         };
         // Specific students explicitly added by number (returnees / re-admits).
@@ -153,8 +151,9 @@
     @if($report->report_mode === 'graduating')
         <div class="alert alert-info mb-4">
             <strong>Applied eligibility:</strong>
-            Graduating students are identified by the admission year(s) encoded in the first four digits of their student number:
-            <strong>{{ $admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: $report->academic_year) }}</strong>
+            Students were automatically selected by <strong>year level</strong> based on the program degree type —
+            Bachelor / Ladderized Bachelor: <strong>4th Year</strong>; Diploma: <strong>3rd Year</strong>
+            (current: <strong>{{ $appliedYearLabel }}</strong>).
             @if($additionalStudents !== [])
                 plus specifically added students: <strong>{{ implode(', ', $additionalStudents) }}</strong>.
             @else

@@ -88,9 +88,10 @@
                                 <small class="text-muted">
                                     @if ($report->report_mode === 'graduating')
                                         @php
-                                            $admissionYears = is_array($report->admission_years) && $report->admission_years !== []
-                                                ? $report->admission_years
-                                                : array_values(array_filter(array_map('trim', explode(',', (string) ($report->academic_year ?? '')))));
+                                            $graduatingLabel = $report->academic_year
+                                                ?: ((int) ($report->graduating_year ?? 0) > 0
+                                                    ? ((int) $report->graduating_year) . 'th Year'
+                                                    : '—');
                                             $ladderizedLabel = match (optional($report)->ladderized) {
                                                 1 => ' · Ladderized',
                                                 0 => ' · Non-Ladderized',
@@ -100,7 +101,7 @@
                                                 ? array_values(array_filter($report->additional_students))
                                                 : [];
                                         @endphp
-                                        Admitted {{ $admissionYears !== [] ? implode(', ', $admissionYears) : ($report->graduating_year ?: '—') }}{{ $ladderizedLabel }}
+                                        Year Level: {{ $graduatingLabel }}{{ $ladderizedLabel }}
                                         @if($additionalStudents !== [])
                                             <span class="d-block text-muted">+ {{ count($additionalStudents) }} specific student(s)</span>
                                         @endif

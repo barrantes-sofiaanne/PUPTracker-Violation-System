@@ -7,7 +7,6 @@ use Carbon\Carbon;
 
 use App\Models\User;
 use App\Models\Violation;
-use App\Models\Announcement;
 use App\Models\SanctionRequest;
 use App\Models\ViolationCategory;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +24,10 @@ class AdminDashboardController extends Controller
             'Pending'
         )->count();
 
-        $announcementCount = Announcement::count();
+        // Violations recorded on the current calendar day (app timezone).
+        $recordedViolationToday = Violation::effective()
+            ->whereDate('violation_date', now()->toDateString())
+            ->count();
 
         $recentViolations = Violation::with(
             'violationType'
@@ -43,7 +45,8 @@ class AdminDashboardController extends Controller
             ->take(5)
             ->get();
 
-        $weeklyTrend = $this->weeklyViolationTrend();
+        // Daily series for the dashboard's DAILY bar chart (last 7 days).
+        $dailyTrend = $this->dailyViolationSeries(7);
 
         return view(
             'admin.dashboard',
@@ -51,24 +54,22 @@ class AdminDashboardController extends Controller
                 'totalStudents',
                 'totalViolations',
                 'pendingRequests',
-                'announcementCount',
+                'recordedViolationToday',
                 'recentViolations',
                 'topOffenders',
-                'weeklyTrend'
+                'dailyTrend'
             )
         );
     }
 
     /**
-     * JSON endpoint used by the dashboard's violation trend chart.
-     * Filterable by period (week|month|year|all) and status.
+     * JSON endpoint used by the dashboard's DAILY violation bar chart.
+     * Always returns daily buckets for the trailing window (last 7 days,
+     * ending today) in the application timezone.
      */
     public function chartData()
     {
-        $trend = $this->violationTrend(
-            (string) request()->query('period', 'week'),
-            (string) request()->query('status', '')
-        );
+        $trend = $this->dailyViolationSeries(7);
 
         return response()->json([
             'labels' => $trend['labels'],
@@ -77,54 +78,42 @@ class AdminDashboardController extends Controller
         ]);
     }
 
-    private function weeklyViolationTrend(): array
+    /**
+     * Build the DAILY violation series: one point per calendar day over the
+     * trailing window (default: last 7 days ending today). Buckets by day in
+     * the application timezone and counts only effective violations.
+     *
+     * @param  int  $days  Number of consecutive calendar days to include.
+     * @return array{labels: array<int,string>, values: array<int,int>, total: int}
+     */
+    private function dailyViolationSeries(int $days = 7): array
     {
-        return $this->violationTrend('week', '');
-    }
+        $timezone = (string) config('app.timezone', 'Asia/Manila');
 
-    private function violationTrend(string $period, string $status): array
-    {
-        // Base on ALL violations so the status filter (pending/confirmed/denied)
-        // is meaningful; the dashboard can be filtered down as needed.
-        $query = Violation::query();
+        $today = now()->setTimezone($timezone)->startOfDay();
+        $start = $today->copy()->subDays(max(1, $days) - 1);
 
-        if (in_array($status, ['pending', 'confirmed', 'denied'], true)) {
-            $query->where('status', $status);
-        }
-
-        $start = match ($period) {
-            'week' => now()->startOfWeek(),
-            'month' => now()->startOfMonth(),
-            'year' => now()->startOfYear(),
-            default => null,
-        };
-
-        if ($start !== null) {
-            $query->where('violation_date', '>=', $start);
-        }
-
-        $violations = $query
+        $violations = Violation::effective()
+            ->whereBetween('violation_date', [
+                $start->copy()->startOfDay()->toDateTimeString(),
+                $today->copy()->endOfDay()->toDateTimeString(),
+            ])
             ->whereNotNull('violation_date')
-            ->get(['violation_date']);
+            ->pluck('violation_date');
 
-        $byDay = $violations->groupBy(function ($violation) {
-            return Carbon::parse($violation->violation_date)
-                ->setTimezone('Asia/Manila')
+        $byDay = $violations->countBy(function ($value) use ($timezone) {
+            return Carbon::parse($value)
+                ->setTimezone($timezone)
                 ->format('Y-m-d');
         });
 
-        $byMonth = $violations->groupBy(function ($violation) {
-            return Carbon::parse($violation->violation_date)
-                ->setTimezone('Asia/Manila')
-                ->format('Y-m');
-        });
-
-        [$labels, $keys, $monthly] = $this->trendSeries($period, $start);
-
+        $labels = [];
         $values = [];
-        foreach ($keys as $key) {
-            $bucket = $monthly ? ($byMonth[$key] ?? null) : ($byDay[$key] ?? null);
-            $values[] = $bucket ? $bucket->count() : 0;
+        $cursor = $start->copy();
+        while ($cursor->lte($today)) {
+            $labels[] = $cursor->format('M d');
+            $values[] = (int) ($byDay[$cursor->format('Y-m-d')] ?? 0);
+            $cursor->addDay();
         }
 
         return [
@@ -132,49 +121,5 @@ class AdminDashboardController extends Controller
             'values' => $values,
             'total' => array_sum($values),
         ];
-    }
-
-    /**
-     * @return array{0: array<int,string>, 1: array<int,string>, 2: bool}  [labels, keys, monthly]
-     */
-    private function trendSeries(string $period, ?Carbon $start): array
-    {
-        if (in_array($period, ['week', 'month'], true)) {
-            $end = $period === 'month'
-                ? now()->startOfMonth()->addMonth()->subDay()
-                : now()->startOfWeek()->addWeek()->subDay();
-
-            $labels = [];
-            $keys = [];
-            $cursor = $start->copy();
-            while ($cursor->lte($end) && count($keys) < 92) {
-                $labels[] = $cursor->format('M d');
-                $keys[] = $cursor->format('Y-m-d');
-                $cursor->addDay();
-            }
-
-            return [$labels, $keys, false];
-        }
-
-        // Month series for year/all.
-        $months = [];
-        if ($period === 'year') {
-            for ($m = 1; $m <= 12; $m++) {
-                $months[] = Carbon::create(now()->year, $m, 1);
-            }
-        } else {
-            for ($i = 11; $i >= 0; $i--) {
-                $months[] = now()->copy()->startOfMonth()->subMonths($i);
-            }
-        }
-
-        $labels = [];
-        $keys = [];
-        foreach ($months as $month) {
-            $labels[] = $month->format('M y');
-            $keys[] = $month->format('Y-m');
-        }
-
-        return [$labels, $keys, true];
     }
 }

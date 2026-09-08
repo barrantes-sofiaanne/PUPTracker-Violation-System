@@ -23,7 +23,7 @@
                             <h5 class="fw-bold mb-0">{{ $announcement->title }}</h5>
                             <span class="portal-badge muted">{{ optional($announcement->created_at)->format('M d, Y') }}</span>
                         </div>
-                        <p class="mb-0" style="white-space: pre-line; color: #3c3134;">{{ $announcement->content }}</p>
+                        <div class="announcement-rendered-content">{!! $announcement->rendered_content !!}</div>
 
                         @php
                             $hasSecure = $announcement->attachments->isNotEmpty();

@@ -35,26 +35,6 @@
         <div>
 
             <button
-                class="admin-btn admin-btn-neutral me-2"
-                id="printReport">
-
-                <i class="bi bi-printer"></i>
-
-                Print
-
-            </button>
-
-            <button
-                class="admin-btn admin-btn-neutral me-2"
-                id="exportExcel">
-
-                <i class="bi bi-file-earmark-excel"></i>
-
-                Excel
-
-            </button>
-
-            <button
                 class="admin-btn admin-btn-neutral"
                 id="exportPdf">
 
@@ -516,11 +496,9 @@
 
     </div>
 
-    <div class="table-responsive">
-        
-    </div>
-    <table
-    class="table table-hover align-middle mb-0">
+    <div class="table-responsive report-results">
+        <table
+        class="table table-hover align-middle mb-0">
 
     <thead class="table-light">
 
@@ -556,7 +534,9 @@
         @include('admin.reports.partials.table-body')
     </tbody>
 
-</table>
+        </table>
+    </div>
+
 <div class="card-footer bg-white">
 
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -581,13 +561,59 @@
 
 @endsection
 
+@push('styles')
+<style>
+    /* Violation Reports results table.
+
+       The page reuses the application's shared horizontal-scroll contract
+       (`.main-content .table-responsive`): the table keeps its normal desktop
+       width and appearance, and on smaller screens it scrolls horizontally
+       instead of breaking the layout. Long violation, sanction, course, and
+       recorder text is allowed to wrap so it stays readable without shrinking
+       the font. */
+    .main-content .report-results {
+        max-width: 100%;
+        overscroll-behavior-inline: contain;
+    }
+
+    .main-content .report-results th,
+    .main-content .report-results td {
+        vertical-align: middle;
+    }
+
+    @media (max-width: 991.98px) {
+        .main-content .report-results > table {
+            min-width: 50rem;
+        }
+
+        .main-content .report-results th,
+        .main-content .report-results td {
+            white-space: normal;
+            overflow-wrap: anywhere;
+            font-size: 0.86rem;
+        }
+
+        /* Keep the student number + name together so it stays readable. */
+        .main-content .report-results td:first-child {
+            white-space: nowrap;
+            min-width: 9.5rem;
+        }
+
+        /* Keep the View Record action on one line and easily tappable. */
+        .main-content .report-results td:last-child {
+            white-space: nowrap;
+            min-width: 8.5rem;
+        }
+    }
+</style>
+@endpush
+
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 window.ReportRoutes = {
     filter: "{{ route('admin.reports.filter') }}",
     assistant: "{{ route('admin.reports.assistant') }}",
-    excel: "{{ route('admin.reports.export') }}",
     pdf: "{{ route('admin.reports.export-pdf') }}"
 };
 </script>

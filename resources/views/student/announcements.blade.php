@@ -60,6 +60,7 @@
                     class="card portal-card mb-4 w-100 text-start announcement-trigger"
                     data-title="{{ $announcement->title }}"
                     data-posted="{{ $announcement->created_at->format('F d, Y h:i A') }}"
+                    data-content-html='@json($announcement->rendered_content)'
                     data-content="{{ e($announcement->content) }}"
                     data-attachments="{{ e(json_encode($attachmentItems)) }}"
                     @if(empty($attachmentItems)) data-no-attachments="1" @endif>
@@ -152,7 +153,7 @@
             </div>
             <div class="modal-body">
                 <small class="text-muted d-block mb-3" id="announcementModalDate"></small>
-                <p class="mb-0" style="white-space: pre-line;" id="announcementModalContent"></p>
+                <div class="mb-0 announcement-rendered-content" id="announcementModalContent"></div>
                 <div id="announcementModalAttachments" class="mt-3"></div>
             </div>
             <div class="modal-footer">
@@ -242,7 +243,18 @@ document.addEventListener('DOMContentLoaded', function () {
         item.addEventListener('click', function () {
             titleEl.textContent = item.dataset.title || 'Announcement';
             dateEl.textContent = 'Posted ' + (item.dataset.posted || '-');
-            contentEl.textContent = item.dataset.content || '';
+
+            // Render server-sanitized HTML if provided; otherwise fall back to
+            // the plain text content.
+            if (item.dataset.contentHtml) {
+                try {
+                    contentEl.innerHTML = JSON.parse(item.dataset.contentHtml);
+                } catch (e) {
+                    contentEl.textContent = item.dataset.content || '';
+                }
+            } else {
+                contentEl.textContent = item.dataset.content || '';
+            }
 
             let items = [];
             if (item.dataset.attachments) {

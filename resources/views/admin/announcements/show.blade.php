@@ -31,8 +31,8 @@
             </div>
         </div>
 
-        <div class="mb-4">
-            <p style="white-space: pre-line;">{{ $announcement->content }}</p>
+        <div class="mb-4 announcement-rendered-content">
+            {!! $announcement->rendered_content !!}
         </div>
 
         @php

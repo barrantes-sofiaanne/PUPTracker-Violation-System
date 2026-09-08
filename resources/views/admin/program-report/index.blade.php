@@ -72,47 +72,38 @@
                 </div>
 
                 {{-- ============================================= --}}
-                {{-- Graduating mode: admission year(s) selection  --}}
+                {{-- Graduating mode: auto by year level + manual specific students --}}
                 {{-- ============================================= --}}
                 <div class="col-12 d-none" id="graduatingYearsWrap">
                     <div class="border rounded-3 p-3 bg-light-subtle">
-                        <label class="admin-filter-label mb-1">Admission Year(s) of Graduating Students</label>
-                        <p class="text-muted small mb-2">
-                            The first four digits of the student number is the year the student was admitted.
-                            Students whose student number starts with the selected year(s) are treated as graduating
-                            (e.g. 2022 → <code>2022-XXXX</code>). Add more years for returnees with a different start year.
-                        </p>
-
-                        <div class="row g-2 align-items-center">
-                            <div class="col-md-5">
-                                <select id="graduatingYearSelect" class="form-select" data-default-year="{{ $defaultGraduatingYear }}">
-                                    @foreach ($availableAdmissionYears as $year)
-                                        <option value="{{ $year }}">{{ $year }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <button type="button" class="admin-btn admin-btn-neutral w-100" id="addGraduatingYearBtn">
-                                    <i class="bi bi-plus-lg me-1"></i> Add More Years
-                                </button>
-                            </div>
-                            <div class="col-md-4 text-muted small align-self-center">
-                                <i class="bi bi-info-circle me-1"></i>Pick a year from the list, then click <strong>Add More Years</strong>.
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="bi bi-mortarboard text-primary fs-5"></i>
+                            <div>
+                                <label class="admin-filter-label mb-1">Graduation Eligibility (Automatic)</label>
+                                <p class="text-muted small mb-0">
+                                    Students are automatically eligible based on their <strong>year level</strong>, which is
+                                    derived from the selected program's degree type:
+                                </p>
+                                <ul class="text-muted small mb-0 mt-1 ps-4">
+                                    <li><strong>Bachelor / Ladderized Bachelor:</strong> 4th Year</li>
+                                    <li><strong>Diploma:</strong> 3rd Year</li>
+                                </ul>
                             </div>
                         </div>
 
                         <div class="d-flex flex-wrap gap-2 mt-3" id="selectedGraduatingYears">
-                            {{-- Selected admission years render here as removable chips + hidden inputs --}}
+                            {{-- No admission-year chips: eligibility is auto-derived from the program. --}}
                         </div>
 
-                        {{-- Add a specific student by search --}}
+                        {{-- Add a specific student by search (manual override) --}}
                         <div class="mt-4 border-top pt-3">
                             <label class="admin-filter-label mb-1">
                                 <i class="bi bi-person-plus me-1"></i> Add a Specific Student
                             </label>
                             <p class="text-muted small mb-2">
-                                Search a student by number or name within the selected program and add them to the graduating list
-                                (e.g. returnees / re-admits whose number does not start with the admission years above).
+                                Manually add a student by number or name within the selected program (e.g. returnees /
+                                re-admits who should be reviewed even if they are not in the automatic year level above).
+                                Added students are always included in the graduating list.
                             </p>
                             <div class="row g-2 align-items-center">
                                 <div class="col-md-6">
@@ -139,9 +130,9 @@
                         <div class="mt-3 d-none" id="ladderizedWrap">
                             <label class="admin-filter-label mb-1">Ladderized</label>
                             <p class="text-muted small mb-2">
-                                For {{ implode(' / ', $ladderizedPrograms) }}, the last digit of the student number encodes
-                                ladderized (ends in <strong>1</strong>) vs non-ladderized (ends in <strong>0</strong>).
-                                Select <strong>Yes</strong> to include only students whose number ends in 1.
+                                For {{ implode(' / ', $ladderizedPrograms) }}, filter the automatically eligible
+                                students by their ladderized status. Select <strong>Yes</strong> to include only
+                                ladderized students, or <strong>No</strong> for only non-ladderized students.
                             </p>
                             <div class="d-flex gap-4">
                                 <div class="form-check">
@@ -218,9 +209,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const yearWrap = document.getElementById('academicYearWrap');
     const yearInput = yearWrap?.querySelector('input[name="academic_year"]');
     const graduatingWrap = document.getElementById('graduatingYearsWrap');
-    const yearSelect = document.getElementById('graduatingYearSelect');
-    const addYearBtn = document.getElementById('addGraduatingYearBtn');
-    const selectedYearsContainer = document.getElementById('selectedGraduatingYears');
     const previewBtn = document.getElementById('previewGraduatingBtn');
     const previewWrap = document.getElementById('graduatingPreviewWrap');
     const previewBody = document.getElementById('graduatingPreviewBody');
@@ -235,7 +223,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedSpecificStudentsContainer = document.getElementById('selectedSpecificStudents');
 
     // Read server-side data from data-* attributes (no Blade directives in JS).
-    const defaultGraduatingYear = yearSelect.dataset.defaultYear || '2022';
     const previewUrl = previewBtn.dataset.previewUrl || '';
     const searchStudentsUrl = previewBtn.dataset.searchUrl || '';
     let ladderizedPrograms = [];
@@ -246,21 +233,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     ladderizedPrograms = ladderizedPrograms.map(function (name) { return String(name).toUpperCase(); });
 
-    // Seed the default admission year (2022) as a selected chip.
-    const seededYear = String(defaultGraduatingYear);
-    let selectedYears = [];
     let selectedStudents = []; // { student_number, label }
-
-    // Load any previously selected years from old input (validation redirect).
-    document.querySelectorAll('#selectedGraduatingYears input[name="graduating_years[]"]').forEach(function (input) {
-        if (input.value && !selectedYears.includes(input.value)) {
-            selectedYears.push(input.value);
-        }
-    });
-    if (selectedYears.length === 0) {
-        selectedYears.push(seededYear);
-    }
-    renderSelectedYears();
 
     // Load any previously selected specific students from old input.
     document.querySelectorAll('#selectedSpecificStudents input[name="additional_students[]"]').forEach(function (input) {
@@ -297,79 +270,6 @@ document.addEventListener('DOMContentLoaded', function () {
             ladderizedWrap.classList.toggle('d-none', !(graduating && isLadderizedProgram()));
         }
     }
-
-    function renderSelectedYears() {
-        selectedYearsContainer.innerHTML = '';
-        selectedYears.forEach(function (year) {
-            const chip = document.createElement('span');
-            chip.className = 'badge rounded-pill text-bg-dark px-3 py-2 d-inline-flex align-items-center gap-2';
-            chip.innerHTML = year + ' <button type="button" class="btn-close btn-close-white remove-year" style="font-size:0.6rem" data-year="' + year + '" aria-label="Remove ' + year + '"></button>';
-
-            const hidden = document.createElement('input');
-            hidden.type = 'hidden';
-            hidden.name = 'graduating_years[]';
-            hidden.value = year;
-
-            chip.appendChild(hidden);
-            selectedYearsContainer.appendChild(chip);
-        });
-        updateYearSelectOptions();
-    }
-
-    function updateYearSelectOptions() {
-        // Remove already-selected years from the dropdown.
-        const current = yearSelect.value;
-        yearSelect.innerHTML = '';
-        const candidateYears = [];
-        // Default candidates: the config default plus any manually added ones.
-        candidateYears.push(String(defaultGraduatingYear));
-        selectedYears.forEach(function (y) { if (!candidateYears.includes(y)) candidateYears.push(y); });
-        // Also allow any recent year as a quick option.
-        const thisYear = new Date().getFullYear();
-        for (let y = thisYear; y >= thisYear - 8; y--) {
-            if (!candidateYears.includes(String(y))) candidateYears.push(String(y));
-        }
-        candidateYears.sort((a, b) => b - a).forEach(function (y) {
-            if (selectedYears.includes(y)) return;
-            const opt = document.createElement('option');
-            opt.value = y;
-            opt.textContent = y;
-            yearSelect.appendChild(opt);
-        });
-        if (selectedYears.includes(current)) {
-            // pick first non-selected
-        } else if (yearSelect.options.length > 0) {
-            yearSelect.value = yearSelect.options[0].value;
-        }
-    }
-
-    function addYear(year) {
-        const y = String(parseInt(year, 10));
-        if (!y || isNaN(parseInt(y, 10))) { alert('Enter a valid year.'); return; }
-        if (parseInt(y, 10) < 1900 || parseInt(y, 10) > new Date().getFullYear()) { alert('Year must be between 1900 and ' + new Date().getFullYear() + '.'); return; }
-        if (selectedYears.includes(y)) { alert('Year ' + y + ' is already added.'); return; }
-        selectedYears.push(y);
-        renderSelectedYears();
-        yearSelect.value = '';
-    }
-
-    addYearBtn?.addEventListener('click', function () {
-        const fromSelect = yearSelect.value;
-        addYear(fromSelect);
-    });
-
-    selectedYearsContainer?.addEventListener('click', function (e) {
-        const btn = e.target.closest('.remove-year');
-        if (!btn) return;
-        const year = btn.dataset.year;
-        selectedYears = selectedYears.filter(function (y) { return y !== year; });
-        renderSelectedYears();
-        // Keep at least one year.
-        if (selectedYears.length === 0) {
-            selectedYears.push(String(defaultGraduatingYear));
-            renderSelectedYears();
-        }
-    });
 
     // ---- Specific student chips (search & add) ----
     function renderSelectedStudents() {
@@ -494,10 +394,6 @@ document.addEventListener('DOMContentLoaded', function () {
     previewBtn?.addEventListener('click', async function () {
         const programId = program.value;
         if (!programId) { alert('Select a program first.'); return; }
-        if (selectedYears.length === 0 && selectedStudents.length === 0) {
-            alert('Add at least one admission year or one specific student.');
-            return;
-        }
 
         previewBtn.disabled = true;
         previewBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Loading...';
@@ -515,7 +411,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: JSON.stringify({
                     program_id: programId,
-                    graduating_years: selectedYears,
                     additional_students: selectedStudents.map(function (s) { return s.student_number; }),
                     ladderized: getSelectedLadderized(),
                 }),
@@ -527,10 +422,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const ladderizedLabel = data.ladderized_filter === 1 ? ' (Ladderized: Yes)' : (data.ladderized_filter === 0 ? ' (Ladderized: No)' : '');
-            previewSummary.textContent = data.total + ' student(s) in the graduating list (admission years + specific students)' + ladderizedLabel + '.';
+            previewSummary.textContent = data.total + ' student(s) in the graduating list (automatic year level + specific students)' + ladderizedLabel + '.';
 
             if (data.total === 0) {
-                previewBody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">No students match the selected admission years / specific students.</td></tr>';
+                previewBody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">No students match the automatic year level for this program / specific students.</td></tr>';
                 return;
             }
 
@@ -555,7 +450,6 @@ document.addEventListener('DOMContentLoaded', function () {
     mode?.addEventListener('change', updateMode);
     program?.addEventListener('change', updateMode);
     updateMode();
-    renderSelectedYears();
 });
 </script>
 @endpush

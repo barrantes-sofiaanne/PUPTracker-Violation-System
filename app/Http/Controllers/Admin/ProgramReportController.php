@@ -32,19 +32,11 @@ class ProgramReportController extends Controller
     {
         $programs = Program::orderBy('program_name')->get();
 
-        // Default graduating admission year for the current cycle (first 4
-        // digits of the student number = year admitted). 2022 by default;
-        // users can add more years for returnees with a different start year.
-        $defaultGraduatingYear = (int) config('graduation_review.graduating.admission_year', 2022);
-        $availableAdmissionYears = [$defaultGraduatingYear];
-
         // Programs that support the Ladderized filter (BSOA / BSIT).
         $ladderizedPrograms = config('graduation_review.graduating.ladderized_programs', ['BSOA', 'BSIT']);
 
         return view('admin.program-report.index', compact(
             'programs',
-            'defaultGraduatingYear',
-            'availableAdmissionYears',
             'ladderizedPrograms'
         ));
     }
@@ -62,22 +54,23 @@ class ProgramReportController extends Controller
     }
 
     /**
-     * Preview the graduating students for the selected admission year(s) —
-     * returned as JSON for the AJAX preview list in the report form.
+     * Preview the graduating students for the selected program — returned as
+     * JSON for the AJAX preview list in the report form.
+     *
+     * Automatic eligibility uses the program's graduating YEAR LEVEL (4th Year
+     * for Bachelor's / Ladderized Bachelor, 3rd Year for Diploma); specific
+     * students added manually by number are always included.
      */
     public function previewGraduating(Request $request): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
             'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
-            'graduating_years' => ['nullable', 'array'],
-            'graduating_years.*' => ['nullable', 'integer', 'min:1900', 'max:' . now()->year],
             'additional_students' => ['nullable', 'array'],
             'additional_students.*' => ['nullable', 'string', 'max:50'],
             'ladderized' => ['nullable', 'in:0,1'],
         ]);
 
         $program = Program::findOrFail((int) $validated['program_id']);
-        $years = array_values(array_filter(array_map('intval', (array) ($validated['graduating_years'] ?? []))));
         $additional = array_values(array_filter(
             array_map(fn ($v) => trim((string) $v), (array) ($validated['additional_students'] ?? [])),
             fn ($v) => $v !== ''
@@ -86,17 +79,13 @@ class ProgramReportController extends Controller
             ? (int) $validated['ladderized']
             : null;
 
-        if ($years === [] && $additional === []) {
-            return response()->json(['message' => 'Add at least one admission year or one specific student.'], 422);
-        }
-
-        // Only apply the ladderized last-digit filter for BSOA/BSIT.
+        // Only apply the ladderized flag filter for BSOA/BSIT.
         if (! $this->supportsLadderized($program)) {
             $ladderized = null;
         }
 
         try {
-            $students = $this->programReport->previewGraduating($program, $years, $ladderized, $additional);
+            $students = $this->programReport->previewGraduating($program, [], $ladderized, $additional);
         } catch (InvalidArgumentException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }
@@ -169,8 +158,6 @@ class ProgramReportController extends Controller
             'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
             'report_mode' => ['required', 'in:regular,graduating'],
             'academic_year' => ['nullable', 'string', 'max:20', 'required_if:report_mode,regular'],
-            'graduating_years' => ['nullable', 'array'],
-            'graduating_years.*' => ['nullable', 'integer', 'min:1900', 'max:' . now()->year],
             'additional_students' => ['nullable', 'array'],
             'additional_students.*' => ['nullable', 'string', 'max:50'],
             'ladderized' => ['nullable', 'in:0,1'],
@@ -181,9 +168,6 @@ class ProgramReportController extends Controller
         $reportMode = $validated['report_mode'];
         $academicYear = $reportMode === 'graduating' ? null : trim((string) $validated['academic_year']);
         $reportType = $validated['report_type'];
-        $graduatingYears = $reportMode === 'graduating'
-            ? array_values(array_filter(array_map('intval', (array) ($validated['graduating_years'] ?? []))))
-            : [];
         $additionalStudents = $reportMode === 'graduating'
             ? array_values(array_filter(
                 array_map(fn ($v) => trim((string) $v), (array) ($validated['additional_students'] ?? [])),
@@ -201,7 +185,7 @@ class ProgramReportController extends Controller
                 $academicYear,
                 $reportType,
                 $reportMode,
-                $graduatingYears,
+                [],
                 $ladderized,
                 $additionalStudents
             );
@@ -210,16 +194,23 @@ class ProgramReportController extends Controller
         }
 
         $adminId = Auth::guard('admin')->id();
+        // For graduating reports the display label is the graduating YEAR
+        // LEVEL derived from the program (e.g. "4th Year").
+        $graduatingLevel = $statistics['graduating_year'];
+        $graduatingLabel = $graduatingLevel !== null
+            ? $this->ordinalYearLabel((int) $graduatingLevel)
+            : null;
+
         $reportData = [
             'program_id' => $program->program_id,
             'academic_year' => $reportMode === 'graduating'
-                ? implode(', ', $graduatingYears)
+                ? $graduatingLabel
                 : $academicYear,
             'report_type' => $reportType,
             'report_mode' => $reportMode,
             'degree_type' => $statistics['degree_type'],
             'graduating_year' => $statistics['graduating_year'],
-            'admission_years' => $reportMode === 'graduating' ? $graduatingYears : [],
+            'admission_years' => [],
             'ladderized' => $ladderized,
             'additional_students' => $reportMode === 'graduating' ? $additionalStudents : [],
             'generated_by_admin_id' => $adminId,
@@ -398,6 +389,24 @@ class ProgramReportController extends Controller
         $isSuperAdmin = $admin && method_exists($admin, 'isItAdministrator') && $admin->isItAdministrator();
 
         return view('admin.program-report.history', compact('reports', 'programs', 'isSuperAdmin'));
+    }
+
+    /**
+     * Convert a numeric year level (e.g. 4) into an ordinal label such as
+     * "4th Year". Used for graduating reports whose display label is the
+     * program's graduating year level.
+     */
+    protected function ordinalYearLabel(int $level): string
+    {
+        $suffix = match (true) {
+            $level % 100 >= 11 && $level % 100 <= 13 => 'th',
+            $level % 10 === 1 => 'st',
+            $level % 10 === 2 => 'nd',
+            $level % 10 === 3 => 'rd',
+            default => 'th',
+        };
+
+        return $level . $suffix . ' Year';
     }
 
     /**

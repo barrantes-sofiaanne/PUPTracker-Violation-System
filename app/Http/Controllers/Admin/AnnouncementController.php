@@ -74,7 +74,7 @@ class AnnouncementController extends Controller
         $announcement->forceFill([
             'admin_id' => $admin?->getKey(),
             'title' => $request->input('title'),
-            'content' => $request->input('content'),
+            'content' => app(\App\Services\AnnouncementContentSanitizer::class)->sanitize($request->input('content')),
             'attachment_path' => null,
             'show_on_login' => $showOnLogin,
             'login_modal_expires_at' => $showOnLogin
@@ -177,7 +177,7 @@ class AnnouncementController extends Controller
 
         $announcement->forceFill([
             'title' => $request->input('title'),
-            'content' => $request->input('content'),
+            'content' => app(\App\Services\AnnouncementContentSanitizer::class)->sanitize($request->input('content')),
             'attachment_path' => $attachmentPath,
             'show_on_login' => $showOnLogin,
             'login_modal_expires_at' => $showOnLogin

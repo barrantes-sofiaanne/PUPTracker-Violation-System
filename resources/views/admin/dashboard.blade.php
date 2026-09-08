@@ -82,11 +82,11 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="stat-label text-muted mb-2">Announcements</p>
-                            <h2 class="stat-value text-primary mb-0">{{ $announcementCount }}</h2>
+                            <p class="stat-label text-muted mb-2">Recorded Violation Today</p>
+                            <h2 class="stat-value text-primary mb-0">{{ $recordedViolationToday }}</h2>
                         </div>
                         <div class="icon-badge primary">
-                            <i class="bi bi-megaphone-fill"></i>
+                            <i class="bi bi-clipboard2-check-fill"></i>
                         </div>
                     </div>
                 </div>
@@ -180,39 +180,27 @@
 
     </div>
 
-    {{-- Bottom Row: Violation Trend --}}
+    {{-- Bottom Row: Daily Violations Bar Chart --}}
     <div class="row g-3">
         <div class="col-12">
             <div class="card shadow-sm border-0">
-                <div class="card-header card-header-custom d-flex flex-column flex-md-row justify-content-between align-items-md-center flex-wrap gap-2">
-                    <h5 class="fw-bold mb-0">Violation Trend</h5>
-                    <div class="d-flex gap-2 flex-wrap align-items-center">
-                        <select id="chartPeriod" class="form-select form-select-sm" style="width:auto;">
-                            <option value="week" selected>This Week</option>
-                            <option value="month">This Month</option>
-                            <option value="year">This Year</option>
-                        </select>
-                        <select id="chartStatus" class="form-select form-select-sm" style="width:auto;">
-                            <option value="">All Statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="denied">Denied</option>
-                        </select>
-                    </div>
+                <div class="card-header card-header-custom">
+                    <h5 class="fw-bold mb-0">Daily Violations</h5>
                 </div>
                 <div class="card-body">
                     @php
-                        $trendLabels = $weeklyTrend['labels'];
-                        $trendValues = $weeklyTrend['values'];
+                        $trendLabels = $dailyTrend['labels'];
+                        $trendValues = $dailyTrend['values'];
                     @endphp
                     <div class="col-12">
-                        <canvas
-                            id="weeklyChart"
-                            height="260"
-                            data-labels="{{ json_encode($trendLabels) }}"
-                            data-values="{{ json_encode($trendValues) }}"
-                            data-chart-data-url="{{ route('admin.dashboard.chart-data') }}"></canvas>
-                        <p class="text-muted small mb-0 mt-2" id="violationTrendMeta"></p>
+                        <div class="daily-chart-wrap">
+                            <canvas
+                                id="dailyViolationChart"
+                                data-labels="{{ json_encode($trendLabels) }}"
+                                data-values="{{ json_encode($trendValues) }}"
+                                data-chart-data-url="{{ route('admin.dashboard.chart-data') }}"></canvas>
+                        </div>
+                        <p class="text-muted small mb-0 mt-2" id="dailyViolationChartMeta"></p>
                     </div>
                 </div>
             </div>

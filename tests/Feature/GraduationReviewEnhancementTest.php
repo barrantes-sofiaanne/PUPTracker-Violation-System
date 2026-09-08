@@ -216,59 +216,108 @@ class GraduationReviewEnhancementTest extends TestCase
         $this->assertGreaterThan(0, $stats['students_with_outstanding_sanctions']);
     }
 
-    public function test_graduating_program_report_filters_by_student_number_admission_year(): void
+    public function test_bachelor_graduating_report_auto_selects_only_4th_year_students(): void
     {
-        $program = Program::orderBy('program_id')->first();
+        $bachelor = Program::where('degree_type', "Bachelor's")->orderBy('program_id')->first();
+        $year1 = Year::where('year', '1st Year')->value('year_id');
+        $year3 = Year::where('year', '3rd Year')->value('year_id');
+        $year4 = Year::where('year', '4th Year')->value('year_id');
 
-        // First 4 digits of the student number = admission year. Students whose
-        // student number starts with a selected year are the graduating cohort.
-        $eligible = $this->createStudent('2022-0001', 'Eligible', 'Student');
-        $returnee = $this->createStudent('2020-0002', 'Returnee', 'Student');
-        $other = $this->createStudent('2024-0003', 'Other', 'Student');
+        // A 4th-year Bachelor student whose number does NOT start with an
+        // expected admission year is still eligible (year level is the rule).
+        $fourthYear = $this->createStudent('2019-0001', 'Fourth', 'Year', $year4, $bachelor->program_id);
+        $thirdYear = $this->createStudent('2022-0002', 'Third', 'Year', $year3, $bachelor->program_id);
+        $firstYear = $this->createStudent('2025-0003', 'First', 'Year', $year1, $bachelor->program_id);
 
-        // 2022 + 2020 (returnees) are graduating; 2024 is not.
-        $students = app(ProgramReportService::class)->studentsFor($program, null, 'graduating', ['2022', '2020']);
+        // Automatic cohort = 4th Year only.
+        $students = app(ProgramReportService::class)->studentsFor($bachelor, null, 'graduating');
 
-        $this->assertTrue($students->contains('student_number', $eligible->student_number));
-        $this->assertTrue($students->contains('student_number', $returnee->student_number));
-        $this->assertFalse($students->contains('student_number', $other->student_number));
+        $this->assertTrue($students->contains('student_number', $fourthYear->student_number));
+        $this->assertFalse($students->contains('student_number', $thirdYear->student_number));
+        $this->assertFalse($students->contains('student_number', $firstYear->student_number));
     }
 
-    public function test_graduating_program_report_rejects_missing_admission_years(): void
+    public function test_diploma_graduating_report_auto_selects_only_3rd_year_students(): void
     {
-        $program = Program::orderBy('program_id')->first();
+        $diploma = Program::where('degree_type', 'Diploma')->orderBy('program_id')->first();
+        $year2 = Year::where('year', '3rd Year')->value('year_id');
+        $year4 = Year::where('year', '4th Year')->value('year_id');
 
-        $this->expectException(\InvalidArgumentException::class);
+        // Diploma programs graduate at 3rd Year.
+        $thirdYear = $this->createStudent('2022-0001', 'Third', 'Year', $year2, $diploma->program_id);
+        // A 4th-year student in a Diploma program is NOT auto-eligible.
+        $fourthYear = $this->createStudent('2019-0002', 'Fourth', 'Year', $year4, $diploma->program_id);
 
-        app(ProgramReportService::class)->studentsFor($program, null, 'graduating', []);
+        $students = app(ProgramReportService::class)->studentsFor($diploma, null, 'graduating');
+
+        $this->assertTrue($students->contains('student_number', $thirdYear->student_number));
+        $this->assertFalse($students->contains('student_number', $fourthYear->student_number));
     }
 
-    public function test_graduating_program_report_ladderized_filter_checks_last_digit(): void
+    public function test_specific_student_is_always_included_in_graduating_report(): void
     {
-        $program = Program::orderBy('program_id')->first();
+        $bachelor = Program::where('degree_type', "Bachelor's")->orderBy('program_id')->first();
+        $year1 = Year::where('year', '1st Year')->value('year_id');
 
-        // Student numbers follow YYYY-XXXXX-TG-N: first 4 digits = admission
-        // year, LAST digit encodes ladderized (1) vs non-ladderized (0).
-        $ladderized = $this->createStudent('2022-00001-TG-1', 'Ladderized', 'Student');
-        $nonLadderized = $this->createStudent('2022-00002-TG-0', 'NonLadder', 'Student');
+        // A 1st-year student added manually (e.g. returnee) must be included.
+        $specific = $this->createStudent('2020-0009', 'Manual', 'Override', $year1, $bachelor->program_id);
 
-        // Ladderized = 1 → only student numbers ending in 1.
+        $students = app(ProgramReportService::class)
+            ->studentsFor($bachelor, null, 'graduating', [], null, [$specific->student_number]);
+
+        $this->assertTrue($students->contains('student_number', $specific->student_number));
+    }
+
+    public function test_graduating_program_report_ladderized_filter_uses_ladderized_flag(): void
+    {
+        $bachelor = Program::where('degree_type', "Bachelor's")->orderBy('program_id')->first();
+        $year4 = Year::where('year', '4th Year')->value('year_id');
+
+        $ladderized = $this->createStudent('2022-0001', 'Ladderized', 'Student', $year4, $bachelor->program_id, true);
+        $nonLadderized = $this->createStudent('2022-0002', 'NonLadder', 'Student', $year4, $bachelor->program_id, false);
+
+        // Ladderized = 1 → only students whose ladderized flag is 1.
         $ladderizedOnly = app(ProgramReportService::class)
-            ->studentsFor($program, null, 'graduating', ['2022'], 1);
+            ->studentsFor($bachelor, null, 'graduating', [], 1);
         $this->assertTrue($ladderizedOnly->contains('student_number', $ladderized->student_number));
         $this->assertFalse($ladderizedOnly->contains('student_number', $nonLadderized->student_number));
 
-        // Ladderized = 0 → only student numbers ending in 0.
+        // Ladderized = 0 → only students whose ladderized flag is 0.
         $nonLadderizedOnly = app(ProgramReportService::class)
-            ->studentsFor($program, null, 'graduating', ['2022'], 0);
+            ->studentsFor($bachelor, null, 'graduating', [], 0);
         $this->assertFalse($nonLadderizedOnly->contains('student_number', $ladderized->student_number));
         $this->assertTrue($nonLadderizedOnly->contains('student_number', $nonLadderized->student_number));
 
         // Ladderized = null → both included.
         $all = app(ProgramReportService::class)
-            ->studentsFor($program, null, 'graduating', ['2022']);
+            ->studentsFor($bachelor, null, 'graduating');
         $this->assertTrue($all->contains('student_number', $ladderized->student_number));
         $this->assertTrue($all->contains('student_number', $nonLadderized->student_number));
+    }
+
+    public function test_preview_graduating_endpoint_uses_year_level_eligibility(): void
+    {
+        $bachelor = Program::where('degree_type', "Bachelor's")->orderBy('program_id')->first();
+        $year1 = Year::where('year', '1st Year')->value('year_id');
+        $year4 = Year::where('year', '4th Year')->value('year_id');
+
+        $fourthYear = $this->createStudent('2019-0001', 'Fourth', 'Year', $year4, $bachelor->program_id);
+        $firstYear = $this->createStudent('2025-0002', 'First', 'Year', $year1, $bachelor->program_id);
+
+        $admin = $this->createAdmin();
+        $this->actingAs($admin, 'admin');
+
+        $response = $this->postJson(route('admin.program-report.preview-graduating'), [
+            'program_id' => $bachelor->program_id,
+            'additional_students' => [],
+            'ladderized' => '',
+        ]);
+
+        $response->assertOk();
+        $payload = $response->json('students');
+        $this->assertCount(1, $payload);
+        $this->assertSame($fourthYear->student_number, $payload[0]['student_number']);
+        $this->assertNotContains($firstYear->student_number, array_column($payload, 'student_number'));
     }
 
     public function test_program_report_ai_narrative_fails_gracefully(): void
@@ -372,7 +421,7 @@ class GraduationReviewEnhancementTest extends TestCase
         return $admin;
     }
 
-    private function createStudent(string $number, string $first, string $last, ?int $yearId = null): User
+    private function createStudent(string $number, string $first, string $last, ?int $yearId = null, ?int $programId = null, bool $ladderized = false): User
     {
         $statusId = Status::whereRaw('LOWER(status_name) = ?', ['active'])->value('status_id');
         $roleId = Role::whereRaw('LOWER(roles_name) = ?', ['student'])->value('roles_id');
@@ -388,7 +437,9 @@ class GraduationReviewEnhancementTest extends TestCase
             'password_hash' => \Illuminate\Support\Facades\Hash::make('password123'),
         ]);
 
-        $program = Program::orderBy('program_id')->first();
+        $program = $programId !== null
+            ? Program::findOrFail($programId)
+            : Program::orderBy('program_id')->first();
         $year = Year::where('year_id', $yearId)->first() ?? Year::orderBy('year_id')->first();
         $section = Section::orderBy('section_id')->first();
 
@@ -398,6 +449,7 @@ class GraduationReviewEnhancementTest extends TestCase
             'year_id' => $year->year_id,
             'section_id' => $section->section_id,
             'student_status_id' => $studentStatusId,
+            'ladderized' => $ladderized ? 1 : 0,
         ]);
 
         return $student;
@@ -473,6 +525,7 @@ class GraduationReviewEnhancementTest extends TestCase
                 $table->unsignedBigInteger('year_id')->nullable();
                 $table->unsignedBigInteger('section_id')->nullable();
                 $table->unsignedBigInteger('student_status_id')->nullable();
+                $table->boolean('ladderized')->default(false);
             },
             'admins' => function (Blueprint $table) {
                 $table->id();
@@ -597,13 +650,15 @@ class GraduationReviewEnhancementTest extends TestCase
             DB::table('program_tbl')->insert([
                 ['program_id' => 1, 'program_name' => 'BSIT', 'degree_type' => "Bachelor's"],
                 ['program_id' => 2, 'program_name' => 'BSCS', 'degree_type' => "Bachelor's"],
+                ['program_id' => 3, 'program_name' => 'Diploma in Information Technology', 'degree_type' => 'Diploma'],
             ]);
         }
 
         if (DB::table('year_tbl')->count() === 0) {
             DB::table('year_tbl')->insert([
                 ['year_id' => 1, 'year' => '1st Year'],
-                ['year_id' => 2, 'year' => '4th Year'],
+                ['year_id' => 2, 'year' => '3rd Year'],
+                ['year_id' => 3, 'year' => '4th Year'],
             ]);
         }
 

@@ -25,7 +25,8 @@
 
             <div class="mb-4">
                 <label for="content" class="form-label">Message</label>
-                <textarea class="form-control" id="content" name="content" rows="6" required>{{ old('content') }}</textarea>
+                <input type="hidden" id="content" name="content" value="{{ old('content') }}">
+                <div id="announcementCreateEditor" class="announcement-quill-editor"></div>
             </div>
 
             <div class="mb-4">
@@ -118,6 +119,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     toggleDuration();
     toggleCustom();
+});
+</script>
+
+@if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+    @vite(['resources/js/announcements.js'])
+@endif
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof window.initAnnouncementQuill === 'function') {
+        window.initAnnouncementQuill('announcementCreateEditor', 'content');
+    }
 });
 </script>
 @endpush

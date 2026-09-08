@@ -31,50 +31,38 @@ document.addEventListener("DOMContentLoaded", function () {
     updatePhilippineTime();
     setInterval(updatePhilippineTime, 1000);
 
-    // Weekly violation trend chart
-    var weeklyCanvas = document.getElementById("weeklyChart");
-    if (weeklyCanvas) {
-        var trendColors = [
-            "#800000",
-            "#a31515",
-            "#daa520",
-            "#f0c447",
-            "#5f0000",
-            "#c9981f",
-            "#7a0f1e",
-            "#e6c36a",
-            "#8e1d29",
-            "#b8860b",
-        ];
+    // Daily violations bar chart (last 7 days, including today)
+    var dailyCanvas = document.getElementById("dailyViolationChart");
+    if (dailyCanvas) {
+        var barColor = "#800000";
 
         var initialLabels = [];
         var initialData = [];
         try {
-            initialLabels = JSON.parse(weeklyCanvas.dataset.labels || "[]");
-            initialData = JSON.parse(weeklyCanvas.dataset.values || "[]");
+            initialLabels = JSON.parse(dailyCanvas.dataset.labels || "[]");
+            initialData = JSON.parse(dailyCanvas.dataset.values || "[]");
         } catch (e) {
             initialLabels = [];
             initialData = [];
         }
 
-        var chartDataUrl = weeklyCanvas.dataset.chartDataUrl || "";
-        var periodSelect = document.getElementById("chartPeriod");
-        var statusSelect = document.getElementById("chartStatus");
-        var trendMeta = document.getElementById("violationTrendMeta");
+        var chartDataUrl = dailyCanvas.dataset.chartDataUrl || "";
+        var trendMeta = document.getElementById("dailyViolationChartMeta");
 
-        window.weeklyViolationChart = new Chart(weeklyCanvas, {
-            type: "pie",
+        window.dailyViolationChart = new Chart(dailyCanvas, {
+            type: "bar",
             data: {
                 labels: initialLabels,
                 datasets: [
                     {
                         label: "Violations",
                         data: initialData,
-                        backgroundColor: initialLabels.map(function (_, i) {
-                            return trendColors[i % trendColors.length];
-                        }),
-                        borderColor: "#fffaf0",
-                        borderWidth: 2,
+                        backgroundColor: barColor,
+                        hoverBackgroundColor: "#5f0000",
+                        borderColor: "#5f0000",
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        maxBarThickness: 46,
                     },
                 ],
             },
@@ -83,25 +71,50 @@ document.addEventListener("DOMContentLoaded", function () {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: true,
-                        position: "bottom",
+                        display: false,
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return (
+                                    (context.parsed.y || 0) + " violation(s)"
+                                );
+                            },
+                        },
                     },
                 },
-                scales: {},
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Date",
+                        },
+                        grid: {
+                            display: false,
+                        },
+                    },
+                    y: {
+                        beginAtZero: true,
+                        precision: 0,
+                        title: {
+                            display: true,
+                            text: "Number of Violations",
+                        },
+                        ticks: {
+                            precision: 0,
+                            stepSize: 1,
+                        },
+                    },
+                },
             },
         });
 
-        function loadViolationTrend() {
+        function loadDailyViolations() {
             if (!chartDataUrl) {
                 return;
             }
 
-            var params = new URLSearchParams({
-                period: periodSelect ? periodSelect.value : "week",
-                status: statusSelect ? statusSelect.value : "",
-            });
-
-            fetch(chartDataUrl + "?" + params.toString(), {
+            fetch(chartDataUrl, {
                 headers: {
                     "X-Requested-With": "XMLHttpRequest",
                     Accept: "application/json",
@@ -119,20 +132,18 @@ document.addEventListener("DOMContentLoaded", function () {
                         return;
                     }
 
-                    window.weeklyViolationChart.data.labels = data.labels;
-                    window.weeklyViolationChart.data.datasets[0].data =
+                    window.dailyViolationChart.data.labels = data.labels;
+                    window.dailyViolationChart.data.datasets[0].data =
                         data.values;
-                    window.weeklyViolationChart.data.datasets[0].backgroundColor =
-                        data.values.map(function (_, i) {
-                            return trendColors[i % trendColors.length];
-                        });
-                    window.weeklyViolationChart.data.datasets[0].borderColor =
-                        "#fffaf0";
-                    window.weeklyViolationChart.update();
+                    window.dailyViolationChart.update();
 
                     if (trendMeta) {
                         trendMeta.textContent =
-                            "Total: " + (data.total || 0) + " violation(s)";
+                            "Showing the last " +
+                            (data.labels.length || 0) +
+                            " day(s). Total: " +
+                            (data.total || 0) +
+                            " violation(s).";
                     }
                 })
                 .catch(function () {
@@ -140,17 +151,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
         }
 
-        // Re-render when the filters change.
-        if (periodSelect) {
-            periodSelect.addEventListener("change", loadViolationTrend);
-        }
-        if (statusSelect) {
-            statusSelect.addEventListener("change", loadViolationTrend);
-        }
-
-        // Real-time refresh: poll for fresh dashboard data every 60s.
+        // Real-time refresh: poll for fresh dashboard data every 60s so the
+        // chart updates as new violations are recorded.
         if (chartDataUrl) {
-            setInterval(loadViolationTrend, 60000);
+            setInterval(loadDailyViolations, 60000);
         }
     }
 

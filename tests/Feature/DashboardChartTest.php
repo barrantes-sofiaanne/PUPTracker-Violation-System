@@ -120,10 +120,11 @@ class DashboardChartTest extends TestCase
         $this->assertSame(1, $pending['total']);
     }
 
-    public function test_admin_chart_is_filterable_by_period_and_status(): void
+    public function test_admin_chart_returns_daily_violations_for_effective_records(): void
     {
         $admin = $this->createAdmin('admin@example.com');
 
+        // Confirmed (effective) violation recorded today.
         Violation::create([
             'student_number' => '2024-0001',
             'violation_type' => 1,
@@ -133,29 +134,42 @@ class DashboardChartTest extends TestCase
             'recorder_name' => 'Admin',
             'status' => Violation::STATUS_CONFIRMED,
         ]);
+        // Pending (awaiting confirmation) violation is NOT effective and must
+        // not count toward the admin dashboard's daily chart.
         Violation::create([
             'student_number' => '2024-0002',
             'violation_type' => 1,
             'violation_date' => now()->format('Y-m-d H:i:s'),
             'description' => 'pending',
+            'recorder_type' => 'security',
+            'recorder_name' => 'Security: officer@example.com',
+            'status' => Violation::STATUS_PENDING,
+        ]);
+        // Denied violation is NOT effective either.
+        Violation::create([
+            'student_number' => '2024-0003',
+            'violation_type' => 1,
+            'violation_date' => now()->format('Y-m-d H:i:s'),
+            'description' => 'denied',
             'recorder_type' => 'admin',
             'recorder_name' => 'Admin',
-            'status' => Violation::STATUS_PENDING,
+            'status' => Violation::STATUS_DENIED,
         ]);
 
         $this->actingAs($admin, 'admin');
 
-        // Admin chart is based on ALL violations (not just effective), so both
-        // confirmed and pending appear in "all statuses".
-        $all = $this->getJson(route('admin.dashboard.chart-data').'?period=week')->json();
-        $this->assertSame(2, $all['total']);
-
-        $confirmed = $this->getJson(route('admin.dashboard.chart-data').'?period=week&status=confirmed')->json();
-        $this->assertSame(1, $confirmed['total']);
-
-        $response = $this->getJson(route('admin.dashboard.chart-data').'?period=month');
+        // The admin chart is DAILY-only (no period/status filtering): it counts
+        // only effective violations over the trailing window (last 7 days).
+        $response = $this->getJson(route('admin.dashboard.chart-data'));
         $response->assertOk();
-        $this->assertCount(count($response->json('labels')), $response->json('values'));
+
+        $payload = $response->json();
+        $this->assertIsArray($payload['labels']);
+        $this->assertIsArray($payload['values']);
+        $this->assertCount(count($payload['labels']), $payload['values']);
+        $this->assertSame(7, count($payload['labels']));
+        $this->assertSame(1, $payload['total']);
+        $this->assertSame(1, $payload['values'][array_key_last($payload['values'])]);
     }
 
     public function test_security_announcements_page_is_accessible_to_security(): void

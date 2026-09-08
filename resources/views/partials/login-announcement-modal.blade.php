@@ -17,7 +17,7 @@
                     <div class="mb-3 text-muted small">
                         Posted {{ optional($loginAnnouncementModal->created_at)->format('M d, Y h:i A') }}
                     </div>
-                    <div>{!! nl2br(e($loginAnnouncementModal->content)) !!}</div>
+                    <div class="announcement-rendered-content">{!! $loginAnnouncementModal->rendered_content !!}</div>
 
                     @php
                         $secureModalAttachments = $loginAnnouncementModal->attachments ?? collect();
