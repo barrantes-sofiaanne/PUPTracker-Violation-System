@@ -48,6 +48,15 @@ return Application::configure(basePath: dirname(__DIR__))
     $middleware->alias([
         'super.admin' => \App\Http\Middleware\SuperAdminMiddleware::class,
     ]);
+
+    // Exempt ONLY the machine-to-machine backup report webhook from CSRF
+    // verification. The Railway backup job cannot hold a browser session /
+    // CSRF token; authentication is provided by the BACKUP_REPORT_TOKEN
+    // (hash_equals) check inside BackupHistoryController@report. All other
+    // POST/PUT/PATCH/DELETE routes keep normal CSRF protection.
+    $middleware->validateCsrfTokens(except: [
+        'admin/super-admin/backups/report',
+    ]);
 })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

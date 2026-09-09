@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Http;
 
 // Authentication
 use App\Http\Controllers\Auth\LoginController;
@@ -755,8 +754,10 @@ Route::middleware('auth:admin')
 
 // Backup report webhook (called by the Railway backup job — token-protected,
 // NOT gated by the super.admin middleware so the cron/script can POST results).
+// A dedicated named rate limiter ("backup-report") throttles per-IP attempts so
+// the shared token cannot be brute-forced, without requiring a human session.
 Route::post('/admin/super-admin/backups/report', [App\Http\Controllers\Admin\BackupHistoryController::class, 'report'])
-    ->middleware('web')
+    ->middleware(['web', 'throttle:backup-report'])
     ->name('admin.super-admin.backups.report');
 
 Route::middleware('auth:security')
@@ -842,31 +843,3 @@ Route::middleware('auth:security')
 //     ->withoutMiddleware(['web'])
 //     ->name('debug.reset-admin-password');
 
-
-
-Route::get('/mailgun-direct-test', function () {
-
-    $response = Http::withBasicAuth(
-        'api',
-        config('services.mailgun.secret')
-    )
-        ->asForm()
-        ->post(
-            'https://' .
-            config('services.mailgun.endpoint') .
-            '/v3/' .
-            config('services.mailgun.domain') .
-            '/messages',
-            [
-                'from' => 'PUP Tracker <' . config('mail.from.address') . '>',
-                'to' => 'sabarrantes2911@gmail.com',
-                'subject' => 'Railway Mailgun Test',
-                'text' => 'Hello from Railway and Mailgun!',
-            ]
-        );
-
-    return response()->json([
-        'status' => $response->status(),
-        'body' => $response->body(),
-    ]);
-});

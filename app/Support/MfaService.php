@@ -239,7 +239,12 @@ class MfaService
 
         if ($attempts > 5) {
             $this->clear($request);
-            $this->audit($guard, $identifier, 'mfa.verify.failed', 'Authentication', 'Verification failed: too many invalid email OTP attempts.');
+            $methodLabel = match ($method) {
+                'totp' => 'authenticator',
+                'backup' => 'backup code',
+                default => 'verification code',
+            };
+            $this->audit($guard, $identifier, 'mfa.verify.failed', 'Authentication', 'Verification failed: too many invalid ' . $methodLabel . ' attempts.');
 
             return [
                 'valid' => false,
@@ -477,9 +482,12 @@ class MfaService
             Mail::to($email)->send(new OtpCode($code, expiryMinutes: 5));
         } catch (\Throwable $exception) {
             if (app()->environment('local', 'testing')) {
+                // Never write the OTP code to logs. Only a masked email and a
+                // generic failure category are recorded so a developer can trace
+                // the failure without exposing the one-time code.
                 Log::warning('MFA mail sending failed in local/testing, using log fallback.', [
-                    'email' => $email,
-                    'code' => $code,
+                    'email' => $this->maskEmail($email),
+                    'category' => 'mail_send_failed',
                     'error' => $exception->getMessage(),
                 ]);
 
@@ -487,7 +495,7 @@ class MfaService
             }
 
             Log::error('MFA email send failed', [
-                'email' => $email,
+                'email' => $this->maskEmail($email),
                 'error' => $exception->getMessage(),
             ]);
 

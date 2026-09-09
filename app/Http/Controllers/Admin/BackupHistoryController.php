@@ -73,10 +73,27 @@ class BackupHistoryController extends Controller
      */
     public function report(Request $request)
     {
+        try {
+            return $this->handleReport($request);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Re-throw validation errors as-is (they are already structured and
+            // reveal only field-level messages, never internals).
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('Backup report webhook failed', [
+                'error' => \Illuminate\Support\Str::limit($e->getMessage(), 300),
+            ]);
+
+            return response()->json(['error' => 'Unable to process backup report.'], 500);
+        }
+    }
+
+    private function handleReport(Request $request)
+    {
         $expectedToken = config('services.backup.report_token');
 
         if ($expectedToken === null || $expectedToken === '') {
-            return response()->json(['error' => 'Backup report token is not configured.'], 503);
+            return response()->json(['error' => 'Backup report service is not configured.'], 503);
         }
 
         $providedToken = $request->bearerToken()
@@ -96,8 +113,10 @@ class BackupHistoryController extends Controller
             'destination' => ['nullable', 'string', 'max:255'],
             'backup_size' => ['nullable', 'integer', 'min:0'],
             'file_count' => ['nullable', 'integer', 'min:0'],
-            'checksum' => ['nullable', 'string', 'max:128'],
-            'checksum_algorithm' => ['nullable', 'string', 'max:32'],
+            // Checksum must be a SHA-256 hex digest when provided (64 chars,
+            // hex only). The application only ever produces SHA-256.
+            'checksum' => ['nullable', 'string', 'regex:/^[a-f0-9]{64}$/i'],
+            'checksum_algorithm' => ['nullable', 'string', 'in:SHA-256,sha256'],
             'verified_at' => ['nullable', 'date'],
             'storage_path' => ['nullable', 'string', 'max:500'],
             'parent_backup_id' => ['nullable', 'integer', 'exists:backup_history,id'],
@@ -126,7 +145,10 @@ class BackupHistoryController extends Controller
             'verified_at' => $validated['verified_at'] ?? null,
             'storage_path' => $validated['storage_path'] ?? null,
             'parent_backup_id' => $validated['parent_backup_id'] ?? null,
-            'error_message' => $validated['error_message'] ?? null,
+            // error_message is only persisted when the report status is failed.
+            'error_message' => $validated['status'] === 'failed'
+                ? ($validated['error_message'] ?? null)
+                : null,
         ];
 
         $existing = BackupHistory::query()

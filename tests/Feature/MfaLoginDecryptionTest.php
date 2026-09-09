@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -298,6 +299,63 @@ class MfaLoginDecryptionTest extends TestCase
         ]);
 
         $this->assertTrue(true);
+    }
+
+    public function test_otp_code_is_never_written_to_logs_when_mail_fails(): void
+    {
+        $admin = Admin::create([
+            'username' => 'otp-log-safe',
+            'email' => 'otp-log@example.com',
+            'password' => Hash::make('password123'),
+            'mfa_totp_secret' => null,
+            'mfa_totp_enabled' => false,
+        ]);
+
+        // Start an admin challenge (admin/security start on the method-select
+        // stage; no email is sent until Email OTP is chosen).
+        $this->post(route('admin.login.post'), [
+            'email' => 'otp-log@example.com',
+            'password' => 'password123',
+        ])->assertRedirect(route('mfa.verify.show'));
+
+        $pending = session('mfa.pending');
+        $this->assertIsArray($pending);
+
+        // Force the mail delivery to throw so MfaService::sendCode() falls into
+        // its local/testing fallback logging branch.
+        Mail::shouldReceive('to')
+            ->once()
+            ->andThrow(new \RuntimeException('Simulated SMTP failure'));
+
+        Log::spy();
+
+        // Select Email OTP -> triggers issueEmailCode() -> sendCode().
+        $this->withSession(['mfa.pending' => $pending])
+            ->post(route('mfa.verify.submit'), [
+                'action' => 'select',
+                'method' => 'email',
+            ]);
+
+        // The fallback log entry must exist but must NEVER contain the OTP code
+        // and must use a masked email.
+        Log::shouldHaveReceived('warning')
+            ->withArgs(function ($message, $context) {
+                $this->assertIsString($message);
+                $this->assertIsArray($context);
+                $this->assertArrayNotHasKey('code', $context, 'The OTP code must never be logged.');
+                $this->assertArrayNotHasKey('otp', $context, 'The OTP code must never be logged.');
+                $this->assertStringNotContainsString('otp-log@example.com', (string) ($context['email'] ?? ''), 'The email must be masked in logs.');
+
+                // Ensure no 6-digit code appears anywhere in message/context.
+                $haystack = $message . ' ' . json_encode($context);
+                $this->assertSame(0, preg_match('/\b\d{6}\b/', $haystack), 'A 6-digit OTP must never be written to logs.');
+
+                return true;
+            })
+            ->atLeast()
+            ->once();
+
+        Mail::shouldReceive('to')->byDefault();
     }
 
     // ------------------------------------------------------------------

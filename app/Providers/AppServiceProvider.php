@@ -3,8 +3,11 @@
 namespace App\Providers;
 
 use App\Models\Announcement;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\URL;
@@ -25,6 +28,16 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrapFive();
+
+        // Dedicated limiter for the token-protected backup report webhook.
+        // The Railway backup job legitimately posts only a handful of reports
+        // (per backup run), so a strict per-minute cap stops brute-forcing the
+        // shared token while never blocking legitimate reports.
+        RateLimiter::for('backup-report', function (Request $request) {
+            return Limit::perMinute(10)->by(
+                'backup-report:' . ($request->ip() ?? 'unknown')
+            );
+        });
 
         View::composer(
             ['layouts.admin', 'layouts.student', 'layouts.security'],

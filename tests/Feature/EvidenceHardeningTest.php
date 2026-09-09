@@ -388,6 +388,314 @@ class EvidenceHardeningTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // Submit Proof of Completion modal (student record page)
+    // ------------------------------------------------------------------
+
+    private function createOpenSanctionRecordFor(string $studentNumber, string $violationLabel = 'Cheating', string $sanctionText = 'Community service 40 hours'): StudentSanctionRecord
+    {
+        $admin = $this->createAdmin('admin-modal@example.com');
+        $this->createViolationType(1, $violationLabel);
+        $this->createDisciplinarySanction(1, '1st Offense', $sanctionText);
+
+        $violation = Violation::create([
+            'student_number' => $studentNumber,
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Confirmed violation.',
+            'recorder_type' => 'admin',
+            'recorder_name' => 'Admin One',
+            'status' => 'confirmed',
+        ]);
+
+        return StudentSanctionRecord::create([
+            'student_number' => $studentNumber,
+            'violation_id' => $violation->violation_id,
+            'assigned_sanction_id' => 1,
+            'assigned_by_admin_id' => $admin->id,
+            'status' => StudentSanctionRecord::STATUS_IN_PROGRESS,
+            'deadline_date' => now()->addMonth(),
+            'date_assigned' => now(),
+        ]);
+    }
+
+    public function test_record_page_renders_general_submit_proof_modal_with_sanction_details(): void
+    {
+        $this->createStudent('2024-0001');
+        $record = $this->createOpenSanctionRecordFor('2024-0001');
+
+        $content = $this->actingAs(User::where('student_number', '2024-0001')->first(), 'student')
+            ->get(route('student.record'))
+            ->assertOk()
+            ->getContent();
+
+        // General title + subtitle (NOT Community-Service-specific).
+        $this->assertStringContainsString('Submit Proof of Completion', $content);
+        $this->assertStringContainsString('Upload the official document that verifies completion of your assigned sanction.', $content);
+
+        // Read-only sanction-details section labels.
+        $this->assertStringContainsString('Sanction Details', $content);
+        $this->assertStringContainsString('Violation Type', $content);
+        $this->assertStringContainsString('Assigned Sanction', $content);
+        $this->assertStringContainsString('Deadline', $content);
+        $this->assertStringContainsString('Reference', $content);
+
+        // The button carries the real, server-side display data.
+        $this->assertStringContainsString('data-record-id="' . $record->record_id . '"', $content);
+        $this->assertStringContainsString('data-sanction="Community service 40 hours"', $content);
+        $this->assertStringContainsString('data-record-ref="Record #' . $record->record_id . '"', $content);
+        $this->assertStringContainsString('data-violation="Cheating"', $content);
+        // This test sanction is Community Service, so the community-service
+        // flag must be set on the trigger button.
+        $this->assertStringContainsString('data-community-service="1"', $content);
+
+        // General instructions + sections.
+        $this->assertStringContainsString('Prepare Your Proof', $content);
+        $this->assertStringContainsString('Upload Proof', $content);
+        $this->assertStringContainsString('Upload the document that verifies your completion of the assigned sanction.', $content);
+        $this->assertStringContainsString('Submission Guidelines', $content);
+        $this->assertStringContainsString('Additional Remarks (Optional)', $content);
+
+        // The removed "Do not upload violation evidence" line must NOT appear.
+        $this->assertStringNotContainsString('Do not upload violation evidence', $content);
+    }
+
+    public function test_record_page_modal_shows_community_service_official_form_link_only_for_community_service(): void
+    {
+        $this->createStudent('2024-0001');
+        $this->createOpenSanctionRecordFor('2024-0001');
+
+        $content = $this->actingAs(User::where('student_number', '2024-0001')->first(), 'student')
+            ->get(route('student.record'))
+            ->assertOk()
+            ->getContent();
+
+        // The official form link (Google Docs) is present in the modal DOM and
+        // is shown only when the assigned sanction is community service.
+        $this->assertStringContainsString('officialFormArea', $content);
+        $this->assertStringContainsString('Need the official form?', $content);
+        $this->assertStringContainsString('https://docs.google.com/document/d/1STRQ6AwNaSgHIjqt7vbxNFF7h_50xj84/edit', $content);
+        $this->assertStringContainsString('data-community-service="1"', $content);
+    }
+
+    public function test_record_page_modal_shows_official_form_link_for_campus_service(): void
+    {
+        $this->createStudent('2024-0001');
+        $this->createOpenSanctionRecordFor('2024-0001', 'Campus violation', 'Campus service 10 hours');
+
+        $content = $this->actingAs(User::where('student_number', '2024-0001')->first(), 'student')
+            ->get(route('student.record'))
+            ->assertOk()
+            ->getContent();
+
+        // Campus Service sanctions must also receive the official form link.
+        $this->assertStringContainsString('data-sanction="Campus service 10 hours"', $content);
+        $this->assertStringContainsString('data-community-service="1"', $content);
+        $this->assertStringContainsString('https://docs.google.com/document/d/1STRQ6AwNaSgHIjqt7vbxNFF7h_50xj84/edit', $content);
+    }
+
+    public function test_record_page_modal_has_confirmation_checkbox_and_review_notice_and_disabled_submit(): void
+    {
+        $this->createStudent('2024-0001');
+        $this->createOpenSanctionRecordFor('2024-0001');
+
+        $content = $this->actingAs(User::where('student_number', '2024-0001')->first(), 'student')
+            ->get(route('student.record'))
+            ->assertOk()
+            ->getContent();
+
+        // Required confirmation checkbox.
+        $this->assertStringContainsString('id="proofConfirmCheck"', $content);
+        $this->assertStringContainsString('true and complete proof of my sanction completion', $content);
+
+        // Review-required messaging + no auto-completion note.
+        $this->assertStringContainsString('Review Required', $content);
+        $this->assertStringContainsString('Uploading a document does not automatically mark your sanction as completed.', $content);
+
+        // Submit button renders disabled until a file + checkbox are provided
+        // (client-side UX only — server still enforces everything).
+        $this->assertStringContainsString('id="submitProofBtn" disabled', $content);
+
+        // Accepted file types.
+        $this->assertStringContainsString('accept=".jpg,.jpeg,.png,.pdf"', $content);
+        $this->assertStringContainsString('JPG, JPEG, PNG, PDF • Maximum 5 MB', $content);
+    }
+
+    public function test_record_page_modal_does_not_hardcode_community_service_wording(): void
+    {
+        $this->createStudent('2024-0001');
+        // A non-Community-Service sanction (counseling) to prove the modal is
+        // general and the CS form link is NOT forced on for every sanction.
+        $record = $this->createOpenSanctionRecordFor('2024-0001', 'Counseling referral', 'Counseling sessions');
+
+        $content = $this->actingAs(User::where('student_number', '2024-0001')->first(), 'student')
+            ->get(route('student.record'))
+            ->assertOk()
+            ->getContent();
+
+        // The general modal must NOT be Community-Service-specific.
+        $this->assertStringNotContainsString('Community Service Completion Form', $content);
+        $this->assertStringNotContainsString('Sign your Community Service', $content);
+        $this->assertStringNotContainsString('Do not upload violation evidence', $content);
+
+        // Dynamic sanction text reflects the actual assigned sanction.
+        $this->assertStringContainsString('data-violation="Counseling referral"', $content);
+        $this->assertStringContainsString('data-sanction="Counseling sessions"', $content);
+        // Not a Community Service sanction → the CS flag is off.
+        $this->assertStringContainsString('data-community-service="0"', $content);
+    }
+
+    // ------------------------------------------------------------------
+    // Student record: Summary by Violation behavior
+    // ------------------------------------------------------------------
+
+    /**
+     * Create a violation type + disciplinary sanction config + a violation row
+     * with the given status, WITHOUT creating any sanction record (so the type
+     * is eligible for the Summary table when it should be).
+     */
+    private function createConfiguredViolation(
+        string $studentNumber,
+        int $typeId,
+        string $violationLabel,
+        string $sanctionText,
+        string $violationStatus,
+        string $description = 'Test violation',
+    ): Violation {
+        $this->createViolationType($typeId, $violationLabel);
+        $this->createDisciplinarySanction($typeId, '1st Offense', $sanctionText);
+
+        return Violation::create([
+            'student_number' => $studentNumber,
+            'violation_type' => $typeId,
+            'violation_date' => now(),
+            'description' => $description,
+            'recorder_type' => 'admin',
+            'recorder_name' => 'Admin One',
+            'status' => $violationStatus,
+        ]);
+    }
+
+    public function test_student_summary_shows_pending_violation_awaiting_confirmation(): void
+    {
+        $this->createStudent('2024-0001');
+        // Sanctionable type with a PENDING (awaiting admin confirmation) violation.
+        $this->createConfiguredViolation('2024-0001', 1, 'Cheating', 'Community service 40 hours', 'pending', 'Awaiting admin decision');
+
+        $content = $this->actingAs(User::where('student_number', '2024-0001')->first(), 'student')
+            ->get(route('student.record'))
+            ->assertOk()
+            ->getContent();
+
+        // Pending rows appear in the Summary with a Pending Confirmation badge,
+        // and no "Request Sanction" action is offered (not confirmed yet).
+        $this->assertStringContainsString('Pending Confirmation', $content);
+        $this->assertStringContainsString('Awaiting admin decision', $content);
+        $this->assertStringNotContainsString('request-sanction-btn', $content);
+    }
+
+    public function test_student_summary_excludes_warning_only_violation(): void
+    {
+        $this->createStudent('2024-0001');
+        // Warning-only type (sanction text contains "warning") → excluded from Summary.
+        $this->createConfiguredViolation('2024-0001', 1, 'Littering', 'Warning', 'confirmed', 'Littered in hallway');
+
+        $content = $this->actingAs(User::where('student_number', '2024-0001')->first(), 'student')
+            ->get(route('student.record'))
+            ->assertOk()
+            ->getContent();
+
+        // The warning-only type is excluded from the Summary table entirely, so
+        // the summary is empty ("No outstanding violations found") and no
+        // "No Request Needed" / request action is rendered for it.
+        $this->assertStringContainsString('No outstanding violations found.', $content);
+        $this->assertStringNotContainsString('request-sanction-btn', $content);
+        $this->assertStringNotContainsString('No Request Needed', $content);
+        // ...but the warning violation IS still listed in the Individual
+        // Violations Log (On Record).
+        $this->assertStringContainsString('Littering', $content);
+        $this->assertStringContainsString('Littered in hallway', $content);
+        $this->assertStringContainsString('On Record', $content);
+    }
+
+    public function test_student_summary_removes_completed_sanction_violation(): void
+    {
+        $this->createStudent('2024-0001');
+        $admin = $this->createAdmin('admin-complete@example.com');
+        $this->createViolationType(1, 'Vandalism');
+        $this->createDisciplinarySanction(1, '1st Offense', 'Community service 20 hours');
+
+        $violation = Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Vandalism resolved',
+            'recorder_type' => 'admin',
+            'recorder_name' => 'Admin One',
+            'status' => 'confirmed',
+        ]);
+
+        // Completed sanction record.
+        StudentSanctionRecord::create([
+            'student_number' => '2024-0001',
+            'violation_id' => $violation->violation_id,
+            'assigned_sanction_id' => 1,
+            'assigned_by_admin_id' => $admin->id,
+            'status' => StudentSanctionRecord::STATUS_COMPLETED,
+            'date_assigned' => now()->subMonth(),
+            'date_completed' => now(),
+        ]);
+
+        $content = $this->actingAs(User::where('student_number', '2024-0001')->first(), 'student')
+            ->get(route('student.record'))
+            ->assertOk()
+            ->getContent();
+
+        // Completed sanction → the violation type is removed from the Summary
+        // (summary is empty), no request action is offered, and the completed
+        // sanction remains visible in the Sanction Record tab. The violation
+        // itself stays in the Individual Violations Log.
+        $this->assertStringContainsString('No outstanding violations found.', $content);
+        $this->assertStringNotContainsString('request-sanction-btn', $content);
+        $this->assertStringContainsString('Your Sanction Records', $content);
+        $this->assertStringContainsString('Vandalism', $content);
+    }
+
+    public function test_student_summary_shows_actionable_confirmed_sanctionable_violation(): void
+    {
+        $this->createStudent('2024-0001');
+        $this->createConfiguredViolation('2024-0001', 1, 'Cheating', 'Community service 40 hours', 'confirmed', 'Caught cheating');
+
+        $content = $this->actingAs(User::where('student_number', '2024-0001')->first(), 'student')
+            ->get(route('student.record'))
+            ->assertOk()
+            ->getContent();
+
+        // Confirmed sanctionable violation → appears in Summary + Request Sanction offered.
+        $this->assertStringContainsString('Caught cheating', $content);
+        $this->assertStringContainsString('request-sanction-btn', $content);
+        $this->assertStringContainsString('Request Sanction', $content);
+    }
+
+    public function test_student_log_includes_pending_and_confirmed_records(): void
+    {
+        $this->createStudent('2024-0001');
+        $this->createConfiguredViolation('2024-0001', 1, 'Cheating', 'Community service 40 hours', 'pending', 'Pending record desc');
+        $this->createConfiguredViolation('2024-0001', 2, 'Fighting', 'Suspension', 'confirmed', 'Confirmed record desc');
+
+        $content = $this->actingAs(User::where('student_number', '2024-0001')->first(), 'student')
+            ->get(route('student.record'))
+            ->assertOk()
+            ->getContent();
+
+        // Both pending and confirmed records are listed in the Individual
+        // Violations Log with their statuses.
+        $this->assertStringContainsString('Pending record desc', $content);
+        $this->assertStringContainsString('Confirmed record desc', $content);
+        $this->assertStringContainsString('Pending Confirmation', $content);
+        $this->assertStringContainsString('On Record', $content);
+    }
+
+    // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
 
@@ -529,6 +837,18 @@ class EvidenceHardeningTest extends TestCase
                 $table->unsignedBigInteger('section_id')->nullable();
                 $table->unsignedBigInteger('student_status_id')->nullable();
             },
+            'program_tbl' => function (Blueprint $table): void {
+                $table->increments('program_id');
+                $table->string('program_name')->nullable();
+            },
+            'year_tbl' => function (Blueprint $table): void {
+                $table->increments('year_id');
+                $table->string('year')->nullable();
+            },
+            'section_tbl' => function (Blueprint $table): void {
+                $table->increments('section_id');
+                $table->string('section_name')->nullable();
+            },
             'roles_tbl' => function (Blueprint $table): void {
                 $table->increments('roles_id');
                 $table->string('roles_name');
@@ -566,6 +886,16 @@ class EvidenceHardeningTest extends TestCase
                 $table->unsignedBigInteger('violation_type_id')->nullable();
                 $table->string('offense_level')->nullable();
                 $table->string('disciplinary_sanction')->nullable();
+            },
+            'sanction_requests_tbl' => function (Blueprint $table): void {
+                $table->increments('request_id');
+                $table->string('student_number');
+                $table->unsignedInteger('violation_type_id');
+                $table->dateTime('request_date')->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->string('status')->nullable();
+                $table->unsignedInteger('approved_by_admin_id')->nullable();
+                $table->dateTime('approved_at')->nullable();
             },
             'student_sanction_records_tbl' => function (Blueprint $table): void {
                 $table->increments('record_id');
