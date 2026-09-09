@@ -955,7 +955,8 @@
                                         data-violation="{{ optional(optional($record->violation)->violationType)->violation_type ?? 'N/A' }}"
                                         data-sanction="{{ optional($record->assignedSanction)->disciplinary_sanction ?? 'N/A' }}"
                                         data-deadline="{{ optional($record->deadline_date)->format('M d, Y') ?? '' }}"
-                                        data-record-ref="Record #{{ $record->record_id }}">
+                                        data-record-ref="Record #{{ $record->record_id }}"
+                                        data-community-service="{{ str_contains(strtolower((string) optional($record->assignedSanction)->disciplinary_sanction), 'community') ? '1' : '0' }}">
                                         <i class="bi bi-upload me-1"></i>Submit Proof
                                     </button>
 
@@ -1071,7 +1072,7 @@
                         <p class="proof-body-text mb-0">Make sure the document is complete, clear, readable, and contains any required signatures or certifications.</p>
                         <div id="officialFormArea" class="official-form-area d-none">
                             <span class="official-form-label">Need the official form?</span>
-                            <a href="#" id="officialFormDownloadBtn" class="btn portal-btn-outline btn-sm" target="_blank" rel="noopener">
+                            <a href="https://docs.google.com/document/d/1STRQ6AwNaSgHIjqt7vbxNFF7h_50xj84/edit?usp=sharing&ouid=105963611531508867265&rtpof=true&sd=true" id="officialFormDownloadBtn" class="btn portal-btn-outline btn-sm" target="_blank" rel="noopener">
                                 <i class="bi bi-download me-1" aria-hidden="true"></i>Download Official Form
                             </a>
                         </div>
@@ -1120,7 +1121,6 @@
                             <li>Include required signatures/certifications when applicable.</li>
                             <li>Upload JPG, JPEG, PNG, or PDF files only.</li>
                             <li>Maximum file size is 5 MB.</li>
-                            <li>Do not upload violation evidence in this section.</li>
                         </ul>
                     </section>
 
@@ -1369,12 +1369,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (proofConfirmError) { proofConfirmError.classList.add('d-none'); }
                 resetProofUpload();
 
-                // The official-form area is reserved for a future dynamic
-                // official-form mechanism. It is only shown when a real,
-                // sanction-specific form is configured (none today), so it
-                // stays hidden without a fake download.
+                // The official form is only relevant for Community Service
+                // sanctions. Show the download link only when the assigned
+                // sanction is community service; hide it for all other types.
                 const officialArea = document.getElementById('officialFormArea');
-                if (officialArea) { officialArea.classList.add('d-none'); }
+                if (officialArea) {
+                    const isCommunityService = String(button.dataset.communityService || '0') === '1';
+                    officialArea.classList.toggle('d-none', !isCommunityService);
+                }
 
                 submitProofModal.show();
             });
