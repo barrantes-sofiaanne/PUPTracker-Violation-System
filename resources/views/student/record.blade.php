@@ -956,7 +956,7 @@
                                         data-sanction="{{ optional($record->assignedSanction)->disciplinary_sanction ?? 'N/A' }}"
                                         data-deadline="{{ optional($record->deadline_date)->format('M d, Y') ?? '' }}"
                                         data-record-ref="Record #{{ $record->record_id }}"
-                                        data-community-service="{{ str_contains(strtolower((string) optional($record->assignedSanction)->disciplinary_sanction), 'community') ? '1' : '0' }}">
+                                        data-community-service="{{ (str_contains(strtolower((string) optional($record->assignedSanction)->disciplinary_sanction), 'community') || str_contains(strtolower((string) optional($record->assignedSanction)->disciplinary_sanction), 'campus service')) ? '1' : '0' }}">
                                         <i class="bi bi-upload me-1"></i>Submit Proof
                                     </button>
 
@@ -1369,9 +1369,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (proofConfirmError) { proofConfirmError.classList.add('d-none'); }
                 resetProofUpload();
 
-                // The official form is only relevant for Community Service
-                // sanctions. Show the download link only when the assigned
-                // sanction is community service; hide it for all other types.
+                // The official form is only relevant for Community Service /
+                // Campus Service sanctions. Show the download link only when
+                // the assigned sanction is one of those; hide it for others.
                 const officialArea = document.getElementById('officialFormArea');
                 if (officialArea) {
                     const isCommunityService = String(button.dataset.communityService || '0') === '1';
