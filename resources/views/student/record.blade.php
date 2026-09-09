@@ -4,6 +4,295 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/student.css') }}"> 
+<style>
+/* ==========================================================================
+   Submit Proof of Completion modal (scoped to this page)
+   ========================================================================== */
+#submitProofModal .modal-header {
+    align-items: flex-start;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+#submitProofModal .modal-title {
+    color: var(--pup-maroon);
+    font-size: 1.15rem;
+}
+#submitProofModal .modal-subtitle {
+    color: var(--secondary-text);
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+    line-height: 1.4;
+}
+#submitProofModal .modal-body {
+    padding: 1.25rem 1.5rem;
+}
+@media (max-height: 720px) {
+    #submitProofModal .modal-body {
+        max-height: calc(100vh - 15rem);
+        overflow-y: auto;
+    }
+}
+#submitProofModal .modal-footer {
+    border-top: 1px solid var(--border-color);
+    margin-top: 0;
+    padding: 0.9rem 1.5rem;
+}
+#submitProofModal .proof-section {
+    margin-bottom: 1.5rem;
+}
+#submitProofModal .proof-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--pup-maroon);
+    font-weight: 700;
+    font-size: 0.92rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 0.6rem;
+}
+#submitProofModal .proof-step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    background: var(--pup-maroon);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+}
+#submitProofModal .proof-body-text {
+    color: var(--secondary-text);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+#submitProofModal .proof-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.6rem;
+    padding: 0.9rem;
+}
+#submitProofModal .proof-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+#submitProofModal .proof-detail-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--secondary-text);
+    font-weight: 600;
+}
+#submitProofModal .proof-detail-value {
+    font-size: 0.92rem;
+    color: var(--primary-text);
+    font-weight: 600;
+    word-break: break-word;
+}
+#submitProofModal .official-form-area {
+    margin-top: 0.85rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px dashed var(--border-color);
+    border-radius: 0.5rem;
+    background: var(--secondary-bg);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+}
+#submitProofModal .official-form-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary-text);
+}
+#submitProofModal .proof-upload-zone {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.5rem;
+    padding: 1.6rem 1rem;
+    border: 2px dashed var(--border-color);
+    border-radius: 0.7rem;
+    background: var(--secondary-bg);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+#submitProofModal .proof-upload-zone:hover,
+#submitProofModal .proof-upload-zone:focus-visible,
+#submitProofModal .proof-upload-zone-active {
+    border-color: var(--pup-maroon);
+    background: var(--hover-bg);
+    outline: none;
+}
+#submitProofModal .proof-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+}
+#submitProofModal .proof-upload-icon {
+    font-size: 2rem;
+    color: var(--pup-maroon);
+    line-height: 1;
+}
+#submitProofModal .proof-upload-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--primary-text);
+}
+#submitProofModal .proof-upload-hint {
+    font-size: 0.82rem;
+    color: var(--secondary-text);
+}
+#submitProofModal .proof-upload-zone .btn {
+    padding: 0.4rem 1.1rem;
+    font-size: 0.85rem;
+}
+#submitProofModal .proof-file-selected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.6rem;
+    background: var(--hover-bg);
+}
+#submitProofModal .proof-file-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+}
+#submitProofModal .proof-file-icon {
+    font-size: 1.4rem;
+    color: var(--status-completed-text);
+    flex-shrink: 0;
+}
+#submitProofModal .proof-file-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+#submitProofModal .proof-file-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--primary-text);
+    word-break: break-all;
+}
+#submitProofModal .proof-file-size {
+    font-size: 0.78rem;
+    color: var(--secondary-text);
+}
+#submitProofModal .proof-formats {
+    font-size: 0.78rem;
+    color: var(--secondary-text);
+    text-align: center;
+    margin: 0.45rem 0 0;
+}
+#submitProofModal .invalid-proof-feedback {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.4rem;
+    font-size: 0.82rem;
+    color: #b02a37;
+    background: var(--status-sanction-bg);
+    border: 1px solid rgba(207, 19, 34, 0.25);
+}
+#submitProofModal .proof-guidelines {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.35rem;
+}
+#submitProofModal .proof-guidelines li {
+    position: relative;
+    padding-left: 1.4rem;
+    font-size: 0.85rem;
+    color: var(--secondary-text);
+    line-height: 1.45;
+}
+#submitProofModal .proof-guidelines li::before {
+    content: "\2713";
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--pup-maroon);
+    font-weight: 700;
+}
+#submitProofModal .proof-char-counter {
+    font-size: 0.75rem;
+    margin-top: 0.2rem;
+}
+#submitProofModal .proof-review-alert {
+    border: 1px solid rgba(128, 0, 0, 0.25);
+    border-left: 4px solid var(--pup-maroon);
+    background: var(--hover-bg);
+    border-radius: 0.5rem;
+    padding: 0.9rem 1rem;
+    color: var(--primary-text);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+#submitProofModal .proof-review-alert p {
+    margin-bottom: 0.25rem;
+}
+#submitProofModal .proof-review-alert .bi-shield-check {
+    color: var(--pup-maroon);
+}
+#submitProofModal .proof-confirm .form-check-label {
+    font-size: 0.88rem;
+    color: var(--primary-text);
+    line-height: 1.4;
+}
+#submitProofModal .proof-confirm .form-check-input:checked {
+    background-color: var(--pup-maroon);
+    border-color: var(--pup-maroon);
+}
+#submitProofModal .proof-confirm .form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.2);
+    border-color: var(--pup-maroon);
+}
+#submitProofModal .btn:focus-visible,
+#submitProofModal .proof-upload-zone:focus-visible,
+#submitProofModal .form-control:focus,
+#submitProofModal .form-check-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.25);
+}
+@media (max-width: 480px) {
+    #submitProofModal .proof-detail-grid {
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+    }
+    #submitProofModal .modal-body {
+        padding: 1rem;
+    }
+    #submitProofModal .modal-footer {
+        padding: 0.8rem 1rem;
+    }
+    #submitProofModal .modal-footer .btn {
+        flex: 1 1 auto;
+    }
+}
+</style>
 @endpush
 
 @section('content')
@@ -663,7 +952,10 @@
                                         type="button"
                                         class="btn portal-btn btn-sm submit-proof-btn"
                                         data-record-id="{{ $record->record_id }}"
-                                        data-violation="{{ optional(optional($record->violation)->violationType)->violation_type ?? 'N/A' }}">
+                                        data-violation="{{ optional(optional($record->violation)->violationType)->violation_type ?? 'N/A' }}"
+                                        data-sanction="{{ optional($record->assignedSanction)->disciplinary_sanction ?? 'N/A' }}"
+                                        data-deadline="{{ optional($record->deadline_date)->format('M d, Y') ?? '' }}"
+                                        data-record-ref="Record #{{ $record->record_id }}">
                                         <i class="bi bi-upload me-1"></i>Submit Proof
                                     </button>
 
@@ -731,37 +1023,145 @@
 
 {{-- Submit Proof of Completion modal --}}
 <div class="modal fade" id="submitProofModal" tabindex="-1" aria-labelledby="submitProofModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="submitProofModalLabel">Submit Proof of Completion</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div>
+                    <h5 class="modal-title fw-bold" id="submitProofModalLabel">Submit Proof of Completion</h5>
+                    <p class="modal-subtitle mb-0">Upload the official document that verifies completion of your assigned sanction.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close submit proof dialog"></button>
             </div>
-            <form id="submitProofForm" enctype="multipart/form-data">
+            <form id="submitProofForm" enctype="multipart/form-data" novalidate>
                 @csrf
                 <input type="hidden" name="record_id" id="proofRecordId">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Violation Type</label>
-                        <div class="form-control bg-light" id="proofViolationDisplay" readonly>—</div>
+
+                    {{-- Sanction details (read-only, from the server-side record) --}}
+                    <section class="proof-section" aria-labelledby="sanctionDetailsHeading">
+                        <h6 class="proof-section-title" id="sanctionDetailsHeading">
+                            <i class="bi bi-clipboard-check me-1" aria-hidden="true"></i>Sanction Details
+                        </h6>
+                        <div class="proof-detail-grid">
+                            <div class="proof-detail-item">
+                                <span class="proof-detail-label" id="proofViolationLabel">Violation Type</span>
+                                <span class="proof-detail-value" id="proofViolationDisplay" aria-labelledby="proofViolationLabel">—</span>
+                            </div>
+                            <div class="proof-detail-item">
+                                <span class="proof-detail-label" id="proofSanctionLabel">Assigned Sanction</span>
+                                <span class="proof-detail-value" id="proofSanctionDisplay" aria-labelledby="proofSanctionLabel">—</span>
+                            </div>
+                            <div class="proof-detail-item">
+                                <span class="proof-detail-label" id="proofDeadlineLabel">Deadline</span>
+                                <span class="proof-detail-value" id="proofDeadlineDisplay" aria-labelledby="proofDeadlineLabel">—</span>
+                            </div>
+                            <div class="proof-detail-item">
+                                <span class="proof-detail-label" id="proofRefLabel">Reference</span>
+                                <span class="proof-detail-value" id="proofRefDisplay" aria-labelledby="proofRefLabel">—</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    {{-- 1. Prepare your proof --}}
+                    <section class="proof-section" aria-labelledby="prepareHeading">
+                        <h6 class="proof-section-title" id="prepareHeading">
+                            <span class="proof-step-number" aria-hidden="true">1</span>Prepare Your Proof
+                        </h6>
+                        <p class="proof-body-text mb-2">Upload the official document or proof required for your assigned sanction.</p>
+                        <p class="proof-body-text mb-0">Make sure the document is complete, clear, readable, and contains any required signatures or certifications.</p>
+                        <div id="officialFormArea" class="official-form-area d-none">
+                            <span class="official-form-label">Need the official form?</span>
+                            <a href="#" id="officialFormDownloadBtn" class="btn portal-btn-outline btn-sm" target="_blank" rel="noopener">
+                                <i class="bi bi-download me-1" aria-hidden="true"></i>Download Official Form
+                            </a>
+                        </div>
+                    </section>
+
+                    {{-- 2. Upload proof --}}
+                    <section class="proof-section" aria-labelledby="uploadHeading">
+                        <h6 class="proof-section-title" id="uploadHeading">
+                            <span class="proof-step-number" aria-hidden="true">2</span>Upload Proof
+                        </h6>
+                        <p class="proof-body-text">Upload the document that verifies your completion of the assigned sanction.</p>
+
+                        <div id="proofDropZone" class="proof-upload-zone" role="button" tabindex="0" aria-labelledby="proofUploadPrompt" aria-describedby="proofUploadFormats">
+                            <input type="file" class="proof-file-input" id="proofFile" name="proof_file" accept=".jpg,.jpeg,.png,.pdf" aria-label="Choose proof file (JPG, JPEG, PNG, or PDF, maximum 5 MB)">
+                            <div id="proofUploadPrompt">
+                                <i class="bi bi-cloud-arrow-up proof-upload-icon" aria-hidden="true"></i>
+                                <p class="proof-upload-title mb-1">Upload your proof</p>
+                                <p class="proof-upload-hint mb-1">Drag and drop your file here or</p>
+                                <span class="btn portal-btn-outline btn-sm">Choose File</span>
+                            </div>
+                            <div id="proofFileSelected" class="proof-file-selected d-none">
+                                <div class="proof-file-chip">
+                                    <i class="bi bi-file-earmark-check-fill proof-file-icon" aria-hidden="true"></i>
+                                    <div class="proof-file-meta">
+                                        <span class="proof-file-name" id="proofFileName">—</span>
+                                        <span class="proof-file-size" id="proofFileSize">—</span>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="proofFileChangeBtn">
+                                    <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>Change File
+                                </button>
+                            </div>
+                        </div>
+                        <p class="proof-formats" id="proofUploadFormats">JPG, JPEG, PNG, PDF • Maximum 5 MB</p>
+                        <div id="proofFileError" class="invalid-proof-feedback d-none" role="alert"></div>
+                    </section>
+
+                    {{-- Submission guidelines --}}
+                    <section class="proof-section" aria-labelledby="guidelinesHeading">
+                        <h6 class="proof-section-title" id="guidelinesHeading">
+                            <i class="bi bi-list-check me-1" aria-hidden="true"></i>Submission Guidelines
+                        </h6>
+                        <ul class="proof-guidelines">
+                            <li>Submit the official proof required for your sanction.</li>
+                            <li>Make sure all information is complete and readable.</li>
+                            <li>Include required signatures/certifications when applicable.</li>
+                            <li>Upload JPG, JPEG, PNG, or PDF files only.</li>
+                            <li>Maximum file size is 5 MB.</li>
+                            <li>Do not upload violation evidence in this section.</li>
+                        </ul>
+                    </section>
+
+                    {{-- Additional remarks --}}
+                    <section class="proof-section" aria-labelledby="remarksHeading">
+                        <h6 class="proof-section-title" id="remarksHeading">
+                            <i class="bi bi-chat-left-text me-1" aria-hidden="true"></i>Additional Remarks
+                        </h6>
+                        <label for="proofNotes" class="form-label small text-muted">Additional Remarks (Optional)</label>
+                        <textarea class="form-control" id="proofNotes" name="proof_notes" rows="3" maxlength="1000" placeholder="Add any information that may help the Discipline Office review your submission..."></textarea>
+                        <div class="d-flex justify-content-end">
+                            <small class="text-muted proof-char-counter" id="proofNotesCounter">0 / 1000</small>
+                        </div>
+                    </section>
+
+                    {{-- Review required --}}
+                    <div class="proof-review-alert" role="note">
+                        <div class="d-flex gap-2">
+                            <i class="bi bi-shield-check fs-5 flex-shrink-0" aria-hidden="true"></i>
+                            <div>
+                                <p class="fw-semibold mb-1">Review Required</p>
+                                <p class="small mb-1">Your submission will be reviewed by an authorized Discipline Office administrator. You will be notified once your proof is approved or if further action is required.</p>
+                                <p class="small mb-0"><strong>Note:</strong> Uploading a document does not automatically mark your sanction as completed.</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="proofFile" class="form-label fw-semibold">Proof of Completion <span class="text-danger">*</span></label>
-                        <input type="file" class="form-control" id="proofFile" name="proof_file" accept=".jpg,.jpeg,.png,.pdf" required>
-                        <small class="text-muted">Accepted: JPG, JPEG, PNG, PDF. Max 5MB. Upload the official completed/signed form (e.g. Community Service Completion Form) as proof — do not submit violation evidence here.</small>
+
+                    {{-- Confirmation --}}
+                    <div class="form-check proof-confirm mt-3">
+                        <input class="form-check-input" type="checkbox" id="proofConfirmCheck" aria-describedby="proofConfirmHelp">
+                        <label class="form-check-label" for="proofConfirmCheck">
+                            I confirm that the submitted document is a true and complete proof of my sanction completion.
+                        </label>
+                        <div id="proofConfirmHelp" class="form-text">This confirms your submission only. Your proof will still be reviewed by the Discipline Office.</div>
                     </div>
-                    <div class="mb-3">
-                        <label for="proofNotes" class="form-label fw-semibold">Notes (Optional)</label>
-                        <textarea class="form-control" id="proofNotes" name="proof_notes" rows="3" maxlength="1000" placeholder="Add any remarks about your completion..."></textarea>
-                    </div>
-                    <div class="alert alert-info small mb-0">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Your proof will be sent to the administrator for verification. You will be notified once it is accepted or rejected.
-                    </div>
+                    <div id="proofConfirmError" class="invalid-proof-feedback d-none" role="alert"></div>
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn portal-btn" id="submitProofBtn">
+                    <button type="submit" class="btn portal-btn" id="submitProofBtn" disabled>
                         <i class="bi bi-send me-1"></i>Submit Proof
                     </button>
                 </div>
@@ -790,13 +1190,192 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (submitProofModalEl && submitProofForm) {
         const submitProofModal = new bootstrap.Modal(submitProofModalEl);
+        const proofFileInput = document.getElementById('proofFile');
+        const proofDropZone = document.getElementById('proofDropZone');
+        const proofUploadPrompt = document.getElementById('proofUploadPrompt');
+        const proofFileSelected = document.getElementById('proofFileSelected');
+        const proofFileNameEl = document.getElementById('proofFileName');
+        const proofFileSizeEl = document.getElementById('proofFileSize');
+        const proofFileError = document.getElementById('proofFileError');
+        const proofFileChangeBtn = document.getElementById('proofFileChangeBtn');
+        const proofNotes = document.getElementById('proofNotes');
+        const proofNotesCounter = document.getElementById('proofNotesCounter');
+        const proofConfirmCheck = document.getElementById('proofConfirmCheck');
+        const proofConfirmError = document.getElementById('proofConfirmError');
+        const submitBtn = document.getElementById('submitProofBtn');
+        const MAX_PROOF_BYTES = 5 * 1024 * 1024;
+        const ALLOWED_PROOF_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+        const ALLOWED_PROOF_EXT = ['jpg', 'jpeg', 'png', 'pdf'];
+
+        const fileBaseName = function (name) {
+            return name.split(/(\\|\/)/g).pop() || name;
+        };
+
+        const formatBytes = function (bytes) {
+            if (bytes < 1024) { return bytes + ' B'; }
+            if (bytes < 1024 * 1024) { return (bytes / 1024).toFixed(1) + ' KB'; }
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        };
+
+        const setProofError = function (message) {
+            if (!message) {
+                proofFileError.classList.add('d-none');
+                proofFileError.textContent = '';
+                return;
+            }
+            proofFileError.textContent = message;
+            proofFileError.classList.remove('d-none');
+        };
+
+        const isAcceptedProofFile = function (file) {
+            if (!file) { return false; }
+            const ext = (file.name.split('.').pop() || '').toLowerCase();
+            const typeOk = ALLOWED_PROOF_TYPES.indexOf(file.type) !== -1;
+            const extOk = ALLOWED_PROOF_EXT.indexOf(ext) !== -1;
+            // A file must pass BOTH the extension and the MIME/content check to
+            // satisfy the server's rule (mimes + mimetypes). If the browser
+            // reports an empty MIME, fall back to extension only; the server
+            // still re-validates the real content type.
+            const typeUnknown = file.type === '';
+            return file.size <= MAX_PROOF_BYTES && (extOk && (typeOk || typeUnknown));
+        };
+
+        const syncSubmitState = function () {
+            const hasFile = proofFileInput && proofFileInput.files && proofFileInput.files.length > 0;
+            const confirmed = proofConfirmCheck && proofConfirmCheck.checked;
+            if (submitBtn) {
+                submitBtn.disabled = !(hasFile && confirmed);
+            }
+        };
+
+        const clearFileError = function () { setProofError(''); };
+
+        const showSelectedFile = function () {
+            const file = proofFileInput && proofFileInput.files ? proofFileInput.files[0] : null;
+            if (!file) {
+                if (proofUploadPrompt) { proofUploadPrompt.classList.remove('d-none'); }
+                if (proofFileSelected) { proofFileSelected.classList.add('d-none'); }
+                if (proofFileNameEl) { proofFileNameEl.textContent = '—'; }
+                if (proofFileSizeEl) { proofFileSizeEl.textContent = '—'; }
+                syncSubmitState();
+                return;
+            }
+            if (proofFileNameEl) { proofFileNameEl.textContent = fileBaseName(file.name); }
+            if (proofFileSizeEl) { proofFileSizeEl.textContent = formatBytes(file.size); }
+            if (proofUploadPrompt) { proofUploadPrompt.classList.add('d-none'); }
+            if (proofFileSelected) { proofFileSelected.classList.remove('d-none'); }
+            syncSubmitState();
+        };
+
+        const resetProofUpload = function () {
+            if (proofFileInput) { proofFileInput.value = ''; }
+            clearFileError();
+            showSelectedFile();
+        };
+
+        // File selection via the input.
+        if (proofFileInput) {
+            proofFileInput.addEventListener('change', function () {
+                const file = proofFileInput.files ? proofFileInput.files[0] : null;
+                if (!file) { showSelectedFile(); return; }
+                if (!isAcceptedProofFile(file)) {
+                    setProofError('Please choose a JPG, JPEG, PNG, or PDF file no larger than 5 MB.');
+                    resetProofUpload();
+                    return;
+                }
+                clearFileError();
+                showSelectedFile();
+            });
+        }
+
+        // Drag & drop (desktop convenience; file input remains the accessible
+        // control on mobile).
+        if (proofDropZone) {
+            const preventDefaults = function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            };
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function (evtName) {
+                proofDropZone.addEventListener(evtName, preventDefaults, false);
+            });
+            ['dragenter', 'dragover'].forEach(function (evtName) {
+                proofDropZone.addEventListener(evtName, function () {
+                    proofDropZone.classList.add('proof-upload-zone-active');
+                }, false);
+            });
+            ['dragleave', 'drop'].forEach(function (evtName) {
+                proofDropZone.addEventListener(evtName, function () {
+                    proofDropZone.classList.remove('proof-upload-zone-active');
+                }, false);
+            });
+            proofDropZone.addEventListener('drop', function (e) {
+                const dt = e.dataTransfer;
+                const files = dt && dt.files ? dt.files : [];
+                if (files.length) {
+                    if (proofFileInput) { proofFileInput.files = files; }
+                    proofFileInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+            // Clicking anywhere in the zone opens the file picker.
+            proofDropZone.addEventListener('click', function (e) {
+                if (e.target && e.target.closest && e.target.closest('#proofFileChangeBtn')) {
+                    return; // handled by the change button
+                }
+                if (proofFileInput) { proofFileInput.click(); }
+            });
+            proofDropZone.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (proofFileInput) { proofFileInput.click(); }
+                }
+            });
+        }
+
+        if (proofFileChangeBtn) {
+            proofFileChangeBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (proofFileInput) { proofFileInput.click(); }
+            });
+        }
+
+        if (proofConfirmCheck) {
+            proofConfirmCheck.addEventListener('change', function () {
+                if (proofConfirmError) { proofConfirmError.classList.add('d-none'); }
+                syncSubmitState();
+            });
+        }
+
+        if (proofNotes && proofNotesCounter) {
+            const updateCounter = function () {
+                const len = proofNotes.value ? proofNotes.value.length : 0;
+                proofNotesCounter.textContent = len + ' / 1000';
+            };
+            proofNotes.addEventListener('input', updateCounter);
+        }
 
         document.querySelectorAll('.submit-proof-btn').forEach(function (button) {
             button.addEventListener('click', function () {
-                document.getElementById('proofRecordId').value = button.dataset.recordId || '';
+                const recordId = button.dataset.recordId || '';
+                document.getElementById('proofRecordId').value = recordId;
                 document.getElementById('proofViolationDisplay').textContent = button.dataset.violation || '—';
-                submitProofForm.reset();
-                document.getElementById('proofRecordId').value = button.dataset.recordId || '';
+                document.getElementById('proofSanctionDisplay').textContent = button.dataset.sanction || '—';
+                document.getElementById('proofDeadlineDisplay').textContent = button.dataset.deadline || '—';
+                document.getElementById('proofRefDisplay').textContent = button.dataset.recordRef || '—';
+
+                // Reset per-open state.
+                if (proofNotes) { proofNotes.value = ''; }
+                if (proofNotesCounter) { proofNotesCounter.textContent = '0 / 1000'; }
+                if (proofConfirmCheck) { proofConfirmCheck.checked = false; }
+                if (proofConfirmError) { proofConfirmError.classList.add('d-none'); }
+                resetProofUpload();
+
+                // The official-form area is reserved for a future dynamic
+                // official-form mechanism. It is only shown when a real,
+                // sanction-specific form is configured (none today), so it
+                // stays hidden without a fake download.
+                const officialArea = document.getElementById('officialFormArea');
+                if (officialArea) { officialArea.classList.add('d-none'); }
+
                 submitProofModal.show();
             });
         });
@@ -805,15 +1384,28 @@ document.addEventListener('DOMContentLoaded', function () {
             event.preventDefault();
 
             const recordId = document.getElementById('proofRecordId').value;
-            const fileInput = document.getElementById('proofFile');
-            const submitBtn = document.getElementById('submitProofBtn');
+            const file = proofFileInput && proofFileInput.files ? proofFileInput.files[0] : null;
+            const confirmed = proofConfirmCheck && proofConfirmCheck.checked;
 
-            if (!recordId || !fileInput.files.length) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Missing Information',
-                    text: 'Please select a proof file to upload.',
-                });
+            if (!recordId) {
+                Swal.fire({ icon: 'warning', title: 'Missing Information', text: 'Please select a sanction record to attach your proof to.' });
+                return;
+            }
+            if (!file) {
+                setProofError('Please choose a proof file to upload.');
+                proofFileInput && proofFileInput.focus();
+                return;
+            }
+            if (!isAcceptedProofFile(file)) {
+                setProofError('Please choose a JPG, JPEG, PNG, or PDF file no larger than 5 MB.');
+                return;
+            }
+            if (!confirmed) {
+                if (proofConfirmError) {
+                    proofConfirmError.textContent = 'Please confirm that the document is a true and complete proof of your sanction completion.';
+                    proofConfirmError.classList.remove('d-none');
+                }
+                if (proofConfirmCheck) { proofConfirmCheck.focus(); }
                 return;
             }
 
@@ -850,6 +1442,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .finally(function () {
                     if (submitBtn) { submitBtn.disabled = false; }
+                    syncSubmitState();
                 });
         });
     }
