@@ -491,7 +491,15 @@
 
     <td>
 
-        @if($summary['violation_status'] === 'Sanction')
+        @if(!empty($summary['has_pending']))
+
+            <span class="portal-badge goldenrod">
+
+                Pending Confirmation
+
+            </span>
+
+        @elseif($summary['violation_status'] === 'Sanction')
 
             <span class="badge bg-danger">
 
@@ -525,7 +533,19 @@
 
     <td>
 
-        @if($summary['workflow_status'] === 'Requested')
+        @if($summary['workflow_status'] === 'PendingConfirmation')
+
+            <button
+                class="btn btn-secondary btn-sm"
+                disabled>
+
+                <i class="bi bi-hourglass-split"></i>
+
+                Pending Confirmation
+
+            </button>
+
+        @elseif($summary['workflow_status'] === 'Requested')
 
             <button
                 class="btn btn-secondary btn-sm"
@@ -657,6 +677,12 @@
 
                     <th>
 
+                        Status
+
+                    </th>
+
+                    <th>
+
                         Remarks
 
                     </th>
@@ -674,6 +700,10 @@
             <tbody>
 
                 @forelse($violations as $violation)
+
+                    @php
+                        $isPendingLog = strtolower((string) $violation->status) === 'pending';
+                    @endphp
 
                     <tr>
 
@@ -697,31 +727,59 @@
 
                         <td>
 
+                            @if($isPendingLog)
+
+                                <span class="portal-badge goldenrod">
+                                    Pending Confirmation
+                                </span>
+
+                            @else
+
+                                <span class="portal-badge success">
+                                    On Record
+                                </span>
+
+                            @endif
+
+                        </td>
+
+                        <td>
+
                             {{ $violation->description ?: 'No remarks' }}
 
                         </td>
 
                         <td>
 
-                            @php
-                                $visibleEvidence = collect($violation->evidence ?? [])
-                                    ->filter(fn ($e) => ! empty($e->disk_path));
-                            @endphp
+                            @if($isPendingLog)
 
-                            @if ($visibleEvidence->isNotEmpty())
-                                @foreach ($visibleEvidence as $item)
-                                    <a
-                                        href="{{ route('student.violations.evidence', $item) }}"
-                                        target="_blank"
-                                        rel="noopener"
-                                        class="btn btn-sm btn-outline-secondary me-1 mb-1"
-                                        title="Open {{ $item->original_name ?: 'evidence' }}">
-                                        <i class="bi bi-paperclip"></i>
-                                        {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
-                                    </a>
-                                @endforeach
+                                <span class="text-muted small">
+                                    Available after confirmation
+                                </span>
+
                             @else
-                                <span class="text-muted">—</span>
+
+                                @php
+                                    $visibleEvidence = collect($violation->evidence ?? [])
+                                        ->filter(fn ($e) => ! empty($e->disk_path));
+                                @endphp
+
+                                @if ($visibleEvidence->isNotEmpty())
+                                    @foreach ($visibleEvidence as $item)
+                                        <a
+                                            href="{{ route('student.violations.evidence', $item) }}"
+                                            target="_blank"
+                                            rel="noopener"
+                                            class="btn btn-sm btn-outline-secondary me-1 mb-1"
+                                            title="Open {{ $item->original_name ?: 'evidence' }}">
+                                            <i class="bi bi-paperclip"></i>
+                                            {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
+                                        </a>
+                                    @endforeach
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+
                             @endif
 
                         </td>
@@ -733,7 +791,7 @@
                     <tr>
 
                         <td
-                            colspan="5"
+                            colspan="6"
                             class="text-center py-5">
 
                             No individual violations found.
