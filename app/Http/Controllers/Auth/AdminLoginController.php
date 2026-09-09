@@ -51,25 +51,58 @@ class AdminLoginController extends Controller
 
             Log::info('Admin login: starting MFA challenge', ['admin_id' => $admin->id]);
 
+            // Read the TOTP secret through the encrypted cast. If the stored
+            // value is legacy plaintext or was encrypted with a different
+            // APP_KEY, the cast throws a DecryptException here — BEFORE any
+            // challenge/email work. We categorize it separately so the real
+            // cause is visible in logs without ever exposing the secret.
+            try {
+                $totpSecret = $admin->mfa_totp_secret;
+            } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+                Log::error('Admin login: MFA secret decryption FAILED (cast read)', [
+                    'admin_id' => $admin->getKey(),
+                    'hint' => 'Stored mfa_totp_secret is not decryptable with the current APP_KEY (legacy plaintext or key mismatch). Run mfa:diagnose-totp, then mfa:encrypt-totp-secrets once if the key is stable.',
+                    'exception' => get_class($e),
+                ]);
+
+                return back()
+                    ->withErrors([
+                        'login' => 'Unable to initialize multi-factor verification. Please contact the administrator.'
+                    ])
+                    ->withInput();
+            }
+
             try {
                 $mfaService->beginChallenge(
                     $request,
                     'admin',
                     (string) $admin->getKey(),
                     (string) $admin->email,
-                    $admin->mfa_totp_secret,
+                    $totpSecret,
                     (bool) $admin->mfa_totp_enabled,
                     $admin->mfa_backup_codes,
                     $admin->mfa_backup_codes_used,
                     $request->boolean('remember')
                 );
                 Log::info('Admin login: MFA challenge started successfully');
-            } catch (\Throwable $exception) {
-                Log::error('Admin MFA challenge initialization failed.', [
+            } catch (\Illuminate\Contracts\Encryption\DecryptException $exception) {
+                Log::error('Admin MFA challenge: decryption failure during initialization.', [
                     'admin_id' => $admin->getKey(),
+                    'hint' => 'TOTP secret or backup codes not decryptable with the current APP_KEY.',
+                    'exception' => get_class($exception),
+                ]);
+
+                return back()
+                    ->withErrors([
+                        'login' => 'Unable to initialize multi-factor verification. Please contact the administrator.'
+                    ])
+                    ->withInput();
+            } catch (\Throwable $exception) {
+                Log::error('Admin MFA challenge initialization failed (non-decryption).', [
+                    'admin_id' => $admin->getKey(),
+                    'stage' => 'challenge-init',
                     'error' => $exception->getMessage(),
-                    'file' => $exception->getFile(),
-                    'line' => $exception->getLine(),
+                    'exception' => get_class($exception),
                 ]);
 
                 return back()

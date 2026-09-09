@@ -18,9 +18,13 @@ use Illuminate\Support\Facades\Schema;
  *
  * Safety:
  *   - Only touches rows where the column is non-null and non-empty.
- *   - Detects values that are ALREADY encrypted (Laravel encrypted payloads
- *     are JSON objects with iv/value/mac) and leaves them untouched, so the
- *     command is idempotent and never double-encrypts.
+ *   - Skips values that are ALREADY a valid Laravel encrypted payload for the
+ *     CURRENT key (verified by actually decrypting), so it is idempotent and
+ *     never double-encrypts.
+ *   - Skips values that LOOK like an encrypted payload but are NOT decryptable
+ *     with the current key (corrupt, or encrypted under a different APP_KEY).
+ *     These are never overwritten — resolving the key mismatch is required
+ *     first.
  *   - Never logs or prints the secret.
  *   - NULL / empty values are left alone.
  *   - Can be run once in production after the models ship with the cast.
@@ -60,8 +64,21 @@ class EncryptTotpSecrets extends Command
             foreach ($rows as $row) {
                 $raw = (string) $row->mfa_totp_secret;
 
-                if ($this->looksEncrypted($raw)) {
+                // A value that is ALREADY a valid Laravel encrypted payload for
+                // the current key must never be re-encrypted.
+                if ($this->isDecryptable($raw)) {
                     $totalAlready++;
+
+                    continue;
+                }
+
+                // A value that LOOKS like an encrypted payload but does NOT
+                // decrypt (corrupt, or encrypted with a different APP_KEY) must
+                // NOT be overwritten. That would destroy data we cannot recover.
+                if ($this->looksEncrypted($raw)) {
+                    $this->warn("[{$table}] #{$row->{$keyColumn}}: value looks encrypted but is NOT decryptable with the current key — skipped (do not overwrite). Resolve the APP_KEY mismatch first.");
+
+                    $totalSkipped++;
 
                     continue;
                 }
@@ -92,7 +109,7 @@ class EncryptTotpSecrets extends Command
 
         $this->info("Encrypted: {$totalEncrypted}");
         $this->info("Already encrypted (skipped): {$totalAlready}");
-        $this->info("Null/empty (skipped): {$totalSkipped}");
+        $this->info("Skipped (null/empty or un-decryptable encrypted payload): {$totalSkipped}");
 
         if ($totalEncrypted > 0 && ! $pretend) {
             $this->warn('Existing MFA secrets were encrypted. Users can continue logging in normally; no re-enrollment is required for these rows.');
@@ -102,7 +119,32 @@ class EncryptTotpSecrets extends Command
     }
 
     /**
-     * Laravel 'encrypted' values are stored as base64(JSON{iv,value,mac[,tag]}).
+     * True only when the stored value is a valid Laravel encrypted payload for
+     * the CURRENT key. A structure alone (iv/value/mac) is NOT proof — it must
+     * actually decrypt.
+     */
+    private function isDecryptable(string $value): bool
+    {
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return false;
+        }
+
+        try {
+            \Illuminate\Support\Facades\Crypt::decryptString($trimmed);
+
+            return true;
+        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+            return false;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Structural check: does the value look like a Laravel encrypted payload
+     * (base64 of JSON containing iv/value/mac)? Used only to decide whether a
+     * NOT-decryptable value should be skipped rather than overwritten.
      */
     private function looksEncrypted(string $value): bool
     {

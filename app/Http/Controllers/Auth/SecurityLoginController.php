@@ -42,22 +42,56 @@ class SecurityLoginController extends Controller
                 ->withInput();
         }
 
+        // Read the TOTP secret through the encrypted cast. A DecryptException
+        // here means the stored value is legacy plaintext or was encrypted with
+        // a different APP_KEY — BEFORE any challenge/email work. Categorized
+        // separately in logs; the secret itself is never exposed.
+        try {
+            $totpSecret = $security->mfa_totp_secret;
+        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+            Log::error('Security login: MFA secret decryption FAILED (cast read)', [
+                'security_id' => $security->getKey(),
+                'hint' => 'Stored mfa_totp_secret is not decryptable with the current APP_KEY (legacy plaintext or key mismatch). Run mfa:diagnose-totp, then mfa:encrypt-totp-secrets once if the key is stable.',
+                'exception' => get_class($e),
+            ]);
+
+            return back()
+                ->withErrors([
+                    'login' => 'Unable to initialize multi-factor verification. Please contact the administrator.'
+                ])
+                ->withInput();
+        }
+
         try {
             $mfaService->beginChallenge(
                 $request,
                 'security',
                 (string) $security->getKey(),
                 (string) $security->email,
-                $security->mfa_totp_secret,
+                $totpSecret,
                 (bool) $security->mfa_totp_enabled,
                 $security->mfa_backup_codes,
                 $security->mfa_backup_codes_used,
                 $request->boolean('remember')
             );
-        } catch (\Throwable $exception) {
-            Log::error('Security MFA challenge initialization failed.', [
+        } catch (\Illuminate\Contracts\Encryption\DecryptException $exception) {
+            Log::error('Security MFA challenge: decryption failure during initialization.', [
                 'security_id' => $security->getKey(),
+                'hint' => 'TOTP secret or backup codes not decryptable with the current APP_KEY.',
+                'exception' => get_class($exception),
+            ]);
+
+            return back()
+                ->withErrors([
+                    'login' => 'Unable to initialize multi-factor verification. Please contact the administrator.'
+                ])
+                ->withInput();
+        } catch (\Throwable $exception) {
+            Log::error('Security MFA challenge initialization failed (non-decryption).', [
+                'security_id' => $security->getKey(),
+                'stage' => 'challenge-init',
                 'error' => $exception->getMessage(),
+                'exception' => get_class($exception),
             ]);
 
             return back()
