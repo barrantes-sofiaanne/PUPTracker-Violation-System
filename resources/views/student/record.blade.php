@@ -747,8 +747,8 @@
                     </div>
                     <div class="mb-3">
                         <label for="proofFile" class="form-label fw-semibold">Proof of Completion <span class="text-danger">*</span></label>
-                        <input type="file" class="form-control" id="proofFile" name="proof_file" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx" required>
-                        <small class="text-muted">Accepted: JPG, PNG, GIF, PDF, DOC, DOCX. Max 5MB.</small>
+                        <input type="file" class="form-control" id="proofFile" name="proof_file" accept=".jpg,.jpeg,.png,.pdf" required>
+                        <small class="text-muted">Accepted: JPG, JPEG, PNG, PDF. Max 5MB. Upload the official completed/signed form (e.g. Community Service Completion Form) as proof — do not submit violation evidence here.</small>
                     </div>
                     <div class="mb-3">
                         <label for="proofNotes" class="form-label fw-semibold">Notes (Optional)</label>

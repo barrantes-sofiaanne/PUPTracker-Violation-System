@@ -7,11 +7,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $proof_id
+ * @property string|null $proof_code
  * @property int|null $record_id
+ * @property string|null $student_number
  * @property string|null $disk_path
  * @property string|null $original_name
  * @property string|null $mime_type
  * @property int|null $file_size
+ * @property string|null $sha256_hash
  * @property string|null $notes
  * @property string|null $status       submitted | accepted | rejected
  * @property int|null $reviewed_by_admin_id
@@ -35,11 +38,14 @@ class SanctionProof extends Model
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
+        'proof_code',
         'record_id',
+        'student_number',
         'disk_path',
         'original_name',
         'mime_type',
         'file_size',
+        'sha256_hash',
         'notes',
         'status',
         'reviewed_by_admin_id',
@@ -53,6 +59,28 @@ class SanctionProof extends Model
         'submitted_at' => 'datetime',
         'file_size' => 'integer',
     ];
+
+    /**
+     * Generate the next unique proof code: PROOF-{YEAR}-{6-digit sequence}.
+     */
+    public static function nextProofCode(?int $year = null): string
+    {
+        $year = $year ?? (int) now()->format('Y');
+        $prefix = 'PROOF-' . $year . '-';
+
+        $last = static::query()
+            ->where('proof_code', 'like', $prefix . '%')
+            ->orderByDesc('proof_id')
+            ->value('proof_code');
+
+        if ($last) {
+            $seq = ((int) substr((string) $last, strlen($prefix))) + 1;
+
+            return $prefix . str_pad((string) $seq, 6, '0', STR_PAD_LEFT);
+        }
+
+        return $prefix . '000001';
+    }
 
     public function getIsImageAttribute(): bool
     {

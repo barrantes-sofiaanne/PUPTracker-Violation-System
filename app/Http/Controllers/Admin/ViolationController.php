@@ -834,7 +834,10 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
             // evidence subsystem (private storage, evidence codes, security
             // events). Runs inside the same transaction so a storage failure
             // rolls back the violation too.
-            $this->storeEvidence($violation, $request, (int) Auth::guard('admin')->id());
+            $captureSessionId = $request->input('capture_session_id')
+                ? (string) $request->input('capture_session_id')
+                : null;
+            $this->storeEvidence($violation, $request, (int) Auth::guard('admin')->id(), $captureSessionId);
 
             DB::commit();
 
@@ -880,7 +883,7 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
      * privately, with a unique evidence code and evidence security event.
      * Runs inside the caller's DB transaction.
      */
-    private function storeEvidence(Violation $violation, Request $request, int $adminId): void
+    private function storeEvidence(Violation $violation, Request $request, int $adminId, ?string $captureSessionId = null): void
     {
         $evidenceFiles = $request->allFiles()['evidence'] ?? [];
 
@@ -890,7 +893,6 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
 
         $captureMethods = (array) $request->input('capture_methods', []);
         $capturedAts = (array) $request->input('captured_ats', []);
-        $watermarked = (array) $request->input('watermarked', []);
         $evidenceService = app(EvidenceSecurityService::class);
 
         foreach ($evidenceFiles as $index => $evidenceFile) {
@@ -901,11 +903,6 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
             // original filename is never trusted or used on disk.
             $filename = $evidenceCode . '.' . ($extension !== '' ? $extension : 'bin');
             $disk = $evidenceService->evidenceDisk();
-            $storedPath = $disk->putFileAs($directory, $evidenceFile, $filename);
-
-            if ($storedPath === false) {
-                throw new \RuntimeException('Unable to store evidence file.');
-            }
 
             $isCamera = strcasecmp((string) ($captureMethods[$index] ?? ''), 'camera') === 0;
             $capturedAt = isset($capturedAts[$index]) && $capturedAts[$index] !== ''
@@ -914,14 +911,18 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
 
             $evidence = ViolationEvidence::create([
                 'evidence_code' => $evidenceCode,
+                'capture_session_id' => $captureSessionId,
                 'violation_id' => $violation->violation_id,
-                'disk_path' => $storedPath,
+                'disk_path' => $directory . '/' . $filename,
                 'original_name' => $evidenceFile->getClientOriginalName(),
                 'mime_type' => $evidenceFile->getMimeType(),
                 'capture_method' => $isCamera
                     ? ViolationEvidence::CAPTURE_CAMERA
                     : ViolationEvidence::CAPTURE_UPLOAD,
-                'watermarked' => $isCamera || ! empty($watermarked[$index]),
+                // The client `watermarked` flag is never proof. The server
+                // re-bakes the watermark and records server_watermarked.
+                'watermarked' => false,
+                'server_watermarked' => false,
                 'captured_at' => $capturedAt,
                 'file_size' => $evidenceFile->getSize(),
                 'ip_address' => $evidenceService->clientIp($request),
@@ -930,15 +931,45 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
                 'uploader_id' => $adminId,
             ]);
 
+            // Final trusted image: server-side watermark (images only), stored
+            // on the private disk, with SHA-256 of the FINAL bytes.
+            $store = app(\App\Services\EvidenceWatermarkService::class)->storeOfficialFile(
+                $evidenceFile,
+                $directory,
+                $filename,
+                $evidenceCode,
+                (string) ($violation->student_number ?? ''),
+                $capturedAt?->format('Y-m-d H:i:s'),
+            );
+
+            $storedPath = $store['path'];
+            if ($storedPath === '' || ! $disk->exists($storedPath)) {
+                throw new \RuntimeException('Unable to store evidence file.');
+            }
+
+            $evidence->update([
+                'disk_path' => $storedPath,
+                'file_size' => $disk->size($storedPath),
+                'server_watermarked' => $store['server_watermarked'],
+                'watermarked' => $store['server_watermarked'] || $isCamera,
+                'sha256_hash' => $store['sha256'],
+            ]);
+
             $evidenceService->logEvent(
                 EvidenceSecurityEvent::EVIDENCE_UPLOADED,
                 $violation->violation_id,
                 $evidence->evidence_id,
                 'info',
                 $request,
-                ['method' => $evidence->capture_method, 'code' => $evidenceCode],
+                [
+                    'method' => $evidence->capture_method,
+                    'code' => $evidenceCode,
+                    'sha256' => $store['sha256'],
+                    'server_watermarked' => $store['server_watermarked'],
+                ],
                 'admin',
                 $adminId,
+                $captureSessionId,
             );
         }
     }
@@ -1002,6 +1033,7 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
 
         $violationId = $request->input('violation_id') ? (int) $request->input('violation_id') : null;
         $evidenceId = $request->input('evidence_id') ? (int) $request->input('evidence_id') : null;
+        $captureSessionId = $request->input('capture_session_id') ? (string) $request->input('capture_session_id') : null;
         $severity = (string) $request->input('severity', 'info');
         $severity = in_array($severity, ['info', 'warning', 'critical'], true) ? $severity : 'info';
         $meta = $request->input('meta');
@@ -1016,6 +1048,7 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
             $meta,
             'admin',
             (int) $admin->id,
+            $captureSessionId,
         );
 
         return response()->json(['success' => true]);
@@ -1079,6 +1112,7 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
                 'ip' => $event->ip_address,
                 'user_agent' => $event->user_agent,
                 'meta' => $event->meta,
+                'capture_session_id' => $event->capture_session_id,
             ]);
 
         // Viewing the security timeline is itself an audited evidence access.
@@ -1097,7 +1131,11 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
                 'student' => $evidence->violation?->student_number,
                 'captured_at' => optional($evidence->captured_at)->format('M d, Y h:i A'),
                 'method' => $evidence->capture_method,
-                'watermarked' => $evidence->watermarked,
+                // server_watermarked is the TRUSTED flag (the client `watermarked`
+                // flag alone is not proof a watermark exists on the stored image).
+                'watermarked' => (bool) $evidence->server_watermarked,
+                'sha256' => $evidence->sha256_hash,
+                'capture_session_id' => $evidence->capture_session_id,
             ],
             'events' => $events,
         ]);

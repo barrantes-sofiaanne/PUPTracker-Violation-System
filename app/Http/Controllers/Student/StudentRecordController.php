@@ -422,8 +422,10 @@ public function requestSanction(Request $request)
             'proof_file' => [
                 'required',
                 'file',
-                'mimes:jpg,jpeg,png,gif,pdf,doc,docx',
-                'mimetypes:image/jpeg,image/png,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                // Sanction completion proof: signed official forms/photos.
+                // DOC/DOCX/GIF are NOT accepted — only JPG/JPEG/PNG/PDF.
+                'mimes:jpg,jpeg,png,pdf',
+                'mimetypes:image/jpeg,image/png,application/pdf',
                 'max:5120',
             ],
             'proof_notes' => ['nullable', 'string', 'max:1000'],
@@ -456,13 +458,22 @@ public function requestSanction(Request $request)
             $disk = \Illuminate\Support\Facades\Storage::disk((string) config('filesystems.evidence_disk', 'local'));
             $directory = 'sanction-proofs/' . $record->record_id;
 
-            $extension = strtolower($file->getClientOriginalExtension());
-            $filename = 'proof_' . $record->record_id . '_' . now()->format('Ymd_His') . '_' . uniqid('', true) . '.' . $extension;
-            $storedPath = $disk->putFileAs($directory, $file, $filename);
+            // Official uploaded document — ALWAYS preserved byte-for-byte.
+            // We never re-encode/watermark the signed Community Service form.
+            $originalBytes = (string) $file->getContent();
+            $sha256 = hash('sha256', $originalBytes);
+            $proofCode = \App\Models\SanctionProof::nextProofCode();
 
-            if ($storedPath === false) {
+            $extension = strtolower($file->getClientOriginalExtension());
+            // Server-side filename derived from the unique proof code — the
+            // original filename is never trusted or used on disk.
+            $filename = $proofCode . '.' . ($extension !== '' ? $extension : 'bin');
+
+            if (! $disk->put($directory . '/' . $filename, $originalBytes)) {
                 throw new \RuntimeException('Unable to store proof file.');
             }
+
+            $storedPath = $directory . '/' . $filename;
 
             $notes = trim((string) $request->input('proof_notes', ''));
 
@@ -483,20 +494,45 @@ public function requestSanction(Request $request)
                 'completion_remarks' => null,
             ]);
 
-            // Preserve per-submission proof history.
+            // Preserve per-submission proof history. Each submission is a new
+            // auditable row with its own PROOF code + SHA-256; the uploaded
+            // original is never modified. Never overwrites previous proof.
             try {
                 \App\Models\SanctionProof::create([
+                    'proof_code' => $proofCode,
                     'record_id' => $record->record_id,
+                    'student_number' => $record->student_number,
                     'disk_path' => $storedPath,
                     'original_name' => $file->getClientOriginalName(),
                     'mime_type' => $file->getMimeType(),
                     'file_size' => $file->getSize(),
+                    'sha256_hash' => $sha256,
                     'notes' => $notes,
                     'status' => \App\Models\SanctionProof::STATUS_SUBMITTED,
                     'submitted_at' => now(),
                 ]);
             } catch (\Throwable $e) {
                 // A proof-history write failure must not fail the submission.
+            }
+
+            // Record an evidence security event for the proof submission.
+            try {
+                app(\App\Services\EvidenceSecurityService::class)->logEvent(
+                    \App\Models\EvidenceSecurityEvent::PROOF_SUBMITTED,
+                    $record->violation_id,
+                    null,
+                    'info',
+                    $request,
+                    [
+                        'record_id' => $record->record_id,
+                        'proof_code' => $proofCode,
+                        'sha256' => $sha256,
+                    ],
+                    'student',
+                    (int) ($user->user_id ?? $user->getAuthIdentifier()),
+                );
+            } catch (\Throwable $e) {
+                // Logging must never break the submission.
             }
 
             // Notify the admin so they can review the submitted proof.
@@ -536,7 +572,7 @@ public function requestSanction(Request $request)
      *
      * @return \Symfony\Component\HttpFoundation\StreamedResponse
      */
-    public function downloadProof(StudentSanctionRecord $studentSanctionRecord)
+    public function downloadProof(StudentSanctionRecord $studentSanctionRecord, Request $request)
     {
         if ((string) $studentSanctionRecord->student_number !== (string) Auth::user()->student_number) {
             abort(403);
@@ -551,6 +587,22 @@ public function requestSanction(Request $request)
 
         if (! $disk->exists($studentSanctionRecord->proof_path)) {
             abort(404);
+        }
+
+        // Audit the access (owning student viewing their own proof of completion).
+        try {
+            app(\App\Services\EvidenceSecurityService::class)->logEvent(
+                \App\Models\EvidenceSecurityEvent::PROOF_VIEWED,
+                $studentSanctionRecord->violation_id,
+                null,
+                'info',
+                $request,
+                ['record_id' => $studentSanctionRecord->record_id],
+                'student',
+                (int) (Auth::user()?->user_id ?? Auth::user()?->getAuthIdentifier()),
+            );
+        } catch (\Throwable $e) {
+            // Logging must never break the proof view.
         }
 
         return $disk->response(
@@ -595,7 +647,7 @@ public function requestSanction(Request $request)
 
         // Audit the access (owning student viewing their confirmed evidence).
         app(\App\Services\EvidenceSecurityService::class)->auditEvidenceAccess(
-            'EVIDENCE_VIEWED',
+            'STUDENT_EVIDENCE_VIEWED',
             $evidence,
             'student',
             (int) (Auth::user()?->user_id ?? Auth::user()?->getAuthIdentifier()),

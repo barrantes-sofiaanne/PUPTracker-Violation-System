@@ -92,16 +92,40 @@ document.addEventListener("DOMContentLoaded", function () {
     const MAX_EVIDENCE = 5;
     const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
+    // Correlate every browser-monitor event of one capture attempt to a single
+    // camera/capture session (CAM-SESSION-YYYY-NNNNNN). Generated when the
+    // camera portal opens and sent with each security event + on submit.
+    let captureSessionId = null;
+
     // ------------------------------------------------------------------
     // Security event reporting (browser monitor → server).
     // These are DETECTION / DETERRENCE indicators only — never a claim that
     // a screenshot "confirmed" occurred (browsers cannot prove that).
     // ------------------------------------------------------------------
+    const beginCaptureSession = () => {
+        if (!captureSessionId) {
+            // Best-effort unique id; the server stores it as-is. This is an
+            // audit correlation key, never a security boundary.
+            const d = new Date();
+            const pad = (n) => String(n).padStart(2, "0");
+            const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(
+                d.getDate(),
+            )}${pad(d.getHours())}${pad(d.getMinutes())}${pad(
+                d.getSeconds(),
+            )}${String(d.getMilliseconds()).padStart(3, "0")}`;
+            captureSessionId = `CAM-SESSION-${stamp}`;
+        }
+        return captureSessionId;
+    };
+
     const reportSecurityEvent = (eventType, meta, severity) => {
         if (!window.ViolationRoutes || !window.ViolationRoutes.securityEvent) {
             return;
         }
         const payload = { event_type: eventType, severity: severity || "info" };
+        if (captureSessionId) {
+            payload.capture_session_id = captureSessionId;
+        }
         if (meta && typeof meta === "object") {
             payload.meta = meta;
         }
@@ -283,6 +307,9 @@ document.addEventListener("DOMContentLoaded", function () {
     // Open the security-notice modal (mandatory before camera init).
     const openSecurityNotice = () => {
         resetCameraPanels();
+        // Fresh capture session for THIS portal open so every monitor event
+        // (open, blur, focus, capture, abandon) is correlated together.
+        beginCaptureSession();
         if (!securityNoticeModalEl || !securityNoticeAck) {
             // Modal missing — still try to start (defensive).
             startCamera();
@@ -1011,6 +1038,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         updateEvidenceCount();
         cameraNoticeAccepted = false;
+        // Each modal open starts a NEW capture session.
+        captureSessionId = null;
         if (capturedImageObjectUrl) {
             URL.revokeObjectURL(capturedImageObjectUrl);
             capturedImageObjectUrl = null;
@@ -1428,6 +1457,10 @@ document.addEventListener("DOMContentLoaded", function () {
         formData.append("violation_type_id", violationTypeId);
         formData.append("violation_date", violationDate);
         formData.append("description", description);
+        // Correlate the submitted evidence to the camera/capture session.
+        if (captureSessionId) {
+            formData.append("capture_session_id", captureSessionId);
+        }
         evidenceItems.forEach(function (item, index) {
             formData.append("evidence[]", item.file, item.file.name);
             formData.append("capture_methods[" + index + "]", item.method);

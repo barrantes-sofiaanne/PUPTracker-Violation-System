@@ -348,7 +348,10 @@ class StudentViolationController extends Controller
 
             // Store supporting evidence privately (never public) and keep the
             // DB rows in the same transaction so a storage failure rolls back.
-            $this->storeEvidence($violation, $request, $security, $securityId);
+            $captureSessionId = $request->input('capture_session_id')
+                ? (string) $request->input('capture_session_id')
+                : null;
+            $this->storeEvidence($violation, $request, $security, $securityId, $captureSessionId);
 
             DB::commit();
 
@@ -455,7 +458,10 @@ class StudentViolationController extends Controller
 
             $violation = Violation::create($violationData);
 
-            $this->storeEvidence($violation, $request, $security, $securityId);
+            $captureSessionId = $request->input('capture_session_id')
+                ? (string) $request->input('capture_session_id')
+                : null;
+            $this->storeEvidence($violation, $request, $security, $securityId, $captureSessionId);
 
             DB::commit();
 
@@ -498,7 +504,7 @@ class StudentViolationController extends Controller
      * Store uploaded evidence for a violation privately and record audit/security
      * events. Runs inside the caller's DB transaction.
      */
-    private function storeEvidence(Violation $violation, Request $request, $security, ?int $securityId): void
+    private function storeEvidence(Violation $violation, Request $request, $security, ?int $securityId, ?string $captureSessionId = null): void
     {
         $evidenceFiles = $request->allFiles()['evidence'] ?? [];
 
@@ -508,7 +514,6 @@ class StudentViolationController extends Controller
         // metadata only — it never proves identity.
         $captureMethods = (array) $request->input('capture_methods', []);
         $capturedAts = (array) $request->input('captured_ats', []);
-        $watermarked = (array) $request->input('watermarked', []);
         $evidenceService = app(EvidenceSecurityService::class);
 
         foreach ($evidenceFiles as $index => $evidenceFile) {
@@ -519,27 +524,27 @@ class StudentViolationController extends Controller
             // the original filename is never trusted or used on disk.
             $filename = $evidenceCode . '.' . ($extension !== '' ? $extension : 'bin');
             $disk = $this->evidenceDisk();
-            $storedPath = $disk->putFileAs($directory, $evidenceFile, $filename);
-
-            if ($storedPath === false) {
-                throw new \RuntimeException('Unable to store evidence file.');
-            }
 
             $isCamera = strcasecmp((string) ($captureMethods[$index] ?? ''), 'camera') === 0;
             $capturedAt = isset($capturedAts[$index]) && $capturedAts[$index] !== ''
                 ? Carbon::parse($capturedAts[$index])
                 : null;
 
+            // Build the row first so we can derive the official path + hash.
             $evidence = ViolationEvidence::create([
                 'evidence_code' => $evidenceCode,
+                'capture_session_id' => $captureSessionId,
                 'violation_id' => $violation->violation_id,
-                'disk_path' => $storedPath,
+                'disk_path' => $directory . '/' . $filename,
                 'original_name' => $evidenceFile->getClientOriginalName(),
                 'mime_type' => $evidenceFile->getMimeType(),
                 'capture_method' => $isCamera
                     ? ViolationEvidence::CAPTURE_CAMERA
                     : ViolationEvidence::CAPTURE_UPLOAD,
-                'watermarked' => $isCamera || ! empty($watermarked[$index]),
+                // The client `watermarked` flag is never proof. The server
+                // re-bakes the watermark and records server_watermarked.
+                'watermarked' => false,
+                'server_watermarked' => false,
                 'captured_at' => $capturedAt,
                 'file_size' => $evidenceFile->getSize(),
                 'ip_address' => $evidenceService->clientIp($request),
@@ -548,15 +553,45 @@ class StudentViolationController extends Controller
                 'uploader_id' => $securityId,
             ]);
 
+            // Final trusted image: server-side watermark (images only), stored
+            // on the private disk, with SHA-256 of the FINAL bytes.
+            $store = app(\App\Services\EvidenceWatermarkService::class)->storeOfficialFile(
+                $evidenceFile,
+                $directory,
+                $filename,
+                $evidenceCode,
+                (string) ($violation->student_number ?? ''),
+                $capturedAt?->format('Y-m-d H:i:s'),
+            );
+
+            $storedPath = $store['path'];
+            if ($storedPath === '' || ! $disk->exists($storedPath)) {
+                throw new \RuntimeException('Unable to store evidence file.');
+            }
+
+            $evidence->update([
+                'disk_path' => $storedPath,
+                'file_size' => $disk->size($storedPath),
+                'server_watermarked' => $store['server_watermarked'],
+                'watermarked' => $store['server_watermarked'] || $isCamera,
+                'sha256_hash' => $store['sha256'],
+            ]);
+
             $evidenceService->logEvent(
                 EvidenceSecurityEvent::EVIDENCE_UPLOADED,
                 $violation->violation_id,
                 $evidence->evidence_id,
                 'info',
                 $request,
-                ['method' => $evidence->capture_method, 'code' => $evidenceCode],
+                [
+                    'method' => $evidence->capture_method,
+                    'code' => $evidenceCode,
+                    'sha256' => $store['sha256'],
+                    'server_watermarked' => $store['server_watermarked'],
+                ],
                 'security',
                 $securityId,
+                $captureSessionId,
             );
         }
     }
@@ -897,6 +932,7 @@ class StudentViolationController extends Controller
 
         $violationId = $request->input('violation_id') ? (int) $request->input('violation_id') : null;
         $evidenceId = $request->input('evidence_id') ? (int) $request->input('evidence_id') : null;
+        $captureSessionId = $request->input('capture_session_id') ? (string) $request->input('capture_session_id') : null;
         $severity = (string) $request->input('severity', 'info');
         $severity = in_array($severity, ['info', 'warning', 'critical'], true) ? $severity : 'info';
         $meta = $request->input('meta');
@@ -911,6 +947,7 @@ class StudentViolationController extends Controller
             $meta,
             'security',
             (int) $security->id,
+            $captureSessionId,
         );
 
         return response()->json(['success' => true]);

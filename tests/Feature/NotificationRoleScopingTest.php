@@ -360,14 +360,17 @@ class NotificationRoleScopingTest extends TestCase
             'violation_evidence_tbl' => function (Blueprint $table): void {
                 $table->increments('evidence_id');
                 $table->string('evidence_code', 32)->nullable();
+                $table->string('capture_session_id', 64)->nullable();
                 $table->unsignedBigInteger('violation_id')->nullable();
                 $table->string('disk_path', 500)->nullable();
                 $table->string('original_name', 255)->nullable();
                 $table->string('mime_type', 120)->nullable();
                 $table->string('capture_method', 20)->nullable()->default('upload');
                 $table->boolean('watermarked')->default(false);
+                $table->boolean('server_watermarked')->default(false);
                 $table->timestamp('captured_at')->nullable();
                 $table->unsignedBigInteger('file_size')->nullable();
+                $table->char('sha256_hash', 64)->nullable();
                 $table->string('ip_address', 64)->nullable();
                 $table->string('user_agent', 500)->nullable();
                 $table->string('uploader_type', 20)->nullable();
@@ -376,6 +379,7 @@ class NotificationRoleScopingTest extends TestCase
             },
             'evidence_security_events_tbl' => function (Blueprint $table): void {
                 $table->increments('event_id');
+                $table->string('capture_session_id', 64)->nullable();
                 $table->unsignedBigInteger('violation_id')->nullable();
                 $table->unsignedBigInteger('evidence_id')->nullable();
                 $table->string('event_type', 80);

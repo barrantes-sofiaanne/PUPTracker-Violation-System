@@ -247,6 +247,7 @@ class LoggingArchitectureTest extends TestCase
         if (! Schema::hasTable('evidence_security_events_tbl')) {
             Schema::create('evidence_security_events_tbl', function (Blueprint $table): void {
                 $table->increments('event_id');
+                $table->string('capture_session_id', 64)->nullable();
                 $table->unsignedBigInteger('violation_id')->nullable();
                 $table->unsignedBigInteger('evidence_id')->nullable();
                 $table->string('event_type', 80);

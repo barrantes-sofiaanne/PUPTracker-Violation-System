@@ -61,6 +61,22 @@ class EvidenceSecurityService
     }
 
     /**
+     * Generate a fresh camera/capture session id: CAM-SESSION-{YEAR}-{6-digit}.
+     * Each open of the camera portal creates a NEW session so the browser
+     * monitor events (open, blur, focus, possible capture, photo taken,
+     * submitted/abandoned) can all be correlated to the same attempt.
+     */
+    public function newCaptureSessionId(?int $year = null): string
+    {
+        $year = $year ?? (int) now()->format('Y');
+
+        // Uniqueness is per-session; derive from a random 6-digit suffix rather
+        // than a shared DB sequence (no session table exists). Collisions are
+        // astronomically unlikely and harmless (still individually logged).
+        return 'CAM-SESSION-' . $year . '-' . str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
      * Record an evidence security event. Event types are defined on
      * EvidenceSecurityEvent. Non-fatal: never throws for logging problems.
      */
@@ -73,9 +89,11 @@ class EvidenceSecurityService
         ?array $meta = null,
         ?string $actorType = null,
         ?int $actorId = null,
+        ?string $captureSessionId = null,
     ): void {
         try {
             $payload = [
+                'capture_session_id' => $captureSessionId,
                 'violation_id' => $violationId,
                 'evidence_id' => $evidenceId,
                 'event_type' => $eventType,
@@ -123,7 +141,8 @@ class EvidenceSecurityService
     }
 
     /**
-     * Write an AuditLog row for an evidence access (view/download).
+     * Write an AuditLog row for an evidence access (view/download), plus an
+     * evidence-scoped security event on the correlated timeline.
      */
     public function auditEvidenceAccess(
         string $action,
@@ -156,21 +175,37 @@ class EvidenceSecurityService
             // trail; we also log an evidence-scoped event for the timeline.
             AuditLog::create($row);
 
+            $eventType = $this->securityEventForAccessAction($action);
+
             $this->logEvent(
-                $action === 'EVIDENCE_DOWNLOADED'
-                    ? EvidenceSecurityEvent::EVIDENCE_DOWNLOADED
-                    : EvidenceSecurityEvent::EVIDENCE_VIEWED,
+                $eventType,
                 $violation?->violation_id,
                 $evidence->evidence_id,
                 'info',
                 $request,
-                null,
+                ['action' => $action],
                 $actorType,
                 $actorId,
             );
         } catch (\Throwable $e) {
             report($e);
         }
+    }
+
+    /**
+     * Map an access action to its evidence security event constant. Unknown
+     * actions fall back to EVIDENCE_VIEWED (never throws).
+     */
+    private function securityEventForAccessAction(string $action): string
+    {
+        return match ($action) {
+            'EVIDENCE_DOWNLOADED' => EvidenceSecurityEvent::EVIDENCE_DOWNLOADED,
+            'STUDENT_EVIDENCE_VIEWED' => EvidenceSecurityEvent::STUDENT_EVIDENCE_VIEWED,
+            'STUDENT_EVIDENCE_DOWNLOADED' => EvidenceSecurityEvent::STUDENT_EVIDENCE_DOWNLOADED,
+            'PROOF_VIEWED' => EvidenceSecurityEvent::PROOF_VIEWED,
+            'PROOF_DOWNLOADED' => EvidenceSecurityEvent::PROOF_DOWNLOADED,
+            default => EvidenceSecurityEvent::EVIDENCE_VIEWED,
+        };
     }
 
     public function clientIp(?Request $request): ?string

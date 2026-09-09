@@ -632,7 +632,7 @@ class SanctionController extends Controller
      *
      * @return \Symfony\Component\HttpFoundation\StreamedResponse
      */
-    public function downloadProof(StudentSanctionRecord $studentSanctionRecord)
+    public function downloadProof(StudentSanctionRecord $studentSanctionRecord, Request $request)
     {
         if ($studentSanctionRecord->proof_path === null || $studentSanctionRecord->proof_path === '') {
             abort(404);
@@ -643,6 +643,22 @@ class SanctionController extends Controller
 
         if (! $disk->exists($studentSanctionRecord->proof_path)) {
             abort(404);
+        }
+
+        // Audit the access (admin reviewing a proof of completion).
+        try {
+            app(\App\Services\EvidenceSecurityService::class)->logEvent(
+                \App\Models\EvidenceSecurityEvent::PROOF_VIEWED,
+                $studentSanctionRecord->violation_id,
+                null,
+                'info',
+                $request,
+                ['record_id' => $studentSanctionRecord->record_id],
+                'admin',
+                (int) Auth::guard('admin')->id(),
+            );
+        } catch (\Throwable $e) {
+            // Logging must never break the proof view.
         }
 
         return $disk->response(

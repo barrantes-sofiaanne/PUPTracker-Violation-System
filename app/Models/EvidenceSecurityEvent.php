@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * "confirmed" occurred — browsers/OSes cannot guarantee that.
  *
  * @property int $event_id
+ * @property string|null $capture_session_id
  * @property int|null $violation_id
  * @property int|null $evidence_id
  * @property string|null $event_type
@@ -55,9 +56,18 @@ class EvidenceSecurityEvent extends Model
     public const PRINTSCREEN_DETECTED = 'PRINTSCREEN_DETECTED';
     public const EVIDENCE_VIEWED = 'EVIDENCE_VIEWED';
     public const EVIDENCE_DOWNLOADED = 'EVIDENCE_DOWNLOADED';
+    public const STUDENT_EVIDENCE_VIEWED = 'STUDENT_EVIDENCE_VIEWED';
+    public const STUDENT_EVIDENCE_DOWNLOADED = 'STUDENT_EVIDENCE_DOWNLOADED';
+    public const PROOF_SUBMITTED = 'PROOF_SUBMITTED';
+    public const PROOF_VIEWED = 'PROOF_VIEWED';
+    public const PROOF_DOWNLOADED = 'PROOF_DOWNLOADED';
+    public const PROOF_ACCEPTED = 'PROOF_ACCEPTED';
+    public const PROOF_REJECTED = 'PROOF_REJECTED';
+    public const SANCTION_COMPLETED = 'SANCTION_COMPLETED';
     public const CAPTURE_ABANDONED = 'CAPTURE_ABANDONED';
 
     protected $fillable = [
+        'capture_session_id',
         'violation_id',
         'evidence_id',
         'event_type',
@@ -92,5 +102,10 @@ class EvidenceSecurityEvent extends Model
     public function scopeForViolation($query, $violationId)
     {
         return $query->where('violation_id', $violationId);
+    }
+
+    public function scopeForCaptureSession($query, string $captureSessionId)
+    {
+        return $query->where('capture_session_id', $captureSessionId);
     }
 }
