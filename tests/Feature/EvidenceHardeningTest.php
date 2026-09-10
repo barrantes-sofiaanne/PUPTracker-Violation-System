@@ -537,11 +537,12 @@ class EvidenceHardeningTest extends TestCase
         $this->assertStringNotContainsString('Sign your Community Service', $content);
         $this->assertStringNotContainsString('Do not upload violation evidence', $content);
 
-        // Dynamic sanction text reflects the actual assigned sanction.
-        $this->assertStringContainsString('data-violation="Counseling referral"', $content);
-        $this->assertStringContainsString('data-sanction="Counseling sessions"', $content);
-        // Not a Community Service sanction → the CS flag is off.
-        $this->assertStringContainsString('data-community-service="0"', $content);
+        // A counseling sanction is NOT Community/Campus Service, so it takes no
+        // proof of completion: the student is instead directed to the Office of
+        // Student Services for a personal consultation, and no upload trigger
+        // is rendered for that record.
+        $this->assertStringNotContainsString('data-record-id="' . $record->record_id . '"', $content);
+        $this->assertStringContainsString('Please proceed to the Office of Student Services', $content);
     }
 
     // ------------------------------------------------------------------

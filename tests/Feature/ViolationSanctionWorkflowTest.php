@@ -760,6 +760,8 @@ class ViolationSanctionWorkflowTest extends TestCase
             ->post(route('admin.sanctions.requests.approve', $sanctionRequest), [
                 'notification_date' => now()->format('Y-m-d'),
                 'deadline_date' => now()->addMonth()->format('Y-m-d'),
+                'designated_office' => 'Office of Student Affairs',
+                'starting_date' => now()->format('Y-m-d'),
             ])
             ->assertSessionHas('success');
 
@@ -1572,6 +1574,8 @@ class ViolationSanctionWorkflowTest extends TestCase
                 $table->unsignedBigInteger('assigned_by_admin_id')->nullable();
                 $table->string('status')->nullable();
                 $table->date('deadline_date')->nullable();
+                $table->string('designated_office', 255)->nullable();
+                $table->date('starting_date')->nullable();
                 $table->timestamp('date_assigned')->nullable();
                 $table->timestamp('date_completed')->nullable();
                 $table->string('proof_path', 500)->nullable();

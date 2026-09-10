@@ -53,7 +53,7 @@
 
             @if($sanctionRequest->is_active)
                 <div class="border-top mt-4 pt-4">
-                    <form action="{{ route('admin.sanctions.requests.approve', $sanctionRequest) }}" method="POST" class="d-flex flex-wrap align-items-end gap-2" data-sanction-text="{{ $assignedSanction?->disciplinary_sanction ?? '' }}">
+                    <form action="{{ route('admin.sanctions.requests.approve', $sanctionRequest) }}" method="POST" class="d-flex flex-wrap align-items-end gap-2" data-sanction-text="{{ $assignedSanction?->disciplinary_sanction ?? '' }}" data-service-sanction="{{ !empty($isServiceSanction) ? '1' : '0' }}">
                         @csrf
                         <div>
                             <label for="notification_date" class="admin-filter-label">Notification / Date Assigned</label>
@@ -64,6 +64,21 @@
                                 <input type="date" id="deadline_date" name="deadline_date" class="form-control" value="{{ $suggestedDeadline?->format('Y-m-d') }}">
                                 <small class="text-muted" id="deadlineHelp">Auto-filled from the stated sanction duration when available. You can adjust it.</small>
                         </div>
+
+                        {{-- Community Service / Campus Service assignment fields.
+                             Only rendered (and only required) for those two types. --}}
+                        @if(!empty($isServiceSanction))
+                            <div data-service-field>
+                                <label for="designated_office" class="admin-filter-label">Designated Office <span class="text-danger">*</span></label>
+                                <input type="text" id="designated_office" name="designated_office" class="form-control" value="{{ old('designated_office') }}" placeholder="e.g. Office of Student Affairs" maxlength="255" required>
+                            </div>
+                            <div data-service-field>
+                                <label for="starting_date" class="admin-filter-label">Starting Date <span class="text-danger">*</span></label>
+                                <input type="date" id="starting_date" name="starting_date" class="form-control" value="{{ old('starting_date', now()->format('Y-m-d')) }}" required>
+                                <small class="text-muted">Date the student is authorized to start rendering the service.</small>
+                            </div>
+                        @endif
+
                         <button type="submit" class="admin-btn admin-btn-success"><i class="bi bi-check2-circle"></i>Approve &amp; Notify</button>
                     </form>
                         @push('scripts')

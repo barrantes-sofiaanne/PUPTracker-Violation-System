@@ -51,7 +51,6 @@ class SanctionController extends Controller
             'violation.student',
             'completionReviewer',
         ])->whereHas('violation.violationType');
-
         $recordSearch = trim((string) request('record_search', ''));
         if ($recordSearch !== '') {
             $studentSanctionsQuery->where(function ($query) use ($recordSearch) {
@@ -164,12 +163,15 @@ class SanctionController extends Controller
             now()->startOfDay()
         );
 
+        $isServiceSanction = $this->isServiceSanctionText($assignedSanction?->disciplinary_sanction);
+
         return view('admin.sanctions.request', compact(
             'sanctionRequest',
             'latestViolation',
             'offenseLevel',
             'assignedSanction',
-            'suggestedDeadline'
+            'suggestedDeadline',
+            'isServiceSanction'
         ));
     }
 
@@ -181,9 +183,30 @@ class SanctionController extends Controller
             ]);
         }
 
+        // Resolve the sanction that will be assigned so we can decide whether
+        // the Community Service / Campus Service assignment fields are needed.
+        // The office + starting date are REQUIRED only for those two types;
+        // every other sanction type keeps its existing workflow untouched.
+        $resolvedSanction = $this->resolveAssignedSanction(
+            (string) $sanctionRequest->student_number,
+            (int) $sanctionRequest->violation_type_id
+        );
+        $isServiceSanction = $this->isServiceSanctionText($resolvedSanction?->disciplinary_sanction);
+
         $validated = $request->validate([
             'notification_date' => ['required', 'date'],
             'deadline_date' => ['nullable', 'date', 'after_or_equal:notification_date'],
+            // Required ONLY for Community Service / Campus Service. For every
+            // other sanction type these are optional and ignored.
+            'designated_office' => array_filter([
+                $isServiceSanction ? 'required' : 'nullable',
+                'string',
+                'max:255',
+            ]),
+            'starting_date' => array_filter([
+                $isServiceSanction ? 'required' : 'nullable',
+                'date',
+            ]),
         ]);
 
         $adminId = Auth::guard('admin')->id();
@@ -192,7 +215,17 @@ class SanctionController extends Controller
             ? Carbon::parse($validated['deadline_date'])->endOfDay()
             : null;
 
-        DB::transaction(function () use ($sanctionRequest, $adminId, $scheduledDate, &$deadlineDate): void {
+        // Assignment fields are only meaningful for service sanctions. For any
+        // other type they are stored as null so a record can never carry a
+        // stale office/date from a previous assignment.
+        $designatedOffice = ($isServiceSanction && !empty($validated['designated_office']))
+            ? trim((string) $validated['designated_office'])
+            : null;
+        $startingDate = ($isServiceSanction && !empty($validated['starting_date']))
+            ? Carbon::parse($validated['starting_date'])->startOfDay()
+            : null;
+
+        DB::transaction(function () use ($sanctionRequest, $adminId, $scheduledDate, &$deadlineDate, $designatedOffice, $startingDate): void {
             $student = $sanctionRequest->student;
             $violationType = $sanctionRequest->violationType;
 
@@ -259,6 +292,9 @@ class SanctionController extends Controller
                     'assigned_by_admin_id' => $adminId,
                     'date_assigned' => $scheduledDate,
                     'deadline_date' => $deadlineDate,
+                    // Service assignment (null for non-service sanctions).
+                    'designated_office' => $designatedOffice,
+                    'starting_date' => $startingDate,
                     // Approving assigns the sanction — it is now in progress.
                     'status' => StudentSanctionRecord::STATUS_IN_PROGRESS,
                 ]);
@@ -271,6 +307,9 @@ class SanctionController extends Controller
                     'status' => StudentSanctionRecord::STATUS_IN_PROGRESS,
                     'date_assigned' => $scheduledDate,
                     'deadline_date' => $deadlineDate,
+                    // Service assignment (null for non-service sanctions).
+                    'designated_office' => $designatedOffice,
+                    'starting_date' => $startingDate,
                 ]);
             }
 
@@ -285,11 +324,15 @@ class SanctionController extends Controller
                 $deadlineMessage = $deadlineDate
                     ? ' Deadline to complete: ' . $deadlineDate->format('M d, Y') . '.'
                     : '';
+                $serviceMessage = $designatedOffice
+                    ? ' Designated office: ' . $designatedOffice . '.'
+                        . ($startingDate ? ' Starting date: ' . $startingDate->format('M d, Y') . '.' : '')
+                    : '';
                 app(\App\Services\StudentNotificationService::class)->create(
                     studentNumber: $student->student_number,
                     type: 'sanction',
                     title: 'Sanction Request Approved',
-                    message: 'Your sanction request was approved. Please check your Sanction Record tab. Scheduled date: ' . $scheduledDate->format('M d, Y') . '.' . $deadlineMessage,
+                    message: 'Your sanction request was approved. Please check your Sanction Record tab. Scheduled date: ' . $scheduledDate->format('M d, Y') . '.' . $serviceMessage . $deadlineMessage,
                     targetType: 'sanction_request',
                     targetId: (int) $sanctionRequest->request_id,
                 );
@@ -302,7 +345,10 @@ class SanctionController extends Controller
                 'actor_id' => $adminId,
                 'action' => 'Approve',
                 'module' => 'Sanction Requests',
-                'description' => 'Approved sanction request #' . $sanctionRequest->request_id . ' for student ' . $student->student_number . ($deadlineDate ? ' with deadline ' . $deadlineDate->format('Y-m-d') : '') . '.',
+                'description' => 'Approved sanction request #' . $sanctionRequest->request_id . ' for student ' . $student->student_number
+                    . ($designatedOffice ? ' with designated office "' . $designatedOffice . '"' : '')
+                    . ($startingDate ? ' starting ' . $startingDate->format('Y-m-d') : '')
+                    . ($deadlineDate ? ' with deadline ' . $deadlineDate->format('Y-m-d') : '') . '.',
             ]);
         });
 
@@ -358,13 +404,21 @@ class SanctionController extends Controller
 
     public function acceptProof(StudentSanctionRecord $studentSanctionRecord): RedirectResponse
     {
+        $studentSanctionRecord->loadMissing('assignedSanction');
+
         if (! $studentSanctionRecord->is_open) {
             return back()->withErrors([
                 'sanction_record' => 'Only open sanctions with a submitted proof can be completed.',
             ]);
         }
 
-        if ($studentSanctionRecord->proof_path === null || $studentSanctionRecord->proof_path === '') {
+        // Non-service sanctions take NO proof of completion: the student is
+        // directed to the Office of Student Services for a personal
+        // consultation, and the administrator closes the record once that
+        // consultation has taken place.
+        $requiresProof = $studentSanctionRecord->requires_proof_of_completion;
+
+        if ($requiresProof && ($studentSanctionRecord->proof_path === null || $studentSanctionRecord->proof_path === '')) {
             return back()->withErrors([
                 'sanction_record' => 'This sanction has no submitted proof of completion to accept.',
             ]);
@@ -372,7 +426,7 @@ class SanctionController extends Controller
 
         $adminId = Auth::guard('admin')->id();
 
-        DB::transaction(function () use ($studentSanctionRecord, $adminId): void {
+        DB::transaction(function () use ($studentSanctionRecord, $adminId, $requiresProof): void {
             $studentSanctionRecord->update([
                 'status' => StudentSanctionRecord::STATUS_COMPLETED,
                 'date_completed' => now(),
@@ -381,15 +435,20 @@ class SanctionController extends Controller
                 'completion_remarks' => null,
             ]);
 
-            // Mark the latest submitted proof as accepted in history.
-            $this->markLatestProofReviewed($studentSanctionRecord, $adminId, 'accepted', null);
+            // Mark the latest submitted proof as accepted in history. Only
+            // service sanctions have a proof to review.
+            if ($requiresProof) {
+                $this->markLatestProofReviewed($studentSanctionRecord, $adminId, 'accepted', null);
+            }
 
             try {
                 app(\App\Services\StudentNotificationService::class)->create(
                     studentNumber: $studentSanctionRecord->student_number,
                     type: 'sanction',
                     title: 'Sanction Completed',
-                    message: 'Your submitted proof of completion was accepted. Your sanction is now marked as completed.',
+                    message: $requiresProof
+                        ? 'Your submitted proof of completion was accepted. Your sanction is now marked as completed.'
+                        : 'Your disciplinary sanction has been marked as completed after your consultation at the Office of Student Services.',
                     targetType: 'sanction_request',
                     targetId: (int) $studentSanctionRecord->record_id,
                 );
@@ -400,13 +459,18 @@ class SanctionController extends Controller
             AuditLog::create([
                 'actor_type' => 'admin',
                 'actor_id' => $adminId,
-                'action' => 'Accept Proof',
+                'action' => $requiresProof ? 'Accept Proof' : 'Mark Completed',
                 'module' => 'Sanction Records',
-                'description' => 'Accepted proof of completion and marked sanction record #' . $studentSanctionRecord->record_id . ' as completed.',
+                'description' => ($requiresProof
+                        ? 'Accepted proof of completion and marked'
+                        : 'Marked')
+                    . ' sanction record #' . $studentSanctionRecord->record_id . ' as completed.',
             ]);
         });
 
-        return back()->with('success', 'Proof accepted and sanction marked as completed.');
+        return back()->with('success', $requiresProof
+            ? 'Proof accepted and sanction marked as completed.'
+            : 'Sanction marked as completed.');
     }
 
     public function rejectProof(Request $request, StudentSanctionRecord $studentSanctionRecord): RedirectResponse
@@ -531,6 +595,108 @@ class SanctionController extends Controller
         });
 
         return back()->with('success', 'Completed sanction reopened and set back to in progress.');
+    }
+
+    /**
+     * Correct the designated office and/or starting date of a Community
+     * Service / Campus Service assignment before completion. Authorized to
+     * administrators only (nested inside the admin route group). The change is
+     * recorded in the existing audit log. Students can never call this.
+     */
+    public function updateServiceAssignment(Request $request, StudentSanctionRecord $studentSanctionRecord): RedirectResponse
+    {
+        $studentSanctionRecord->loadMissing('assignedSanction');
+
+        if (! $studentSanctionRecord->is_service_sanction) {
+            return back()->withErrors([
+                'sanction_record' => 'Only Community Service or Campus Service assignments have a designated office and starting date.',
+            ]);
+        }
+
+        if (! $studentSanctionRecord->is_open) {
+            return back()->withErrors([
+                'sanction_record' => 'A completed sanction assignment can no longer be edited.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'designated_office' => ['required', 'string', 'max:255'],
+            'starting_date' => ['required', 'date'],
+        ]);
+
+        $adminId = Auth::guard('admin')->id();
+        $newOffice = trim((string) $validated['designated_office']);
+        $newStart = Carbon::parse($validated['starting_date'])->startOfDay();
+
+        $oldOffice = (string) $studentSanctionRecord->designated_office;
+        $oldStart = optional($studentSanctionRecord->starting_date)->toDateString();
+
+        DB::transaction(function () use ($studentSanctionRecord, $adminId, $newOffice, $newStart, $oldOffice, $oldStart): void {
+            $studentSanctionRecord->update([
+                'designated_office' => $newOffice,
+                'starting_date' => $newStart,
+            ]);
+
+            try {
+                app(\App\Services\StudentNotificationService::class)->create(
+                    studentNumber: $studentSanctionRecord->student_number,
+                    type: 'sanction',
+                    title: 'Service Assignment Updated',
+                    message: 'Your Community/Campus Service assignment was updated. Designated office: ' . $newOffice . '. Starting date: ' . $newStart->format('M d, Y') . '.',
+                    targetType: 'sanction_request',
+                    targetId: (int) $studentSanctionRecord->record_id,
+                );
+            } catch (\Throwable $e) {
+                // Notification must never break the update.
+            }
+
+            AuditLog::create([
+                'actor_type' => 'admin',
+                'actor_id' => $adminId,
+                'action' => 'Update Service Assignment',
+                'module' => 'Sanction Records',
+                'description' => 'Updated service assignment for sanction record #' . $studentSanctionRecord->record_id
+                    . ': office "' . $oldOffice . '" -> "' . $newOffice . '"'
+                    . ', starting date ' . ($oldStart ?: 'none') . ' -> ' . $newStart->toDateString() . '.',
+            ]);
+        });
+
+        return back()->with('success', 'Service assignment updated.');
+    }
+
+    /**
+     * Whether a sanction description text is a Community Service or Campus
+     * Service sanction (the only types that carry a designated office and a
+     * starting date).
+     */
+    private function isServiceSanctionText(?string $sanctionText): bool
+    {
+        $text = strtolower(trim((string) $sanctionText));
+
+        return $text !== ''
+            && (str_contains($text, 'community') || str_contains($text, 'campus service'));
+    }
+
+    /**
+     * Resolve the DisciplinarySanction that approveRequest() will assign for a
+     * student's violation type, matching the same offense-level fallback used
+     * when the record is actually created.
+     */
+    private function resolveAssignedSanction(string $studentNumber, int $violationTypeId): ?DisciplinarySanction
+    {
+        $offenseCount = Violation::where('student_number', $studentNumber)
+            ->where('violation_type', $violationTypeId)
+            ->effective()
+            ->count();
+
+        $offenseLevel = $this->formatOffenseLevel($offenseCount);
+
+        return DisciplinarySanction::where('violation_type_id', $violationTypeId)
+            ->where('offense_level', $offenseLevel)
+            ->first()
+            ?? DisciplinarySanction::where('violation_type_id', $violationTypeId)
+                ->orderBy('disciplinary_sanction_id')
+                ->first();
     }
 
     /**

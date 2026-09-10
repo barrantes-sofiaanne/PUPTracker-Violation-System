@@ -459,9 +459,20 @@ public function requestSanction(Request $request)
      *
      * The uploaded file and optional notes are attached to the sanction record
      * and an administrator is notified so they can accept or reject the proof.
+     *
+     * ONLY Community Service / Campus Service sanctions accept a proof. For
+     * every other sanction the student is instead directed to the Office of
+     * Student Services for a personal consultation (see
+     * StudentSanctionRecord::CONSULTATION_NOTICE).
      */
     public function submitProof(Request $request)
     {
+        // SECURITY: only record_id, the proof file, and optional notes are ever
+        // read from the student. The designated office and starting date are
+        // ADMIN-controlled assignment fields and MUST come from the server-side
+        // StudentSanctionRecord — a student can never change them, even if they
+        // inject designated_office/starting_date into this request. Ownership is
+        // enforced below by scoping on the authenticated student_number.
         $request->validate([
             'record_id' => ['required', 'integer'],
             'proof_file' => [
@@ -479,7 +490,7 @@ public function requestSanction(Request $request)
         /** @var User $user */
         $user = Auth::user();
 
-        $record = StudentSanctionRecord::with('violation')
+        $record = StudentSanctionRecord::with(['violation', 'assignedSanction'])
             ->where('record_id', $request->integer('record_id'))
             ->where('student_number', $user->student_number)
             ->first();
@@ -495,6 +506,17 @@ public function requestSanction(Request $request)
             return response()->json([
                 'success' => false,
                 'message' => 'This sanction is already completed and cannot accept a new proof.',
+            ], 422);
+        }
+
+        // Only Community Service / Campus Service sanctions take a proof of
+        // completion. Every other sanction is processed through a personal
+        // consultation at the Office of Student Services, so a proof upload is
+        // rejected server-side even if the client posts one.
+        if (! $record->requires_proof_of_completion) {
+            return response()->json([
+                'success' => false,
+                'message' => StudentSanctionRecord::CONSULTATION_NOTICE,
             ], 422);
         }
 

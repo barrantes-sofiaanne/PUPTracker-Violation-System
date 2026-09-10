@@ -28,6 +28,7 @@ class BackupHistory extends Model
         'backup_name',
         'backup_type',
         'parent_backup_id',
+        'base_backup_name',
         'status',
         'started_at',
         'completed_at',

@@ -65,6 +65,9 @@ class BackupHistoryController extends Controller
      *   verified_at     : ISO timestamp (optional)
      *   storage_path    : private object key (optional)
      *   parent_backup_id: recovery-chain parent (optional)
+     *   base_backup_name: FULL backup name an incremental depends on (optional)
+     *   binlog_file_start / binlog_position_start : incremental start boundary
+     *   binlog_file_end / binlog_position_end     : incremental end boundary
      *   error_message   : required when status=failed
      *
      * Protected by a shared token in config (config('services.backup.report_token')).
@@ -120,6 +123,14 @@ class BackupHistoryController extends Controller
             'verified_at' => ['nullable', 'date'],
             'storage_path' => ['nullable', 'string', 'max:500'],
             'parent_backup_id' => ['nullable', 'integer', 'exists:backup_history,id'],
+            // Recovery-chain metadata for TRUE incrementals. All optional so the
+            // existing FULL / daily_snapshot contract is unchanged.
+            'base_backup_name' => ['nullable', 'string', 'max:255'],
+            'base_full_storage_path' => ['nullable', 'string', 'max:500'],
+            'binlog_file_start' => ['nullable', 'string', 'max:255'],
+            'binlog_position_start' => ['nullable', 'integer', 'min:0'],
+            'binlog_file_end' => ['nullable', 'string', 'max:255'],
+            'binlog_position_end' => ['nullable', 'integer', 'min:0'],
             'error_message' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -145,6 +156,24 @@ class BackupHistoryController extends Controller
             'verified_at' => $validated['verified_at'] ?? null,
             'storage_path' => $validated['storage_path'] ?? null,
             'parent_backup_id' => $validated['parent_backup_id'] ?? null,
+            // base_backup_name is the human-readable FULL the incremental depends
+            // on. Null for FULL / daily_snapshot. Only present on newer schema.
+            'base_backup_name' => $validated['backup_type'] === 'incremental'
+                ? ($validated['base_backup_name'] ?? null)
+                : null,
+            // Binlog boundary — only meaningful for TRUE incrementals.
+            'binlog_file_start' => $validated['backup_type'] === 'incremental'
+                ? ($validated['binlog_file_start'] ?? null)
+                : null,
+            'binlog_position_start' => $validated['backup_type'] === 'incremental'
+                ? ($validated['binlog_position_start'] ?? null)
+                : null,
+            'binlog_file_end' => $validated['backup_type'] === 'incremental'
+                ? ($validated['binlog_file_end'] ?? null)
+                : null,
+            'binlog_position_end' => $validated['backup_type'] === 'incremental'
+                ? ($validated['binlog_position_end'] ?? null)
+                : null,
             // error_message is only persisted when the report status is failed.
             'error_message' => $validated['status'] === 'failed'
                 ? ($validated['error_message'] ?? null)

@@ -457,6 +457,11 @@ Route::middleware('auth:admin')
         Route::post('/sanctions/records/{studentSanctionRecord}/revert', [SanctionController::class, 'revertRecordToPending'])
             ->name('admin.sanctions.records.revert');
 
+        // Correct the designated office / starting date of a Community Service
+        // or Campus Service assignment before completion (admin-only).
+        Route::post('/sanctions/records/{studentSanctionRecord}/service-assignment', [SanctionController::class, 'updateServiceAssignment'])
+            ->name('admin.sanctions.records.update-service-assignment');
+
         Route::get('/sanctions/records/{studentSanctionRecord}/proof', [SanctionController::class, 'downloadProof'])
             ->name('admin.sanctions.proof.download');
 

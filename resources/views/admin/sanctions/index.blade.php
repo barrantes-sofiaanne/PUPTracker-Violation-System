@@ -249,7 +249,17 @@
                                             </div>
                                         </td>
                                         <td>{{ optional(optional($record->violation)->violationType)->violation_type ?? 'N/A' }}</td>
-                                        <td style="max-width: 240px; white-space: normal;">{{ optional($record->assignedSanction)->disciplinary_sanction ?? 'N/A' }}</td>
+                                        <td style="max-width: 240px; white-space: normal;">
+                                            {{ optional($record->assignedSanction)->disciplinary_sanction ?? 'N/A' }}
+                                            @if($record->is_service_sanction)
+                                                <div class="small text-muted mt-1">
+                                                    <i class="bi bi-building me-1"></i>{{ $record->designated_office ?: '—' }}
+                                                </div>
+                                                <div class="small text-muted">
+                                                    <i class="bi bi-calendar-event me-1"></i>Starts {{ optional($record->starting_date)->format('M d, Y') ?? '—' }}
+                                                </div>
+                                            @endif
+                                        </td>
                                         <td>{{ optional($record->date_assigned)->format('M d, Y') ?? '-' }}</td>
                                         <td>
                                             @php
@@ -286,7 +296,19 @@
                                             @endif
                                         </td>
                                         <td style="min-width:200px;">
-                                            @if($record->has_pending_proof)
+                                            @if(! $record->requires_proof_of_completion)
+                                                {{-- Non-service sanctions take NO proof of
+                                                     completion: the student is directed to the
+                                                     Office of Student Services for a personal
+                                                     consultation. --}}
+                                                @if($isOpen)
+                                                    <div class="small text-muted">
+                                                        <i class="bi bi-info-circle me-1"></i>Personal consultation required at the Office of Student Services.
+                                                    </div>
+                                                @else
+                                                    <span class="text-muted small">No proof required</span>
+                                                @endif
+                                            @elseif($record->has_pending_proof)
                                                 <div class="small text-muted mb-1">
                                                     <i class="bi bi-file-earmark-arrow-up me-1"></i>
                                                     {{ $record->proof_original_name ?: 'Proof submitted' }}
@@ -314,7 +336,26 @@
                                             @endif
                                         </td>
                                         <td class="text-end">
-                                            @if($record->has_pending_proof)
+                                            @if(! $record->requires_proof_of_completion)
+                                                {{-- Non-service sanction: no proof to review — the
+                                                     administrator closes the record once the student
+                                                     has consulted the Office of Student Services. --}}
+                                                @if($isOpen)
+                                                    <form action="{{ route('admin.sanctions.records.complete', $record) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        <button type="submit" class="admin-btn admin-btn-success admin-btn-sm" title="Mark as completed after the personal consultation">
+                                                            Mark Completed
+                                                        </button>
+                                                    </form>
+                                                @else
+                                                    <form action="{{ route('admin.sanctions.records.revert', $record) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        <button type="submit" class="admin-btn admin-btn-view admin-btn-sm">
+                                                            Reopen
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            @elseif($record->has_pending_proof)
                                                 <form action="{{ route('admin.sanctions.records.complete', $record) }}" method="POST" class="d-inline">
                                                     @csrf
                                                     <button type="submit" class="admin-btn admin-btn-success admin-btn-sm">
@@ -343,6 +384,20 @@
                                                 </form>
                                             @else
                                                 <span class="text-muted small">No action needed</span>
+                                            @endif
+
+                                            @if($record->is_service_sanction && $isOpen)
+                                                <button
+                                                    type="button"
+                                                    class="admin-btn admin-btn-neutral admin-btn-sm service-assignment-btn mt-1"
+                                                    data-record-id="{{ $record->record_id }}"
+                                                    data-student="{{ $record->student_number }}"
+                                                    data-office="{{ $record->designated_office }}"
+                                                    data-starting-date="{{ optional($record->starting_date)->format('Y-m-d') }}"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#serviceAssignmentModal">
+                                                    <i class="bi bi-pencil-square me-1"></i>Edit Assignment
+                                                </button>
                                             @endif
                                         </td>
                                     </tr>
@@ -407,6 +462,18 @@
                     <label for="modal_deadline_date" class="form-label fw-semibold mt-3">Deadline (if needed)</label>
                     <input type="date" id="modal_deadline_date" name="deadline_date" class="form-control">
                     <small class="text-muted">Optional completion deadline shown to the student.</small>
+
+                    {{-- Community Service / Campus Service assignment fields.
+                         Hidden by default; the modal shows and requires them only
+                         when the reviewed sanction is a service sanction. --}}
+                    <div id="serviceAssignmentFields" class="d-none">
+                        <label for="modal_designated_office" class="form-label fw-semibold mt-3">Designated Office <span class="text-danger">*</span></label>
+                        <input type="text" id="modal_designated_office" name="designated_office" class="form-control" placeholder="e.g. Office of Student Affairs" maxlength="255" disabled>
+                        <small class="text-muted">Office where the student will render the service.</small>
+                        <label for="modal_starting_date" class="form-label fw-semibold mt-3">Starting Date <span class="text-danger">*</span></label>
+                        <input type="date" id="modal_starting_date" name="starting_date" class="form-control" disabled>
+                        <small class="text-muted">Date the student is authorized to start rendering the service.</small>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer admin-modal-footer d-flex justify-content-between">
@@ -452,6 +519,35 @@
         </div>
     </div>
 </div>
+
+{{-- Edit Community/Campus Service assignment modal (admin-only) --}}
+<div class="modal fade admin-modal" id="serviceAssignmentModal" tabindex="-1" aria-labelledby="serviceAssignmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content admin-modal-content">
+            <div class="modal-header admin-modal-header">
+                <h5 class="modal-title admin-modal-title" id="serviceAssignmentModalLabel">Edit Service Assignment</h5>
+                <button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="serviceAssignmentForm" method="POST">
+                @csrf
+                <div class="modal-body admin-modal-body">
+                    <p class="text-muted">Update the designated office and starting date for this Community/Campus Service assignment. The student is notified and the change is recorded in the audit log.</p>
+                    <div class="mb-2"><strong>Student Number:</strong> <span id="serviceAssignmentStudent">-</span></div>
+                    <label for="serviceAssignmentOffice" class="form-label fw-semibold mt-2">Designated Office <span class="text-danger">*</span></label>
+                    <input type="text" name="designated_office" id="serviceAssignmentOffice" class="form-control" maxlength="255" required>
+                    <label for="serviceAssignmentStartingDate" class="form-label fw-semibold mt-3">Starting Date <span class="text-danger">*</span></label>
+                    <input type="date" name="starting_date" id="serviceAssignmentStartingDate" class="form-control" required>
+                </div>
+                <div class="modal-footer admin-modal-footer">
+                    <button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="admin-btn admin-btn-success">
+                        <i class="bi bi-check2-circle me-1"></i>Save Assignment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -467,6 +563,7 @@
             'approveUrlTemplate' => route('admin.sanctions.requests.approve', ['sanctionRequest' => '__REQUEST_ID__']),
             'declineUrlTemplate' => route('admin.sanctions.requests.decline', ['sanctionRequest' => '__REQUEST_ID__']),
             'rejectProofUrlTemplate' => route('admin.sanctions.records.reject-proof', ['studentSanctionRecord' => '__RECORD_ID__']),
+            'serviceAssignmentUrlTemplate' => route('admin.sanctions.records.update-service-assignment', ['studentSanctionRecord' => '__RECORD_ID__']),
         ],
     ];
 @endphp
@@ -535,6 +632,19 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('requestModalOffense').textContent = button.dataset.offense || '-';
             document.getElementById('requestModalDescription').textContent = button.dataset.description || 'No remarks recorded.';
             document.getElementById('requestModalSanction').textContent = button.dataset.sanction || 'No matching sanction is configured yet.';
+
+            // Community Service / Campus Service assignment fields are shown and
+            // required ONLY for those two sanction types.
+            const sanctionText = String(button.dataset.sanction || '').toLowerCase();
+            const isServiceSanction = sanctionText.includes('community') || sanctionText.includes('campus service');
+            const serviceWrap = document.getElementById('serviceAssignmentFields');
+            if (serviceWrap) {
+                serviceWrap.classList.toggle('d-none', !isServiceSanction);
+                const officeInput = document.getElementById('modal_designated_office');
+                const startInput = document.getElementById('modal_starting_date');
+                if (officeInput) { officeInput.disabled = !isServiceSanction; officeInput.required = isServiceSanction; if (!isServiceSanction) { officeInput.value = ''; } }
+                if (startInput) { startInput.disabled = !isServiceSanction; startInput.required = isServiceSanction; if (!isServiceSanction) { startInput.value = ''; } }
+            }
         });
     });
 
@@ -547,6 +657,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 rejectProofForm.action = pageData.routes.rejectProofUrlTemplate.replace('__RECORD_ID__', recordId);
                 document.getElementById('rejectModalStudent').textContent = button.dataset.student || '-';
                 document.getElementById('rejectReason').value = '';
+            });
+        });
+    }
+
+    // Community/Campus Service assignment edit modal wiring (admin-only).
+    const serviceAssignmentForm = document.getElementById('serviceAssignmentForm');
+    if (serviceAssignmentForm && pageData.routes.serviceAssignmentUrlTemplate) {
+        document.querySelectorAll('.service-assignment-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const recordId = button.dataset.recordId;
+                serviceAssignmentForm.action = pageData.routes.serviceAssignmentUrlTemplate.replace('__RECORD_ID__', recordId);
+                document.getElementById('serviceAssignmentStudent').textContent = button.dataset.student || '-';
+                document.getElementById('serviceAssignmentOffice').value = button.dataset.office || '';
+                document.getElementById('serviceAssignmentStartingDate').value = button.dataset.startingDate || '';
             });
         });
     }
