@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\SanctionController;
 use App\Http\Controllers\Admin\SuperAdminController;
 use App\Http\Controllers\Admin\UserManagementHistoryController;
 use App\Http\Controllers\Auth\AdminLoginController;
+use App\Http\Controllers\Auth\AdminIdpLoginController;
 use App\Http\Controllers\Auth\SecurityLoginController;
 use App\Http\Controllers\Auth\MfaController;
 use App\Http\Controllers\Auth\TotpSetupController;
@@ -114,6 +115,27 @@ Route::post('/admin/login', [AdminLoginController::class, 'login'])
 
 Route::post('/admin/logout', [AdminLoginController::class, 'logout'])
     ->name('admin.logout');
+
+/*
+| Administrator IDP login (the second, alternative admin login process).
+|
+| These endpoints intentionally carry NO `mfa.enforced` middleware: they are the
+| IDP sign-in path itself, where the PUP IDP has already authenticated the user
+| and acts as the second factor. They must stay reachable even while an
+| administrator is still enrolling in MFA, otherwise a first-time admin could
+| lock themselves out of both login methods.
+*/
+Route::get('/admin/idp/login', [AdminIdpLoginController::class, 'start'])
+    ->middleware('guest:admin')
+    ->name('admin.idp.login');
+
+Route::get('/admin/idp/callback', [AdminIdpLoginController::class, 'callback'])
+    ->middleware('guest:admin')
+    ->name('admin.idp.callback');
+
+Route::post('/admin/idp/start', [AdminIdpLoginController::class, 'start'])
+    ->middleware('guest:admin')
+    ->name('admin.idp.start');
 
 
 Route::get('/security/login', [SecurityLoginController::class, 'showLoginForm'])

@@ -2093,6 +2093,184 @@ html.is-navigating .auth-brand-mark::after {
     box-shadow: 0 20px 30px rgba(128, 0, 0, 0.33);
 }
 
+/* ------------------------------------------------------------------
+   Alternative login method (PUP IDP)
+   ------------------------------------------------------------------
+   The Administrator login card offers two ways in: email + password, or the
+   PUP IDP. The divider separates them, the IDP button is visually secondary
+   (outline instead of the filled primary), and the redirect overlay covers
+   the viewport while the browser leaves for the IDP. */
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1rem 0 0.85rem;
+    color: #6b5d61;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 1px;
+    background: rgba(128, 0, 0, 0.18);
+}
+
+.auth-content-card[data-portal="admin"] .login-btn.btn-outline-idp,
+.auth-content-card[data-portal="security"] .login-btn.btn-outline-idp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.7) !important;
+    border: 1px solid rgba(128, 0, 0, 0.35) !important;
+    color: #800000 !important;
+    box-shadow: 0 10px 20px rgba(128, 0, 0, 0.12);
+    text-decoration: none;
+}
+
+.auth-content-card[data-portal="admin"] .login-btn.btn-outline-idp:hover,
+.auth-content-card[data-portal="security"] .login-btn.btn-outline-idp:hover {
+    background: rgba(128, 0, 0, 0.06) !important;
+    border-color: #800000 !important;
+    color: #5f0000 !important;
+}
+
+/* Marks the button as busy the moment the redirect starts. */
+.login-btn.is-busy {
+    pointer-events: none;
+    opacity: 0.75;
+}
+
+.auth-hint {
+    margin: 0.7rem 0 0;
+    text-align: center;
+    color: #6b5d61;
+    font-size: 0.86rem;
+    line-height: 1.45;
+}
+
+/* ------------------------------------------------------------------
+   Redirecting-to-IDP overlay
+
+   A short, blocking "we are leaving" state. The overlay sits above the whole
+   auth card so the officer cannot interact with a page that is being replaced,
+   and it uses the same maroon/gold palette as the rest of the module.
+   ------------------------------------------------------------------ */
+.auth-redirect-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: rgba(31, 22, 32, 0.55);
+    backdrop-filter: blur(3px);
+}
+
+.auth-redirect-overlay[hidden] {
+    display: none !important;
+}
+
+.auth-redirect-card {
+    width: min(100%, 27rem);
+    padding: 1.6rem 1.5rem;
+    text-align: center;
+    background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
+    border: 1px solid rgba(128, 0, 0, 0.18);
+    border-radius: 1.1rem;
+    box-shadow: 0 24px 48px rgba(31, 22, 32, 0.32);
+}
+
+.auth-redirect-card h3 {
+    margin: 0.9rem 0 0.35rem;
+    color: #800000;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.auth-redirect-card p {
+    margin: 0;
+    color: #67585c;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.auth-redirect-spinner {
+    width: 38px;
+    height: 38px;
+    margin: 0 auto;
+    border: 3px solid rgba(128, 0, 0, 0.18);
+    border-top-color: #800000;
+    border-radius: 50%;
+    animation: authRedirectSpin 0.8s linear infinite;
+}
+
+@keyframes authRedirectSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Skeleton rows stand in for the IDP page that is being fetched, so the
+   transition reads as "loading next screen" rather than "stuck". */
+.auth-redirect-skeleton {
+    display: grid;
+    gap: 0.4rem;
+    margin: 1.1rem 0 0.9rem;
+}
+
+.auth-redirect-skeleton span {
+    height: 0.6rem;
+    border-radius: 999px;
+    background: linear-gradient(
+        90deg,
+        rgba(128, 0, 0, 0.08) 0%,
+        rgba(128, 0, 0, 0.2) 50%,
+        rgba(128, 0, 0, 0.08) 100%
+    );
+    background-size: 200% 100%;
+    animation: authRedirectShimmer 1.3s ease-in-out infinite;
+}
+
+.auth-redirect-skeleton span:nth-child(2) {
+    width: 78%;
+}
+
+.auth-redirect-skeleton span:nth-child(3) {
+    width: 55%;
+}
+
+@keyframes authRedirectShimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.auth-redirect-note {
+    font-size: 0.82rem !important;
+}
+
+.auth-redirect-note a {
+    color: #800000;
+    font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-redirect-spinner,
+    .auth-redirect-skeleton span {
+        animation: none;
+    }
+}
+
 /* Remember me (30-day trusted device) row for the Administrator and Security
    login forms, and for the MFA verification card where the same choice can be
    made or changed. The checkbox label is interactive text (it can toggle the
@@ -2140,9 +2318,7 @@ html.is-navigating .auth-brand-mark::after {
 .auth-content-card[data-portal="security"]
     .remember-check
     .form-check-input:focus,
-.auth-content-card[data-portal="mfa"]
-    .remember-check
-    .form-check-input:focus {
+.auth-content-card[data-portal="mfa"] .remember-check .form-check-input:focus {
     border-color: rgba(128, 0, 0, 0.58);
     box-shadow: 0 0 0 0.18rem rgba(128, 0, 0, 0.13);
 }

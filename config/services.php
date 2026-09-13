@@ -59,6 +59,18 @@ return [
         // Comma-separated role aliases that are allowed to sign in as a student.
         // Matched exactly (case-insensitive, whole-token), never substring.
         'student_roles' => env('IDP_STUDENT_ROLES', 'student'),
+        // Administrator roles. The PUP IDP role for a regular Administrator is
+        // "Admin" and for an IT Administrator is "System Administrator".
+        // Matched exactly (case-insensitive, whole-token), never substring, so
+        // a role such as "System Administrator Assistant" cannot slip through.
+        'admin_roles' => env('IDP_ADMIN_ROLES', 'Admin,System Administrator'),
+        // Which of the aliases above maps to the local "IT Administrator" role.
+        // Only the System Administrator IDP role may sign in as an IT
+        // Administrator; every other allowed alias is a regular Administrator.
+        'admin_super_roles' => env('IDP_ADMIN_SUPER_ROLES', 'System Administrator'),
+        // Canonical admin redirect URI. Kept separate from the student one so a
+        // single IDP client can be registered for both, or each can have its own.
+        'admin_redirect_uri' => env('IDP_ADMIN_REDIRECT_URI', env('IDP_ADMIN_REDIRECT_URL')),
         // Server-side token revocation endpoint relative to base_url.
         'logout_path' => env('IDP_LOGOUT_PATH', '/auth/logout'),
         // Front-channel (browser) IDP logout URL that clears the IDP SSO session
