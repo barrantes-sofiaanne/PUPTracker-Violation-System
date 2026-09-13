@@ -34,6 +34,237 @@ class AnnouncementViewTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // Security must match the Student UI (Student is the source of truth)
+    // ------------------------------------------------------------------
+
+    /**
+     * Extract the elements that define the announcement UI so the Student and
+     * Security pages can be compared structurally rather than by eyeballing.
+     *
+     * Class tokens are taken from the ANNOUNCEMENT REGION only (hero through
+     * the cards), so module-specific layout chrome — each module's own sidebar
+     * and navbar icons — does not pollute the comparison. Marker order and the
+     * `data-*` contract are compared across the whole document.
+     *
+     * @return array{classes: array<int,string>, order: array<int,int>, attrs: array<int,string>}
+     */
+    private function extractUiFingerprint(?string $html): array
+    {
+        $html = (string) $html;
+
+        // Announcement-relevant slice: the hero through to the viewer modal.
+        $start = strpos($html, 'portal-hero');
+        $end = strpos($html, 'id="announcementViewerModal"');
+        $region = ($start !== false && $end !== false && $end > $start)
+            ? substr($html, $start, $end - $start)
+            : $html;
+
+        // Every class token in the announcement region, sorted and de-duplicated.
+        preg_match_all('/class="([^"]*)"/', $region, $classMatches);
+        $classes = [];
+        foreach ($classMatches[1] as $classAttr) {
+            foreach (preg_split('/\s+/', trim($classAttr)) as $token) {
+                if ($token !== '') {
+                    $classes[$token] = true;
+                }
+            }
+        }
+        $classes = array_keys($classes);
+        sort($classes);
+
+        // Walking the markers in document order proves both modules build the
+        // card the same way.
+        $order = [];
+        foreach (
+            [
+                'announcement-view-trigger',
+                'announcement-rendered-content',
+                'id="announcementViewerModal"',
+            ] as $marker
+        ) {
+            $pos = strpos($html, $marker);
+            $order[$marker] = $pos === false ? -1 : $pos;
+        }
+
+        // Structural data-* contract shared by both modules.
+        preg_match_all('/data-announcement-[a-z-]+/', $html, $attrMatches);
+        $attrs = array_values(array_unique($attrMatches[0]));
+        sort($attrs);
+
+        return ['classes' => $classes, 'order' => $order, 'attrs' => $attrs];
+    }
+
+    /**
+     * The class contract that defines the standardized announcement UI. Both
+     * pages must use every one of these, which is what makes them match.
+     */
+    private const SHARED_UI_CLASSES = [
+        'portal-hero',          // page header/banner treatment
+        'mb-4',                 // hero + card spacing
+        'fw-bold',              // title typography
+        'text-muted',           // posted date/time, attachment metadata
+        'card',                 // card shell
+        'portal-card',
+        'card-body',
+        'border-secondary-subtle', // horizontal divider
+        'badge',                // attachment indicator
+        'bg-secondary',
+        'bi-paperclip',         // attachment indicator icon
+        'bi-megaphone-fill',    // card icon
+        'bi-eye',               // View action icon
+        'btn-sm',
+        'btn-outline-primary',  // View action styling
+        'announcement-view-trigger',
+        'announcement-rendered-content',
+    ];
+
+    public function test_security_ui_matches_student_ui(): void
+    {
+        Storage::fake('local');
+
+        $admin = $this->createAdmin();
+        $announcement = $this->createAnnouncement('Same Card', 'Same body.', $admin);
+        $this->createAttachment($announcement, 'photo.png', 'image/png');
+
+        $studentHtml = $this->actingAs($this->createStudent(), 'student')
+            ->get(route('student.announcements'))
+            ->assertOk()
+            ->getContent();
+
+        $securityHtml = $this->actingAs($this->createSecurity(), 'security')
+            ->get(route('security.announcements'))
+            ->assertOk()
+            ->getContent();
+
+        // --- Both pages implement the SAME standardized design contract ---
+        foreach (self::SHARED_UI_CLASSES as $class) {
+            $this->assertStringContainsString(
+                $class,
+                $studentHtml,
+                "The Student reference page should use the shared UI class '{$class}'."
+            );
+            $this->assertStringContainsString(
+                $class,
+                $securityHtml,
+                "Security must match Student by using the shared UI class '{$class}'."
+            );
+        }
+
+        // --- Security must NOT have kept its old divergent design ---
+        $this->assertStringNotContainsString('page-header-modern', $securityHtml);
+        $this->assertStringNotContainsString('portal-badge muted', $securityHtml);
+
+        // --- Both cards must present the same content order ---
+        // TITLE -> posted DATE -> divider -> message -> attachment indicator
+        // -> View action. (Security additionally renders its per-attachment
+        // rows between the indicator and the View action; that is preserved
+        // functionality, so the ordering assertions below are about the parts
+        // both modules share.)
+        foreach (['Student' => $studentHtml, 'Security' => $securityHtml] as $label => $html) {
+            $title = strpos($html, 'fw-bold');
+            $posted = strpos($html, 'Posted');
+            $divider = strpos($html, '<hr class="border-secondary-subtle">');
+            $badge = strpos($html, 'bi-paperclip');
+            $trigger = strpos($html, 'announcement-view-trigger');
+
+            foreach (['title' => $title, 'posted date' => $posted, 'divider' => $divider, 'attachment indicator' => $badge, 'View action' => $trigger] as $part => $pos) {
+                $this->assertNotFalse($pos, "{$label}: the {$part} is missing from the announcement UI.");
+            }
+
+            $this->assertTrue($title < $posted, "{$label}: the title must precede the posted date.");
+            $this->assertTrue($posted < $divider, "{$label}: the posted date must precede the divider.");
+            $this->assertTrue($divider < $badge, "{$label}: the divider must precede the attachment indicator.");
+            $this->assertTrue($badge < $trigger, "{$label}: the attachment indicator must precede the View action.");
+
+            // The shared viewer must be included exactly once (no duplicate
+            // design system, no duplicated modal id in the DOM).
+            $this->assertSame(
+                1,
+                substr_count($html, 'id="announcementViewerModal"'),
+                "{$label}: the shared viewer modal must be rendered exactly once."
+            );
+        }
+
+        // --- Same data-attribute contract (no second design system) ---
+        $this->assertSame(
+            $this->extractUiFingerprint($studentHtml)['attrs'],
+            $this->extractUiFingerprint($securityHtml)['attrs'],
+            'Both modules must drive the shared viewer with the same data attributes.'
+        );
+    }
+
+    public function test_security_hero_keeps_its_own_title_and_back_link(): void
+    {
+        $this->createAnnouncement('Notice', 'Body.');
+
+        $html = $this->actingAs($this->createSecurity(), 'security')
+            ->get(route('security.announcements'))
+            ->assertOk()
+            ->getContent();
+
+        // Its own real title/subtitle — never renamed to the Student wording.
+        $this->assertStringContainsString('Security Announcements', $html);
+        $this->assertStringContainsString('Review announcements shared by the administration.', $html);
+        $this->assertStringNotContainsString('Student Announcements', $html);
+
+        // Existing navigation is retained, not removed.
+        $this->assertStringContainsString('Back to Dashboard', $html);
+        $this->assertStringContainsString(route('security.dashboard'), $html);
+    }
+
+    public function test_both_pages_render_the_same_empty_state(): void
+    {
+        // No announcements at all for either module.
+        $studentHtml = $this->actingAs($this->createStudent(), 'student')
+            ->get(route('student.announcements'))
+            ->assertOk()
+            ->getContent();
+
+        $securityHtml = $this->actingAs($this->createSecurity(), 'security')
+            ->get(route('security.announcements'))
+            ->assertOk()
+            ->getContent();
+
+        foreach ([$studentHtml, $securityHtml] as $html) {
+            $this->assertStringContainsString('No announcements available.', $html);
+            $this->assertStringContainsString('bi-megaphone', $html);
+            $this->assertStringContainsString('portal-card', $html);
+        }
+    }
+
+    public function test_security_announcement_view_button_is_accessible(): void
+    {
+        $this->createAnnouncement('Accessible Notice', 'Body.');
+
+        $html = $this->actingAs($this->createSecurity(), 'security')
+            ->get(route('security.announcements'))
+            ->assertOk()
+            ->getContent();
+
+        // The View control must be a real button with an aria-label, and its
+        // icon must be decorative so screen readers announce it once.
+        $this->assertStringContainsString('announcement-view-trigger', $html);
+        $this->assertStringContainsString('aria-label="View announcement:', $html);
+    }
+
+    public function test_attachment_actions_are_labelled_for_screen_readers(): void
+    {
+        Storage::fake('local');
+
+        $admin = $this->createAdmin();
+        $announcement = $this->createAnnouncement('Docs', 'Body.', $admin);
+        $this->createAttachment($announcement, 'guidelines.pdf', 'application/pdf');
+
+        $html = $this->actingAs($this->createSecurity(), 'security')
+            ->get(route('security.announcements'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('aria-label="View attachment guidelines.pdf"', $html);
+        $this->assertStringContainsString('aria-label="Download attachment guidelines.pdf"', $html);
+    }
+
+    // ------------------------------------------------------------------
     // Shared viewer is present in every module
     // ------------------------------------------------------------------
 

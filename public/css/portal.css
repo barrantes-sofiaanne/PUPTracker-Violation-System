@@ -873,3 +873,89 @@ body {
     background: #fff;
     color: #67585c;
 }
+
+/* ------------------------------------------------------------------
+   Announcement list — shared hero layout
+   ------------------------------------------------------------------
+   Used by the Student and Security announcement pages so both render the
+   same header treatment. The hero keeps its existing maroon/gold gradient
+   (`.portal-hero`); these rules only lay out an optional trailing action
+   (e.g. "Back to Dashboard") beside the title. */
+.announcement-hero-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+}
+
+/* Long titles must wrap instead of forcing horizontal overflow. */
+.announcement-hero-text {
+    min-width: 0;
+    flex: 1 1 18rem;
+    overflow-wrap: anywhere;
+}
+
+/* Flex items default to `min-width: auto`, which lets a long unbreakable
+   title widen the card. These rules let the title and the attachment filename
+   wrap inside their row instead of overflowing on narrow screens. */
+.announcement-card-heading {
+    min-width: 0;
+    flex: 1 1 0%;
+    overflow-wrap: anywhere;
+}
+
+.announcement-attachment-meta {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.announcement-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* Back-navigation link on the hero gradient. Both the label and the icon are
+   light so contrast stays sufficient on the maroon/gold background, and the
+   border + icon mean the control is not communicated by colour alone. */
+.announcement-hero-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 0.6rem;
+    color: var(--portal-white);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+        background-color 0.18s ease,
+        border-color 0.18s ease;
+}
+
+.announcement-hero-link:hover,
+.announcement-hero-link:focus-visible {
+    background-color: rgba(255, 255, 255, 0.18);
+    border-color: var(--portal-white);
+    color: var(--portal-white);
+}
+
+.announcement-hero-link:focus-visible {
+    outline: 2px solid var(--portal-white);
+    outline-offset: 2px;
+}
+
+@media (max-width: 575.98px) {
+    .announcement-hero-actions {
+        width: 100%;
+    }
+
+    .announcement-hero-link {
+        width: 100%;
+        justify-content: center;
+    }
+}
