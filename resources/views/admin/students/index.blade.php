@@ -503,7 +503,7 @@
                 <div class="col-12">
                     <div class="alert alert-info small mb-0 py-2">
                         <i class="bi bi-info-circle me-1"></i>
-                        Name and email are managed by the PUP ID and are added when the student connects their PUP ID account. Passwords are also managed by the PUP Identity Provider (IDP).
+                        Name and email are managed by the PUP IDP and are added when the student connects their PUP IDP account. Passwords are also managed by the PUP Identity Provider (IDP).
                     </div>
                 </div>
             </div></div>
@@ -578,7 +578,7 @@
             <div class="col-12">
                 <div class="alert alert-info small mb-0 py-2">
                     <i class="bi bi-shield-lock me-1"></i>
-                    Name, suffix, and email are managed by the PUP ID and cannot be edited here. Passwords are also managed by the PUP Identity Provider (IDP).
+                    Name, suffix, and email are managed by the PUP IDP and cannot be edited here. Passwords are also managed by the PUP Identity Provider (IDP).
                 </div>
             </div>
         </div></div>

@@ -201,7 +201,7 @@ class AdminIdpLinkingTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // 5. After linking, the student can log in using PUP ID
+    // 5. After linking, the student can log in using PUP IDP
     // ------------------------------------------------------------------
 
     public function test_after_linking_student_can_log_in_with_pup_id(): void

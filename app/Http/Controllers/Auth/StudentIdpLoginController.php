@@ -166,7 +166,7 @@ class StudentIdpLoginController extends Controller
                 $request->session()->put('student.idp.pending_email', $email);
 
                 return redirect()->route('student.idp.link')
-                    ->with('info', 'Your PUP ID was authenticated. Connect your PUPTracker student account to continue.');
+                    ->with('info', 'Your PUP IDP account was authenticated. Connect your PUPTracker student account to continue.');
             }
 
             // Security: prevent an IdP account from binding to a local student
@@ -255,7 +255,7 @@ class StudentIdpLoginController extends Controller
         if ($profile === null) {
             return redirect()->route('student.login')
                 ->withErrors([
-                    'login' => 'Your PUP ID session has expired. Please sign in again.',
+'login' => 'Your PUP IDP session has expired. Please sign in again.',
                 ]);
         }
 
@@ -275,7 +275,7 @@ class StudentIdpLoginController extends Controller
 
             return redirect()->route('student.login')
                 ->withErrors([
-                    'login' => 'This PUP ID is already linked to another account. Please contact the administrator.',
+                    'login' => 'This PUP IDP account is already linked to another account. Please contact the administrator.',
                 ]);
         }
 
@@ -304,7 +304,7 @@ class StudentIdpLoginController extends Controller
             ]);
 
             return back()->withErrors([
-                'student_number' => 'This student account is already linked to a different PUP ID.',
+                'student_number' => 'This student account is already linked to a different PUP IDP account.',
             ]);
         }
 
@@ -321,7 +321,7 @@ class StudentIdpLoginController extends Controller
             ]);
 
             return back()->withErrors([
-                'student_number' => 'Information mismatch: the name on your PUP ID does not match this student record. Please contact the administrator to complete linking.',
+                'student_number' => 'Information mismatch: the name on your PUP IDP account does not match this student record. Please contact the administrator to complete linking.',
             ]);
         }
 
@@ -348,7 +348,7 @@ class StudentIdpLoginController extends Controller
         if ($profile === null || $studentNumber === '') {
             return redirect()->route('student.idp.link')
                 ->withErrors([
-                    'student_number' => 'Your PUP ID session has expired. Please start again.',
+                    'student_number' => 'Your PUP IDP session has expired. Please start again.',
                 ]);
         }
 
@@ -429,7 +429,7 @@ class StudentIdpLoginController extends Controller
         if ($profile === null || $studentNumber === '') {
             return redirect()->route('student.login')
                 ->withErrors([
-                    'login' => 'Your PUP ID session has expired. Please sign in again.',
+                    'login' => 'Your PUP IDP session has expired. Please sign in again.',
                 ]);
         }
 
@@ -449,7 +449,7 @@ class StudentIdpLoginController extends Controller
 
             return redirect()->route('student.login')
                 ->withErrors([
-                    'login' => 'This PUP ID is already linked to another account. Please contact the administrator.',
+                    'login' => 'This PUP IDP account is already linked to another account. Please contact the administrator.',
                 ]);
         }
 

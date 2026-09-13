@@ -7,7 +7,7 @@
         <h2>Connect Your PUPTracker Account</h2>
 
         <p class="subtitle">
-            Your PUP ID has been successfully authenticated. To connect it to your existing PUPTracker
+            Your PUP IDP account has been successfully authenticated. To connect it to your existing PUPTracker
             student record, enter your student number.
         </p>
 
@@ -50,7 +50,7 @@
 
             <p class="security-note">
                 <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
-                Your PUP ID is verified securely on the server. You are only connecting it to the
+                Your PUP IDP account is verified securely on the server. You are only connecting it to the
                 PUPTracker student record that belongs to you.
             </p>
         </form>

@@ -135,15 +135,15 @@
                                     <td>{{ optional($announcement->created_at)->format('M d, Y h:i A') }}</td>
                                     <td class="text-end">
                                         <button type="button"
-                                            class="admin-btn admin-btn-view admin-btn-sm admin-announcement-view-trigger"
-                                            data-title="{{ $announcement->title }}"
-                                            data-posted="{{ optional($announcement->created_at)->format('F d, Y h:i A') }}"
-                                            data-content-html="{{ $renderedContentJson }}"
-                                            data-content-text="{{ Str::limit(strip_tags($announcement->content), 4000) }}"
-                                            data-attachments="{{ $viewAttachmentsJson }}"
+                                            class="admin-btn admin-btn-view admin-btn-sm announcement-view-trigger"
+                                            data-announcement-title="{{ $announcement->title }}"
+                                            data-announcement-posted="{{ optional($announcement->created_at)->format('F d, Y h:i A') }}"
+                                            data-announcement-content-html="{{ $renderedContentJson }}"
+                                            data-announcement-content-text="{{ Str::limit(strip_tags($announcement->content), 4000) }}"
+                                            data-announcement-attachments="{{ $viewAttachmentsJson }}"
                                             @if($announcement->attachment_path)
-                                            data-legacy-attachment="{{ asset($announcement->attachment_path) }}"
-                                            data-legacy-name="{{ basename($announcement->attachment_path) }}"
+                                            data-announcement-legacy="{{ asset($announcement->attachment_path) }}"
+                                            data-announcement-legacy-name="{{ basename($announcement->attachment_path) }}"
                                             @endif>
                                             <i class="bi bi-eye me-1"></i>View
                                         </button>
@@ -245,28 +245,10 @@
     </div>
 </div>
 
-{{-- View Announcement modal --}}
-<div class="modal fade admin-modal admin-announcement-view-modal" id="announcementViewModal" tabindex="-1" aria-labelledby="announcementViewModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header admin-modal-header">
-                <h5 class="modal-title admin-modal-title" id="announcementViewModalLabel">Announcement</h5>
-                <button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body admin-modal-body">
-                <div class="admin-announcement-view-head">
-                    <h4 class="admin-announcement-view-title" id="adminAnnouncementViewTitle"></h4>
-                    <div class="text-muted small" id="adminAnnouncementViewDate"></div>
-                </div>
-                <div class="admin-announcement-view-content announcement-rendered-content" id="adminAnnouncementViewContent"></div>
-                <div id="adminAnnouncementViewAttachments" class="mt-4"></div>
-            </div>
-            <div class="modal-footer admin-modal-footer">
-                <button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
+{{-- View Announcement modal — shared interface, identical across modules.
+     Renders TITLE -> MESSAGE -> ACTUAL PHOTO ATTACHMENT (photo streamed from
+     the authorized attachment endpoint on the private disk). --}}
+@include('partials.announcement-view-modal')
 
 {{-- Edit Announcement modal --}}
 <div class="modal fade admin-modal admin-announcement-edit-modal" id="announcementEditModal" tabindex="-1" aria-labelledby="announcementEditModalLabel" aria-hidden="true">
@@ -398,151 +380,7 @@
 @endif
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const viewModalEl = document.getElementById('announcementViewModal');
     const editModalEl = document.getElementById('announcementEditModal');
-
-    // ---- View modal ----
-    if (viewModalEl) {
-        const viewModal = new bootstrap.Modal(viewModalEl);
-        const titleEl = document.getElementById('adminAnnouncementViewTitle');
-        const dateEl = document.getElementById('adminAnnouncementViewDate');
-        const contentEl = document.getElementById('adminAnnouncementViewContent');
-        const attachmentsEl = document.getElementById('adminAnnouncementViewAttachments');
-
-        function appendAttachmentRow(parent, file) {
-            const row = document.createElement('div');
-            row.className = 'd-flex align-items-center justify-content-between flex-wrap gap-2 border rounded p-2 mb-2 bg-white';
-
-            const info = document.createElement('div');
-            info.className = 'd-flex align-items-center gap-2';
-
-            const icon = document.createElement('i');
-            icon.className = file.is_image
-                ? 'bi bi-file-earmark-image fs-4 text-maroon'
-                : 'bi bi-file-earmark-text fs-4 text-maroon';
-            info.appendChild(icon);
-
-            const meta = document.createElement('div');
-            const name = document.createElement('div');
-            name.className = 'fw-semibold small';
-            name.textContent = file.name || 'Attachment';
-            meta.appendChild(name);
-
-            const detail = document.createElement('div');
-            detail.className = 'text-muted small';
-            const bits = [];
-            if (file.ext) { bits.push(file.ext); }
-            if (file.size) { bits.push(file.size); }
-            if (file.date) { bits.push('Uploaded ' + file.date); }
-            detail.textContent = bits.join(' \u2022 ');
-            meta.appendChild(detail);
-            info.appendChild(meta);
-            row.appendChild(info);
-
-            const actions = document.createElement('div');
-            actions.className = 'd-flex gap-2';
-            if (file.view) {
-                const a = document.createElement('a');
-                a.href = file.view;
-                a.target = '_blank';
-                a.rel = 'noopener noreferrer';
-                a.className = 'admin-btn admin-btn-view admin-btn-sm';
-                a.innerHTML = '<i class="bi bi-eye me-1"></i>View';
-                actions.appendChild(a);
-            }
-            if (file.download) {
-                const a = document.createElement('a');
-                a.href = file.download;
-                a.className = 'admin-btn admin-btn-view admin-btn-sm';
-                a.innerHTML = '<i class="bi bi-download me-1"></i>Download';
-                actions.appendChild(a);
-            }
-            row.appendChild(actions);
-            parent.appendChild(row);
-        }
-
-        function renderView(data) {
-            titleEl.textContent = data.title || 'Announcement';
-            dateEl.textContent = data.posted ? 'Posted ' + data.posted : '';
-
-            // Render server-sanitized HTML when available; otherwise fall back
-            // to safe plain text.
-            if (data.contentHtml) {
-                contentEl.innerHTML = data.contentHtml;
-            } else {
-                contentEl.textContent = data.content || '';
-            }
-
-            attachmentsEl.innerHTML = '';
-            let hasAttachments = false;
-
-            const items = data.attachments || [];
-            if (items.length) {
-                hasAttachments = true;
-                const heading = document.createElement('div');
-                heading.className = 'fw-semibold small text-uppercase text-muted mb-2';
-                heading.textContent = 'Attachments';
-                attachmentsEl.appendChild(heading);
-                items.forEach(function (file) {
-                    appendAttachmentRow(attachmentsEl, file);
-                });
-            }
-
-            if (data.legacyAttachment) {
-                hasAttachments = true;
-                if (!items.length) {
-                    const heading = document.createElement('div');
-                    heading.className = 'fw-semibold small text-uppercase text-muted mb-2';
-                    heading.textContent = 'Attachments';
-                    attachmentsEl.appendChild(heading);
-                }
-                appendAttachmentRow(attachmentsEl, {
-                    name: data.legacyName || 'Attachment',
-                    ext: 'LEGACY',
-                    is_image: false,
-                    view: data.legacyAttachment,
-                    download: data.legacyAttachment,
-                });
-            }
-
-            if (!hasAttachments) {
-                attachmentsEl.innerHTML = '';
-            }
-        }
-
-        document.querySelectorAll('.admin-announcement-view-trigger').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                let attachments = [];
-                if (btn.dataset.attachments) {
-                    try {
-                        attachments = JSON.parse(btn.dataset.attachments);
-                    } catch (e) {
-                        attachments = [];
-                    }
-                }
-
-                let contentHtml = null;
-                if (btn.dataset.contentHtml) {
-                    try {
-                        contentHtml = JSON.parse(btn.dataset.contentHtml);
-                    } catch (e) {
-                        contentHtml = null;
-                    }
-                }
-
-                renderView({
-                    title: btn.dataset.title,
-                    posted: btn.dataset.posted,
-                    content: btn.dataset.contentText || '',
-                    contentHtml: contentHtml,
-                    attachments: attachments,
-                    legacyAttachment: btn.dataset.legacyAttachment || null,
-                    legacyName: btn.dataset.legacyName || null,
-                });
-                viewModal.show();
-            });
-        });
-    }
 
     // ---- Edit modal ----
     if (editModalEl) {

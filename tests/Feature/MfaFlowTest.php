@@ -216,6 +216,7 @@ class MfaFlowTest extends TestCase
                 $table->string('username')->nullable();
                 $table->string('email')->unique();
                 $table->string('password');
+                $table->string('remember_token', 100)->nullable();
                 $table->text('mfa_totp_secret')->nullable();
                 $table->boolean('mfa_totp_enabled')->default(false);
             });
@@ -226,6 +227,7 @@ class MfaFlowTest extends TestCase
                 $table->id();
                 $table->string('email')->unique();
                 $table->string('password');
+                $table->string('remember_token', 100)->nullable();
                 $table->text('mfa_totp_secret')->nullable();
                 $table->boolean('mfa_totp_enabled')->default(false);
             });

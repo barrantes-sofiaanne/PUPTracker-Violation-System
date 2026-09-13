@@ -7,10 +7,10 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Ensure users_tbl identity columns are nullable.
  *
- * The PUP ID (IDP) is the authoritative source for a student's identity
+ * The PUP IDP is the authoritative source for a student's identity
  * (first_name, middle_name, last_name, name_suffix, email). An administrator
  * creates the enrollment record with ONLY the student number + academic data;
- * the identity fields stay NULL until the student links their PUP ID account
+ * the identity fields stay NULL until the student links their PUP IDP account
  * for the first time. Some legacy users_tbl schemas may have email NOT NULL
  * from an older design — this migration normalizes it so new students can be
  * created without an email.

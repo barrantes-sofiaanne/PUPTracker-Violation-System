@@ -21,15 +21,41 @@
 
                     @php
                         $secureModalAttachments = $loginAnnouncementModal->attachments ?? collect();
+                        // ACTUAL PHOTO ATTACHMENT — rendered inline, directly
+                        // under the message, using the authorized attachment
+                        // endpoint (private disk + server-side authorization).
+                        // No photo means no empty image container is rendered.
+                        $modalPhotos = $secureModalAttachments->filter->is_image;
+                        $modalFiles = $secureModalAttachments->reject->is_image;
                     @endphp
 
-                    @if($secureModalAttachments->isNotEmpty() || $loginAnnouncementModal->attachment_path)
+                    @if($modalPhotos->isNotEmpty())
+                        <div class="mt-3">
+                            @foreach($modalPhotos as $photo)
+                                <figure class="announcement-viewer-photo mb-3">
+                                    <img
+                                        src="{{ route('announcements.attachments.show', $photo) }}"
+                                        alt="Announcement photo: {{ $photo->original_filename }}"
+                                        loading="lazy"
+                                        decoding="async">
+                                    <figcaption class="announcement-viewer-photo-caption">
+                                        {{ $photo->original_filename }}
+                                        <a href="{{ route('announcements.attachments.download', $photo) }}" class="ms-2">
+                                            <i class="bi bi-download me-1"></i>Download
+                                        </a>
+                                    </figcaption>
+                                </figure>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    @if($modalFiles->isNotEmpty() || $loginAnnouncementModal->attachment_path)
                         <hr>
                         <div class="d-flex flex-column gap-2">
-                            @foreach($secureModalAttachments as $file)
+                            @foreach($modalFiles as $file)
                                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 border rounded p-2">
                                     <div class="d-flex align-items-center gap-2 small">
-                                        <i class="bi {{ $file->is_image ? 'bi-file-earmark-image' : 'bi-file-earmark-text' }} text-maroon fs-5"></i>
+                                        <i class="bi bi-file-earmark-text text-maroon fs-5"></i>
                                         <div>
                                             <div class="fw-semibold">{{ $file->original_filename }}</div>
                                             <div class="text-muted">

@@ -122,6 +122,218 @@ class RememberMeTest extends TestCase
         $this->assertNotEmpty($admin->remember_token);
     }
 
+    // ------------------------------------------------------------------
+    // MFA screen: the checkbox must be offered, and its FINAL state wins.
+    // ------------------------------------------------------------------
+
+    public function test_mfa_verify_screen_shows_remember_me_checkbox(): void
+    {
+        $this->createAdmin('mfa-checkbox@example.com');
+
+        $this->post(route('admin.login.post'), [
+            'email' => 'mfa-checkbox@example.com',
+            'password' => 'adminpass',
+            'remember' => '1',
+        ])->assertRedirect(route('mfa.verify.show'));
+
+        // The MFA screen must offer the Remember Me option, pre-ticked to match
+        // the login screen's choice.
+        $this->get(route('mfa.verify.show'))
+            ->assertOk()
+            ->assertSee('Remember me for 30 days')
+            ->assertSee('id="mfaRememberMe"', false);
+    }
+
+    public function test_mfa_verify_screen_does_not_show_remember_me_for_student_flow(): void
+    {
+        // Build a student pending challenge directly: student logins normalize
+        // `remember` to false, so the MFA screen must not offer the checkbox.
+        $pending = [
+            'guard' => 'student',
+            'identifier' => '2026-00099',
+            'email' => 'student@example.com',
+            'email_masked' => 's***@example.com',
+            'methods' => ['email'],
+            'selected_method' => 'email',
+            'stage' => 'code',
+            'remember' => false,
+        ];
+
+        $this->withSession(['mfa.pending' => $pending])
+            ->get(route('mfa.verify.show'))
+            ->assertOk()
+            ->assertDontSee('mfaRememberMe', false);
+    }
+
+    public function test_remember_action_updates_pending_flag_without_verifying(): void
+    {
+        $this->createAdmin('toggle-admin@example.com');
+
+        $this->post(route('admin.login.post'), [
+            'email' => 'toggle-admin@example.com',
+            'password' => 'adminpass',
+        ])->assertRedirect(route('mfa.verify.show'));
+
+        $this->assertFalse(session('mfa.pending')['remember']);
+
+        // Toggling the checkbox on the MFA screen re-renders the same stage and
+        // records the choice — it must NOT authenticate or consume an attempt.
+        $toggle = $this->post(route('mfa.verify.submit'), [
+            'action' => 'remember',
+            'remember' => '1',
+        ]);
+
+        $toggle->assertRedirect(route('mfa.verify.show'));
+        $this->assertTrue(session('mfa.pending')['remember']);
+        $this->assertSame(0, session('mfa.pending')['attempts'] ?? 0);
+        $this->assertGuest('admin');
+    }
+
+    public function test_remember_action_cannot_enable_remember_for_student_guard(): void
+    {
+        $pending = [
+            'guard' => 'student',
+            'identifier' => '2026-00100',
+            'email' => 'student@example.com',
+            'email_masked' => 's***@example.com',
+            'methods' => ['email'],
+            'selected_method' => 'email',
+            'stage' => 'code',
+            'remember' => false,
+            'attempts' => 0,
+        ];
+
+        $this->withSession(['mfa.pending' => $pending])
+            ->post(route('mfa.verify.submit'), [
+                'action' => 'remember',
+                'remember' => '1',
+            ])
+            ->assertRedirect(route('mfa.verify.show'));
+
+        $this->assertFalse(session('mfa.pending')['remember'], 'A student challenge must never hold the remember flag.');
+    }
+
+    public function test_unchecking_remember_on_mfa_screen_prevents_recaller_cookie(): void
+    {
+        // TEST 3 — checked on login, UNCHECKED during MFA.
+        $admin = $this->createAdmin('uncheck-admin@example.com');
+
+        $verify = $this->postAdminEmailLogin('uncheck-admin@example.com', remember: true, rememberOnMfa: false);
+
+        $verify->assertRedirect(route('admin.dashboard'));
+        $this->assertAuthenticated('admin');
+        $this->assertNull(
+            $this->findRememberCookie($verify),
+            'The final MFA-screen selection (unchecked) must prevent persistent authentication.'
+        );
+
+        $admin->refresh();
+        $this->assertEmpty($admin->remember_token);
+    }
+
+    public function test_checking_remember_on_mfa_screen_creates_recaller_cookie(): void
+    {
+        // TEST 4 — unchecked on login, CHECKED during MFA.
+        $admin = $this->createAdmin('check-late-admin@example.com');
+
+        $verify = $this->postAdminEmailLogin('check-late-admin@example.com', remember: false, rememberOnMfa: true);
+
+        $verify->assertRedirect(route('admin.dashboard'));
+        $this->assertAuthenticated('admin');
+        $this->assertNotNull(
+            $this->findRememberCookie($verify),
+            'The final MFA-screen selection (checked) must create persistent authentication.'
+        );
+
+        $admin->refresh();
+        $this->assertNotEmpty($admin->remember_token);
+    }
+
+    public function test_invalid_mfa_with_remember_does_not_authenticate_or_remember(): void
+    {
+        // TEST 5 — Remember Me must never survive a failed MFA.
+        $admin = $this->createAdmin('invalid-mfa-admin@example.com');
+
+        $this->post(route('admin.login.post'), [
+            'email' => 'invalid-mfa-admin@example.com',
+            'password' => 'adminpass',
+            'remember' => '1',
+        ])->assertRedirect(route('mfa.verify.show'));
+
+        $pending = session('mfa.pending');
+        $pending['selected_method'] = 'email';
+        $pending['stage'] = 'code';
+        $pending['code_hash'] = Hash::make('123456');
+        $pending['expires_at'] = now()->addMinutes(5)->timestamp;
+        $pending['attempts'] = 0;
+
+        $response = $this->withSession(['mfa.pending' => $pending])
+            ->post(route('mfa.verify.submit'), [
+                'method' => 'email',
+                'code' => '999999',
+                'remember' => '1',
+            ]);
+
+        $response->assertSessionHasErrors('code');
+        $this->assertGuest('admin');
+        $this->assertNull($this->findRememberCookie($response), 'No remember cookie may be issued on a failed MFA.');
+
+        $admin->refresh();
+        $this->assertEmpty($admin->remember_token);
+    }
+
+    public function test_expired_mfa_with_remember_does_not_authenticate(): void
+    {
+        // TEST 6 — an expired OTP must not be redeemed by Remember Me.
+        $admin = $this->createAdmin('expired-mfa-admin@example.com');
+
+        $this->post(route('admin.login.post'), [
+            'email' => 'expired-mfa-admin@example.com',
+            'password' => 'adminpass',
+            'remember' => '1',
+        ])->assertRedirect(route('mfa.verify.show'));
+
+        $pending = session('mfa.pending');
+        $pending['selected_method'] = 'email';
+        $pending['stage'] = 'code';
+        $pending['code_hash'] = Hash::make('123456');
+        $pending['expires_at'] = now()->subMinute()->timestamp; // already expired
+        $pending['attempts'] = 0;
+
+        $response = $this->withSession(['mfa.pending' => $pending])
+            ->post(route('mfa.verify.submit'), [
+                'method' => 'email',
+                'code' => '123456',
+                'remember' => '1',
+            ]);
+
+        $response->assertSessionHasErrors('code');
+        $this->assertGuest('admin');
+        $this->assertNull($this->findRememberCookie($response));
+
+        $admin->refresh();
+        $this->assertEmpty($admin->remember_token);
+    }
+
+    public function test_security_login_mfa_screen_shows_remember_me_checkbox(): void
+    {
+        Security::create([
+            'email' => 'mfa-security-checkbox@example.com',
+            'password' => Hash::make('securitypass'),
+            'mfa_totp_enabled' => false,
+        ]);
+
+        $this->post(route('security.login.post'), [
+            'email' => 'mfa-security-checkbox@example.com',
+            'password' => 'securitypass',
+            'remember' => '1',
+        ])->assertRedirect(route('mfa.verify.show'));
+
+        $this->get(route('mfa.verify.show'))
+            ->assertOk()
+            ->assertSee('Remember me for 30 days');
+    }
+
     public function test_verified_admin_login_without_remember_does_not_issue_recaller_cookie(): void
     {
         $admin = $this->createAdmin('no-rm-admin@example.com');
@@ -233,8 +445,13 @@ class RememberMeTest extends TestCase
      * successful verification in a test we seed the pending session with a
      * known code hash + expiry (the same approach used by the in-app flow after
      * the user selects Email OTP), then submit the code.
+     *
+     * `$rememberOnMfa` emulates the user changing the Remember Me checkbox on
+     * the MFA screen. When omitted, the checkbox is posted in the state it had
+     * on the login screen — exactly what the rendered MFA form does, since its
+     * checkbox mirrors `$pending['remember']`.
      */
-    private function postAdminEmailLogin(string $email, bool $remember): TestResponse
+    private function postAdminEmailLogin(string $email, bool $remember, ?bool $rememberOnMfa = null): TestResponse
     {
         $this->post(route('admin.login.post'), [
             'email' => $email,
@@ -251,10 +468,13 @@ class RememberMeTest extends TestCase
         $pending['expires_at'] = now()->addMinutes(5)->timestamp;
         $pending['attempts'] = 0;
 
+        $finalRemember = $rememberOnMfa ?? $remember;
+
         return $this->withSession(['mfa.pending' => $pending])
             ->post(route('mfa.verify.submit'), [
                 'method' => 'email',
                 'code' => '123456',
+                'remember' => $finalRemember ? '1' : '0',
             ]);
     }
 

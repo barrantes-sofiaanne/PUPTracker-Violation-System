@@ -33,9 +33,9 @@
 
         <p class="subtitle">
             @if ($reviewMode)
-                Confirm the details below, then click <strong>Submit</strong> to connect your PUP ID to this PUPTracker account. Your name, suffix, and email come from PUP ID and will be saved to your student record.
+                Confirm the details below, then click <strong>Submit</strong> to connect your PUP IDP account to this PUPTracker account. Your name, suffix, and email come from the PUP IDP and will be saved to your student record.
             @else
-                We found the following student record. Your identity information comes from your authenticated PUP ID; your student number, program, and year come from your existing PUPTracker record.
+                We found the following student record. Your identity information comes from your authenticated PUP IDP account; your student number, program, and year come from your existing PUPTracker record.
             @endif
         </p>
 
@@ -74,7 +74,7 @@
                 </div>
             </div>
             <div class="small text-muted mt-1">
-                <i class="bi bi-info-circle me-1"></i>Identity information is provided by PUP ID and cannot be edited here.
+                <i class="bi bi-info-circle me-1"></i>Identity information is provided by the PUP IDP and cannot be edited here.
             </div>
         </div>
 
@@ -132,7 +132,7 @@
 
             <p class="security-note mt-2">
                 <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
-                Submitting establishes the permanent connection between your PUP ID and this PUPTracker student record.
+                Submitting establishes the permanent connection between your PUP IDP account and this PUPTracker student record.
             </p>
         @else
             {{-- Preview state: [Update Information] [Submit] --}}

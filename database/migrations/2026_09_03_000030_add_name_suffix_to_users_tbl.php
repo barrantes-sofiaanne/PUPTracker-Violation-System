@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Add name_suffix to users_tbl.
  *
- * The PUP ID (IDP) is the authoritative source for a student's identity/name
+ * The PUP IDP is the authoritative source for a student's identity/name
  * information: first_name, middle_name, last_name and name_suffix are copied
  * from the IDP profile into the local users_tbl record when the student links
  * their account for the first time and refreshed on every subsequent login.

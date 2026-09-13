@@ -821,3 +821,45 @@ body {
         margin: 0.25rem auto;
     }
 }
+
+/* ------------------------------------------------------------------
+   Announcement viewer — actual photo attachment
+   ------------------------------------------------------------------
+   Shared by every module's "View Announcement" interface (the Security
+   Module design is the reference) and by the post-login announcement
+   modal. Images are streamed by the authorized attachment endpoint, so
+   these rules only control presentation.
+
+   Requirements: show the real image, preserve aspect ratio, stay
+   responsive on desktop/tablet/mobile, and never let an oversized image
+   break the modal layout. */
+.announcement-viewer-photo {
+    margin: 0 0 1rem;
+    text-align: center;
+}
+
+.announcement-viewer-photo img {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    max-height: 70vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 0.5rem;
+    background: #fff;
+}
+
+.announcement-viewer-photo-caption {
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    color: #67585c;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 767.98px) {
+    .announcement-viewer-photo img {
+        max-height: 55vh;
+    }
+}

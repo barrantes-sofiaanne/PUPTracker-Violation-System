@@ -16,7 +16,12 @@ use Illuminate\Support\Facades\Mail;
 
 class MfaService
 {
-    private const SESSION_KEY = 'mfa.pending';
+    /**
+     * Session key holding the in-progress MFA challenge. Public so callers
+     * (e.g. MfaController) can update a single field — such as the Remember Me
+     * choice made on the MFA screen — without duplicating the literal key.
+     */
+    public const SESSION_KEY = 'mfa.pending';
 
     public function __construct(
         private TotpService $totpService = new TotpService(),

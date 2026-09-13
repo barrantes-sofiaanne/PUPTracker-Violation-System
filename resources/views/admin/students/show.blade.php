@@ -104,7 +104,7 @@
                     </div>
                 </div>
                 <form action="{{ route('admin.students.unlink-idp', $student->student_number) }}" method="POST"
-                      data-confirm="Unlink this student from their PUP ID? This will require re-linking before IDP login works again."
+                      data-confirm="Unlink this student from their PUP IDP account? This will require re-linking before IDP login works again."
                       data-confirm-title="Unlink PUP IDP?"
                       data-confirm-confirm-label="Unlink">
                     @csrf
@@ -115,7 +115,7 @@
             @else
                 <p class="text-muted mb-3">
                     Link this student to a verified PUP Identity Provider (IDP) Account ID so they can sign in
-                    with <strong>Continue with PUP ID</strong>. The IDP Account ID must be unique — it cannot be
+                    with <strong>Continue with PUP IDP</strong>. The IDP Account ID must be unique — it cannot be
                     linked to more than one student.
                 </p>
                 <form action="{{ route('admin.students.link-idp', $student->student_number) }}" method="POST" class="row g-3">

@@ -89,7 +89,7 @@ class StudentIdpLoginTest extends TestCase
     {
         $response = $this->get(route('student.login'));
         $response->assertOk();
-        $response->assertSee('Continue with PUP ID');
+        $response->assertSee('Continue with PUP IDP');
         $response->assertDontSee('Student Number');
     }
 

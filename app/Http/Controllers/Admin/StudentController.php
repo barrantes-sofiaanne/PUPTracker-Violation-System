@@ -182,10 +182,10 @@ class StudentController extends Controller
             // so no local password is configured for student accounts.
             //
             // Identity fields (first_name, middle_name, last_name, name_suffix,
-            // email) are intentionally NOT set here. The PUP ID (IDP) is the
+            // email) are intentionally NOT set here. The PUP IDP is the
             // authoritative source for identity, and they are populated when the
-            // student links their PUPTracker account to their PUP ID for the
-            // first time. The admin only creates the enrollment record.
+            // student links their PUPTracker account to their PUP IDP account
+            // for the first time. The admin only creates the enrollment record.
             $student = User::create([
                 'student_number' => $validated['student_number'],
                 'gender_id' => $validated['gender_id'],
@@ -213,7 +213,7 @@ class StudentController extends Controller
         );
 
         return redirect()->route('admin.students', ['tab' => 'students'])
-            ->with('success', 'Student account created successfully. The student will connect their PUP ID to complete their profile.');
+            ->with('success', 'Student account created successfully. The student will connect their PUP IDP account to complete their profile.');
     }
 
     public function storeAdmin(Request $request)
@@ -771,8 +771,8 @@ class StudentController extends Controller
         // the local password is never updated here. Identity fields (first_name,
         // middle_name, last_name, name_suffix, email) are also managed by the
         // IDP and are NOT editable by an administrator — they are only set when
-        // the student links their PUP ID. Only academic/enrollment fields may be
-        // corrected below.
+        // the student links their PUP IDP account. Only academic/enrollment
+        // fields may be corrected below.
         $studentInfoBefore = $student->studentInfo ? [
             'program_id' => $student->studentInfo->program_id,
             'year_id' => $student->studentInfo->year_id,
@@ -1111,7 +1111,8 @@ class StudentController extends Controller
         //
         // Identity fields are managed by the IDP. Names/email are only stored
         // here when the source file actually provides them (registrar bulk
-        // data); otherwise they stay null until the student links their PUP ID.
+        // data); otherwise they stay null until the student links their PUP IDP
+        // account.
         $identity = [];
         foreach ([
             'first_name' => 'first_name',

@@ -16,6 +16,27 @@
 
     <div class="row g-3">
         @forelse($announcements as $announcement)
+            @php
+                $hasSecure = $announcement->attachments->isNotEmpty();
+                $hasLegacy = (bool) $announcement->attachment_path;
+
+                // Payload for the shared "View Announcement" interface. The
+                // `view` URL is the authorized attachment endpoint (private
+                // disk, server-side authorization, inline disposition).
+                $viewerAttachments = $announcement->attachments->map(function ($file) {
+                    return [
+                        'name' => $file->original_filename,
+                        'ext' => $file->is_image
+                            ? 'image'
+                            : strtoupper((string) \Illuminate\Support\Str::after((string) $file->mime_type, '/')),
+                        'size' => $file->human_size,
+                        'date' => optional($file->created_at)->format('F d, Y'),
+                        'view' => route('announcements.attachments.show', $file),
+                        'download' => route('announcements.attachments.download', $file),
+                        'is_image' => (bool) $file->is_image,
+                    ];
+                })->values();
+            @endphp
             <div class="col-12">
                 <div class="card portal-card">
                     <div class="card-body">
@@ -24,11 +45,6 @@
                             <span class="portal-badge muted">{{ optional($announcement->created_at)->format('M d, Y') }}</span>
                         </div>
                         <div class="announcement-rendered-content">{!! $announcement->rendered_content !!}</div>
-
-                        @php
-                            $hasSecure = $announcement->attachments->isNotEmpty();
-                            $hasLegacy = (bool) $announcement->attachment_path;
-                        @endphp
 
                         @if($hasSecure || $hasLegacy)
                             <div class="mt-3">
@@ -64,6 +80,25 @@
                                 @endif
                             </div>
                         @endif
+
+                        {{-- Standardized View action (Security Module design):
+                             opens the shared View Announcement interface with
+                             TITLE -> MESSAGE -> ACTUAL PHOTO ATTACHMENT. --}}
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="button"
+                                class="btn btn-sm btn-outline-primary announcement-view-trigger"
+                                data-announcement-title="{{ $announcement->title }}"
+                                data-announcement-posted="{{ optional($announcement->created_at)->format('F d, Y h:i A') }}"
+                                data-announcement-content-html="{{ json_encode($announcement->rendered_content) }}"
+                                data-announcement-content-text="{{ Str::limit(strip_tags($announcement->content), 4000) }}"
+                                data-announcement-attachments="{{ json_encode($viewerAttachments) }}"
+                                @if($hasLegacy)
+                                data-announcement-legacy="{{ asset($announcement->attachment_path) }}"
+                                data-announcement-legacy-name="{{ basename($announcement->attachment_path) }}"
+                                @endif>
+                                <i class="bi bi-eye me-1"></i>View
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -76,4 +111,6 @@
         @endforelse
     </div>
 </div>
+
+@include('partials.announcement-view-modal')
 @endsection

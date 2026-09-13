@@ -105,7 +105,7 @@
                 <div class="mt-3">
                     <div class="alert alert-info small mb-0 py-2">
                         <i class="bi bi-shield-lock me-1"></i>
-                        Name, suffix, and email are managed by the PUP ID and cannot be edited here. Passwords are also managed by the PUP Identity Provider (IDP).
+                        Name, suffix, and email are managed by the PUP IDP account and cannot be edited here. Passwords are also managed by the PUP Identity Provider (IDP).
                     </div>
                 </div>
 
