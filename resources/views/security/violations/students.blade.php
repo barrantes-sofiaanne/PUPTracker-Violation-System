@@ -120,6 +120,83 @@
             grid-template-columns: 1fr;
         }
     }
+
+    /* ------------------------------------------------------------------
+       Violations page header
+       ------------------------------------------------------------------
+       ONE header serves both tabs: its title, subtitle and the visibility
+       of the action buttons follow the active tab. The layout is spelled out
+       explicitly so the buttons sit on a SINGLE row on the right at desktop
+       widths instead of wrapping into a stack. Scoped to this page only, so
+       no other module is affected. */
+    .violations-header-row {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .violations-header-text {
+        min-width: 0;
+    }
+
+    .violations-header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .violations-header-actions .btn {
+        white-space: nowrap;
+    }
+
+    /* The element carries its own `display: flex`, which would otherwise
+       beat Bootstrap's `[hidden]` rule, so hide it explicitly. */
+    .violations-header-actions[hidden] {
+        display: none !important;
+    }
+
+    @media (min-width: 992px) {
+        .violations-header-row {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+        }
+
+        /* Title block absorbs the spare width; the buttons keep their natural
+           size and never wrap while there is room for them. */
+        .violations-header-text {
+            flex: 1 1 auto;
+        }
+
+        .violations-header-actions {
+            flex: 0 0 auto;
+            flex-wrap: nowrap;
+        }
+    }
+
+    /* ------------------------------------------------------------------
+       Violations tabs
+       ------------------------------------------------------------------
+       Active tab: cream/gold background with maroon text and icon.
+       Inactive tab: no active background, grey text and icon (the icon
+       inherits `currentColor`, so it follows the text automatically). */
+    .violations-tabs .nav-link {
+        color: #6b5d61;
+        border-radius: 0.6rem;
+        font-weight: 700;
+    }
+
+    .violations-tabs .nav-link i {
+        color: currentColor;
+    }
+
+    .violations-tabs .nav-link.active {
+        color: #7a0f1e !important;
+        background-color: rgba(255, 223, 0, 0.33) !important;
+        border-color: rgba(128, 0, 0, 0.18) !important;
+    }
 </style>
 @endpush
 
@@ -127,15 +204,51 @@
 
 <div class="container-fluid py-4">
 
-    {{-- Page Header --}}
-    <div class="portal-hero page-header-modern">
-        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
-            <div>
-                <h1 class="fw-bold mb-1">Students with Violations</h1>
-                <p class="mb-0">View detailed violation records for students.</p>
+    {{-- Page Header. ONE header serves both tabs; only its title, subtitle
+         and the visibility of the action buttons change with the active tab.
+         The state is rendered server-side for the current tab (so deep links
+         and the no-JavaScript fallback are correct) and the script at the
+         bottom of this view keeps it in sync when the tab is switched in
+         place. The buttons themselves are untouched: same markup, same
+         modals, same behaviour — only their placement/visibility changes. --}}
+    @php
+        $violationsActiveTab = $activeViolationsTab ?? 'students';
+
+        $violationsHeaderText = [
+            'students' => [
+                'title' => 'Students with Violations',
+                'subtitle' => 'View detailed violation records for students.',
+            ],
+            'submitted' => [
+                'title' => 'Submitted Violations',
+                'subtitle' => 'View and manage the violations you have submitted.',
+            ],
+        ];
+
+        $violationsHeader = $violationsHeaderText[$violationsActiveTab] ?? $violationsHeaderText['students'];
+
+        // Only the Student Record header carries actions.
+        $violationsShowActions = $violationsActiveTab === 'students';
+    @endphp
+
+    <div class="portal-hero page-header-modern"
+         id="violationsPageHeader"
+         data-title-students="Students with Violations"
+         data-subtitle-students="View detailed violation records for students."
+         data-title-submitted="Submitted Violations"
+         data-subtitle-submitted="View and manage the violations you have submitted.">
+        <div class="violations-header-row">
+            <div class="violations-header-text">
+                <h1 class="fw-bold mb-1" id="violationsHeaderTitle">{{ $violationsHeader['title'] }}</h1>
+                <p class="mb-0" id="violationsHeaderSubtitle">{{ $violationsHeader['subtitle'] }}</p>
             </div>
 
-            <div class="d-flex flex-wrap gap-2">
+            {{-- Student Record actions. Hidden (not removed) on the
+                 Submitted Violations tab, so the modals and their logic stay
+                 intact and simply reappear when Student Record is active. --}}
+            <div class="violations-header-actions"
+                 id="violationsHeaderActions"
+                 @if(! $violationsShowActions) hidden @endif>
                 <button class="btn action-btn-static action-btn-static-primary" type="button" data-bs-toggle="modal" data-bs-target="#recordViolationModal">
                     <i class="bi bi-plus-circle me-2"></i>Record Violation
                 </button>
@@ -384,6 +497,56 @@ window.ViolationRoutes = {
 };
 
 document.addEventListener('DOMContentLoaded', function () {
+    /* ------------------------------------------------------------------
+       Keep the page header in sync with the active Violations tab.
+       ------------------------------------------------------------------
+       The header is server-rendered for the tab in the URL. When the officer
+       switches tabs in place (Bootstrap fires `shown.bs.tab`) the header must
+       follow: a different title/subtitle, and the Student Record action
+       buttons hidden on Submitted Violations. The buttons are only hidden —
+       never removed — so their modals and behaviour are untouched. */
+    const header = document.getElementById('violationsPageHeader');
+
+    if (header) {
+        const title = document.getElementById('violationsHeaderTitle');
+        const subtitle = document.getElementById('violationsHeaderSubtitle');
+        const actions = document.getElementById('violationsHeaderActions');
+        const tabsRoot = document.getElementById('securityViolationsTabs');
+
+        const applyHeaderForTab = function (tabKey) {
+            const isStudents = tabKey !== 'submitted';
+
+            if (title) {
+                title.textContent = header.dataset[
+                    isStudents ? 'titleStudents' : 'titleSubmitted'
+                ] || title.textContent;
+            }
+
+            if (subtitle) {
+                subtitle.textContent = header.dataset[
+                    isStudents ? 'subtitleStudents' : 'subtitleSubmitted'
+                ] || subtitle.textContent;
+            }
+
+            if (actions) {
+                actions.hidden = !isStudents;
+            }
+        };
+
+        if (tabsRoot) {
+            // `shown.bs.tab` fires for the newly activated tab element.
+            tabsRoot.addEventListener('shown.bs.tab', function (event) {
+                const trigger = event.target;
+                if (!trigger) {
+                    return;
+                }
+
+                const target = trigger.getAttribute('data-bs-target') || '';
+                applyHeaderForTab(target === '#submittedViolations' ? 'submitted' : 'students');
+            });
+        }
+    }
+
     const options = document.querySelectorAll('.report-option');
     const customFields = document.getElementById('customDateRangeFields');
     const dateFrom = document.getElementById('reportDateFrom');

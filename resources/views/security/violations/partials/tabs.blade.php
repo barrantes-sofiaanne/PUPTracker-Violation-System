@@ -32,7 +32,7 @@
     }
 @endphp
 
-<ul class="nav nav-tabs mb-4" id="securityViolationsTabs" role="tablist">
+<ul class="nav nav-tabs violations-tabs mb-4" id="securityViolationsTabs" role="tablist">
     <li class="nav-item" role="presentation">
         <a
             href="{{ route('security.violations.students') }}"

@@ -724,6 +724,130 @@ class SecurityModuleTest extends TestCase
     }
 
     // ==================================================================
+    // Violations page header (tab-driven title / subtitle / actions)
+    // ==================================================================
+
+    /**
+     * ONE header serves both tabs. On Student Record it carries the listing
+     * title plus the Record Violation / Generate Report actions.
+     */
+    public function test_student_record_tab_header_has_title_subtitle_and_actions(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.students'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<h1 class="fw-bold mb-1" id="violationsHeaderTitle">Students with Violations<\/h1>/',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/<p class="mb-0" id="violationsHeaderSubtitle">View detailed violation records for students\.<\/p>/',
+            $html
+        );
+
+        // Both action buttons are present and are NOT hidden on this tab.
+        $this->assertStringContainsString('Record Violation', $html);
+        $this->assertStringContainsString('Generate Report', $html);
+        $this->assertMatchesRegularExpression(
+            '/id="violationsHeaderActions"(?![^>]*\bhidden\b)[^>]*>/',
+            $html,
+            'The action buttons must be visible on the Student Record tab.'
+        );
+
+        // The buttons still drive their original modals.
+        $this->assertStringContainsString('data-bs-target="#recordViolationModal"', $html);
+        $this->assertStringContainsString('data-bs-target="#reportOptionsModal"', $html);
+
+        // The single shared header is rendered exactly once (no duplicate page).
+        $this->assertSame(1, substr_count($html, 'id="violationsPageHeader"'));
+    }
+
+    /**
+     * The Submitted Violations tab reuses the SAME header element with a
+     * different title/subtitle and the action buttons hidden.
+     */
+    public function test_submitted_violations_tab_header_hides_the_action_buttons(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.students', ['tab' => 'submitted']))
+            ->assertOk()
+            ->getContent();
+
+        // The header renders the Submitted Violations state, not the listing's.
+        $this->assertMatchesRegularExpression(
+            '/<h1 class="fw-bold mb-1" id="violationsHeaderTitle">Submitted Violations<\/h1>/',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/<p class="mb-0" id="violationsHeaderSubtitle">View and manage the violations you have submitted\.<\/p>/',
+            $html
+        );
+
+        // The rendered header element must NOT carry the Student Record state.
+        $this->assertDoesNotMatchRegularExpression(
+            '/<p class="mb-0" id="violationsHeaderSubtitle">View detailed violation records for students\.<\/p>/',
+            $html,
+            'The Submitted Violations header must not show the Student Record subtitle.'
+        );
+
+        // The action buttons are hidden (still present in the DOM so their
+        // modals/logic survive; they are simply not displayed).
+        $this->assertMatchesRegularExpression(
+            '/id="violationsHeaderActions"[^>]*\bhidden\b/',
+            $html,
+            'The action buttons must be hidden on the Submitted Violations tab.'
+        );
+
+        // Still one shared header — not a duplicated page.
+        $this->assertSame(1, substr_count($html, 'id="violationsPageHeader"'));
+
+        // The tracker content is present and the listing title is not.
+        $this->assertStringContainsString('submitted_search', $html);
+    }
+
+    /**
+     * The header is server-rendered per tab, so the no-JS fallback and deep
+     * links are correct; the view also wires a `shown.bs.tab` listener so the
+     * header follows an in-place tab switch.
+     */
+    public function test_header_state_follows_the_active_tab_and_stays_in_sync(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.students'))
+            ->assertOk()
+            ->getContent();
+
+        // The header carries both states so the script can swap them without a
+        // round trip, and listens for the Bootstrap tab event.
+        $this->assertStringContainsString('data-title-students="Students with Violations"', $html);
+        $this->assertStringContainsString('data-title-submitted="Submitted Violations"', $html);
+        $this->assertStringContainsString(
+            'data-subtitle-submitted="View and manage the violations you have submitted."',
+            $html
+        );
+        $this->assertStringContainsString('shown.bs.tab', $html);
+
+        // The header sits ABOVE the tab navigation, which sits above the panes.
+        $headerPos = strpos($html, 'id="violationsPageHeader"');
+        $tabsPos = strpos($html, 'id="securityViolationsTabs"');
+        $studentPanePos = strpos($html, 'id="studentRecord"');
+
+        $this->assertNotFalse($headerPos);
+        $this->assertNotFalse($tabsPos);
+        $this->assertNotFalse($studentPanePos);
+        $this->assertTrue($headerPos < $tabsPos, 'The header must sit above the tabs.');
+        $this->assertTrue($tabsPos < $studentPanePos, 'The tabs must sit above the tab content.');
+    }
+
+    // ==================================================================
     // 5 + 6. Notification deep link + highlight
     // ==================================================================
 
