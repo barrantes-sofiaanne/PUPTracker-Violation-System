@@ -101,9 +101,10 @@ class SecurityNotificationService
         }
 
         // PENDING (awaiting admin confirmation) and DENIED violations do NOT
-        // reflect on the student record page; the officer tracks them under
-        // Submitted Violations, so the notification lands there and highlights
-        // the row.
+        // reflect on the student record page; the officer tracks them under the
+        // Submitted Violations tab of the combined Violations page, so the
+        // notification lands on that page with the tab open and highlights the
+        // row.
         if (! Route::has('security.violations.submitted')) {
             return null;
         }

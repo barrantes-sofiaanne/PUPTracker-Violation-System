@@ -514,7 +514,7 @@ class SecurityModuleTest extends TestCase
     // 2. Violations tab structure
     // ==================================================================
 
-    public function test_violations_page_has_exactly_two_tabs_in_order(): void
+    public function test_violations_page_has_exactly_two_tabs_switching_in_place(): void
     {
         $officer = $this->createSecurity('officer@example.com');
 
@@ -531,22 +531,79 @@ class SecurityModuleTest extends TestCase
         $this->assertNotFalse($submittedPos, 'The Submitted Violations tab must exist.');
         $this->assertTrue($studentPos < $submittedPos, 'Student Record must be the first tab.');
 
-        // Student Record is the default (active) tab on its own page.
+        // Both tabs switch panes on the SAME page (client-side), so the moved
+        // Submitted Violations content is present without a second request.
+        $this->assertStringContainsString('data-bs-toggle="tab"', $html);
+        $this->assertStringContainsString('data-bs-target="#studentRecord"', $html);
+        $this->assertStringContainsString('data-bs-target="#submittedViolations"', $html);
+        $this->assertStringContainsString('id="studentRecord"', $html);
+        $this->assertStringContainsString('id="submittedViolations"', $html);
+
+        // The tracker table is rendered inside the page, not behind a redirect.
+        $this->assertStringContainsString('submitted_search', $html, 'The Submitted Violations panel must be on this page.');
+
+        // Student Record is the default (active) tab.
         $this->assertMatchesRegularExpression(
-            '/id="studentRecordTab"\s+role="tab"\s+aria-controls="studentRecord"\s+aria-selected="true"/',
+            '/id="studentRecord"\s+role="tabpanel"\s+aria-labelledby="studentRecordTab" tabindex="0">/',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="studentRecordTab"[^>]*aria-selected="true"/s',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="submittedViolationsTab"[^>]*aria-selected="false"/s',
             $html
         );
 
-        // The same two tabs render on the Submitted Violations page.
+        // `?tab=submitted` opens the tracker tab instead (no separate page).
         $submittedHtml = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.students', ['tab' => 'submitted']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/id="submittedViolationsTab"[^>]*aria-selected="true"/s',
+            $submittedHtml
+        );
+        $this->assertMatchesRegularExpression(
+            '/class="tab-pane fade show active"\s+id="submittedViolations"/',
+            $submittedHtml
+        );
+    }
+
+    /**
+     * The Submitted Violations tab is no longer its own page: the sidebar entry
+     * is gone, and the old URL now renders the combined page on the tracker tab
+     * so existing notification deep links keep working.
+     */
+    public function test_submitted_violations_is_no_longer_a_standalone_page(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+
+        // The old standalone view is gone.
+        $this->assertFileDoesNotExist(resource_path('views/security/violations/submitted.blade.php'));
+
+        // The legacy URL still resolves, rendering the combined page on the tab.
+        $legacy = $this->actingAs($officer, 'security')
             ->get(route('security.violations.submitted'))
             ->assertOk()
             ->getContent();
 
-        $this->assertStringContainsString('id="studentRecordTab"', $submittedHtml);
+        $this->assertStringContainsString('id="studentRecordTab"', $legacy);
         $this->assertMatchesRegularExpression(
-            '/id="submittedViolationsTab"\s+role="tab"\s+aria-controls="submittedViolations"\s+aria-selected="true"/',
-            $submittedHtml
+            '/id="submittedViolationsTab"[^>]*aria-selected="true"/s',
+            $legacy
+        );
+
+        // The sidebar has exactly one Violations entry — no separate
+        // "Submitted Violations" item.
+        $sidebar = file_get_contents(resource_path('views/security/partials/sidebar.blade.php'));
+        $this->assertStringContainsString('security.violations.students', $sidebar);
+        $this->assertStringNotContainsString(
+            "route('security.violations.submitted')",
+            $sidebar,
+            'The sidebar must not carry a separate Submitted Violations entry.'
         );
     }
 
@@ -634,6 +691,38 @@ class SecurityModuleTest extends TestCase
         $this->assertStringNotContainsString('Rejected one.', $confirmed);
     }
 
+    /**
+     * The two tabs share one page but must not share filter state: a search in
+     * the Submitted Violations tracker must not filter the Student Record
+     * listing (or the other way round).
+     */
+    public function test_submitted_violations_search_does_not_leak_into_the_student_listing(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createStudent('2024-0002');
+        $this->createViolationType(1, 'Cheating');
+
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_PENDING, 'Tracker only row.');
+        $this->createViolation('2024-0002', 1, 'Security: officer@example.com', 'security', Violation::STATUS_PENDING, 'Other student row.');
+
+        // Searching the TRACKER for a violation description term.
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.students', ['tab' => 'submitted', 'submitted_search' => 'Cheating']))
+            ->assertOk()
+            ->getContent();
+
+        // The tracker still lists both of the officer's submissions...
+        $this->assertStringContainsString('Tracker only row.', $html);
+        $this->assertStringContainsString('Other student row.', $html);
+
+        // ...and the Student Record listing is untouched by that search: both
+        // students are still listed.
+        $this->assertStringContainsString('2024-0001 - ', $html);
+        $this->assertStringContainsString('2024-0002 - ', $html);
+    }
+
     // ==================================================================
     // 5 + 6. Notification deep link + highlight
     // ==================================================================
@@ -714,7 +803,7 @@ class SecurityModuleTest extends TestCase
         $this->assertStringContainsString('violationHighlightPulse', $show);
         $this->assertStringContainsString('classList.remove', $show);
 
-        $submitted = file_get_contents(resource_path('views/security/violations/submitted.blade.php'));
+        $submitted = file_get_contents(resource_path('views/security/violations/partials/submitted-violations.blade.php'));
 
         $this->assertStringContainsString('submittedRowFlash', $submitted);
         $this->assertStringContainsString('classList.remove', $submitted);

@@ -6,17 +6,27 @@
         1. Student Record        (default)
         2. Submitted Violations
 
-    Both underlying pages render this same partial so the tab structure cannot
-    drift, and each marks its own tab active via `$activeViolationsTab`.
+    Both panels live on the SAME page (`security.violations.students`) and are
+    switched client-side by Bootstrap, so there is no page reload and no second
+    URL. The former standalone "Submitted Violations" page has been removed.
 
-    The Submitted Violations link carries the record-specific highlight query
-    parameter through when the officer arrived from a notification, so the
-    highlight survives the tab switch.
+    The Submitted Violations tab is a real link carrying `?tab=submitted`, so it
+    still works without JavaScript (and keeps `status` / `search` /
+    `highlight_violation` when present) and so notification deep links land on
+    the tracker. With JavaScript, Bootstrap's tab plugin switches the pane in
+    place.
 --}}
 @php
     $activeViolationsTab = $activeViolationsTab ?? 'students';
 
-    $submittedParams = [];
+    // Carry the current Submitted Violations filters through the tab link, plus
+    // any notification highlight the officer arrived with.
+    $submittedParams = ['tab' => 'submitted'];
+    foreach (['status', 'submitted_search'] as $preserved) {
+        if (request()->filled($preserved)) {
+            $submittedParams[$preserved] = request()->input($preserved);
+        }
+    }
     if ((int) request()->integer('highlight_violation') > 0) {
         $submittedParams['highlight_violation'] = (int) request()->integer('highlight_violation');
     }
@@ -28,6 +38,8 @@
             href="{{ route('security.violations.students') }}"
             class="nav-link {{ $activeViolationsTab === 'students' ? 'active' : '' }}"
             id="studentRecordTab"
+            data-bs-toggle="tab"
+            data-bs-target="#studentRecord"
             role="tab"
             aria-controls="studentRecord"
             aria-selected="{{ $activeViolationsTab === 'students' ? 'true' : 'false' }}">
@@ -36,9 +48,11 @@
     </li>
     <li class="nav-item" role="presentation">
         <a
-            href="{{ route('security.violations.submitted', $submittedParams) }}"
+            href="{{ route('security.violations.students', $submittedParams) }}"
             class="nav-link {{ $activeViolationsTab === 'submitted' ? 'active' : '' }}"
             id="submittedViolationsTab"
+            data-bs-toggle="tab"
+            data-bs-target="#submittedViolations"
             role="tab"
             aria-controls="submittedViolations"
             aria-selected="{{ $activeViolationsTab === 'submitted' ? 'true' : 'false' }}">

@@ -39,13 +39,43 @@ class StudentViolationController extends Controller
     }
 
     /**
-     * Display a listing of students with violations
+     * Display the Violations page.
+     *
+     * The page carries two tabs: "Student Record" (the listing below) and
+     * "Submitted Violations" (the officer's own submission tracker). The
+     * tracker used to be a standalone page with its own sidebar entry; its
+     * content now lives inside the tab, so this single action supplies both
+     * datasets and `?tab=submitted` selects the tracker tab.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $search = trim((string) request('search', ''));
-        $programId = request('program_id');
-        $yearId = request('year_id');
+        return view('security.violations.students', $this->buildViolationsPagePayload(
+            $request,
+            $request->input('tab') === 'submitted' ? 'submitted' : 'students'
+        ));
+    }
+
+    /**
+     * Legacy entry point for the former standalone Submitted Violations page.
+     *
+     * That page was removed, so this renders the combined Violations page with
+     * the "Submitted Violations" tab selected. Keeping the route means existing
+     * notification deep links and bookmarks still land on the right tab.
+     */
+    public function submitted(Request $request)
+    {
+        return view('security.violations.students', $this->buildViolationsPagePayload($request, 'submitted'));
+    }
+
+    /**
+     * Build every dataset the combined Violations page needs: the Student
+     * Record listing plus the Submitted Violations tracker.
+     */
+    private function buildViolationsPagePayload(Request $request, string $activeTab): array
+    {
+        $search = trim((string) $request->input('search', ''));
+        $programId = $request->input('program_id');
+        $yearId = $request->input('year_id');
 
         $students = User::whereHas('violations', function ($query) {
                 $this->applyRecorderScope($query);
@@ -88,23 +118,7 @@ class StudentViolationController extends Controller
         $programs = Program::orderBy('program_name')->get(['program_id', 'program_name']);
         $years = Year::orderBy('year')->get(['year_id', 'year']);
 
-        return view('security.violations.students', compact(
-            'students',
-            'categories',
-            'programs',
-            'years',
-            'search',
-            'programId',
-            'yearId'
-        ));
-    }
-
-    /**
-     * Display the submitting officer's own violation reports with their
-     * administrative review status (Pending / Confirmed / Rejected).
-     */
-    public function submitted(Request $request)
-    {
+        // ---- Submitted Violations tab: the officer's own submissions -------
         $status = (string) $request->input('status', '');
         $status = in_array($status, ['pending', 'confirmed', 'denied', 'rejected'], true) ? $status : '';
 
@@ -124,8 +138,11 @@ class StudentViolationController extends Controller
                 $statusValue = $status === 'rejected' ? 'denied' : $status;
                 $query->where('status', $statusValue);
             })
-            ->when($request->filled('search'), function ($query) use ($request) {
-                $search = '%' . trim($request->input('search')) . '%';
+            ->when($request->filled('submitted_search'), function ($query) use ($request) {
+                // The tracker has its own search parameter: it shares a page with
+                // the Student Record listing, whose `search` param must not leak
+                // into these results (or the other way round).
+                $search = '%' . trim((string) $request->input('submitted_search')) . '%';
                 $query->where(function ($q) use ($search) {
                     $q->where('student_number', 'like', $search)
                         ->orWhereHas('student', fn ($s) => $s->where('first_name', 'like', $search)->orWhere('last_name', 'like', $search))
@@ -153,7 +170,22 @@ class StudentViolationController extends Controller
             $highlightViolationId = 0;
         }
 
-        return view('security.violations.submitted', compact('violations', 'status', 'counts', 'highlightViolationId'));
+        return array_merge(
+            compact(
+                'students',
+                'categories',
+                'programs',
+                'years',
+                'search',
+                'programId',
+                'yearId',
+                'violations',
+                'status',
+                'counts',
+                'highlightViolationId'
+            ),
+            ['activeViolationsTab' => $activeTab]
+        );
     }
 
     /**

@@ -147,8 +147,13 @@
         </div>
     </div>
 
-    {{-- Violations tabs: Student Record (default) / Submitted Violations --}}
-    @include('security.violations.partials.tabs', ['activeViolationsTab' => 'students'])
+    {{-- Violations tabs: Student Record (default) / Submitted Violations (in-page) --}}
+    @include('security.violations.partials.tabs', ['activeViolationsTab' => $activeViolationsTab ?? 'students'])
+
+    <div class="tab-content" id="securityViolationsTabContent">
+    {{-- Panel 1: Student Record --}}
+    <div class="tab-pane fade {{ ($activeViolationsTab ?? 'students') === 'students' ? 'show active' : '' }}"
+         id="studentRecord" role="tabpanel" aria-labelledby="studentRecordTab" tabindex="0">
 
     {{-- Search and Filters --}}
     <div class="search-container">
@@ -253,6 +258,18 @@
     </div>
     @endif
 
+    </div>{{-- /#studentRecord --}}
+
+    {{-- Panel 2: Submitted Violations.
+         The table, status chips, filters, pagination and row highlighting are
+         the verbatim content of the former standalone Submitted Violations
+         page; it now lives inside this tab. --}}
+    <div class="tab-pane fade {{ ($activeViolationsTab ?? 'students') === 'submitted' ? 'show active' : '' }}"
+         id="submittedViolations" role="tabpanel" aria-labelledby="submittedViolationsTab" tabindex="0">
+        @include('security.violations.partials.submitted-violations')
+    </div>{{-- /#submittedViolations --}}
+    </div>{{-- /#securityViolationsTabContent --}}
+
 </div>
 
 <div class="modal fade" id="reportOptionsModal" tabindex="-1" aria-labelledby="reportOptionsModalLabel" aria-hidden="true">
@@ -351,6 +368,10 @@
 </div>
 
 @include('security.violations.partials.record-violation')
+
+{{-- Kept at document level (NOT inside the tab pane): Bootstrap hides an
+     inactive `.tab-pane` with `display:none`, which would hide the modal. --}}
+@include('security.violations.partials.resubmit-violation-modal')
 
 @push('scripts')
 <script>
