@@ -266,34 +266,14 @@
             </div>
 
             <form method="GET" action="{{ route('security.violations.report') }}">
-                {{-- Generate Report downloads a PDF. The report content, ordering
-                     and period options are unchanged; only the output format
-                     differs. --}}
+                {{-- Generate Report downloads a PDF. The report is filtered ONLY
+                     by the range selected below — the student-list filters
+                     (search / program / year) belong to the Student Record tab
+                     and are deliberately not part of this report. --}}
                 <input type="hidden" name="format" value="pdf">
-
-                {{-- Carry the filters currently applied to the Violations list
-                     into the report, so the PDF contains exactly the records
-                     shown on screen. Rendered server-side from the same filter
-                     values the listing uses. --}}
-                @if($filters['search'] !== '')
-                    <input type="hidden" name="search" value="{{ $filters['search'] }}">
-                @endif
-                @if($filters['program_id'] !== '')
-                    <input type="hidden" name="program_id" value="{{ $filters['program_id'] }}">
-                @endif
-                @if($filters['year_id'] !== '')
-                    <input type="hidden" name="year_id" value="{{ $filters['year_id'] }}">
-                @endif
 
                 <div class="modal-body">
                     <p class="mb-3 text-muted">Select the report range you want to generate.</p>
-
-                    @if($filters['search'] !== '' || $filters['program_id'] !== '' || $filters['year_id'] !== '')
-                        <div class="alert alert-info py-2 px-3 small mb-3">
-                            <i class="bi bi-funnel-fill me-1" aria-hidden="true"></i>
-                            Your current filters will be applied to this report.
-                        </div>
-                    @endif
 
                     <div class="d-grid gap-2 mb-3">
                         <label class="report-option active" data-option="today">

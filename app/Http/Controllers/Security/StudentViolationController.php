@@ -43,26 +43,28 @@ class StudentViolationController extends Controller
      */
     public function index()
     {
-        $filters = $this->resolveViolationListFilters(request());
+        $search = trim((string) request('search', ''));
+        $programId = request('program_id');
+        $yearId = request('year_id');
 
         $students = User::whereHas('violations', function ($query) {
                 $this->applyRecorderScope($query);
             })
-            ->when($filters['search'] !== '', function (Builder $query) use ($filters) {
-                $query->where(function (Builder $inner) use ($filters) {
-                    $inner->where('student_number', 'like', "%{$filters['search']}%")
-                        ->orWhere('first_name', 'like', "%{$filters['search']}%")
-                        ->orWhere('last_name', 'like', "%{$filters['search']}%");
+            ->when($search !== '', function (Builder $query) use ($search) {
+                $query->where(function (Builder $inner) use ($search) {
+                    $inner->where('student_number', 'like', "%{$search}%")
+                        ->orWhere('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%");
                 });
             })
-            ->when($filters['program_id'] !== '', function (Builder $query) use ($filters) {
-                $query->whereHas('studentInfo', function (Builder $infoQuery) use ($filters) {
-                    $infoQuery->where('program_id', $filters['program_id']);
+            ->when(!empty($programId), function (Builder $query) use ($programId) {
+                $query->whereHas('studentInfo', function (Builder $infoQuery) use ($programId) {
+                    $infoQuery->where('program_id', $programId);
                 });
             })
-            ->when($filters['year_id'] !== '', function (Builder $query) use ($filters) {
-                $query->whereHas('studentInfo', function (Builder $infoQuery) use ($filters) {
-                    $infoQuery->where('year_id', $filters['year_id']);
+            ->when(!empty($yearId), function (Builder $query) use ($yearId) {
+                $query->whereHas('studentInfo', function (Builder $infoQuery) use ($yearId) {
+                    $infoQuery->where('year_id', $yearId);
                 });
             })
             ->with(['violations' => function ($query) {
@@ -91,102 +93,10 @@ class StudentViolationController extends Controller
             'categories',
             'programs',
             'years',
-            'filters'
-        ) + [
-            // Kept for the existing view bindings.
-            'search' => $filters['search'],
-            'programId' => $filters['program_id'] !== '' ? $filters['program_id'] : null,
-            'yearId' => $filters['year_id'] !== '' ? $filters['year_id'] : null,
-        ]);
-    }
-
-    /**
-     * Read the Security Violations page's student-level filters.
-     *
-     * SINGLE SOURCE OF TRUTH for what those filters mean. The listing page and
-     * the generated report both build their query from this, so the on-screen
-     * table and the PDF can never disagree about which records were selected.
-     *
-     * @return array{search: string, program_id: string, year_id: string}
-     */
-    private function resolveViolationListFilters(Request $request): array
-    {
-        return [
-            'search' => trim((string) $request->input('search', '')),
-            'program_id' => trim((string) $request->input('program_id', '')),
-            'year_id' => trim((string) $request->input('year_id', '')),
-        ];
-    }
-
-    /**
-     * Apply those same student-level filters to a VIOLATION query.
-     *
-     * This mirrors the User-query filters used by index() one-for-one:
-     *   search     -> student_number / first_name / last_name
-     *   program_id -> the student's studentInfo.program_id
-     *   year_id    -> the student's studentInfo.year_id
-     * so the report selects exactly the students the on-screen list shows.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @param  array{search: string, program_id: string, year_id: string}  $filters
-     */
-    private function applyViolationListFilters($query, array $filters): void
-    {
-        if ($filters['search'] !== '') {
-            $search = $filters['search'];
-
-            $query->where(function ($inner) use ($search) {
-                $inner->where('student_number', 'like', "%{$search}%")
-                    ->orWhereHas('student', function ($studentQuery) use ($search) {
-                        $studentQuery->where('first_name', 'like', "%{$search}%")
-                            ->orWhere('last_name', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        if ($filters['program_id'] !== '') {
-            $programId = $filters['program_id'];
-
-            $query->whereHas('student.studentInfo', function ($infoQuery) use ($programId) {
-                $infoQuery->where('program_id', $programId);
-            });
-        }
-
-        if ($filters['year_id'] !== '') {
-            $yearId = $filters['year_id'];
-
-            $query->whereHas('student.studentInfo', function ($infoQuery) use ($yearId) {
-                $infoQuery->where('year_id', $yearId);
-            });
-        }
-    }
-
-    /**
-     * Human-readable description of the applied student-level filters, for the
-     * report's existing "Filters Applied:" line.
-     *
-     * @param  array{search: string, program_id: string, year_id: string}  $filters
-     * @return array<int, string>
-     */
-    private function describeViolationListFilters(array $filters): array
-    {
-        $parts = [];
-
-        if ($filters['search'] !== '') {
-            $parts[] = 'Student: ' . $filters['search'];
-        }
-
-        if ($filters['program_id'] !== '') {
-            $name = Program::where('program_id', $filters['program_id'])->value('program_name');
-            $parts[] = 'Program: ' . ($name ?: $filters['program_id']);
-        }
-
-        if ($filters['year_id'] !== '') {
-            $year = Year::where('year_id', $filters['year_id'])->value('year');
-            $parts[] = 'Year: ' . ($year ?: $filters['year_id']);
-        }
-
-        return $parts;
+            'search',
+            'programId',
+            'yearId'
+        ));
     }
 
     /**
@@ -732,16 +642,15 @@ class StudentViolationController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
 
-        // The SAME student-level filters the Violations list uses, so the PDF
-        // matches exactly what the officer sees on screen.
-        $listFilters = $this->resolveViolationListFilters($request);
-
-        $reportStudents = $this->buildReportStudents($period, $dateFrom, $dateTo, $listFilters);
+        // The report range selector is the ONLY filter for this report. The
+        // student-list filters (search / program / year) belong to the Student
+        // Record tab and are deliberately NOT applied here.
+        $reportStudents = $this->buildReportStudents($period, $dateFrom, $dateTo);
 
         $security = Auth::guard('security')->user();
         $reportedBy = $this->buildSecurityAccountName($security);
 
-        $dateFilterLabel = match ($period) {
+        $filtersApplied = match ($period) {
             'today' => 'Today (PHT)',
             'last7' => 'Last 7 Days',
             'last30' => 'Last 30 Days',
@@ -750,19 +659,10 @@ class StudentViolationController extends Controller
             default => 'Last 7 Days',
         };
 
-        // Report the student-level filters first (what the officer selected on
-        // the page), then the period. An unfiltered report still reads
-        // "Last 7 Days" rather than claiming no filters at all, because the
-        // period genuinely restricts the report.
-        $applied = array_merge(
-            $this->describeViolationListFilters($listFilters),
-            [$dateFilterLabel]
-        );
-
         return [
             'reportStudents' => $reportStudents,
             'generatedAt' => $this->phtNow(),
-            'filtersApplied' => implode(', ', array_filter($applied)),
+            'filtersApplied' => $filtersApplied,
             'reportedBy' => $reportedBy,
         ];
     }
@@ -882,22 +782,8 @@ class StudentViolationController extends Controller
         ];
     }
 
-    /**
-     * Build the per-student report groups.
-     *
-     * The query is the report's own base (the officer's recorder scope plus the
-     * period/date window) AND the same student-level filters the Violations
-     * list uses, so the PDF contains exactly the records the officer sees on
-     * screen.
-     *
-     * @param  array{search: string, program_id: string, year_id: string}  $listFilters
-     */
-    private function buildReportStudents(
-        string $period = 'last7',
-        ?string $dateFrom = null,
-        ?string $dateTo = null,
-        array $listFilters = [],
-    ): Collection {
+    private function buildReportStudents(string $period = 'last7', ?string $dateFrom = null, ?string $dateTo = null): Collection
+    {
         $violationsQuery = Violation::with([
                 'student.studentInfo.program',
                 'student.studentInfo.year',
@@ -909,12 +795,6 @@ class StudentViolationController extends Controller
                 // Authorization: only this officer's own recorded violations.
                 $this->applyRecorderScope($query);
             });
-
-        // The SAME student-level filters (search / program / year) the
-        // Violations listing applies, so the report and the table agree.
-        if ($listFilters !== []) {
-            $this->applyViolationListFilters($violationsQuery, $listFilters);
-        }
 
         $phtNow = $this->phtNow();
 
