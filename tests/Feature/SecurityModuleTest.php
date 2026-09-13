@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\DisciplinarySanction;
+use App\Models\Program;
 use App\Models\Security;
 use App\Models\User;
 use App\Models\Violation;
 use App\Models\ViolationCategory;
 use App\Models\ViolationType;
+use App\Models\Year;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -208,11 +210,15 @@ class SecurityModuleTest extends TestCase
             (string) $response->headers->get('content-disposition')
         );
 
-        // Meaningful filename.
+        // Required filename format: PUPTracker_Violation_Report-YY-MM-DD.pdf
         $this->assertMatchesRegularExpression(
-            '/violation-report-\d{8}_\d{6}\.pdf/',
+            '/PUPTracker_Violation_Report-\d{2}-\d{2}-\d{2}\.pdf/',
             (string) $response->headers->get('content-disposition')
         );
+
+        // Exactly the requested shape, using the app's PHT date.
+        $expectedName = 'PUPTracker_Violation_Report-' . now('Asia/Manila')->format('y-m-d') . '.pdf';
+        $this->assertStringContainsString($expectedName, (string) $response->headers->get('content-disposition'));
 
         // A real PDF: the %PDF- magic header, and a PDF EOF marker.
         $body = $response->getContent();
@@ -717,6 +723,284 @@ class SecurityModuleTest extends TestCase
     }
 
     // ==================================================================
+    // Report FILTER behaviour
+    //
+    // The regression: the Violations list filters (search / program / year)
+    // were never passed to the report, so the PDF was unfiltered while the
+    // table was filtered. These tests assert the REPORT CONTENT, not just that
+    // a PDF came back.
+    // ==================================================================
+
+    /**
+     * The report payload the controller hands to the template — i.e. the exact
+     * dataset that ends up in the PDF.
+     *
+     * @return array<int, array{student: string, records: array<int, string>}>
+     */
+    private function reportPayloadData($officer, array $query): array
+    {
+        $response = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.report', $query + ['format' => 'pdf']));
+
+        $response->assertOk();
+
+        // Re-render the same view the PDF uses to inspect its data.
+        $view = view('security.violations.report', \Illuminate\Support\Facades\View::getShared() + []);
+        unset($view); // not used; the assertions below read the JSON-free HTML
+
+        return [];
+    }
+
+    public function test_report_respects_the_search_filter(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createStudent('2024-0002');
+        $this->createViolationType(1, 'Cheating');
+
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Alpha record.');
+        $this->createViolation('2024-0002', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Beta record.');
+
+        // Unfiltered: both students appear.
+        $all = $this->reportHtml($officer, ['period' => 'last7']);
+        $this->assertStringContainsString('2024-0001', $all);
+        $this->assertStringContainsString('2024-0002', $all);
+
+        // Filtered to student 2024-0001: only that student.
+        $filtered = $this->reportHtml($officer, ['period' => 'last7', 'search' => '2024-0001']);
+
+        $this->assertStringContainsString('2024-0001', $filtered);
+        $this->assertStringNotContainsString(
+            '2024-0002',
+            $filtered,
+            'The report must exclude students filtered out on the Violations page.'
+        );
+
+        // And the filter is described accurately.
+        $this->assertStringContainsString('Student: 2024-0001', $filtered);
+    }
+
+    public function test_report_respects_the_program_filter(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createViolationType(1, 'Cheating');
+
+        $programA = $this->createProgram(1, 'BSIT');
+        $programB = $this->createProgram(2, 'BSCS');
+
+        $this->createStudent('2024-0001', $programA);
+        $this->createStudent('2024-0002', $programB);
+
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Alpha record.');
+        $this->createViolation('2024-0002', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Beta record.');
+
+        $filtered = $this->reportHtml($officer, ['period' => 'last7', 'program_id' => '1']);
+
+        $this->assertStringContainsString('2024-0001', $filtered);
+        $this->assertStringNotContainsString('2024-0002', $filtered, 'Program filter must be applied to the report.');
+        $this->assertStringContainsString('Program: BSIT', $filtered);
+    }
+
+    public function test_report_respects_the_year_filter(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createViolationType(1, 'Cheating');
+
+        $year1 = $this->createYear(1, '1');
+        $year3 = $this->createYear(3, '3');
+
+        $this->createStudent('2024-0001', null, $year1);
+        $this->createStudent('2024-0002', null, $year3);
+
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Alpha record.');
+        $this->createViolation('2024-0002', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Beta record.');
+
+        $filtered = $this->reportHtml($officer, ['period' => 'last7', 'year_id' => '3']);
+
+        $this->assertStringContainsString('2024-0002', $filtered);
+        $this->assertStringNotContainsString('2024-0001', $filtered, 'Year filter must be applied to the report.');
+        $this->assertStringContainsString('Year: 3', $filtered);
+    }
+
+    public function test_report_respects_the_date_range_filter(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        // Inside the window.
+        Violation::create([
+            'student_number' => '2024-0001', 'violation_type' => 1,
+            'violation_date' => '2026-09-03 10:00:00', 'description' => 'Inside window.',
+            'recorder_type' => 'security', 'recorder_name' => 'Security: officer@example.com',
+            'status' => Violation::STATUS_CONFIRMED,
+        ]);
+        // Outside the window.
+        Violation::create([
+            'student_number' => '2024-0001', 'violation_type' => 1,
+            'violation_date' => '2026-08-01 10:00:00', 'description' => 'Outside window.',
+            'recorder_type' => 'security', 'recorder_name' => 'Security: officer@example.com',
+            'status' => Violation::STATUS_CONFIRMED,
+        ]);
+
+        $filtered = $this->reportHtml($officer, [
+            'period' => 'custom',
+            'date_from' => '2026-09-01',
+            'date_to' => '2026-09-07',
+        ]);
+
+        $this->assertStringContainsString('Inside window.', $filtered);
+        $this->assertStringNotContainsString('Outside window.', $filtered, 'Date range must confine the report.');
+        $this->assertStringContainsString('Inside window', $filtered);
+    }
+
+    public function test_report_applies_multiple_filters_together(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createViolationType(1, 'Cheating');
+
+        $programA = $this->createProgram(1, 'BSIT');
+        $programB = $this->createProgram(2, 'BSCS');
+
+        $this->createStudent('2024-0001', $programA);
+        $this->createStudent('2024-0002', $programB);
+
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Alpha record.');
+        $this->createViolation('2024-0002', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Beta record.');
+
+        // BOTH the student search and the program must hold at once.
+        $filtered = $this->reportHtml($officer, [
+            'period' => 'last7',
+            'search' => '2024-0001',
+            'program_id' => '1',
+        ]);
+
+        $this->assertStringContainsString('2024-0001', $filtered);
+        $this->assertStringNotContainsString('2024-0002', $filtered);
+
+        // A contradictory combination yields nothing (AND semantics, not OR).
+        $contradictory = $this->reportHtml($officer, [
+            'period' => 'last7',
+            'search' => '2024-0001',
+            'program_id' => '2',
+        ]);
+
+        $this->assertStringNotContainsString('Alpha record.', $contradictory);
+        $this->assertStringNotContainsString('Beta record.', $contradictory);
+    }
+
+    public function test_report_filter_description_lists_every_selected_filter(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createViolationType(1, 'Cheating');
+        $program = $this->createProgram(1, 'BSIT');
+        $year = $this->createYear(3, '3');
+        $this->createStudent('2024-0001', $program, $year);
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Alpha record.');
+
+        $filtered = $this->reportHtml($officer, [
+            'period' => 'last7',
+            'search' => '2024-0001',
+            'program_id' => '1',
+            'year_id' => '3',
+        ]);
+
+        // "Filters Applied:" must describe every selected filter.
+        $this->assertStringContainsString('Student: 2024-0001', $filtered);
+        $this->assertStringContainsString('Program: BSIT', $filtered);
+        $this->assertStringContainsString('Year: 3', $filtered);
+        $this->assertStringContainsString('Last 7 Days', $filtered);
+    }
+
+    public function test_report_with_no_list_filters_shows_the_period_only(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Alpha record.');
+
+        $html = $this->reportHtml($officer, ['period' => 'last7']);
+
+        // Scope to the "Filters Applied:" line: the report's student line
+        // legitimately contains "Year:"/"Program:" as record data, which must
+        // be preserved.
+        $filtersLine = $this->filtersAppliedText($html);
+
+        $this->assertStringNotContainsString('Student:', $filtersLine);
+        $this->assertStringNotContainsString('Program:', $filtersLine);
+        $this->assertStringNotContainsString('Year:', $filtersLine);
+        $this->assertStringContainsString('Last 7 Days', $filtersLine);
+    }
+
+    public function test_report_reports_the_selected_student_in_filters_applied(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Alpha record.');
+
+        $html = $this->reportHtml($officer, ['period' => 'last7', 'search' => '2024-0001']);
+
+        $this->assertStringContainsString('Filters Applied:', $html);
+        $this->assertStringContainsString('Student: 2024-0001', $html);
+    }
+
+    public function test_report_filters_are_scoped_to_the_current_officer(): void
+    {
+        $officerA = $this->createSecurity('officer-a@example.com');
+        $this->createSecurity('officer-b@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        $this->createViolation('2024-0001', 1, 'Security: officer-a@example.com', 'security', Violation::STATUS_CONFIRMED, 'Mine.');
+        $this->createViolation('2024-0001', 1, 'Security: officer-b@example.com', 'security', Violation::STATUS_CONFIRMED, 'Someone elses.');
+
+        // Even with a filter that matches both, authorization still excludes
+        // the other officer's recording.
+        $html = $this->reportHtml($officerA, ['period' => 'last7', 'search' => '2024-0001']);
+
+        $this->assertStringContainsString('Mine.', $html);
+        $this->assertStringNotContainsString(
+            'Someone elses.',
+            $html,
+            'Filtering must not weaken the recorder authorization scope.'
+        );
+    }
+
+    /**
+     * Render the report view exactly as the PDF path does, so the assertions
+     * inspect the real report dataset (not just the PDF bytes).
+     */
+    private function reportHtml($officer, array $query): string
+    {
+        return $this->actingAs($officer, 'security')
+            ->get(route('security.violations.report', $query))
+            ->assertOk()
+            ->getContent();
+    }
+
+    /**
+     * Just the text of the report's "Filters Applied:" line.
+     */
+    private function filtersAppliedText(string $html): string
+    {
+        if (! preg_match('/Filters Applied:.*?<\/div>/s', $html, $m)) {
+            return '';
+        }
+
+        return trim(strip_tags($m[0]));
+    }
+
+    // ==================================================================
     // Helpers
     // ==================================================================
 
@@ -729,7 +1013,7 @@ class SecurityModuleTest extends TestCase
         ]);
     }
 
-    private function createStudent(string $studentNumber): User
+    private function createStudent(string $studentNumber, ?int $programId = null, ?int $yearId = null): User
     {
         $user = User::create([
             'student_number' => $studentNumber,
@@ -742,10 +1026,28 @@ class SecurityModuleTest extends TestCase
         ]);
 
         if (Schema::hasTable('student_info_tbl')) {
-            DB::table('student_info_tbl')->insert(['user_id' => $user->user_id]);
+            DB::table('student_info_tbl')->insert([
+                'user_id' => $user->user_id,
+                'program_id' => $programId,
+                'year_id' => $yearId,
+            ]);
         }
 
         return $user;
+    }
+
+    private function createProgram(int $id, string $name): int
+    {
+        Program::create(['program_id' => $id, 'program_name' => $name]);
+
+        return $id;
+    }
+
+    private function createYear(int $id, string $year): int
+    {
+        Year::create(['year_id' => $id, 'year' => $year]);
+
+        return $id;
     }
 
     private function createCategory(int $id, string $name): void
