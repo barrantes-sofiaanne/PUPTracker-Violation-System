@@ -95,6 +95,28 @@ class AnnouncementViewTest extends TestCase
     }
 
     /**
+     * The rendered CARD region of an announcement page: from the hero header up
+     * to (but excluding) the shared detail modal. Used to assert on card markup
+     * without matching the modal's own JavaScript source, which legitimately
+     * contains the same class names.
+     */
+    private function announcementCardRegion(string $html): string
+    {
+        $start = strpos($html, 'portal-hero');
+        $end = strpos($html, 'id="announcementViewerModal"');
+
+        if ($start === false) {
+            return '';
+        }
+
+        if ($end === false || $end <= $start) {
+            return substr($html, $start);
+        }
+
+        return substr($html, $start, $end - $start);
+    }
+
+    /**
      * The class contract that defines the standardized announcement UI. Both
      * pages must use every one of these, which is what makes them match.
      */
@@ -102,7 +124,7 @@ class AnnouncementViewTest extends TestCase
         'portal-hero',          // page header/banner treatment
         'mb-4',                 // hero + card spacing
         'fw-bold',              // title typography
-        'text-muted',           // posted date/time, attachment metadata
+        'text-muted',           // date/time, attachment metadata
         'card',                 // card shell
         'portal-card',
         'card-body',
@@ -111,11 +133,17 @@ class AnnouncementViewTest extends TestCase
         'bg-secondary',
         'bi-paperclip',         // attachment indicator icon
         'bi-megaphone-fill',    // card icon
-        'bi-eye',               // View action icon
         'btn-sm',
-        'btn-outline-primary',  // View action styling
+        'btn-outline-primary',  // Read More action styling
         'announcement-view-trigger',
-        'announcement-rendered-content',
+        'announcement-card',
+        'announcement-card-title',
+        'announcement-card-meta',
+        'announcement-card-author',
+        'announcement-card-date',
+        'announcement-card-preview',
+        'announcement-card-footer',
+        'announcement-read-more',
     ];
 
     public function test_security_ui_matches_student_ui(): void
@@ -154,43 +182,115 @@ class AnnouncementViewTest extends TestCase
         $this->assertStringNotContainsString('page-header-modern', $securityHtml);
         $this->assertStringNotContainsString('portal-badge muted', $securityHtml);
 
-        // --- Both cards must present the same content order ---
-        // TITLE -> posted DATE -> divider -> message -> attachment indicator
-        // -> View action. (Security additionally renders its per-attachment
-        // rows between the indicator and the View action; that is preserved
-        // functionality, so the ordering assertions below are about the parts
-        // both modules share.)
+        // --- Both cards present the same content order ---
+        // TITLE -> author -> date/time -> divider -> preview -> attachment
+        // indicator -> Read More. Identical for both modules.
         foreach (['Student' => $studentHtml, 'Security' => $securityHtml] as $label => $html) {
-            $title = strpos($html, 'fw-bold');
-            $posted = strpos($html, 'Posted');
+            $title = strpos($html, 'announcement-card-title');
+            $author = strpos($html, 'announcement-card-author');
+            $date = strpos($html, 'announcement-card-date');
             $divider = strpos($html, '<hr class="border-secondary-subtle">');
+            $preview = strpos($html, 'announcement-card-preview');
             $badge = strpos($html, 'bi-paperclip');
-            $trigger = strpos($html, 'announcement-view-trigger');
+            $readMore = strpos($html, 'announcement-read-more');
 
-            foreach (['title' => $title, 'posted date' => $posted, 'divider' => $divider, 'attachment indicator' => $badge, 'View action' => $trigger] as $part => $pos) {
+            $parts = [
+                'title' => $title,
+                'author' => $author,
+                'date/time' => $date,
+                'divider' => $divider,
+                'message preview' => $preview,
+                'attachment indicator' => $badge,
+                'Read More action' => $readMore,
+            ];
+
+            foreach ($parts as $part => $pos) {
                 $this->assertNotFalse($pos, "{$label}: the {$part} is missing from the announcement UI.");
             }
 
-            $this->assertTrue($title < $posted, "{$label}: the title must precede the posted date.");
-            $this->assertTrue($posted < $divider, "{$label}: the posted date must precede the divider.");
-            $this->assertTrue($divider < $badge, "{$label}: the divider must precede the attachment indicator.");
-            $this->assertTrue($badge < $trigger, "{$label}: the attachment indicator must precede the View action.");
+            $this->assertTrue($title < $author, "{$label}: the title must precede the author.");
+            $this->assertTrue($author < $date, "{$label}: the author must precede the date/time.");
+            $this->assertTrue($date < $divider, "{$label}: the metadata must precede the divider.");
+            $this->assertTrue($divider < $preview, "{$label}: the divider must precede the message preview.");
+            $this->assertTrue($preview < $badge, "{$label}: the message preview must precede the attachment indicator.");
+            $this->assertTrue($badge < $readMore, "{$label}: the attachment indicator must precede the Read More action.");
 
-            // The shared viewer must be included exactly once (no duplicate
+            // The shared modal must be included exactly once (no duplicate
             // design system, no duplicated modal id in the DOM).
             $this->assertSame(
                 1,
                 substr_count($html, 'id="announcementViewerModal"'),
-                "{$label}: the shared viewer modal must be rendered exactly once."
+                "{$label}: the shared detail modal must be rendered exactly once."
             );
+        }
+
+        // --- Neither CARD exposes an attachment-management block ---
+        // Attachment rows belong in the detail modal. Scoped to the card region
+        // (hero up to the modal) so the modal's own JavaScript source, which
+        // legitimately names those classes, is not counted.
+        foreach (['Student' => $studentHtml, 'Security' => $securityHtml] as $label => $html) {
+            $cardRegion = $this->announcementCardRegion($html);
+
+            $this->assertStringNotContainsString(
+                'announcement-modal-attachment-row',
+                $cardRegion,
+                "{$label}: attachment rows belong in the detail modal, not on the card."
+            );
+            $this->assertStringNotContainsString(
+                '>Attachments</div>',
+                $cardRegion,
+                "{$label}: the card must not carry a generic Attachments section."
+            );
+
+            // The card shows an indicator instead.
+            $this->assertStringContainsString('announcement-card-attachment-badge', $cardRegion);
         }
 
         // --- Same data-attribute contract (no second design system) ---
         $this->assertSame(
             $this->extractUiFingerprint($studentHtml)['attrs'],
             $this->extractUiFingerprint($securityHtml)['attrs'],
-            'Both modules must drive the shared viewer with the same data attributes.'
+            'Both modules must drive the shared modal with the same data attributes.'
         );
+    }
+
+    public function test_announcement_card_shows_author_and_read_more(): void
+    {
+        $admin = $this->createAdmin();
+        $this->createAnnouncement('Authored Notice', 'Preview text.', $admin);
+
+        $html = $this->actingAs($this->createStudent(), 'student')
+            ->get(route('student.announcements'))
+            ->assertOk()
+            ->getContent();
+
+        // Author presentation, derived from the posting admin's info.
+        $this->assertStringContainsString('By Admin User', $html);
+
+        // Date/time presentation.
+        $this->assertStringContainsString('announcement-card-date', $html);
+
+        // Read More interaction with an accessible label.
+        $this->assertStringContainsString('Read More', $html);
+        $this->assertStringContainsString('bi-arrow-right', $html);
+        $this->assertStringContainsString('aria-label="Read more: Authored Notice"', $html);
+
+        // The card must carry the author through to the modal.
+        $this->assertStringContainsString('data-announcement-author="Admin User"', $html);
+    }
+
+    public function test_announcement_card_shows_a_fallback_author_when_unknown(): void
+    {
+        // No admin attached: the card must not leak an internal id.
+        $this->createAnnouncement('Anonymous Notice', 'Body.', null);
+
+        $html = $this->actingAs($this->createStudent(), 'student')
+            ->get(route('student.announcements'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('By PUPTracker Administration', $html);
+        $this->assertStringNotContainsString('By Admin #', $html);
     }
 
     public function test_security_hero_keeps_its_own_title_and_back_link(): void
@@ -232,7 +332,7 @@ class AnnouncementViewTest extends TestCase
         }
     }
 
-    public function test_security_announcement_view_button_is_accessible(): void
+    public function test_security_announcement_read_more_is_accessible(): void
     {
         $this->createAnnouncement('Accessible Notice', 'Body.');
 
@@ -241,13 +341,15 @@ class AnnouncementViewTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        // The View control must be a real button with an aria-label, and its
-        // icon must be decorative so screen readers announce it once.
+        // The action must be a real button with an aria-label.
         $this->assertStringContainsString('announcement-view-trigger', $html);
-        $this->assertStringContainsString('aria-label="View announcement:', $html);
+        $this->assertStringContainsString('aria-label="Read more: Accessible Notice"', $html);
+
+        // Its icons are decorative, so screen readers announce the label once.
+        $this->assertStringContainsString('bi-arrow-right ms-1" aria-hidden="true"', $html);
     }
 
-    public function test_attachment_actions_are_labelled_for_screen_readers(): void
+    public function test_attachment_actions_in_the_modal_are_labelled_for_screen_readers(): void
     {
         Storage::fake('local');
 
@@ -260,8 +362,14 @@ class AnnouncementViewTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        $this->assertStringContainsString('aria-label="View attachment guidelines.pdf"', $html);
-        $this->assertStringContainsString('aria-label="Download attachment guidelines.pdf"', $html);
+        // The card shows only an attachment INDICATOR — never a management row.
+        $this->assertStringContainsString('announcement-card-attachment-badge', $html);
+        $this->assertStringNotContainsString('aria-label="View attachment guidelines.pdf"', $html);
+
+        // The accessible labels are built by the shared modal's JavaScript, so
+        // assert the contract the card hands to the modal instead.
+        $this->assertStringContainsString('&quot;name&quot;:&quot;guidelines.pdf&quot;', $html);
+        $this->assertStringContainsString('data-announcement-attachments=', $html);
     }
 
     // ------------------------------------------------------------------
@@ -319,16 +427,21 @@ class AnnouncementViewTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        // The payload must flag the file as an image so the viewer renders it.
+        // The image must be flagged so the modal renders it as an inline <img>
+        // rather than a download row.
         $this->assertStringContainsString('&quot;is_image&quot;:true', $html);
 
-        // The URL handed to the <img> must be the authorized endpoint — never a
-        // public storage path.
+        // The URL handed to the modal (and therefore to the <img> src) must be
+        // the authorized application endpoint. json_encode escapes forward
+        // slashes, so match the escaped form.
         $this->assertStringContainsString(
-            'announcements/attachments/' . $attachment->attachment_id,
+            'announcements\\/attachments\\/' . $attachment->attachment_id,
             $html
         );
+
+        // Never a public storage path and never a direct R2 object URL.
         $this->assertStringNotContainsString('/storage/announcements/', $html);
+        $this->assertStringNotContainsString('r2.cloudflarestorage.com', $html);
     }
 
     /**

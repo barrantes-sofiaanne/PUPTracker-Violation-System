@@ -4,18 +4,17 @@
 
 @section('content')
 
-    {{-- Standardized against the Student Announcements UI, which is the source
-         of truth. Same hero, card, spacing, typography, attachment indicator,
-         View action and empty state — rendered from the shared partials so the
-         two modules cannot drift apart again.
+    {{-- Announcements use ONE shared UI (partials/announcement-list,
+         partials/announcement-card and partials/announcement-view-modal) —
+         exactly the same markup the Student module renders. Nothing about the
+         design branches on the module.
 
-         The Security module keeps its own real title and subtitle, its full
-         announcement body plus per-attachment View/Download rows on the card
-         (cardVariant = 'security'), and its Back to Dashboard navigation. --}}
+         Security keeps only its legitimate module-specific differences: its
+         own title and subtitle, its own navigation (Back to Dashboard), and
+         its own authorization/data handling in the controller. --}}
     @include('partials.announcement-list', [
         'heroTitle' => 'Security Announcements',
         'heroSubtitle' => 'Review announcements shared by the administration.',
-        'cardVariant' => 'security',
         'heroActions' => new \Illuminate\Support\HtmlString(
             '<a href="' . e(route('security.dashboard')) . '" class="announcement-hero-link">'
             . '<i class="bi bi-speedometer2" aria-hidden="true"></i>'
@@ -24,7 +23,7 @@
         ),
     ])
 
-    {{-- Shared View Announcement interface. --}}
+    {{-- Shared announcement detail modal (same UI as Student). --}}
     @include('partials.announcement-view-modal')
 
 @endsection

@@ -1,37 +1,46 @@
 {{--
-    Shared "View Announcement" interface.
+    Shared "Announcement" detail modal — ONE implementation for every module.
 
-    This is the single announcement viewer used by every module (student,
-    security, admin). The Security Module's Announcement Tab is the design
-    reference, so the card/typography/badge/attachment-row language here is
-    taken from `resources/views/security/announcements/index.blade.php`.
+    Opened by any `announcement-view-trigger` element (the card's
+    "Read More →" button). The Student and Security announcement pages both
+    include this exact partial, so there is a single announcement-detail UI.
 
-    Content order is fixed and matches the agreed specification:
+    Structure, per the standardized design:
 
-        TITLE
-        MESSAGE
-        ACTUAL PHOTO ATTACHMENT   (rendered inline)
-        other attachments         (unchanged behaviour)
-        [Close]
+        ┌──────────────────────────────────────────┐
+        │ ANNOUNCEMENT TITLE                    X  │
+        ├──────────────────────────────────────────┤
+        │ By [Author]            [Date/Time]        │
+        │ ───────────────────────────────────────  │
+        │ Full announcement message/content        │
+        │ (paragraphs / breaks / links / bold ...) │
+        │ [IMAGE ATTACHMENT, IF PRESENT]           │
+        │ [OTHER ATTACHMENTS, IF PRESENT]          │
+        └──────────────────────────────────────────┘
+
+    CONTENT RULES
+    - The full announcement body is rendered — never truncated. Formatting is
+      preserved because `rendered_content` is the server-sanitized HTML
+      (paragraphs, <br>, strong/em/u, lists, and <a href> links, which the
+      sanitizer already normalizes to target="_blank" rel="noopener
+      noreferrer").
+    - The body area scrolls; the modal itself stays inside the viewport.
 
     ATTACHMENT SECURITY
-    -------------------
-    Photos are NOT fetched from public storage. Each `<img>` points at the
-    existing authorized endpoint `announcements.attachments.show`, which:
-      * requires an authenticated student/security/admin actor,
-      * re-validates that the attachment belongs to a real announcement,
-      * streams the bytes from the PRIVATE disk with `Content-Disposition:
-        inline`, and
-      * writes an ATTACHMENT_VIEWED audit entry.
-    No public URLs, no public disk, no authorization bypass.
+    - Images are NOT fetched from public storage. Every `src` is the authorized
+      `announcements.attachments.show` endpoint, which requires an
+      authenticated student/security/admin actor, re-validates that the
+      attachment belongs to a real announcement, and streams the bytes from the
+      PRIVATE R2 disk with `Content-Disposition: inline`. No public object URL
+      is ever exposed and no authorization is bypassed.
+    - Non-image attachments (PDF, documents) keep an authorized inline "View"
+      and an authorized "Download".
 
     USAGE
     -----
-    Include once per layout. Any element carrying the
-    `announcement-view-trigger` class opens the modal. Recognised data
-    attributes (all optional except the title):
-
+    Include once per page. Recognised data attributes on the trigger:
         data-announcement-title
+        data-announcement-author
         data-announcement-posted
         data-announcement-content-html   JSON string of server-sanitized HTML
         data-announcement-content-text   plain-text fallback
@@ -42,34 +51,47 @@
         data-announcement-legacy-name
 --}}
 
-<div class="modal fade"
+<div class="modal fade announcement-modal"
      id="announcementViewerModal"
      tabindex="-1"
      aria-labelledby="announcementViewerTitle"
      aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold" id="announcementViewerTitle"></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+            <div class="modal-header announcement-modal-header">
+                <h5 class="modal-title announcement-modal-title" id="announcementViewerTitle"></h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"></button>
             </div>
 
-            <div class="modal-body">
-                <small class="text-muted d-block mb-3" id="announcementViewerDate"></small>
+            <div class="modal-body announcement-modal-body">
 
-                {{-- 1. TITLE (in the modal header) / 2. MESSAGE --}}
+                {{-- Author + date/time metadata row --}}
+                <div class="announcement-modal-meta">
+                    <span class="announcement-card-author" id="announcementViewerAuthor"></span>
+                    <span class="announcement-card-date" id="announcementViewerDate"></span>
+                </div>
+
+                <hr class="border-secondary-subtle">
+
+                {{-- Full announcement content (never truncated). --}}
                 <div class="announcement-rendered-content" id="announcementViewerContent"></div>
 
-                {{-- 3. ACTUAL PHOTO ATTACHMENT --}}
-                <div id="announcementViewerPhotos" class="mt-3"></div>
+                {{-- ACTUAL PHOTO ATTACHMENT, rendered inline. --}}
+                <div id="announcementViewerPhotos"></div>
 
-                {{-- Other (non-image) attachments — behaviour preserved --}}
-                <div id="announcementViewerAttachments" class="mt-3"></div>
+                {{-- Other (non-image) attachments. --}}
+                <div id="announcementViewerAttachments"></div>
+
             </div>
 
-            <div class="modal-footer">
+            <div class="modal-footer announcement-modal-footer">
                 <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
             </div>
+
         </div>
     </div>
 </div>
@@ -89,18 +111,32 @@
         }
     }
 
+    function sectionHeading(text) {
+        var heading = document.createElement('div');
+        heading.className = 'fw-semibold small text-uppercase text-muted announcement-modal-section-title';
+        heading.textContent = text;
+        return heading;
+    }
+
+    /**
+     * One attachment row: authorized inline View + authorized Download.
+     * Used for non-image attachments (PDF, documents, legacy).
+     */
     function buildAttachmentRow(file) {
         var row = document.createElement('div');
-        row.className = 'd-flex align-items-center justify-content-between flex-wrap gap-2 border rounded p-2 mb-2 bg-white';
+        row.className = 'announcement-modal-attachment-row';
 
         var info = document.createElement('div');
-        info.className = 'd-flex align-items-center gap-2';
+        info.className = 'announcement-modal-attachment-info';
 
         var icon = document.createElement('i');
-        icon.className = 'bi bi-file-earmark-text fs-4 text-maroon';
+        icon.className = 'bi bi-file-earmark-text announcement-modal-attachment-icon';
+        icon.setAttribute('aria-hidden', 'true');
         info.appendChild(icon);
 
         var meta = document.createElement('div');
+        meta.className = 'announcement-attachment-meta';
+
         var name = document.createElement('div');
         name.className = 'fw-semibold small';
         name.textContent = file.name || 'Attachment';
@@ -114,95 +150,96 @@
         if (file.date) { bits.push('Uploaded ' + file.date); }
         detail.textContent = bits.join(' \u2022 ');
         meta.appendChild(detail);
+
         info.appendChild(meta);
         row.appendChild(info);
 
         var actions = document.createElement('div');
-        actions.className = 'd-flex gap-2';
+        actions.className = 'announcement-modal-attachment-actions';
+
         if (file.view) {
             var view = document.createElement('a');
             view.href = file.view;
             view.target = '_blank';
             view.rel = 'noopener noreferrer';
             view.className = 'btn btn-sm btn-outline-primary';
-            view.innerHTML = '<i class="bi bi-eye me-1"></i>View';
+            view.setAttribute('aria-label', 'View attachment ' + (file.name || ''));
+            view.innerHTML = '<i class="bi bi-eye me-1" aria-hidden="true"></i>View';
             actions.appendChild(view);
         }
+
         if (file.download) {
             var dl = document.createElement('a');
             dl.href = file.download;
             dl.className = 'btn btn-sm btn-outline-secondary';
-            dl.innerHTML = '<i class="bi bi-download me-1"></i>Download';
+            dl.setAttribute('aria-label', 'Download attachment ' + (file.name || ''));
+            dl.innerHTML = '<i class="bi bi-download me-1" aria-hidden="true"></i>Download';
             actions.appendChild(dl);
         }
+
         row.appendChild(actions);
 
         return row;
     }
 
+    /**
+     * Inline photo. `src` is the AUTHORIZED attachment endpoint — the image is
+     * painted directly in the modal with no new window and no public URL.
+     */
     function buildPhoto(file) {
-        var wrap = document.createElement('div');
-        wrap.className = 'announcement-viewer-photo';
+        var figure = document.createElement('figure');
+        figure.className = 'announcement-viewer-photo';
 
         var img = document.createElement('img');
-        // Authorized endpoint: streams inline from the private disk and
-        // re-checks authorization server-side on every request.
         img.src = file.view;
         img.alt = file.name ? ('Announcement photo: ' + file.name) : 'Announcement photo';
         img.loading = 'lazy';
         img.decoding = 'async';
 
-        // Never leave a broken-image icon on screen. If the <img> genuinely
-        // fails to load we swap in a readable notice and log the underlying
-        // failure to the console so the real error stays visible while
-        // debugging. A successful load is untouched.
+        // Never leave a broken-image icon behind. The real error is still
+        // logged so it stays visible while debugging.
         img.addEventListener('error', function () {
-            console.error('[announcement-viewer] image failed to load', {
+            console.error('[announcement] image failed to load', {
                 url: file.view,
-                attachment: file.name || null,
-                isImage: !!file.is_image
+                attachment: file.name || null
             });
 
             var fallback = document.createElement('div');
-            fallback.className = 'announcement-viewer-photo-fallback text-muted small border rounded p-3';
-            fallback.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>'
+            fallback.className = 'announcement-viewer-photo-fallback text-muted small';
+            fallback.innerHTML = '<i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>'
                 + 'Unable to load image.'
                 + (file.download
-                    ? ' <a href="' + file.download + '" class="ms-1">Download it instead</a>.'
+                    ? ' <a href="' + file.download + '">Download it instead</a>.'
                     : '');
 
-            // Replace only the image itself, keeping the caption/Download link.
             if (img.parentNode) {
                 img.parentNode.replaceChild(fallback, img);
             }
         });
 
-        wrap.appendChild(img);
+        figure.appendChild(img);
 
-        var caption = document.createElement('div');
+        var caption = document.createElement('figcaption');
         caption.className = 'announcement-viewer-photo-caption';
-        caption.textContent = file.name || 'Photo attachment';
+        caption.appendChild(document.createTextNode(file.name || 'Photo attachment'));
+
         if (file.download) {
             var dl = document.createElement('a');
             dl.href = file.download;
             dl.className = 'ms-2';
-            dl.innerHTML = '<i class="bi bi-download me-1"></i>Download';
+            dl.setAttribute('aria-label', 'Download image ' + (file.name || ''));
+            dl.innerHTML = '<i class="bi bi-download me-1" aria-hidden="true"></i>Download';
             caption.appendChild(dl);
         }
-        wrap.appendChild(caption);
 
-        return wrap;
-    }
+        figure.appendChild(caption);
 
-    function sectionHeading(text) {
-        var heading = document.createElement('div');
-        heading.className = 'fw-semibold small text-uppercase text-muted mb-2';
-        heading.textContent = text;
-        return heading;
+        return figure;
     }
 
     function render(data) {
         var titleEl = document.getElementById('announcementViewerTitle');
+        var authorEl = document.getElementById('announcementViewerAuthor');
         var dateEl = document.getElementById('announcementViewerDate');
         var contentEl = document.getElementById('announcementViewerContent');
         var photosEl = document.getElementById('announcementViewerPhotos');
@@ -212,13 +249,14 @@
             return;
         }
 
-        // 1. TITLE
         titleEl.textContent = data.title || 'Announcement';
 
-        // Metadata (date/time) — kept as the Security Module presents it.
-        dateEl.textContent = data.posted ? 'Posted ' + data.posted : '';
+        authorEl.textContent = data.author ? ('By ' + data.author) : '';
+        dateEl.textContent = data.posted || '';
 
-        // 2. MESSAGE — server-sanitized HTML, falling back to plain text.
+        // Full content — server-sanitized HTML preserved verbatim (paragraphs,
+        // line breaks, lists, bold, and already-normalized links). Falls back
+        // to plain text only when no HTML is available.
         contentEl.innerHTML = '';
         if (data.contentHtml) {
             contentEl.innerHTML = data.contentHtml;
@@ -241,9 +279,8 @@
             });
         }
 
-        // 3. ACTUAL PHOTO ATTACHMENT — rendered inline, directly under the
-        //    message. When there is no photo the container is left empty so no
-        //    blank image slot appears.
+        // ACTUAL PHOTO ATTACHMENT — inline, directly under the message. With no
+        // photo the container stays empty, so no blank slot is rendered.
         photosEl.innerHTML = '';
         if (photos.length) {
             photos.forEach(function (file) {
@@ -251,7 +288,7 @@
             });
         }
 
-        // Non-image attachments — existing behaviour preserved.
+        // Non-image attachments.
         attachmentsEl.innerHTML = '';
         if (others.length) {
             attachmentsEl.appendChild(sectionHeading('Attachments'));
@@ -262,15 +299,13 @@
     }
 
     function collect(trigger) {
-        var attachments = parseJson(trigger.dataset.announcementAttachments) || [];
-        var contentHtml = parseJson(trigger.dataset.announcementContentHtml);
-
         return {
             title: trigger.dataset.announcementTitle || '',
+            author: trigger.dataset.announcementAuthor || '',
             posted: trigger.dataset.announcementPosted || '',
             content: trigger.dataset.announcementContentText || '',
-            contentHtml: contentHtml,
-            attachments: attachments,
+            contentHtml: parseJson(trigger.dataset.announcementContentHtml),
+            attachments: parseJson(trigger.dataset.announcementAttachments) || [],
             legacyAttachment: trigger.dataset.announcementLegacy || null,
             legacyName: trigger.dataset.announcementLegacyName || null
         };
@@ -278,6 +313,7 @@
 
     function bind() {
         var modalEl = document.getElementById('announcementViewerModal');
+
         if (!modalEl || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
             return;
         }
@@ -285,10 +321,10 @@
         var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
 
         document.querySelectorAll('.announcement-view-trigger').forEach(function (trigger) {
-            if (trigger.dataset.announcementViewerBound === '1') {
+            if (trigger.dataset.announcementBound === '1') {
                 return;
             }
-            trigger.dataset.announcementViewerBound = '1';
+            trigger.dataset.announcementBound = '1';
             trigger.addEventListener('click', function () {
                 render(collect(trigger));
                 modal.show();
@@ -302,7 +338,7 @@
         bind();
     }
 
-    // Re-bind after dynamic DOM updates (e.g. pagination/AJAX list refresh).
+    // Re-bind after dynamic DOM updates.
     window.refreshAnnouncementViewer = bind;
 })();
 </script>

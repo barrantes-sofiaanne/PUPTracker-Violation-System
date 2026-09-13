@@ -1,19 +1,19 @@
-﻿@extends('layouts.student')
+@extends('layouts.student')
 
 @section('title', 'Announcements')
 
 @section('content')
 
-    {{-- Student Announcements IS the reference design. Its markup now lives in
-         the shared announcement partials so the Security module can reuse the
-         exact same UI. --}}
+    {{-- Announcements use ONE shared UI (partials/announcement-list,
+         partials/announcement-card and partials/announcement-view-modal).
+         Student is the source of truth, so this page only supplies its own
+         title and subtitle; the markup itself is shared with Security. --}}
     @include('partials.announcement-list', [
         'heroTitle' => 'Student Announcements',
         'heroSubtitle' => 'Stay updated with the latest announcements from the administration.',
-        'cardVariant' => 'student',
     ])
 
-    {{-- Shared View Announcement interface. --}}
+    {{-- Shared announcement detail modal. --}}
     @include('partials.announcement-view-modal')
 
 @endsection

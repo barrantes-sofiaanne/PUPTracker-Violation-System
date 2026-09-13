@@ -823,18 +823,235 @@ body {
 }
 
 /* ------------------------------------------------------------------
+   Announcement UI — shared by the Student AND Security modules
+   ------------------------------------------------------------------
+   ONE design for both. The Student Announcements page is the source of
+   truth; nothing here branches on module. Everything below is presentation
+   only — authorization and data handling stay server-side. */
+
+/* ---- Card ---- */
+.announcement-card .card-body {
+    padding: 1.5rem 1.6rem;
+}
+
+.announcement-card-title {
+    font-size: 1.35rem;
+    line-height: 1.35;
+    color: var(--portal-maroon);
+}
+
+.announcement-card-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+    color: #67585c;
+}
+
+.announcement-card-author {
+    font-weight: 600;
+}
+
+/* Separator dot between author and date; purely decorative. */
+.announcement-card-author::after {
+    content: "\2022";
+    margin-left: 0.75rem;
+    color: #a99a9c;
+}
+
+.announcement-card-date {
+    color: #67585c;
+}
+
+.announcement-card-icon {
+    color: var(--portal-goldenrod);
+    flex: 0 0 auto;
+}
+
+.announcement-card-preview {
+    white-space: pre-line;
+    line-height: 1.6;
+}
+
+/* Preview + Read More row. */
+.announcement-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.announcement-card-attachment-badge {
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+/* Read More action — same button styling for both modules. */
+.announcement-read-more {
+    margin-left: auto;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.announcement-empty-icon {
+    color: var(--portal-goldenrod);
+}
+
+/* ---- Detail modal ---- */
+.announcement-modal .modal-content {
+    border: none;
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.announcement-modal-header {
+    background: linear-gradient(
+        120deg,
+        rgba(128, 0, 0, 0.97) 0%,
+        rgba(95, 0, 0, 0.97) 68%,
+        rgba(218, 165, 32, 0.94) 170%
+    );
+    border-bottom: none;
+    padding: 1rem 1.25rem;
+}
+
+.announcement-modal-title {
+    color: var(--portal-white);
+    font-weight: 700;
+    font-size: 1.15rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+/* The header is maroon, so the default close icon needs to be light to keep
+   sufficient contrast. */
+.announcement-modal-header .btn-close {
+    filter: invert(1) grayscale(1) brightness(2);
+    opacity: 0.9;
+}
+
+.announcement-modal-header .btn-close:hover,
+.announcement-modal-header .btn-close:focus-visible {
+    opacity: 1;
+}
+
+.announcement-modal-body {
+    padding: 1.25rem 1.5rem;
+}
+
+.announcement-modal-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.35rem 1rem;
+    font-size: 0.85rem;
+    color: #67585c;
+    margin-bottom: 0.85rem;
+}
+
+.announcement-modal-section-title {
+    margin-top: 1.25rem;
+}
+
+/* Non-image attachment row. */
+.announcement-modal-attachment-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    border: 1px solid rgba(128, 0, 0, 0.15);
+    border-radius: 0.6rem;
+    padding: 0.65rem 0.75rem;
+    margin-bottom: 0.6rem;
+    background: #fff;
+}
+
+.announcement-modal-attachment-info {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+}
+
+.announcement-modal-attachment-icon {
+    font-size: 1.4rem;
+    color: var(--portal-maroon);
+    flex: 0 0 auto;
+}
+
+.announcement-modal-attachment-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* Links inside announcement content must be visibly clickable. */
+.announcement-rendered-content a {
+    color: var(--portal-maroon);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.announcement-rendered-content a:hover,
+.announcement-rendered-content a:focus-visible {
+    color: #5f0000;
+}
+
+@media (max-width: 575.98px) {
+    .announcement-card .card-body {
+        padding: 1.15rem 1.1rem;
+    }
+
+    .announcement-card-title {
+        font-size: 1.15rem;
+    }
+
+    .announcement-card-icon {
+        font-size: 1.6rem !important;
+    }
+
+    .announcement-read-more {
+        width: 100%;
+        margin-left: 0;
+        justify-content: center;
+    }
+
+    .announcement-modal-body {
+        padding: 1rem;
+    }
+
+    .announcement-modal-meta {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .announcement-modal-attachment-actions {
+        width: 100%;
+    }
+
+    .announcement-modal-attachment-actions .btn {
+        flex: 1 1 auto;
+    }
+}
+
+/* ------------------------------------------------------------------
    Announcement viewer — actual photo attachment
    ------------------------------------------------------------------
-   Shared by every module's "View Announcement" interface (the Security
-   Module design is the reference) and by the post-login announcement
-   modal. Images are streamed by the authorized attachment endpoint, so
-   these rules only control presentation.
+   Shared by the Student and Security announcement detail modals and by the
+   post-login announcement modal. Images are streamed by the authorized
+   attachment endpoint, so these rules only control presentation.
 
-   Requirements: show the real image, preserve aspect ratio, stay
-   responsive on desktop/tablet/mobile, and never let an oversized image
-   break the modal layout. */
+   Requirements: show the real image, preserve aspect ratio, stay responsive
+   on desktop/tablet/mobile, and never let an oversized image break the modal.
+   Applies to JPG/JPEG/PNG/WEBP and any other image type the allow-list
+   accepts, without changing the file itself. */
 .announcement-viewer-photo {
-    margin: 0 0 1rem;
+    margin: 1rem 0 0;
     text-align: center;
 }
 
@@ -868,8 +1085,11 @@ body {
    so the viewer never leaves a broken-image icon behind. */
 .announcement-viewer-photo-fallback {
     display: block;
-    margin: 0 auto;
+    margin: 1rem auto 0;
     max-width: 32rem;
+    padding: 0.85rem;
+    border: 1px solid rgba(128, 0, 0, 0.15);
+    border-radius: 0.6rem;
     background: #fff;
     color: #67585c;
 }
