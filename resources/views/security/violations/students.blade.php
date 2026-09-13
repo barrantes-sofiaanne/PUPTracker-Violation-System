@@ -262,7 +262,10 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <form method="GET" action="{{ route('security.violations.report') }}" target="_blank">
+            <form method="GET" action="{{ route('security.violations.report') }}">
+                {{-- Generate Report downloads a PDF. The report content, ordering
+                     and filters are unchanged; only the output format differs. --}}
+                <input type="hidden" name="format" value="pdf">
                 <div class="modal-body">
                     <p class="mb-3 text-muted">Select the report range you want to generate.</p>
 
@@ -333,7 +336,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn portal-btn-outline" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn action-btn-static action-btn-static-primary">
-                        <i class="bi bi-printer me-1"></i>Generate
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Generate PDF
                     </button>
                 </div>
             </form>

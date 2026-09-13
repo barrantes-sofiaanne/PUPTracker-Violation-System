@@ -162,7 +162,10 @@ class StudentViolationController extends Controller
         $student = User::where('student_number', $student_number)
             ->with(['violations' => function ($query) {
                 $this->applyRecorderScope($query);
-                // Only confirmed rows reflect on the student's record.
+                // Only confirmed rows reflect on the student's record. Pending
+                // rows are still awaiting the administrator's review, and
+                // denied rows are not real violations — both are excluded here
+                // and tracked in the Submitted Violations tab instead.
                 $query->where('status', Violation::STATUS_CONFIRMED);
                 $query->latest('violation_date');
             }, 'violations.violationType.violationCategory'])
@@ -170,8 +173,8 @@ class StudentViolationController extends Controller
 
         $violations = $student->violations;
 
-        // A confirmed violation may be highlighted when arriving from a
-        // notification deep link.
+        // A violation may be highlighted when arriving from a notification deep
+        // link.
         $highlightViolationId = (int) request()->integer('highlight_violation');
         if ($highlightViolationId > 0 && $violations->doesntContain('violation_id', $highlightViolationId)) {
             $highlightViolationId = 0;
@@ -598,6 +601,26 @@ class StudentViolationController extends Controller
 
     public function report(Request $request)
     {
+        $report = $this->buildReportPayload($request);
+
+        // A PDF download is requested explicitly (?format=pdf). Without it the
+        // existing printable HTML report is returned, unchanged.
+        if (strtolower((string) $request->input('format', '')) === 'pdf') {
+            return $this->reportPdf($report);
+        }
+
+        return view('security.violations.report', $report);
+    }
+
+    /**
+     * Assemble the report data. This is the SINGLE source of the report's
+     * content, ordering and filters — shared by the HTML view and the PDF
+     * export so the two can never diverge.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildReportPayload(Request $request): array
+    {
         $period = (string) $request->input('period', 'last7');
         $period = in_array($period, ['today', 'last7', 'last30', 'all', 'custom'], true) ? $period : 'last7';
 
@@ -618,11 +641,50 @@ class StudentViolationController extends Controller
             default => 'Last 7 Days',
         };
 
-        return view('security.violations.report', [
+        return [
             'reportStudents' => $reportStudents,
             'generatedAt' => $this->phtNow(),
             'filtersApplied' => $filtersApplied,
             'reportedBy' => $reportedBy,
+        ];
+    }
+
+    /**
+     * Render the SAME report as a downloadable PDF.
+     *
+     * The report Blade view already declares `@page { size: A4; margin: 12mm }`
+     * and a 100%-width table with fixed column widths, so it is reused verbatim
+     * as the PDF template — report content, ordering, sections and filters are
+     * all preserved. Only the output format changes. Uses mPDF, which the
+     * project already ships and uses for the Admin report exports (no new
+     * dependency).
+     */
+    private function reportPdf(array $report): \Symfony\Component\HttpFoundation\Response
+    {
+        // The layout already includes the PUP logo from the public assets.
+        $html = view('security.violations.report', $report)->render();
+
+        $mpdf = new \Mpdf\Mpdf([
+            // A4 portrait, matching the template's own @page rule.
+            'format' => 'A4',
+            'margin_left' => 12,
+            'margin_right' => 12,
+            'margin_top' => 12,
+            'margin_bottom' => 14,
+            'tempDir' => storage_path('app/mpdf'),
+            // Keep the rendered widths inside the printable area so the table
+            // never overflows or gets clipped.
+            'shrink_tables_to_fit' => 1,
+        ]);
+
+        $mpdf->SetTitle('PUPT Student Violation Report');
+        $mpdf->WriteHTML($html);
+
+        $fileName = 'violation-report-' . $this->phtNow()->format('Ymd_His') . '.pdf';
+
+        return response($mpdf->Output($fileName, 'S'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
         ]);
     }
 

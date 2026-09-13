@@ -202,38 +202,6 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="portal-stat-label mb-2">Major Violations</p>
-                            <h2 class="portal-stat-value mb-0">{{ $majorViolations }}</h2>
-                        </div>
-                        <div class="portal-icon-badge">
-                            <i class="bi bi-exclamation-octagon-fill"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6">
-            <div class="card portal-stat-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="portal-stat-label mb-2">Minor Violations</p>
-                            <h2 class="portal-stat-value mb-0">{{ $minorViolations }}</h2>
-                        </div>
-                        <div class="portal-icon-badge">
-                            <i class="bi bi-info-circle-fill"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6">
-            <div class="card portal-stat-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
                             <p class="portal-stat-label mb-2">Total Violations</p>
                             <h2 class="portal-stat-value mb-0">{{ $totalViolations }}</h2>
                         </div>
@@ -498,6 +466,14 @@
         </div>
     </div>
 </div>
+
+{{-- Violation and Sanction Guide — the SAME shared partial the Student
+     Dashboard renders, so both modules show identical violation/sanction
+     information from the same data source. --}}
+@include('partials.violation-sanction-guide', [
+    'guideId' => 'securityGuide',
+    'guideTitle' => 'Violation and Sanction Guide',
+])
 
 @push('scripts')
 <script>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Security;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Violation;
+use App\Models\ViolationCategory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -82,8 +83,12 @@ class SecurityDashboardController extends Controller
                 return [$label => (int) $row->count];
             });
 
-        $majorViolations = (int) ($violationsBySeverity['Level 1'] ?? 0);
-        $minorViolations = (int) ($violationsBySeverity['Level 2'] ?? 0);
+        // Violation and Sanction Guide. Uses the SAME data source and the SAME
+        // shared partial as the Student Dashboard, so both modules display
+        // identical violation/sanction information.
+        $categories = ViolationCategory::with([
+            'violationTypes.disciplinarySanctions'
+        ])->get();
 
         return view('security.dashboard', compact(
             'activeStudents',
@@ -92,8 +97,7 @@ class SecurityDashboardController extends Controller
             'activeOffenders',
             'violationsByCategory',
             'violationsBySeverity',
-            'majorViolations',
-            'minorViolations'
+            'categories'
         ));
     }
 

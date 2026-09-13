@@ -83,7 +83,9 @@
         position: relative;
         z-index: 1;
         display: grid;
-        grid-template-columns: repeat(3, minmax(120px, 1fr));
+        /* Only the totals are shown here now (the Major/Minor summary cards
+           were removed), so a single column keeps the card a sensible width. */
+        grid-template-columns: minmax(140px, 220px);
         gap: 0.8rem;
         max-width: 460px;
     }
@@ -263,7 +265,7 @@
         }
 
         .student-stats-grid {
-            grid-template-columns: repeat(2, minmax(120px, 1fr));
+            grid-template-columns: minmax(140px, 220px);
             max-width: 100%;
         }
     }
@@ -296,18 +298,6 @@
                 <div>
                     <div class="stat-mini-value">{{ $violationStats['total'] }}</div>
                     <div class="stat-mini-label">Total Violations</div>
-                </div>
-            </div>
-            <div class="stat-mini">
-                <div>
-                    <div class="stat-mini-value">{{ $violationStats['major'] }}</div>
-                    <div class="stat-mini-label">Major</div>
-                </div>
-            </div>
-            <div class="stat-mini">
-                <div>
-                    <div class="stat-mini-value">{{ $violationStats['minor'] }}</div>
-                    <div class="stat-mini-label">Minor</div>
                 </div>
             </div>
         </div>
@@ -382,7 +372,24 @@
                      data-violation-id="{{ $violation->violation_id }}">
                     <div class="violation-title">
                         {{ $violation->violation_type_display }}
-                        <span class="badge bg-success ms-2">Confirmed</span>
+
+                        {{-- Authoritative review status. A violation is never
+                             treated as confirmed just because this officer
+                             recorded it: the administrator's decision decides.
+                             Labels match the Submitted Violations tab. --}}
+                        @php
+                            $reviewStatus = strtolower((string) $violation->status);
+                        @endphp
+
+                        @if($reviewStatus === \App\Models\Violation::STATUS_DENIED)
+                            <span class="badge bg-danger ms-2">Rejected</span>
+                        @elseif($reviewStatus === \App\Models\Violation::STATUS_PENDING)
+                            <span class="badge bg-warning text-dark ms-2">Pending Review</span>
+                        @else
+                            {{-- Confirmed, plus legacy rows that carry no status
+                                 (which the model also treats as effective). --}}
+                            <span class="badge bg-success ms-2">Confirmed</span>
+                        @endif
                     </div>
                     <div class="violation-meta">
                         <i class="bi bi-calendar"></i>
@@ -405,7 +412,7 @@
             @else
             <div class="text-center py-5">
                 <i class="bi bi-check-circle display-4" style="color: var(--portal-goldenrod);"></i>
-                <p class="mt-3" style="color: #67585c;">No confirmed violation records found.</p>
+                <p class="mt-3" style="color: #67585c;">No violation records found for this student.</p>
             </div>
             @endif
         </div>
