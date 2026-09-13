@@ -28,6 +28,9 @@
         </a>
     </div>
 
+    {{-- Violations tabs: Student Record (default) / Submitted Violations --}}
+    @include('security.violations.partials.tabs', ['activeViolationsTab' => 'submitted'])
+
     {{-- Status summary chips --}}
     <div class="d-flex flex-wrap gap-2 mb-3">
         <a href="{{ route('security.violations.submitted') }}" class="admin-btn admin-btn-sm {{ $status === '' ? 'admin-btn-primary' : 'admin-btn-neutral' }}">
@@ -210,6 +213,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const highlightedRow = document.querySelector('tr.resubmit-highlight');
     if (highlightedRow) {
         highlightedRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // The highlight is temporary: once the officer interacts with the row
+        // it fades away, matching the Student Module's behaviour.
+        const clearHighlight = function () {
+            highlightedRow.classList.remove('resubmit-highlight');
+            ['click', 'focusin', 'keydown'].forEach(function (evt) {
+                highlightedRow.removeEventListener(evt, clearHighlight);
+            });
+        };
+
+        ['click', 'focusin', 'keydown'].forEach(function (evt) {
+            highlightedRow.addEventListener(evt, clearHighlight);
+        });
     }
 
     const modal = document.getElementById('resubmitViolationModal');

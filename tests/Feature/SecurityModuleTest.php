@@ -305,40 +305,43 @@ class SecurityModuleTest extends TestCase
         $this->assertStringContainsString('Cheating', $html);
     }
 
-    public function test_student_record_shows_the_authoritative_confirmed_status(): void
+    /**
+     * NEW required behaviour: the record reflects the administrator's decision.
+     * A REJECTED (denied) violation is now shown as Rejected rather than being
+     * silently hidden (this supersedes the previous exclusion).
+     */
+    public function test_student_record_shows_rejected_status_for_a_denied_violation(): void
     {
         $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
         $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
-        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED);
+        $this->createViolation(
+            '2024-0001', 1, 'Security: officer@example.com', 'security',
+            Violation::STATUS_DENIED, 'Rejected submission.'
+        );
 
         $html = $this->actingAs($officer, 'security')
             ->get(route('security.violations.show', '2024-0001'))
             ->assertOk()
             ->getContent();
 
-        // The status comes from the record, not from the fact that this officer
-        // created it.
-        $this->assertStringContainsString('Confirmed', $html);
-        $this->assertStringNotContainsString('>Rejected<', $html);
+        $this->assertStringContainsString('Rejected submission.', $html);
+        $this->assertStringContainsString('>Rejected<', $html);
+        $this->assertStringNotContainsString('>Confirmed<', $html);
     }
 
-    /**
-     * A violation awaiting review, or one the administrator rejected, must
-     * never be presented as confirmed on the student's record. Both are tracked
-     * in the Submitted Violations tab instead — see
-     * ViolationSanctionWorkflowTest for the same documented rule.
-     */
-    public function test_student_record_never_presents_unconfirmed_or_rejected_violations(): void
+    public function test_student_record_shows_confirmed_and_rejected_together_with_correct_labels(): void
     {
         $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
         $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
         $this->createViolationType(2, 'Fighting');
 
         $this->createViolation(
             '2024-0001', 1, 'Security: officer@example.com', 'security',
-            Violation::STATUS_PENDING, 'Awaiting review.'
+            Violation::STATUS_CONFIRMED, 'Approved submission.'
         );
         $this->createViolation(
             '2024-0001', 2, 'Security: officer@example.com', 'security',
@@ -350,12 +353,35 @@ class SecurityModuleTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        // Neither the pending nor the rejected record appears on the record.
-        $this->assertStringNotContainsString('Awaiting review.', $html);
-        $this->assertStringNotContainsString('Rejected submission.', $html);
+        $this->assertStringContainsString('Approved submission.', $html);
+        $this->assertStringContainsString('Rejected submission.', $html);
+        $this->assertStringContainsString('>Confirmed<', $html);
+        $this->assertStringContainsString('>Rejected<', $html);
+    }
 
-        // And nothing is mislabelled as confirmed.
+    /**
+     * Pending/unreviewed violations must remain excluded from the record: only
+     * the administrator's decision (Confirmed / Rejected) reflects there.
+     */
+    public function test_student_record_excludes_pending_violations(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $this->createViolation(
+            '2024-0001', 1, 'Security: officer@example.com', 'security',
+            Violation::STATUS_PENDING, 'Awaiting review.'
+        );
+
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.show', '2024-0001'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringNotContainsString('Awaiting review.', $html);
         $this->assertStringNotContainsString('>Confirmed<', $html);
+        $this->assertStringNotContainsString('>Rejected<', $html);
     }
 
     /**
@@ -401,6 +427,292 @@ class SecurityModuleTest extends TestCase
             'Theirs',
             $html,
             'Another officer\'s recording must not appear.'
+        );
+    }
+
+    // ==================================================================
+    // 2. Violations tab structure
+    // ==================================================================
+
+    public function test_violations_page_has_exactly_two_tabs_in_order(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.students'))
+            ->assertOk()
+            ->getContent();
+
+        // Student Record first, Submitted Violations second.
+        $studentPos = strpos($html, 'id="studentRecordTab"');
+        $submittedPos = strpos($html, 'id="submittedViolationsTab"');
+
+        $this->assertNotFalse($studentPos, 'The Student Record tab must exist.');
+        $this->assertNotFalse($submittedPos, 'The Submitted Violations tab must exist.');
+        $this->assertTrue($studentPos < $submittedPos, 'Student Record must be the first tab.');
+
+        // Student Record is the default (active) tab on its own page.
+        $this->assertMatchesRegularExpression(
+            '/id="studentRecordTab"\s+role="tab"\s+aria-controls="studentRecord"\s+aria-selected="true"/',
+            $html
+        );
+
+        // The same two tabs render on the Submitted Violations page.
+        $submittedHtml = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.submitted'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('id="studentRecordTab"', $submittedHtml);
+        $this->assertMatchesRegularExpression(
+            '/id="submittedViolationsTab"\s+role="tab"\s+aria-controls="submittedViolations"\s+aria-selected="true"/',
+            $submittedHtml
+        );
+    }
+
+    // ==================================================================
+    // 3 + 4. Submitted Violations
+    // ==================================================================
+
+    public function test_submitted_violations_lists_the_officers_own_records_with_statuses(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_PENDING, 'Pending one.');
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Confirmed one.');
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_DENIED, 'Rejected one.');
+
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.submitted'))
+            ->assertOk()
+            ->getContent();
+
+        // All three of the officer's own submissions, each with its status.
+        $this->assertStringContainsString('Pending one.', $html);
+        $this->assertStringContainsString('Confirmed one.', $html);
+        $this->assertStringContainsString('Rejected one.', $html);
+
+        $this->assertStringContainsString('Pending Review', $html);
+        $this->assertStringContainsString('Confirmed', $html);
+        $this->assertStringContainsString('Rejected', $html);
+
+        // The student is identifiable.
+        $this->assertStringContainsString('2024-0001', $html);
+    }
+
+    public function test_submitted_violations_excludes_other_officers_submissions(): void
+    {
+        $officerA = $this->createSecurity('officer-a@example.com');
+        $this->createSecurity('officer-b@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        $this->createViolation('2024-0001', 1, 'Security: officer-a@example.com', 'security', Violation::STATUS_PENDING, 'Mine.');
+        $this->createViolation('2024-0001', 1, 'Security: officer-b@example.com', 'security', Violation::STATUS_PENDING, 'Someone elses.');
+
+        $html = $this->actingAs($officerA, 'security')
+            ->get(route('security.violations.submitted'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Mine.', $html);
+        $this->assertStringNotContainsString(
+            'Someone elses.',
+            $html,
+            'Another officer\'s submission must never appear.'
+        );
+    }
+
+    public function test_submitted_violations_status_filter_maps_rejected_to_denied(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED, 'Approved one.');
+        $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_DENIED, 'Rejected one.');
+
+        $rejected = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.submitted', ['status' => 'rejected']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Rejected one.', $rejected);
+        $this->assertStringNotContainsString('Approved one.', $rejected);
+
+        $confirmed = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.submitted', ['status' => 'confirmed']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Approved one.', $confirmed);
+        $this->assertStringNotContainsString('Rejected one.', $confirmed);
+    }
+
+    // ==================================================================
+    // 5 + 6. Notification deep link + highlight
+    // ==================================================================
+
+    public function test_confirmed_violation_notification_deep_links_to_the_student_record(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $violation = $this->createViolation(
+            '2024-0001', 1, 'Security: officer@example.com', 'security',
+            Violation::STATUS_CONFIRMED, 'Confirmed one.'
+        );
+
+        $url = app(\App\Services\SecurityNotificationService::class)->openUrl(
+            new \App\Models\Notification([
+                'target_type' => 'violation',
+                'target_id' => $violation->violation_id,
+                'recipient_type' => 'security',
+            ])
+        );
+
+        $this->assertNotNull($url);
+        // Lands on the exact student's record with the record identified.
+        $this->assertStringContainsString('security/violations/student/2024-0001', $url);
+        $this->assertStringContainsString('highlight_violation=' . $violation->violation_id, $url);
+
+        // And the page actually highlights that record.
+        $html = $this->actingAs($officer, 'security')
+            ->get($url)
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('violation-item-highlight', $html);
+        $this->assertStringContainsString('data-violation-id="' . $violation->violation_id . '"', $html);
+    }
+
+    public function test_unreviewed_violation_notification_deep_links_to_submitted_violations(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $violation = $this->createViolation(
+            '2024-0001', 1, 'Security: officer@example.com', 'security',
+            Violation::STATUS_PENDING, 'Pending one.'
+        );
+
+        $url = app(\App\Services\SecurityNotificationService::class)->openUrl(
+            new \App\Models\Notification([
+                'target_type' => 'violation',
+                'target_id' => $violation->violation_id,
+                'recipient_type' => 'security',
+            ])
+        );
+
+        $this->assertNotNull($url);
+        $this->assertStringContainsString('violations/submitted', $url);
+        $this->assertStringContainsString('highlight_violation=' . $violation->violation_id, $url);
+
+        $html = $this->actingAs($officer, 'security')
+            ->get($url)
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('resubmit-highlight', $html);
+        $this->assertStringContainsString('data-violation-id="' . $violation->violation_id . '"', $html);
+    }
+
+    public function test_highlight_fades_after_user_interaction(): void
+    {
+        // The Student Module's highlight fades/removes after interaction. The
+        // Security views reuse the same approach: a CSS animation plus a click
+        // handler that clears the highlight class.
+        $show = file_get_contents(resource_path('views/security/violations/show.blade.php'));
+
+        $this->assertStringContainsString('violationHighlightPulse', $show);
+        $this->assertStringContainsString('classList.remove', $show);
+
+        $submitted = file_get_contents(resource_path('views/security/violations/submitted.blade.php'));
+
+        $this->assertStringContainsString('submittedRowFlash', $submitted);
+        $this->assertStringContainsString('classList.remove', $submitted);
+    }
+
+    /**
+     * REGRESSION — "Generate Report just keeps loading".
+     *
+     * mPDF resolves every remote URL while writing the document. The template
+     * used to link the Bootstrap CDN and load the logo over HTTP via asset(),
+     * so the request hung (spinner forever) whenever the server could not reach
+     * those hosts. The rendered template must therefore be fully
+     * self-contained: no remote stylesheets, scripts, or images.
+     */
+    public function test_report_template_is_self_contained_for_pdf_rendering(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $this->createViolation(
+            '2024-0001', 1, 'Security: officer@example.com', 'security',
+            Violation::STATUS_CONFIRMED, 'Reported violation.'
+        );
+
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.report', ['period' => 'last7']))
+            ->assertOk()
+            ->getContent();
+
+        // No remote stylesheet/script/image may remain in the document body.
+        $this->assertStringNotContainsString('cdn.jsdelivr.net', $html);
+        $this->assertStringNotContainsString('<script', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<link[^>]+href="https?:\/\//',
+            $html,
+            'A remote stylesheet would make mPDF hang while fetching it.'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<img[^>]+src="https?:\/\//',
+            $html,
+            'A remote image would make mPDF hang while fetching it.'
+        );
+
+        // The logo is embedded from disk instead.
+        $this->assertStringContainsString('data:image/png;base64,', $html);
+
+        // The report content is still intact.
+        $this->assertStringContainsString('PUPT Student Violation Report', $html);
+        $this->assertStringContainsString('Cheating', $html);
+    }
+
+    public function test_report_pdf_generates_without_network_access(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+        $this->createViolation(
+            '2024-0001', 1, 'Security: officer@example.com', 'security',
+            Violation::STATUS_CONFIRMED, 'Reported violation.'
+        );
+
+        $started = microtime(true);
+
+        $response = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.report', ['period' => 'last7', 'format' => 'pdf']));
+
+        $elapsed = microtime(true) - $started;
+
+        $response->assertOk();
+        $this->assertStringStartsWith('%PDF-', $response->getContent());
+
+        // A self-contained render is fast; a network fetch would blow past this.
+        $this->assertLessThan(
+            10,
+            $elapsed,
+            'PDF generation took too long — the template likely still resolves a remote URL.'
         );
     }
 

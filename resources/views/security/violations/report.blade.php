@@ -4,7 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PUPT Student Violation Report</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    {{--
+        This template is rendered to PDF by mPDF (Security -> Violations ->
+        Generate Report). It therefore must be fully SELF-CONTAINED: mPDF tries
+        to fetch every remote/absolute URL while writing the document, so a
+        remote stylesheet or an HTTP logo makes the request hang (the page
+        appears to "just load") whenever the server cannot reach that host.
+        The Bootstrap CDN link and the window.print() script were removed for
+        that reason, and the logo is embedded from disk below.
+    --}}
     <style>
         @page {
             size: A4;
@@ -89,12 +97,35 @@
             font-style: italic;
             margin-top: 12px;
         }
+
+        /* Replacement for the two Bootstrap utility classes that were used in
+           the body, so the layout is byte-for-byte identical without the CDN. */
+        .report-shell {
+            width: 100%;
+            padding: 0;
+        }
+
+        .report-empty {
+            text-align: center;
+            padding: 48px 0;
+        }
     </style>
 </head>
 <body>
-<div class="container-fluid px-0">
+<div class="report-shell">
     <div class="report-header">
-        <img src="{{ asset('assets/images/Tracker-logo.png') }}" alt="Tracker logo">
+        {{-- Embedded from disk (base64) rather than asset(), so mPDF never has
+             to make an HTTP request to render the report. --}}
+        @php
+            $logoPath = public_path('assets/images/Tracker-logo.png');
+            $logoData = is_file($logoPath)
+                ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+                : null;
+        @endphp
+
+        @if($logoData)
+            <img src="{{ $logoData }}" alt="Tracker logo">
+        @endif
         <h1 class="report-title">PUPT Student Violation Report</h1>
     </div>
 
@@ -147,12 +178,10 @@
             </table>
         </div>
     @empty
-        <div class="text-center py-5">No violations available.</div>
+        <div class="report-empty">No violations available.</div>
     @endforelse
 
     <div class="footer-note">Page 1/1</div>
 </div>
-
-<script>window.print();</script>
 </body>
 </html>

@@ -1186,6 +1186,11 @@ class ViolationSanctionWorkflowTest extends TestCase
         }
     }
 
+    /**
+     * SUPERSEDED by the explicit new requirement: the Security Student Record
+     * now reflects the administrator's CURRENT decision, so a rejected
+     * violation is shown as "Rejected". Pending/unreviewed rows stay excluded.
+     */
     public function test_pending_violation_is_not_shown_on_the_security_student_record_page(): void
     {
         $this->createTables();
@@ -1194,7 +1199,7 @@ class ViolationSanctionWorkflowTest extends TestCase
         $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
 
-        // Pending (unconfirmed) violation - must NOT reflect on the record page.
+        // Pending (unreviewed) violation - must NOT reflect on the record page.
         Violation::create([
             'student_number' => '2024-0001',
             'violation_type' => 1,
@@ -1221,6 +1226,35 @@ class ViolationSanctionWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Confirmed record')
             ->assertDontSee('Pending record');
+    }
+
+    /**
+     * NEW behaviour: a rejected (denied) violation is now visible on the
+     * Security Student Record, labelled Rejected.
+     */
+    public function test_rejected_violation_is_shown_on_the_security_student_record_page(): void
+    {
+        $this->createTables();
+        $this->createAdmin('admin@example.com');
+        $security = $this->createSecurity('security@example.com', 'Officer', 'One');
+        $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        Violation::create([
+            'student_number' => '2024-0001',
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => 'Rejected record',
+            'recorder_type' => 'security',
+            'recorder_name' => 'Officer One',
+            'status' => Violation::STATUS_DENIED,
+        ]);
+
+        $this->actingAs($security, 'security')
+            ->get(route('security.violations.show', '2024-0001'))
+            ->assertOk()
+            ->assertSee('Rejected record')
+            ->assertSee('Rejected');
     }
 
     public function test_security_can_resubmit_a_denied_violation_as_new_pending(): void
@@ -1367,7 +1401,9 @@ class ViolationSanctionWorkflowTest extends TestCase
             ->get(route('security.violations.show', '2024-0001'))
             ->assertOk()
             ->assertSee('Corrected description.')
-            ->assertDontSee('Original description.');
+            // The original DENIED row is now also visible on the record
+            // (labelled Rejected), per the new explicit requirement.
+            ->assertSee('Original description.');
     }
 
     /*

@@ -429,6 +429,20 @@ document.addEventListener('DOMContentLoaded', function () {
     if (highlighted) {
         highlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
         highlighted.classList.add('is-highlighted');
+
+        // The highlight is temporary: once the officer interacts with the
+        // record it fades away, matching the Student Module's behaviour.
+        const clearHighlight = function () {
+            highlighted.classList.remove('is-highlighted');
+            highlighted.classList.remove('violation-item-highlight');
+            ['click', 'focusin', 'keydown'].forEach(function (evt) {
+                highlighted.removeEventListener(evt, clearHighlight);
+            });
+        };
+
+        ['click', 'focusin', 'keydown'].forEach(function (evt) {
+            highlighted.addEventListener(evt, clearHighlight);
+        });
     }
 
     document.querySelectorAll('[data-progress-width]').forEach(function (bar) {

@@ -152,21 +152,28 @@ class StudentViolationController extends Controller
      * Display violations for a specific student.
      *
      * Only violations that actually reflect on the student's official record
-     * are shown here (confirmed). Pending/unconfirmed recordings are tracked in
-     * "Submitted Violations" and are intentionally NOT shown on the student
-     * record page until the administrator confirms them. Denied/rejected rows
-     * are handled through the resubmit flow in Submitted Violations.
+     * are shown here with their CURRENT administrator-reviewed status:
+     *   - confirmed -> "Confirmed"
+     *   - denied    -> "Rejected"
+     * Pending/unreviewed recordings are intentionally NOT shown on the student
+     * record until the administrator has reviewed them; the officer tracks
+     * those in "Submitted Violations".
      */
     public function show(string $student_number)
     {
         $student = User::where('student_number', $student_number)
             ->with(['violations' => function ($query) {
-                $this->applyRecorderScope($query);
-                // Only confirmed rows reflect on the student's record. Pending
-                // rows are still awaiting the administrator's review, and
-                // denied rows are not real violations — both are excluded here
-                // and tracked in the Submitted Violations tab instead.
-                $query->where('status', Violation::STATUS_CONFIRMED);
+                // Denied rows are included so an administrator REJECTION is
+                // reflected on the record rather than silently disappearing.
+                $this->applyRecorderScope($query, true);
+
+                // Only reviewed rows reflect on the record: Confirmed (approved)
+                // and Denied (rejected). Pending rows are still awaiting review.
+                $query->whereIn('status', [
+                    Violation::STATUS_CONFIRMED,
+                    Violation::STATUS_DENIED,
+                ]);
+
                 $query->latest('violation_date');
             }, 'violations.violationType.violationCategory'])
             ->firstOrFail();
@@ -658,33 +665,65 @@ class StudentViolationController extends Controller
      * all preserved. Only the output format changes. Uses mPDF, which the
      * project already ships and uses for the Admin report exports (no new
      * dependency).
+     *
+     * The template must stay self-contained: mPDF resolves every remote URL
+     * while writing the document, so a remote stylesheet or logo made this
+     * request hang (the page appeared to "just load") whenever the server could
+     * not reach that host.
      */
     private function reportPdf(array $report): \Symfony\Component\HttpFoundation\Response
     {
-        // The layout already includes the PUP logo from the public assets.
         $html = view('security.violations.report', $report)->render();
 
-        $mpdf = new \Mpdf\Mpdf([
-            // A4 portrait, matching the template's own @page rule.
-            'format' => 'A4',
-            'margin_left' => 12,
-            'margin_right' => 12,
-            'margin_top' => 12,
-            'margin_bottom' => 14,
-            'tempDir' => storage_path('app/mpdf'),
-            // Keep the rendered widths inside the printable area so the table
-            // never overflows or gets clipped.
-            'shrink_tables_to_fit' => 1,
-        ]);
+        // mPDF writes scratch files; make sure the directory exists so it never
+        // fails on a fresh deployment.
+        $tempDir = storage_path('app/mpdf');
+        if (! is_dir($tempDir)) {
+            @mkdir($tempDir, 0775, true);
+        }
 
-        $mpdf->SetTitle('PUPT Student Violation Report');
-        $mpdf->WriteHTML($html);
+        try {
+            $mpdf = new \Mpdf\Mpdf([
+                // A4 portrait, matching the template's own @page rule.
+                'format' => 'A4',
+                'margin_left' => 12,
+                'margin_right' => 12,
+                'margin_top' => 12,
+                'margin_bottom' => 14,
+                'tempDir' => $tempDir,
+                // Keep the rendered widths inside the printable area so the
+                // table never overflows or gets clipped.
+                'shrink_tables_to_fit' => 1,
+            ]);
+
+            $mpdf->SetTitle('PUPT Student Violation Report');
+            $mpdf->WriteHTML($html);
+
+            $pdf = $mpdf->Output('', 'S');
+        } catch (\Throwable $e) {
+            // Never leave the officer staring at a spinner: log the real reason
+            // server-side and return a clear, actionable message.
+            Log::error('Security violation report PDF generation failed', [
+                'reported_by' => $report['reportedBy'] ?? null,
+                'student_groups' => isset($report['reportStudents'])
+                    ? $report['reportStudents']->count()
+                    : null,
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ]);
+
+            return redirect()
+                ->route('security.violations.students')
+                ->with('error', 'Unable to generate the PDF report right now. Please try again.');
+        }
 
         $fileName = 'violation-report-' . $this->phtNow()->format('Ymd_His') . '.pdf';
 
-        return response($mpdf->Output($fileName, 'S'), 200, [
+        return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Content-Length' => (string) strlen($pdf),
+            'Cache-Control' => 'private, max-age=0, must-revalidate',
         ]);
     }
 

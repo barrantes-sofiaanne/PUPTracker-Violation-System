@@ -147,6 +147,9 @@
         </div>
     </div>
 
+    {{-- Violations tabs: Student Record (default) / Submitted Violations --}}
+    @include('security.violations.partials.tabs', ['activeViolationsTab' => 'students'])
+
     {{-- Search and Filters --}}
     <div class="search-container">
         <div class="card portal-card">

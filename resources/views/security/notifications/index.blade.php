@@ -55,6 +55,7 @@
                                 data-message="{{ e($notification->message) }}"
                                 data-created="{{ optional($notification->created_at)->format('F d, Y h:i A') }}"
                                 data-type="{{ $notification->notification_type }}"
+                                data-target-type="{{ $notification->target_type }}"
                                 data-link="{{ $notification->target_type ? route('security.notifications.open', $notification) : ($notification->link ?: '') }}"
                                 data-title="{{ $notification->title ?: '' }}"
                                 data-id="{{ $notification->notification_id }}">
@@ -150,7 +151,16 @@ document.addEventListener('DOMContentLoaded', function () {
             titleEl.textContent = item.dataset.title || 'Security Notification';
             dateEl.textContent = item.dataset.created || '';
             messageEl.textContent = item.dataset.message || '';
-            linkLabelEl.textContent = 'Open';
+
+            // Record-specific label, mirroring the Student Module: when the
+            // notification points at an exact record the action names that
+            // record instead of a generic "Open".
+            const targetType = (item.dataset.targetType || '').toLowerCase();
+            if (targetType === 'violation' || targetType === 'sanction') {
+                linkLabelEl.textContent = 'View Record';
+            } else {
+                linkLabelEl.textContent = 'Open';
+            }
 
             const link = item.dataset.link || '';
             if (link) {
