@@ -14,8 +14,16 @@
         that reason, and the logo is embedded from disk below.
     --}}
     <style>
+        /* REGRESSION GUARD (do not "tidy" this back to `size: A4`):
+           mPDF v8.2.0 mis-parses the `A4` page-size KEYWORD inside an `@page`
+           rule and re-paginates the document thousands of times -- a report
+           with 10 records was being emitted as 1,845 pages. The page size is
+           already applied via the mPDF constructor ('format' => 'A4'), so this
+           rule only has to carry the margins; the size is repeated here as an
+           explicit millimetre pair (identical geometry to A4) which mPDF
+           handles correctly. */
         @page {
-            size: A4;
+            size: 210mm 297mm;
             margin: 12mm;
         }
 

@@ -282,6 +282,80 @@ class SecurityModuleTest extends TestCase
         $this->assertGreaterThan(2000, strlen($pdf), 'The PDF should contain the rendered report body.');
     }
 
+    /**
+     * REGRESSION GUARD -- the "400+ page report" bug.
+     *
+     * The report template is a browser-print template that was handed to mPDF.
+     * Its `@page { size: A4 }` rule made mPDF v8.2.0 re-paginate the document
+     * thousands of times: a Security officer with 10 recorded violations was
+     * receiving a 1,845-page / 1.1 MB PDF. The page size is now supplied to the
+     * mPDF constructor ('format' => 'A4') and the @page rule carries the margins
+     * plus an explicit millimetre size, which mPDF handles correctly.
+     *
+     * This asserts the real generated page count, so a future "tidy up" of the
+     * @page rule cannot silently reintroduce the explosion.
+     */
+    public function test_report_pdf_page_count_stays_proportional_to_the_record_count(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createViolationType(1, 'Cheating', categoryId: 1);
+
+        // Exactly 10 personally recorded violations, one distinct student each.
+        for ($i = 1; $i <= 10; $i++) {
+            $number = '2024-100' . str_pad((string) $i, 2, '0', STR_PAD_LEFT);
+            $this->createStudent($number);
+            $this->createViolation(
+                $number,
+                1,
+                'Security: officer@example.com',
+                'security',
+                Violation::STATUS_CONFIRMED,
+                'Personally recorded violation ' . $i
+            );
+        }
+
+        // 400 records belonging to other people. The recorder scope must keep
+        // every one of them out of the document.
+        for ($i = 1; $i <= 400; $i++) {
+            $number = '2024-900' . str_pad((string) $i, 3, '0', STR_PAD_LEFT);
+            $this->createStudent($number);
+            $this->createViolation($number, 1, 'Security: other@example.com');
+        }
+
+        $pdf = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.report', ['period' => 'all', 'format' => 'pdf']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringStartsWith('%PDF-', $pdf);
+        $this->assertStringContainsString('%%EOF', $pdf);
+
+        // The authoritative page count lives in the /Pages object.
+        $this->assertSame(
+            1,
+            preg_match('/\/Type\s*\/Pages\b[^>]*?\/Count\s+(\d+)/s', (string) $pdf, $matches),
+            'The PDF must expose a /Pages /Count so the page count can be verified.'
+        );
+        $pages = (int) $matches[1];
+
+        // 10 single-record blocks fit in a page or two of A4. Before the fix
+        // this exact dataset produced 1,845 pages.
+        $this->assertGreaterThanOrEqual(1, $pages);
+        $this->assertLessThanOrEqual(
+            5,
+            $pages,
+            "A report with 10 recorded violations must not span hundreds of pages (got {$pages})."
+        );
+
+        // The runaway document was >1MB; a correct one is a few tens of KB.
+        $this->assertLessThan(
+            400_000,
+            strlen((string) $pdf),
+            'The PDF for 10 records should be a few tens of KB, not megabytes.'
+        );
+    }
+
     // ==================================================================
     // 2.2 + 2.3 Student Record
     // ==================================================================
