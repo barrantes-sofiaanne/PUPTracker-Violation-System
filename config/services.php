@@ -48,6 +48,9 @@ return [
     'idp' => [
         // Base URL includes the Swagger basePath (/api/v1).
         'base_url' => env('IDP_BASE_URL', 'https://identity-provider.isaxbsit2027.com/api/v1'),
+        // STUDENT OAuth client. Do not reuse these for the administrator flow —
+        // the two are separate registered IDP app clients with their own
+        // credentials and callbacks.
         'client_id' => env('IDP_CLIENT_ID', ''),
         // Server-side only. Never rendered, logged, or exposed to the browser.
         'client_secret' => env('IDP_CLIENT_SECRET', ''),
@@ -71,6 +74,17 @@ return [
         // Canonical admin redirect URI. Kept separate from the student one so a
         // single IDP client can be registered for both, or each can have its own.
         'admin_redirect_uri' => env('IDP_ADMIN_REDIRECT_URI', env('IDP_ADMIN_REDIRECT_URL')),
+        // ADMINISTRATOR OAuth client (a separate registered IDP app client).
+        // These are deliberately independent of the student client above and
+        // have NO fallback to it: crossing the two would send an administrator
+        // to the student client/callback, where the non-student role is
+        // rejected and the user is bounced to /student/login. When either value
+        // is missing the administrator IDP flow fails closed.
+        'admin_client_id' => env('IDP_ADMIN_CLIENT_ID', ''),
+        // Server-side only. Never rendered, logged, or exposed to the browser.
+        'admin_client_secret' => env('IDP_ADMIN_CLIENT_SECRET', ''),
+        // The admin client may have its own timeout; falls back to the shared one.
+        'admin_timeout' => (int) env('IDP_ADMIN_TIMEOUT', env('IDP_TIMEOUT', 15)),
         // Server-side token revocation endpoint relative to base_url.
         'logout_path' => env('IDP_LOGOUT_PATH', '/auth/logout'),
         // Front-channel (browser) IDP logout URL that clears the IDP SSO session

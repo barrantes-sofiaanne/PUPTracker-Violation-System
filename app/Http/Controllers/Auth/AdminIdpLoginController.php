@@ -52,14 +52,24 @@ class AdminIdpLoginController extends Controller
      */
     public function start(Request $request): RedirectResponse
     {
-        $clientId = (string) config('services.idp.client_id');
+        // Dedicated administrator OAuth client. NEVER the student client: the
+        // two are separate registered IDP app clients, and crossing them sends
+        // an administrator to a callback that rejects non-student roles.
+        $clientId = $this->adminClientId();
         $baseUrl = rtrim((string) config('services.idp.base_url'), '/');
         $redirectUri = $this->adminRedirectUri();
 
         if ($clientId === '' || $baseUrl === '' || $redirectUri === '') {
+            Log::error('Admin IDP login is not configured.', [
+                'has_admin_client_id' => $clientId !== '',
+                'has_base_url' => $baseUrl !== '',
+                'has_admin_redirect_uri' => $redirectUri !== '',
+                'hint' => 'Set IDP_ADMIN_CLIENT_ID and IDP_ADMIN_REDIRECT_URI (e.g. https://<host>/admin/idp/callback). Neither is taken from the IDP_CLIENT_ID / IDP_REDIRECT_URI student settings.',
+            ]);
+
             return redirect()->route('admin.login')
                 ->withErrors([
-                    'login' => 'IDP login is not configured yet.',
+                    'login' => 'Admin IDP login is not configured yet.',
                 ]);
         }
 
@@ -102,14 +112,32 @@ class AdminIdpLoginController extends Controller
             return $this->fail('The IDP login session expired. Please try again.');
         }
 
-        $clientId = (string) config('services.idp.client_id');
-        $clientSecret = (string) config('services.idp.client_secret');
+        $clientId = $this->adminClientId();
+        $clientSecret = $this->adminClientSecret();
         $baseUrl = rtrim((string) config('services.idp.base_url'), '/');
         $redirectUri = $this->adminRedirectUri();
-        $timeout = (int) config('services.idp.timeout', 15);
+        $timeout = (int) config('services.idp.admin_timeout', config('services.idp.timeout', 15));
 
         if ($clientId === '' || $clientSecret === '' || $baseUrl === '') {
-            return $this->fail('IDP login is not configured yet.');
+            Log::error('Admin IDP callback is not configured.', [
+                'has_admin_client_id' => $clientId !== '',
+                'has_admin_client_secret' => $clientSecret !== '',
+                'has_base_url' => $baseUrl !== '',
+                'hint' => 'Set IDP_ADMIN_CLIENT_ID and IDP_ADMIN_CLIENT_SECRET. They are never taken from the student client.',
+            ]);
+
+            return $this->fail('Admin IDP login is not configured yet.');
+        }
+
+        // A callback that is missing its own redirect URI must never silently
+        // continue: without it we cannot compare the exchange against the URI the
+        // authorization request actually used.
+        if ($redirectUri === '') {
+            Log::error('Admin IDP callback reached without IDP_ADMIN_REDIRECT_URI configured.', [
+                'hint' => 'Set IDP_ADMIN_REDIRECT_URI to https://<host>/admin/idp/callback.',
+            ]);
+
+            return $this->fail('Admin IDP login is not configured yet.');
         }
 
         try {
@@ -229,18 +257,43 @@ class AdminIdpLoginController extends Controller
     }
 
     /**
-     * Canonical admin redirect URI, falling back to the student one so a single
-     * registered IDP client keeps working when the newer setting is absent.
+     * The dedicated administrator OAuth client id.
+     *
+     * Deliberately has no fallback to the shared/student client: reusing the
+     * student client with the administrator callback is precisely the
+     * misconfiguration that sent a System Administrator to /student/login.
+     */
+    protected function adminClientId(): string
+    {
+        return trim((string) config('services.idp.admin_client_id'));
+    }
+
+    /**
+     * The dedicated administrator OAuth client secret (server-side only).
+     *
+     * Never logged, rendered, or exposed; read from config so a cached config
+     * cannot leak it into a view. No fallback to the student secret.
+     */
+    protected function adminClientSecret(): string
+    {
+        return trim((string) config('services.idp.admin_client_secret'));
+    }
+
+    /**
+     * The administrator IDP callback URI.
+     *
+     * This MUST be configured explicitly and is deliberately never derived from
+     * the student redirect URI. The two callbacks have different contracts: the
+     * student endpoint rejects any IDP role that is not a student, so pointing an
+     * administrator at it authenticates them successfully at the IDP and then
+     * bounces them to /student/login with "not allowed to sign in as a student".
+     *
+     * An empty return therefore means "not configured", and callers must fail
+     * closed on it.
      */
     protected function adminRedirectUri(): string
     {
-        $redirectUri = (string) config('services.idp.admin_redirect_uri');
-
-        if ($redirectUri !== '') {
-            return $redirectUri;
-        }
-
-        return (string) config('services.idp.redirect_uri');
+        return trim((string) config('services.idp.admin_redirect_uri'));
     }
 
     /**

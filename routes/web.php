@@ -119,11 +119,15 @@ Route::post('/admin/logout', [AdminLoginController::class, 'logout'])
 /*
 | Administrator IDP login (the second, alternative admin login process).
 |
-| These endpoints intentionally carry NO `mfa.enforced` middleware: they are the
-| IDP sign-in path itself, where the PUP IDP has already authenticated the user
-| and acts as the second factor. They must stay reachable even while an
-| administrator is still enrolling in MFA, otherwise a first-time admin could
-| lock themselves out of both login methods.
+| These endpoints are the IDP sign-in path itself: the PUP IDP has already
+| authenticated the user and acts as the second factor, so IDP sign-in does not
+| run the MFA challenge that the email/password path performs inside
+| AdminLoginController. That is also why they carry no `auth` middleware — an
+| administrator must still be able to reach them.
+|
+| The callback is deliberately NOT /student/idp/callback. The two endpoints have
+| different contracts, and pointing an administrator at the student one ends in
+| /student/login with "not allowed to sign in as a student".
 */
 Route::get('/admin/idp/login', [AdminIdpLoginController::class, 'start'])
     ->middleware('guest:admin')
