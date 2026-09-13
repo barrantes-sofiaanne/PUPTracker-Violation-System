@@ -35,24 +35,11 @@
             </span>
         </div>
 
-        {{-- Bulk actions (admin-style action bar) --}}
+        {{-- Bulk action: Mark All as Read only. --}}
         <div class="card shadow-sm border-0 mb-3">
             <div class="card-body d-flex flex-wrap align-items-center gap-2 py-2">
-                <div class="form-check me-2 mb-0">
-                    <input class="form-check-input" type="checkbox" id="selectAllNotifications">
-                    <label class="form-check-label" for="selectAllNotifications">
-                        Select All
-                    </label>
-                </div>
-
                 <button type="button" class="admin-btn admin-btn-view admin-btn-sm" id="markAllReadBtn">
-                    <i class="bi bi-check2-all me-1"></i>Mark All Unread as Read
-                </button>
-                <button type="button" class="admin-btn admin-btn-success admin-btn-sm" id="markSelectedReadBtn">
-                    <i class="bi bi-check2 me-1"></i>Mark Selected as Read
-                </button>
-                <button type="button" class="admin-btn admin-btn-neutral admin-btn-sm" id="markSelectedUnreadBtn">
-                    <i class="bi bi-arrow-counterclockwise me-1"></i>Mark Selected as Unread
+                    <i class="bi bi-check2-all me-1"></i>Mark All as Read
                 </button>
             </div>
         </div>
@@ -214,31 +201,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    const selectAllCheckbox = document.getElementById('selectAllNotifications');
-    const notificationCheckboxes = Array.from(document.querySelectorAll('.notification-checkbox'));
     const actionInput = document.getElementById('notificationActionInput');
     const form = document.getElementById('notificationsBulkForm');
-
-    if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', function () {
-            notificationCheckboxes.forEach(function (checkbox) {
-                checkbox.checked = selectAllCheckbox.checked;
-            });
-        });
-    }
-
-    notificationCheckboxes.forEach(function (checkbox) {
-        checkbox.addEventListener('change', function () {
-            if (!selectAllCheckbox) {
-                return;
-            }
-
-            const allChecked = notificationCheckboxes.length > 0 &&
-                notificationCheckboxes.every(function (item) { return item.checked; });
-
-            selectAllCheckbox.checked = allChecked;
-        });
-    });
 
     function submitBulkAction(action) {
         if (!form || !actionInput) {
@@ -249,25 +213,14 @@ document.addEventListener('DOMContentLoaded', function () {
         form.submit();
     }
 
+    // Bulk action: Mark All as Read only. Per-notification selection and its
+    // two bulk buttons were removed from this tab, so no selection handlers
+    // remain; individual notifications are still opened via their own links.
     const markAllReadBtn = document.getElementById('markAllReadBtn');
-    const markSelectedReadBtn = document.getElementById('markSelectedReadBtn');
-    const markSelectedUnreadBtn = document.getElementById('markSelectedUnreadBtn');
 
     if (markAllReadBtn) {
         markAllReadBtn.addEventListener('click', function () {
             submitBulkAction('mark_all_read');
-        });
-    }
-
-    if (markSelectedReadBtn) {
-        markSelectedReadBtn.addEventListener('click', function () {
-            submitBulkAction('mark_selected_read');
-        });
-    }
-
-    if (markSelectedUnreadBtn) {
-        markSelectedUnreadBtn.addEventListener('click', function () {
-            submitBulkAction('mark_selected_unread');
         });
     }
 });

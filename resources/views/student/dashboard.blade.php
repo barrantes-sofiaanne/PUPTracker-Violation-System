@@ -71,22 +71,6 @@
 
     {{-- Statistics Cards --}}
     <div class="row mb-4 g-3">
-        
-        <div class="col-lg-3 col-md-6">
-            <div class="card portal-stat-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="portal-stat-label mb-1">Unread Notifications</p>
-                            <h2 class="portal-stat-value mb-0">{{ $notificationCount }}</h2>
-                        </div>
-                        <div class="portal-icon-badge">
-                            <i class="bi bi-bell-fill"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <div class="col-lg-3 col-md-6">
             <div class="card portal-stat-card">
@@ -160,33 +144,76 @@
             </div>
         </div>
 
-        {{-- Sidebar: Notifications --}}
+        {{-- Sidebar: Approaching sanction deadlines --}}
         <div class="col-lg-4">
-            <div class="card portal-card">
+            <div class="card portal-card h-100">
                 <div class="card-header card-header-custom">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="fw-bold mb-0">Latest Notifications</h5>
-                        <a href="{{ route('student.notifications') }}" class="btn btn-sm btn-link">
+                        <h5 class="fw-bold mb-0">Approaching Deadlines</h5>
+                        <a href="{{ route('student.record') }}#sanctionRecord" class="btn btn-sm btn-link">
                             All
                         </a>
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    @forelse($notifications as $notification)
-                    <div class="portal-list-item {{ !$notification->is_read ? 'bg-light' : '' }}">
-                        <div class="fw-500 mb-1">
-                            {{ $notification->message }}
+                    @forelse($approachingDeadlines as $deadline)
+                        @php
+                            $isOverdue = $deadline->deadline_date
+                                && $deadline->deadline_date->isPast();
+                        @endphp
+                        <div class="portal-list-item">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div class="min-w-0">
+                                    <h6 class="fw-bold mb-1 announcement-card-heading">
+                                        {{ $deadline->sanction_text }}
+                                    </h6>
+
+                                    <div class="small text-muted">
+                                        <div>
+                                            <i class="bi bi-building" aria-hidden="true"></i>
+                                            {{ $deadline->designated_office ?: 'Office of Student Services' }}
+                                        </div>
+                                        <div class="{{ $isOverdue ? 'text-danger fw-semibold' : '' }}">
+                                            <i class="bi bi-calendar-event" aria-hidden="true"></i>
+                                            Due {{ $deadline->deadline_date->format('F d, Y') }}
+                                            @if($isOverdue)
+                                                <span class="portal-badge maroon ms-1">Overdue</span>
+                                            @else
+                                                <span class="text-muted">
+                                                    &bull; {{ $deadline->deadline_date->diffForHumans() }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                        @if($deadline->required_hours)
+                                            <div>
+                                                <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+                                                {{ $deadline->required_hours }} hrs required
+                                            </div>
+                                        @endif
+                                        <div class="mt-1">
+                                            <span class="portal-badge {{ $isOverdue ? 'maroon' : 'goldenrod' }}">
+                                                {{ $deadline->status }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- View: opens the Sanction Record tab and highlights
+                                     this specific sanction. --}}
+                                <a href="{{ route('student.record') }}?sanction={{ $deadline->record_id }}#sanctionRecord"
+                                   class="btn btn-sm portal-btn-outline flex-shrink-0"
+                                   aria-label="View sanction: {{ $deadline->sanction_text }}">
+                                    <i class="bi bi-eye" aria-hidden="true"></i>
+                                    View
+                                </a>
+                            </div>
                         </div>
-                        <small class="text-muted d-block">
-                            <i class="bi bi-clock"></i>
-                            {{ $notification->created_at->diffForHumans() }}
-                        </small>
-                    </div>
                     @empty
-                    <div class="p-3 text-center text-muted">
-                        <i class="bi bi-inbox display-4"></i>
-                        <p class="mt-2">No notifications yet</p>
-                    </div>
+                        <div class="p-4 text-center text-muted">
+                            <i class="bi bi-calendar-check display-4" aria-hidden="true"></i>
+                            <p class="mt-2 mb-0">No approaching deadlines.</p>
+                            <small>You have no pending sanction deadlines.</small>
+                        </div>
                     @endforelse
                 </div>
             </div>

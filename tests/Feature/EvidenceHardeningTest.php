@@ -612,10 +612,10 @@ class EvidenceHardeningTest extends TestCase
         $this->assertStringNotContainsString('request-sanction-btn', $content);
         $this->assertStringNotContainsString('No Request Needed', $content);
         // ...but the warning violation IS still listed in the Individual
-        // Violations Log (On Record).
+        // Violations Log (now labelled "Confirmed").
         $this->assertStringContainsString('Littering', $content);
         $this->assertStringContainsString('Littered in hallway', $content);
-        $this->assertStringContainsString('On Record', $content);
+        $this->assertStringContainsString('Confirmed', $content);
     }
 
     public function test_student_summary_removes_completed_sanction_violation(): void
@@ -689,11 +689,12 @@ class EvidenceHardeningTest extends TestCase
             ->getContent();
 
         // Both pending and confirmed records are listed in the Individual
-        // Violations Log with their statuses.
+        // Violations Log with their statuses. A confirmed (non-pending) row is
+        // labelled "Confirmed".
         $this->assertStringContainsString('Pending record desc', $content);
         $this->assertStringContainsString('Confirmed record desc', $content);
         $this->assertStringContainsString('Pending Confirmation', $content);
-        $this->assertStringContainsString('On Record', $content);
+        $this->assertStringContainsString('Confirmed', $content);
     }
 
     // ------------------------------------------------------------------

@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AnnouncementAttachment;
 use App\Models\Announcement;
 use App\Services\AuditLogService;
-use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -182,10 +182,7 @@ class AnnouncementAttachmentController extends Controller
             'Content-Type' => $contentType,
         ]);
 
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $diskAdapter */
-        $diskAdapter = $disk;
-
-        return $diskAdapter->response(
+        return $disk->response(
             $attachment->storage_path,
             $filename,
             $headers,
@@ -205,7 +202,7 @@ class AnnouncementAttachmentController extends Controller
      * example an unreachable bucket) is logged and skipped rather than allowed
      * to bubble up as a 500 on an <img> request.
      *
-     * @return array{0: Filesystem, 1: string}|null  [disk, disk name]
+     * @return array{0: FilesystemAdapter, 1: string}|null  [disk, disk name]
      */
     protected function resolveReadableDisk(AnnouncementAttachment $attachment): ?array
     {
@@ -235,6 +232,11 @@ class AnnouncementAttachmentController extends Controller
             }
 
             try {
+                // Every disk Laravel resolves (local, s3/R2, ...) is a
+                // FilesystemAdapter, which is where response() and mimeType()
+                // are actually declared — the Filesystem contract declares
+                // neither.
+                /** @var FilesystemAdapter $disk */
                 $disk = Storage::disk($diskName);
 
                 if ($disk->exists($attachment->storage_path)) {
@@ -262,7 +264,7 @@ class AnnouncementAttachmentController extends Controller
      * upload time. Never hard-codes a single image type.
      */
     protected function resolveContentType(
-        Filesystem $disk,
+        FilesystemAdapter $disk,
         string $diskName,
         AnnouncementAttachment $attachment,
     ): ?string {

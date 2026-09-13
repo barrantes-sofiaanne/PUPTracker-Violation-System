@@ -8,6 +8,15 @@
 /* ==========================================================================
    Submit Proof of Completion modal (scoped to this page)
    ========================================================================== */
+/* The dialog is centred both ways and constrained to the viewport. Previously
+   this page's own stylesheet restyled bare `.modal-content`/`.modal-header`
+   (width, transform, padding), which overrode Bootstrap's centring and made
+   this dialog sit oddly. That leak is now scoped in student.css, and the
+   centring is stated explicitly here so it cannot regress. */
+#submitProofModal .modal-dialog {
+    margin-left: auto;
+    margin-right: auto;
+}
 #submitProofModal .modal-header {
     align-items: flex-start;
     gap: 1rem;
@@ -26,12 +35,11 @@
 #submitProofModal .modal-body {
     padding: 1.25rem 1.5rem;
 }
-@media (max-height: 720px) {
-    #submitProofModal .modal-body {
-        max-height: calc(100vh - 15rem);
-        overflow-y: auto;
-    }
-}
+/* Vertical scrolling for tall content is handled by Bootstrap's
+   `modal-dialog-scrollable` (which caps the dialog at the viewport and scrolls
+   only the body). A fixed `max-height` on the body previously fought that rule
+   and made the dialog unnecessarily short — and therefore look off-centre — on
+   shorter screens, so it was removed. */
 #submitProofModal .modal-footer {
     border-top: 1px solid var(--border-color);
     margin-top: 0;
@@ -293,6 +301,39 @@
     }
 }
 
+/* Every action button inside the Submit Proof modal uses the same maroon
+   treatment as the Submit Proof button itself (the project's .portal-btn).
+   Hover / focus / disabled come from the shared .portal-btn rules, so the
+   states stay consistent with the rest of the system. */
+#submitProofModal .btn.portal-btn,
+#submitProofModal .btn.portal-btn-outline {
+    font-weight: 600;
+}
+
+/* The "Choose File" affordance is a styled span acting as a button, so it
+   needs pointer + disabled affordances to match the real buttons. */
+#submitProofModal .proof-upload-zone .btn.portal-btn {
+    cursor: pointer;
+}
+
+/* Highlight applied when arriving from the dashboard's Approaching Deadlines
+   card (?sanction=<record_id>). Uses a maroon accent bar plus a tint so the
+   selected sanction is identifiable without relying on colour alone (the row
+   is also focused programmatically). */
+#sanctionRecord tr.sanction-row-highlight > td {
+    background-color: rgba(128, 0, 0, 0.06);
+    box-shadow: inset 0 0 0 9999px rgba(128, 0, 0, 0.02);
+}
+
+#sanctionRecord tr.sanction-row-highlight > td:first-child {
+    border-left: 4px solid var(--pup-maroon);
+}
+
+#sanctionRecord tr.sanction-row-highlight {
+    outline: 2px solid rgba(128, 0, 0, 0.35);
+    outline-offset: -2px;
+}
+
 /* Community/Campus Service assignment (read-only to the student). */
 .service-assignment-details {
     display: flex;
@@ -308,26 +349,6 @@
     font-size: 0.85rem;
 }
 .service-assignment-label {
-    color: var(--secondary-text);
-    white-space: nowrap;
-}
-.proof-service-summary {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    padding: 0.5rem 0.6rem;
-    margin-bottom: 0.6rem;
-    border-radius: 0.5rem;
-    background: var(--secondary-bg);
-    border: 1px solid var(--border-color);
-    font-size: 0.82rem;
-}
-.proof-service-summary-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-}
-.proof-service-summary-label {
     color: var(--secondary-text);
     white-space: nowrap;
 }
@@ -350,14 +371,13 @@
     flex-shrink: 0;
 }
 @media (max-width: 576px) {
-    /* Keep the Proof of Completion table usable on mobile: let service
-       summaries and action buttons stack and wrap instead of overflowing. */
-    .proof-service-summary-row,
+    /* Keep the Sanction Record table usable on mobile: let the service
+       assignment details and action buttons stack and wrap instead of
+       overflowing. */
     .service-assignment-row {
         flex-direction: column;
         gap: 0.1rem;
     }
-    .proof-service-summary .fw-semibold,
     .service-assignment-details .fw-semibold {
         word-break: break-word;
     }
@@ -487,6 +507,8 @@
                         </div>
 
                         <div class="card-body p-0">
+
+                            <div class="table-responsive">
 
                                 <table class="table table-hover align-middle mb-0 portal-table">
 
@@ -703,6 +725,8 @@
 
 </table>
 
+                            </div>
+
 </div>
 
 </div>
@@ -724,6 +748,8 @@
     </div>
 
     <div class="card-body p-0">
+
+        <div class="table-responsive">
 
         <table class="table table-hover align-middle mb-0 portal-table">
 
@@ -809,8 +835,11 @@
 
                             @else
 
+                                {{-- Presentation label only: a non-pending row is a
+                                     confirmed violation. The stored status value is
+                                     unchanged. --}}
                                 <span class="portal-badge success">
-                                    On Record
+                                    Confirmed
                                 </span>
 
                             @endif
@@ -879,6 +908,8 @@
             </tbody>
 
         </table>
+
+        </div>
 
     </div>
 
@@ -966,7 +997,10 @@
 
                     @forelse($sanctionRecords as $record)
 
-                        <tr>
+                        {{-- data-sanction-record-id lets the dashboard's
+                             "Approaching Deadlines" View action deep-link
+                             straight to this exact sanction row. --}}
+                        <tr data-sanction-record-id="{{ $record->record_id }}">
 
                             <td>
 
@@ -1061,26 +1095,6 @@
                             </td>
 
                             <td style="min-width:220px;">
-
-                                @if($record->is_service_sanction)
-                                    {{-- Service assignment summary (read-only, server-side). --}}
-                                    <div class="proof-service-summary mb-2">
-                                        <div class="proof-service-summary-row">
-                                            <span class="proof-service-summary-label">Office:</span>
-                                            <span class="fw-semibold">{{ $record->designated_office ?: '—' }}</span>
-                                        </div>
-                                        <div class="proof-service-summary-row">
-                                            <span class="proof-service-summary-label">Starting:</span>
-                                            <span class="fw-semibold">{{ optional($record->starting_date)->format('M d, Y') ?? '—' }}</span>
-                                        </div>
-                                        @if($record->required_hours)
-                                            <div class="proof-service-summary-row">
-                                                <span class="proof-service-summary-label">Hours:</span>
-                                                <span class="fw-semibold">{{ $record->required_hours }} hrs</span>
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endif
 
                                 @if(strcasecmp($record->status, 'Completed') === 0)
 
@@ -1265,7 +1279,7 @@
                         <p class="proof-body-text mb-0">Make sure the document is complete, clear, readable, and contains any required signatures or certifications.</p>
                         <div id="officialFormArea" class="official-form-area d-none">
                             <span class="official-form-label">Need the official form?</span>
-                            <a href="https://docs.google.com/document/d/1STRQ6AwNaSgHIjqt7vbxNFF7h_50xj84/edit?usp=sharing&ouid=105963611531508867265&rtpof=true&sd=true" id="officialFormDownloadBtn" class="btn portal-btn-outline btn-sm" target="_blank" rel="noopener">
+                            <a href="https://docs.google.com/document/d/1STRQ6AwNaSgHIjqt7vbxNFF7h_50xj84/edit?usp=sharing&ouid=105963611531508867265&rtpof=true&sd=true" id="officialFormDownloadBtn" class="btn portal-btn" target="_blank" rel="noopener">
                                 <i class="bi bi-download me-1" aria-hidden="true"></i>Download Official Form
                             </a>
                         </div>
@@ -1284,7 +1298,7 @@
                                 <i class="bi bi-cloud-arrow-up proof-upload-icon" aria-hidden="true"></i>
                                 <p class="proof-upload-title mb-1">Upload your proof</p>
                                 <p class="proof-upload-hint mb-1">Drag and drop your file here or</p>
-                                <span class="btn portal-btn-outline btn-sm">Choose File</span>
+                                <span class="btn portal-btn">Choose File</span>
                             </div>
                             <div id="proofFileSelected" class="proof-file-selected d-none">
                                 <div class="proof-file-chip">
@@ -1294,7 +1308,7 @@
                                         <span class="proof-file-size" id="proofFileSize">—</span>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="proofFileChangeBtn">
+                                <button type="button" class="btn portal-btn" id="proofFileChangeBtn">
                                     <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>Change File
                                 </button>
                             </div>
@@ -1353,7 +1367,7 @@
 
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn portal-btn-outline" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn portal-btn" id="submitProofBtn" disabled>
                         <i class="bi bi-send me-1"></i>Submit Proof
                     </button>
@@ -1376,6 +1390,33 @@ document.addEventListener('DOMContentLoaded', function () {
             bootstrap.Tab.getOrCreateInstance(sanctionTab).show();
         }
     }
+
+    // Deep-link support from the dashboard's "Approaching Deadlines" card:
+    // ?sanction=<record_id>#sanctionRecord opens the Sanction Record tab and
+    // HIGHLIGHTS the exact sanction that was clicked, so the student lands on
+    // the right row rather than a generic tab.
+    (function highlightSanctionFromQuery() {
+        const params = new URLSearchParams(window.location.search);
+        const recordId = params.get('sanction');
+
+        if (!recordId) {
+            return;
+        }
+
+        const row = document.querySelector('[data-sanction-record-id="' + recordId + '"]');
+
+        if (!row) {
+            return;
+        }
+
+        row.classList.add('sanction-row-highlight');
+        row.setAttribute('tabindex', '-1');
+
+        // Move focus/scroll to the highlighted row so it is immediately
+        // visible, including after a reload of this URL.
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        row.focus({ preventScroll: true });
+    })();
 
     // Proof of completion submission.
     const submitProofModalEl = document.getElementById('submitProofModal');

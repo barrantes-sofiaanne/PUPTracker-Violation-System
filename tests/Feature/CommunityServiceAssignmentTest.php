@@ -313,9 +313,12 @@ class CommunityServiceAssignmentTest extends TestCase
 
         $response = $this->actingAs($student, 'student')->get(route('student.record'));
         $response->assertOk();
-        // Office appears in the Proof of Completion summary block.
-        $response->assertSee('proof-service-summary', false);
+        // Office is shown once, in the primary Sanction Record details. The
+        // duplicate summary block that used to repeat it above Submit Proof
+        // was removed as part of the announcement/UI standardization.
         $response->assertSee('Office of Student Affairs');
+        $response->assertSee('Designated Office:');
+        $response->assertDontSee('proof-service-summary', false);
     }
 
     public function test_starting_date_rendered_in_proof_of_completion_table(): void

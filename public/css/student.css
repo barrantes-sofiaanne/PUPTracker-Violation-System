@@ -44,12 +44,19 @@ body.dark-mode {
 }
 
 /* === GLOBAL & BODY STYLES === */
-*,
-*::before,
-*::after {
+/* NOTE: a previous universal `*, *::before, *::after { margin: 0; padding: 0 }`
+   reset lived here. Because this stylesheet is loaded on the Student Record page
+   only, it stripped the shared layout's own spacing on that page alone (the
+   sidebar/navbar and card padding), which made "My Record" look different from
+   every other Student tab. The reset is now scoped to this page's own legacy
+   components so the shared portal design system is left untouched. */
+.modal-overlay *,
+.modal-overlay *::before,
+.modal-overlay *::after,
+.announcement-modal *,
+.announcement-modal *::before,
+.announcement-modal *::after {
     box-sizing: border-box;
-    margin: 0;
-    padding: 0;
 }
 
 body {
@@ -705,7 +712,11 @@ main {
     background-color: var(--secondary-bg);
 }
 
-/* === MODALS (Unified) === */
+/* === MODALS (Unified) ===
+   These rules describe this page's OWN overlay components. They are scoped so
+   they no longer restyle Bootstrap modals (`.modal-content`, `.modal-header`,
+   `.modal-body`, `.modal-footer`), which previously overrode Bootstrap's
+   centering and sizing for the Submit Proof dialog. */
 .announcement-modal,
 .modal-overlay {
     position: fixed;
@@ -727,7 +738,7 @@ main {
     opacity: 1;
 }
 .announcement-modal-content,
-.modal-content {
+.modal-overlay .modal-content {
     background-color: var(--secondary-bg);
     border-radius: 12px;
     width: 90%;
@@ -746,7 +757,7 @@ main {
     transform: scale(1);
 }
 .announcement-modal-header,
-.modal-header {
+.modal-overlay .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -754,7 +765,7 @@ main {
     border-bottom: 1px solid var(--border-color);
 }
 .announcement-modal-header h2,
-.modal-header h2 {
+.modal-overlay .modal-header h2 {
     font-size: 1.5rem;
     color: var(--primary-text);
     margin: 0;
@@ -769,7 +780,7 @@ main {
     color: var(--secondary-text);
 }
 .announcement-modal-body,
-.modal-body {
+.modal-overlay .modal-body {
     padding: 25px;
     overflow-y: auto;
     max-height: 70vh;
@@ -792,31 +803,31 @@ main {
     color: var(--primary-text);
     font-size: 1rem;
 }
-.modal-footer {
+.modal-overlay .modal-footer {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
     margin-top: 30px;
     padding-top: 15px;
 }
-.modal-footer .cancel-btn {
+.modal-overlay .modal-footer .cancel-btn {
     order: 1;
 }
-.modal-footer .btn-primary {
+.modal-overlay .modal-footer .btn-primary {
     order: 2;
 }
-.modal-body .message {
+.modal-overlay .modal-body .message {
     padding: 10px;
     margin-bottom: 20px;
     border-radius: 5px;
     text-align: center;
     font-size: 0.9em;
 }
-.modal-body .message.success {
+.modal-overlay .modal-body .message.success {
     background-color: #d4edda;
     color: #155724;
 }
-.modal-body .message.error {
+.modal-overlay .modal-body .message.error {
     background-color: #f8d7da;
     color: #721c24;
 }
