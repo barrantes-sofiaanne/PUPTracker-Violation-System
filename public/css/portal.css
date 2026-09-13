@@ -863,3 +863,13 @@ body {
         max-height: 55vh;
     }
 }
+
+/* Shown in place of the <img> only when the image genuinely fails to load,
+   so the viewer never leaves a broken-image icon behind. */
+.announcement-viewer-photo-fallback {
+    display: block;
+    margin: 0 auto;
+    max-width: 32rem;
+    background: #fff;
+    color: #67585c;
+}

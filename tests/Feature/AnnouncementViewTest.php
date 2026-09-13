@@ -77,6 +77,8 @@ class AnnouncementViewTest extends TestCase
 
     public function test_image_attachment_is_exposed_to_viewer_via_authorized_route(): void
     {
+        Storage::fake('local');
+
         $admin = $this->createAdmin();
         $announcement = $this->createAnnouncement('With Photo', 'See photo.', $admin);
         $attachment = $this->createAttachment($announcement, 'photo.jpg', 'image/jpeg');
@@ -128,6 +130,8 @@ class AnnouncementViewTest extends TestCase
 
     public function test_non_image_attachment_is_not_flagged_as_image(): void
     {
+        Storage::fake('local');
+
         $admin = $this->createAdmin();
         $announcement = $this->createAnnouncement('With PDF', 'See doc.', $admin);
         $this->createAttachment($announcement, 'guidelines.pdf', 'application/pdf');
@@ -180,6 +184,149 @@ class AnnouncementViewTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'ATTACHMENT_VIEWED', 'module' => 'Announcement']);
     }
 
+    /**
+     * REGRESSION — the original broken-image bug.
+     *
+     * Production had ANNOUNCEMENT_STORAGE_DISK=s3 while the AWS credentials and
+     * bucket name were blank. The controller used that (throwing) disk for BOTH
+     * the existence check and the read, so the request died with HTTP 500 and
+     * the browser showed a broken-image icon — even though the file was present
+     * on the private local disk.
+     *
+     * The endpoint must now resolve the disk that actually holds the file and
+     * still return real image bytes with a correct Content-Type.
+     */
+    public function test_image_still_served_when_configured_disk_is_misconfigured(): void
+    {
+        Storage::fake('local');
+
+        // Mirror production: an s3 disk that cannot possibly work (no bucket).
+        config([
+            'filesystems.announcements_disk' => 's3',
+            'filesystems.disks.s3' => [
+                'driver' => 's3',
+                'key' => '',
+                'secret' => '',
+                'region' => 'auto',
+                'bucket' => '',
+                'endpoint' => '',
+            ],
+        ]);
+
+        $admin = $this->createAdmin();
+        $announcement = $this->createAnnouncement('Broken Disk', 'Body.', $admin);
+        $attachment = $this->createAttachment($announcement, 'checkmark.png', 'image/png');
+
+        $response = $this->actingAs($this->createSecurity(), 'security')
+            ->get(route('announcements.attachments.show', $attachment));
+
+        // Must NOT be a 500.
+        $response->assertOk();
+        $this->assertStringContainsString('image/png', (string) $response->headers->get('content-type'));
+        $this->assertStringContainsString('inline', (string) $response->headers->get('content-disposition'));
+
+        $body = $response->streamedContent();
+        $this->assertNotSame('', $body, 'The image bytes must reach the browser.');
+        $this->assertSame('PNG', substr($body, 1, 3), 'The streamed body must be real PNG data.');
+    }
+
+    /**
+     * A Content-Type must always be sent. An empty one invites the browser to
+     * sniff the body, which combined with `X-Content-Type-Options: nosniff` can
+     * refuse to render the image.
+     */
+    public function test_image_response_always_declares_a_content_type(): void
+    {
+        Storage::fake('local');
+
+        $admin = $this->createAdmin();
+        $announcement = $this->createAnnouncement('Typed', 'Body.', $admin);
+
+        foreach ([['photo.png', 'image/png'], ['photo.jpg', 'image/jpeg']] as [$name, $mime]) {
+            $attachment = $this->createAttachment($announcement, $name, $mime);
+
+            $response = $this->actingAs($this->createStudent(), 'student')
+                ->get(route('announcements.attachments.show', $attachment));
+
+            $response->assertOk();
+
+            $contentType = (string) $response->headers->get('content-type');
+            $this->assertNotSame('', $contentType, "A Content-Type must be declared for {$name}.");
+            $this->assertStringContainsString(
+                $mime,
+                $contentType,
+                "The declared Content-Type must reflect the real file type for {$name}."
+            );
+        }
+    }
+
+    public function test_missing_attachment_file_returns_not_found(): void
+    {
+        Storage::fake('local');
+
+        $admin = $this->createAdmin();
+        $announcement = $this->createAnnouncement('Gone', 'Body.', $admin);
+
+        // Metadata row exists but no object was ever written to any disk.
+        $attachment = AnnouncementAttachment::create([
+            'announcement_id' => $announcement->announcement_id,
+            'original_filename' => 'missing.png',
+            'stored_filename' => 'missing.png',
+            'storage_disk' => 'local',
+            'storage_path' => 'announcements/2026/09/does-not-exist.png',
+            'mime_type' => 'image/png',
+            'file_size' => 10,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->createStudent(), 'student')
+            ->get(route('announcements.attachments.show', $attachment))
+            ->assertNotFound();
+    }
+
+    public function test_non_image_attachment_behaviour_is_unchanged(): void
+    {
+        Storage::fake('local');
+
+        $admin = $this->createAdmin();
+        $announcement = $this->createAnnouncement('Doc', 'Body.', $admin);
+        $attachment = $this->createAttachment($announcement, 'guidelines.pdf', 'application/pdf');
+
+        // Inline view still works and keeps the PDF type.
+        $inline = $this->actingAs($this->createStudent(), 'student')
+            ->get(route('announcements.attachments.show', $attachment));
+        $inline->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $inline->headers->get('content-type'));
+
+        // Forced download still works and still forces an attachment.
+        $download = $this->actingAs($this->createStudent(), 'student')
+            ->get(route('announcements.attachments.download', $attachment));
+        $download->assertOk();
+        $this->assertStringContainsString('attachment', (string) $download->headers->get('content-disposition'));
+    }
+
+    /**
+     * The Download button must keep working for images too — it shares the same
+     * file-resolution path as the inline view.
+     */
+    public function test_image_download_still_works_alongside_inline_view(): void
+    {
+        Storage::fake('local');
+
+        $admin = $this->createAdmin();
+        $announcement = $this->createAnnouncement('Photo', 'Body.', $admin);
+        $attachment = $this->createAttachment($announcement, 'photo.png', 'image/png');
+
+        $download = $this->actingAs($this->createStudent(), 'student')
+            ->get(route('announcements.attachments.download', $attachment));
+
+        $download->assertOk();
+        // Forced download, not inline: the browser saves rather than displays.
+        $this->assertStringContainsString('attachment', (string) $download->headers->get('content-disposition'));
+        $this->assertNotSame('', $download->streamedContent());
+    }
+
     public function test_unauthenticated_user_cannot_reach_attachment_endpoint(): void
     {
         Storage::fake('local');
@@ -199,6 +346,8 @@ class AnnouncementViewTest extends TestCase
      */
     public function test_private_attachment_is_never_exposed_as_public_url(): void
     {
+        Storage::fake('local');
+
         $admin = $this->createAdmin();
         $announcement = $this->createAnnouncement('Photo', 'Body.', $admin);
         $this->createAttachment($announcement, 'photo.jpg', 'image/jpeg');
@@ -275,14 +424,18 @@ class AnnouncementViewTest extends TestCase
     ): AnnouncementAttachment {
         $path = 'announcements/' . uniqid('file-', true);
 
-        // Real bytes so the streamed response can report a meaningful MIME type
-        // (a 1x1 JPEG for images, plain text for everything else).
-        Storage::disk('local')->put(
-            $path,
-            str_starts_with($mimeType, 'image/')
-                ? base64_decode($this->jpegBytes())
-                : 'fake-document-content'
-        );
+        // Real bytes matching the declared type, so the streamed response
+        // reports a meaningful MIME type and the inline view has actual image
+        // data to render.
+        if ($mimeType === 'image/png') {
+            $contents = $this->pngBytes();
+        } elseif ($mimeType === 'image/jpeg') {
+            $contents = $this->jpegBytes();
+        } else {
+            $contents = 'fake-document-content';
+        }
+
+        Storage::disk('local')->put($path, $contents);
 
         return AnnouncementAttachment::create([
             'announcement_id' => $announcement->announcement_id,
@@ -291,19 +444,29 @@ class AnnouncementViewTest extends TestCase
             'storage_disk' => 'local',
             'storage_path' => $path,
             'mime_type' => $mimeType,
-            'file_size' => 1024,
+            'file_size' => strlen($contents),
             'file_hash' => str_repeat('a', 64),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
     }
 
+    /** Minimal valid 1x1 PNG (signature + IHDR + IDAT + IEND). */
+    private function pngBytes(): string
+    {
+        return base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=='
+        );
+    }
+
     /** Minimal valid 1x1 JPEG so MIME sniffing detects image/jpeg. */
     private function jpegBytes(): string
     {
-        return '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a'
+        return base64_decode(
+            '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a'
             . 'HBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAA'
-            . 'AAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
+            . 'AAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=='
+        );
     }
 
     private function ensureTablesForTests(): void

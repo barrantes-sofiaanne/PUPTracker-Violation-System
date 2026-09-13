@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\AnnouncementAttachment;
 use App\Models\Announcement;
-use App\Services\AnnouncementAttachmentService;
 use App\Services\AuditLogService;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -34,7 +34,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class AnnouncementAttachmentController extends Controller
 {
     public function __construct(
-        private AnnouncementAttachmentService $attachmentService,
         private AuditLogService $auditLogService,
     ) {}
 
@@ -113,7 +112,25 @@ class AnnouncementAttachmentController extends Controller
     }
 
     /**
-     * Stream the file from the configured private disk.
+     * Stream the file from the private disk that actually holds it.
+     *
+     * ROOT CAUSE NOTE (broken inline images)
+     * -------------------------------------
+     * This originally used the configured announcements disk
+     * (`filesystems.announcements_disk`) for BOTH the existence check and the
+     * read. When that configuration is wrong — e.g. ANNOUNCEMENT_STORAGE_DISK=s3
+     * with blank AWS_* credentials — the S3 adapter throws
+     * `UnableToCheckFileExistence`, which is NOT caught here and surfaced to the
+     * browser as an HTTP 500. An <img> receiving a 500 with no image bytes shows
+     * a broken-image icon, while the attachment row (name + Download link) still
+     * renders because it is built from database metadata alone.
+     *
+     * We now resolve the disk that genuinely holds the object: the disk recorded
+     * on the attachment row when it exists and is readable, otherwise the
+     * configured announcements disk, otherwise the private local disk. The row
+     * is an administrative record, so we only trust it if the file really
+     * resolves there — and every candidate must still pass the existing
+     * authorization checks above (which are unchanged).
      */
     protected function stream(
         AnnouncementAttachment $attachment,
@@ -122,15 +139,26 @@ class AnnouncementAttachmentController extends Controller
         Request $request,
         string $disposition,
     ): StreamedResponse {
-        $disk = $this->attachmentService->disk();
-
-        if (! $attachment->storage_path || ! $disk->exists($attachment->storage_path)) {
-            Log::warning('Announcement attachment missing from storage', [
+        if (! $attachment->storage_path) {
+            Log::warning('Announcement attachment has no storage path', [
                 'attachment_id' => $attachment->attachment_id,
-                'storage_path' => $attachment->storage_path,
             ]);
             abort(404, 'Attachment file not found.');
         }
+
+        $resolved = $this->resolveReadableDisk($attachment);
+
+        if ($resolved === null) {
+            Log::warning('Announcement attachment missing from every configured disk', [
+                'attachment_id' => $attachment->attachment_id,
+                'storage_path' => $attachment->storage_path,
+                'row_disk' => $attachment->storage_disk,
+                'configured_disk' => config('filesystems.announcements_disk', 'local'),
+            ]);
+            abort(404, 'Attachment file not found.');
+        }
+
+        [$disk, $diskName] = $resolved;
 
         $this->auditAccess(
             $disposition === 'attachment' ? 'ATTACHMENT_DOWNLOADED' : 'ATTACHMENT_VIEWED',
@@ -140,15 +168,123 @@ class AnnouncementAttachmentController extends Controller
             $request,
         );
 
+        $filename = $attachment->original_filename ?: basename($attachment->storage_path);
+
+        // Resolve a concrete Content-Type. Passing an empty Content-Type makes
+        // browsers sniff the body, and with `X-Content-Type-Options: nosniff`
+        // that combination can refuse to paint the image. We prefer the
+        // authoritative live sniff of the stored bytes and fall back to the
+        // MIME recorded at upload (which is itself validated against an
+        // allow-list). The real type is never hard-coded.
+        $contentType = $this->resolveContentType($disk, $diskName, $attachment);
+
+        $headers = array_filter([
+            'Content-Type' => $contentType,
+        ]);
+
         /** @var \Illuminate\Filesystem\FilesystemAdapter $diskAdapter */
         $diskAdapter = $disk;
 
         return $diskAdapter->response(
             $attachment->storage_path,
-            $attachment->original_filename ?: basename((string) $attachment->storage_path),
-            [],
+            $filename,
+            $headers,
             $disposition,
         );
+    }
+
+    /**
+     * Find the first disk that actually holds this attachment's object.
+     *
+     * Candidates, in order:
+     *   1. the disk recorded on the attachment row (when it resolves);
+     *   2. the configured announcements disk;
+     *   3. the private local disk (where files land when the disk is unset).
+     *
+     * Every candidate is probed defensively: a storage/adapter failure (for
+     * example an unreachable bucket) is logged and skipped rather than allowed
+     * to bubble up as a 500 on an <img> request.
+     *
+     * @return array{0: Filesystem, 1: string}|null  [disk, disk name]
+     */
+    protected function resolveReadableDisk(AnnouncementAttachment $attachment): ?array
+    {
+        $rowDisk = is_string($attachment->storage_disk) ? trim($attachment->storage_disk) : '';
+        $configuredDisk = (string) config('filesystems.announcements_disk', 'local');
+
+        $candidates = [];
+
+        if ($rowDisk !== '') {
+            $candidates[] = $rowDisk;
+        }
+
+        if ($configuredDisk !== '') {
+            $candidates[] = $configuredDisk;
+        }
+
+        // Private local disk: the default when ANNOUNCEMENT_STORAGE_DISK is unset,
+        // and where existing local attachments physically live.
+        $candidates[] = 'local';
+        $candidates[] = 'unknown_disk';
+
+        foreach (array_unique($candidates) as $diskName) {
+            // Only consider disks that are actually defined; `disk()` would
+            // otherwise raise an InvalidArgumentException for a stale row value.
+            if (! is_array(config("filesystems.disks.{$diskName}"))) {
+                continue;
+            }
+
+            try {
+                $disk = Storage::disk($diskName);
+
+                if ($disk->exists($attachment->storage_path)) {
+                    return [$disk, $diskName];
+                }
+            } catch (\Throwable $e) {
+                // A misconfigured or unreachable disk must not break the request.
+                Log::warning('Announcement attachment disk probe failed', [
+                    'attachment_id' => $attachment->attachment_id,
+                    'disk' => $diskName,
+                    'storage_path' => $attachment->storage_path,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Determine the Content-Type to serve for an attachment.
+     *
+     * Prefers the live MIME sniff of the stored object (authoritative for the
+     * bytes actually being returned) and falls back to the MIME validated at
+     * upload time. Never hard-codes a single image type.
+     */
+    protected function resolveContentType(
+        Filesystem $disk,
+        string $diskName,
+        AnnouncementAttachment $attachment,
+    ): ?string {
+        // The recorded MIME was sniffed server-side at upload and checked
+        // against the allow-list, so it is a sound fallback.
+        $recorded = trim((string) $attachment->mime_type);
+
+        try {
+            $detected = $disk->mimeType($attachment->storage_path);
+
+            if (is_string($detected) && $detected !== '') {
+                return $detected;
+            }
+        } catch (\Throwable $e) {
+            Log::debug('Announcement attachment MIME detection failed; using recorded type', [
+                'attachment_id' => $attachment->attachment_id,
+                'disk' => $diskName,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $recorded !== '' ? $recorded : null;
     }
 
     /**

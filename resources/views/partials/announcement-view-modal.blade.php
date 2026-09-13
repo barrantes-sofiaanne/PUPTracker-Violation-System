@@ -151,6 +151,32 @@
         img.alt = file.name ? ('Announcement photo: ' + file.name) : 'Announcement photo';
         img.loading = 'lazy';
         img.decoding = 'async';
+
+        // Never leave a broken-image icon on screen. If the <img> genuinely
+        // fails to load we swap in a readable notice and log the underlying
+        // failure to the console so the real error stays visible while
+        // debugging. A successful load is untouched.
+        img.addEventListener('error', function () {
+            console.error('[announcement-viewer] image failed to load', {
+                url: file.view,
+                attachment: file.name || null,
+                isImage: !!file.is_image
+            });
+
+            var fallback = document.createElement('div');
+            fallback.className = 'announcement-viewer-photo-fallback text-muted small border rounded p-3';
+            fallback.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>'
+                + 'Unable to load image.'
+                + (file.download
+                    ? ' <a href="' + file.download + '" class="ms-1">Download it instead</a>.'
+                    : '');
+
+            // Replace only the image itself, keeping the caption/Download link.
+            if (img.parentNode) {
+                img.parentNode.replaceChild(fallback, img);
+            }
+        });
+
         wrap.appendChild(img);
 
         var caption = document.createElement('div');
