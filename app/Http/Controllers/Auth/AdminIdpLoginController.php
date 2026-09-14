@@ -7,7 +7,6 @@ use App\Models\Admin;
 use App\Support\MfaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -27,14 +26,20 @@ use Illuminate\Support\Str;
  * the `admin` guard, so every downstream Admin Module route/authorization is
  * untouched.
  *
- * IDP roles (per the integration spec):
- *   - "Admin"                 → Administrator
- *   - "System Administrator"  → IT Administrator
+ * IDP role requirement:
+ *   The PUP IDP reliably exposes only the "Admin" role. It does NOT expose a
+ *   trustworthy System Administrator / Super Administrator distinction via the
+ *   authenticated /me response, so this flow authorises on the IDP "Admin"
+ *   role alone (config `services.idp.admin_roles`).
  *
  * Security posture
- *   - The IDP role decides WHICH local role may sign in, and the local role
- *     has to agree. A mismatch is REJECTED (fail closed) rather than silently
- *     upgrading or downgrading the local account.
+ *   - The IDP role is an ENTRY requirement only. It never decides which local
+ *     role the account holds, so a successful IDP login can never grant (or
+ *     revoke) IT Administrator / Super Admin privileges. Those continue to come
+ *     exclusively from the local admin record (`Admin::isItAdministrator()`).
+ *   - MFA is still required. After the IDP authenticates the user, the normal
+ *     PUPTracker MFA challenge is raised and the account is NOT authenticated
+ *     until that challenge passes.
  *   - Binding is matched on the IDP-VERIFIED email only. The email is never
  *     taken from user input, so an officer cannot claim someone else's account.
  *   - An account already bound to a different IDP identity can never be
@@ -211,23 +216,12 @@ class AdminIdpLoginController extends Controller
                 return $this->fail('No administrator account is associated with this PUP IDP account. Please contact the IT Administrator.');
             }
 
-            // The local role must agree with the IDP role. Never upgrade (or
-            // downgrade) an account implicitly — that would be privilege
-            // escalation driven by the IDP.
-            $expectedLocalRole = $idpRole === 'super' ? 'IT Administrator' : 'Admin';
-
-            if (! $this->localRoleMatches($admin, $expectedLocalRole)) {
-                $this->logSecurityEvent('IDP login rejected: role mismatch', [
-                    'idp_subject' => $idpSubject,
-                    'admin_id' => $admin->getKey(),
-                    'idp_role' => $idpRole,
-                    'expected_local_role' => $expectedLocalRole,
-                    'local_role' => (string) $admin->roleName(),
-                ]);
-
-                return $this->fail('Your PUPTracker role does not match your PUP IDP role. Please contact the IT Administrator.');
-            }
-
+            // The IDP role authorises ENTRY only. Which local role the account
+            // holds is never derived from it: a matching local account is all
+            // that is required, and IT Administrator / Super Admin privileges
+            // continue to come from the local record alone. This is what stops
+            // an IDP role from escalating privilege.
+            //
             // Account status mirrors the email/password path.
             $statusId = $admin->adminInfo?->status_id;
 
@@ -237,16 +231,30 @@ class AdminIdpLoginController extends Controller
 
             $this->persistIdpBinding($admin, $idpSubject, $email);
 
-            Auth::guard('admin')->login($admin);
-            $request->session()->regenerate();
+            // MFA is NOT bypassed. The IDP proves who the user is, but the
+            // administrator account still has to clear the same challenge the
+            // email/password path raises. Nothing is authenticated until then:
+            // MfaController performs Auth::guard('admin')->login() on success,
+            // so no admin session exists at this point.
+            $this->mfaService->beginChallenge(
+                $request,
+                'admin',
+                (string) $admin->getKey(),
+                (string) $admin->email,
+                $this->readTotpSecret($admin),
+                (bool) $admin->mfa_totp_enabled,
+                $admin->mfa_backup_codes,
+                $admin->mfa_backup_codes_used,
+                false
+            );
 
-            Log::info('Admin IDP login succeeded', [
+            Log::info('Admin IDP login verified; MFA challenge started', [
                 'admin_id' => $admin->getKey(),
                 'idp_role' => $idpRole,
-                'local_role' => $expectedLocalRole,
             ]);
 
-            return redirect()->route('admin.dashboard');
+            return redirect()->route('mfa.verify.show')
+                ->with('success', 'Continue with multi-factor verification.');
         } catch (\Throwable $exception) {
             Log::error('Admin IDP login failed.', [
                 'error' => $exception->getMessage(),
@@ -297,10 +305,38 @@ class AdminIdpLoginController extends Controller
     }
 
     /**
-     * Map the IDP profile's roles onto one of the two administrator roles.
+     * Read the TOTP secret through the encrypted cast, tolerating an
+     * undecryptable legacy value.
      *
-     * Returns 'super' for the System Administrator role, 'admin' for the
-     * Administrator role, or null when the profile carries no allowed role.
+     * AdminLoginController treats a cast failure as a hard error because it can
+     * inform the user precisely. Here the IDP has already authenticated the
+     * user, so an undecryptable secret must simply degrade to the other MFA
+     * methods (which MfaService derives from `mfa_totp_enabled` / backup codes)
+     * rather than blocking sign-in outright.
+     */
+    protected function readTotpSecret(Admin $admin): ?string
+    {
+        try {
+            return $admin->mfa_totp_secret;
+        } catch (\Throwable $exception) {
+            Log::error('Admin IDP login: MFA secret decryption FAILED (cast read)', [
+                'admin_id' => $admin->getKey(),
+                'hint' => 'Stored mfa_totp_secret is not decryptable with the current APP_KEY (legacy plaintext or key mismatch). Run mfa:diagnose-totp, then mfa:encrypt-totp-secrets once if the key is stable.',
+                'exception' => get_class($exception),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Map the IDP profile's roles onto the administrator entry requirement.
+     *
+     * Returns 'super' when the profile carries the System Administrator role or
+     * 'admin' for the Administrator role, and null when no allowed role is
+     * present. The distinction is informational only (it is logged); PUPTracker
+     * privileges are never derived from it.
+     *
      * A missing/empty roles value is treated as a denial: unlike the student
      * flow, an administrator login must never fall back to trust.
      */
@@ -394,21 +430,6 @@ class AdminIdpLoginController extends Controller
 
             return null;
         }
-    }
-
-    /**
-     * Whether the administrator's local role matches the role the IDP assigned.
-     */
-    protected function localRoleMatches(Admin $admin, string $expectedRole): bool
-    {
-        $localRole = $admin->roleName();
-
-        if ($localRole === null) {
-            // No resolvable local role — fail closed rather than assume.
-            return false;
-        }
-
-        return strcasecmp(trim($localRole), $expectedRole) === 0;
     }
 
     /**

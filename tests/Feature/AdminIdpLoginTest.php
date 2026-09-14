@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Admin;
+use App\Support\MfaService;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -13,14 +15,17 @@ use Tests\TestCase;
 /**
  * The Administrator module has TWO login processes:
  *
- *   1. Email + password  → AdminLoginController (then the MFA challenge)
- *   2. PUP IDP           → AdminIdpLoginController (the IDP is the second factor)
+ *   1. Email + password  → AdminLoginController, then the MFA challenge.
+ *   2. PUP IDP           → AdminIdpLoginController, then the SAME MFA challenge.
  *
- * Both must end at the same authenticated placement: an `admins` account on the
- * `admin` guard. The IDP role decides which local role may sign in:
+ * Both paths end at the same authenticated placement: an `admins` account on
+ * the `admin` guard, reached only AFTER PUPTracker MFA succeeds.
  *
- *   IDP "Admin"                → local "Admin"              (Administrator)
- *   IDP "System Administrator" → local "IT Administrator"   (IT Administrator)
+ * The PUP IDP reliably exposes only the "Admin" role — it does not expose a
+ * trustworthy System Administrator distinction through /me. The IDP role is
+ * therefore an ENTRY requirement only; it never decides the account's local
+ * role or privileges. IT Administrator / Super Admin access continues to come
+ * exclusively from the local admin record.
  */
 class AdminIdpLoginTest extends TestCase
 {
@@ -50,68 +55,113 @@ class AdminIdpLoginTest extends TestCase
     // 1. IDP role → local role mapping
     // ==================================================================
 
-    public function test_idp_admin_role_signs_in_the_local_administrator(): void
+    public function test_idp_admin_role_reaches_the_mfa_challenge_for_a_local_administrator(): void
     {
         $admin = $this->createAdmin('admin@example.com', 'Admin');
 
         $this->fakeIdp('idp-admin-1', 'admin@example.com', 'Admin');
 
-        $this->hitCallback()->assertRedirect(route('admin.dashboard'));
+        // The IDP authenticated the user, but PUPTracker MFA is still required.
+        $this->hitCallback()->assertRedirect(route('mfa.verify.show'));
 
-        $this->assertAuthenticatedAs($admin, 'admin');
+        // No admin session exists until the MFA challenge passes.
+        $this->assertGuest('admin');
+
+        // The verified IDP identity is bound so the MFA step can complete.
         $this->assertSame('idp-admin-1', $admin->fresh()->idp_subject);
+        $this->assertSame('admin', (string) session(\App\Support\MfaService::SESSION_KEY . '.guard'));
+        $this->assertSame((string) $admin->getKey(), (string) session(\App\Support\MfaService::SESSION_KEY . '.identifier'));
     }
 
-    public function test_idp_system_administrator_role_signs_in_the_it_administrator(): void
+    /**
+     * An IT Administrator is authorised by the SAME IDP "Admin" role — the IDP
+     * does not expose a separate System Administrator role through /me. Super
+     * Admin privileges still come from the local record, not from the IDP role.
+     */
+    public function test_idp_admin_role_reaches_mfa_for_an_it_administrator(): void
     {
         $admin = $this->createAdmin('it@example.com', 'IT Administrator');
 
-        $this->fakeIdp('idp-it-1', 'it@example.com', 'System Administrator');
+        $this->fakeIdp('idp-it-1', 'it@example.com', 'Admin');
 
-        $this->hitCallback()->assertRedirect(route('admin.dashboard'));
+        $this->hitCallback()->assertRedirect(route('mfa.verify.show'));
 
-        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertGuest('admin');
         $this->assertSame('idp-it-1', $admin->fresh()->idp_subject);
     }
 
     // ==================================================================
-    // 2. Role mismatch must fail closed
+    // 2. The IDP role never grants, changes, or removes local privilege
     // ==================================================================
 
     /**
-     * A regular Administrator IDP role must NOT be able to sign in to an IT
-     * Administrator account: that would be privilege escalation.
+     * The IDP role is an ENTRY gate only. Whatever role the IDP reports, the
+     * local account keeps its own role — the IDP can neither upgrade an
+     * "Admin" into an IT Administrator nor downgrade an IT Administrator.
+     *
+     * Both IDP role spellings are exercised against the SAME local account so
+     * the local role is unambiguously unaffected by the IDP value.
      */
-    public function test_idp_admin_role_cannot_sign_in_an_it_administrator_account(): void
+    public function test_idp_role_never_changes_the_local_role_or_privileges(): void
     {
-        $admin = $this->createAdmin('it@example.com', 'IT Administrator');
+        $regular = $this->createAdmin('regular@example.com', 'Admin');
 
-        $this->fakeIdp('idp-admin-2', 'it@example.com', 'Admin');
+        // The IDP reports the more privileged name; the local role must not move.
+        $this->fakeIdp('idp-regular-super', 'regular@example.com', 'System Administrator');
+        $this->hitCallback()->assertRedirect(route('mfa.verify.show'));
 
-        $this->hitCallback()
-            ->assertRedirect(route('admin.login'))
-            ->assertSessionHasErrors('login');
+        $this->assertSame('Admin', $regular->fresh()->roleName(), 'The IDP role must not change the local role.');
+        $this->assertFalse($regular->fresh()->isItAdministratorRole(), 'A regular Admin must never gain IT Administrator from the IDP role.');
 
-        $this->assertGuest('admin');
-        $this->assertSame(null, $admin->fresh()->idp_subject, 'A rejected login must not bind the IDP identity.');
+        // And the plain "Admin" spelling leaves it equally untouched.
+        $this->fakeIdp('idp-regular-admin', 'regular@example.com', 'Admin');
+        $this->hitCallback()->assertRedirect(route('mfa.verify.show'));
+
+        $this->assertSame('Admin', $regular->fresh()->roleName());
+        $this->assertFalse($regular->fresh()->isItAdministratorRole());
     }
 
     /**
-     * The IT Administrator IDP role must NOT silently downgrade into a regular
-     * Administrator account either — the mismatch is rejected in both directions.
+     * The IT Administrator privilege is derived from the LOCAL record only, and
+     * is unaffected by which IDP role the user presented.
+     *
+     * Asserted through the structured role helper (role_id → roles_tbl), which
+     * is what this fixture populates. `isItAdministrator()` is the separate
+     * legacy Position/designation/title scan and is deliberately left as-is.
      */
-    public function test_idp_system_administrator_role_cannot_sign_in_a_regular_admin_account(): void
+    public function test_it_administrator_privilege_comes_from_the_local_record_only(): void
     {
-        $admin = $this->createAdmin('admin@example.com', 'Admin');
+        $itAdmin = $this->createAdmin('it2@example.com', 'IT Administrator');
 
-        $this->fakeIdp('idp-it-2', 'admin@example.com', 'System Administrator');
+        $this->fakeIdp('idp-it-2', 'it2@example.com', 'Admin');
+        $this->hitCallback()->assertRedirect(route('mfa.verify.show'));
 
-        $this->hitCallback()
-            ->assertRedirect(route('admin.login'))
-            ->assertSessionHasErrors('login');
+        $this->assertSame('IT Administrator', $itAdmin->fresh()->roleName());
+        $this->assertTrue($itAdmin->fresh()->isItAdministratorRole());
+    }
 
+    /**
+     * MFA is mandatory: a successful IDP authentication must NOT authenticate
+     * the administrator on its own. This is the core "IDP does not bypass MFA"
+     * guarantee.
+     */
+    public function test_idp_login_does_not_authenticate_before_mfa(): void
+    {
+        $admin = $this->createAdmin('mfa-required@example.com', 'Admin');
+
+        $this->fakeIdp('idp-mfa-required', 'mfa-required@example.com', 'Admin');
+
+        $this->hitCallback()->assertRedirect(route('mfa.verify.show'));
+
+        // The critical assertion: the admin guard is NOT authenticated yet.
         $this->assertGuest('admin');
-        $this->assertSame(null, $admin->fresh()->idp_subject);
+        $this->assertFalse(Auth::guard('admin')->check());
+
+        // The challenge is bound to this admin account.
+        $pending = session(\App\Support\MfaService::SESSION_KEY);
+        $this->assertIsArray($pending);
+        $this->assertSame('admin', $pending['guard']);
+        $this->assertSame((string) $admin->getKey(), (string) $pending['identifier']);
     }
 
     public function test_non_administrator_idp_role_is_rejected(): void
@@ -125,6 +175,7 @@ class AdminIdpLoginTest extends TestCase
             ->assertSessionHasErrors('login');
 
         $this->assertGuest('admin');
+        $this->assertSame(null, $admin->fresh()->idp_subject, 'A rejected login must not bind the IDP identity.');
     }
 
     /**
@@ -176,7 +227,7 @@ class AdminIdpLoginTest extends TestCase
         $this->assertGuest('admin');
     }
 
-    public function test_existing_binding_logs_in_and_refreshes_the_idp_email(): void
+    public function test_existing_binding_reaches_mfa_and_refreshes_the_idp_email(): void
     {
         $admin = $this->createAdmin('admin@example.com', 'Admin');
         $admin->idp_subject = 'idp-bound';
@@ -185,9 +236,9 @@ class AdminIdpLoginTest extends TestCase
 
         $this->fakeIdp('idp-bound', 'admin@example.com', 'Admin');
 
-        $this->hitCallback()->assertRedirect(route('admin.dashboard'));
+        $this->hitCallback()->assertRedirect(route('mfa.verify.show'));
 
-        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertGuest('admin');
         $this->assertSame('admin@example.com', $admin->fresh()->idp_email);
     }
 
@@ -225,9 +276,11 @@ class AdminIdpLoginTest extends TestCase
     }
 
     /**
-     * An admin with no resolvable local role is denied (fail closed).
+     * An admin with no resolvable local role still reaches MFA: the local role
+     * no longer gates entry (it never granted entry — it may still be null), and
+     * privileges remain absent because they come from the local record.
      */
-    public function test_administrator_without_a_local_role_is_denied(): void
+    public function test_administrator_without_a_local_role_still_reaches_mfa_with_no_privileges(): void
     {
         $admin = Admin::create([
             'username' => 'norole@example.com',
@@ -243,11 +296,11 @@ class AdminIdpLoginTest extends TestCase
 
         $this->fakeIdp('idp-norole2', 'norole@example.com', 'Admin');
 
-        $this->hitCallback()
-            ->assertRedirect(route('admin.login'))
-            ->assertSessionHasErrors('login');
+        $this->hitCallback()->assertRedirect(route('mfa.verify.show'));
 
         $this->assertGuest('admin');
+        $this->assertNull($admin->fresh()->roleName());
+        $this->assertFalse($admin->fresh()->isItAdministratorRole(), 'No local role must never yield Super Admin.');
     }
 
     // ==================================================================
@@ -268,25 +321,48 @@ class AdminIdpLoginTest extends TestCase
     }
 
     /**
-     * Regression guard for the reported bug: a System Administrator who
-     * authenticates through the IDP must land in the Admin module, never on the
-     * student login page.
+     * Regression guard for the reported bug: a user who authenticates through the
+     * IDP must be funnelled into the ADMIN module (starting with the PUPTracker
+     * MFA challenge) and must never be sent to the student login page.
      */
-    public function test_system_administrator_reaches_the_admin_module_and_never_student_login(): void
+    public function test_admin_idp_login_enters_the_admin_module_and_never_student_login(): void
     {
         $admin = $this->createAdmin('it@example.com', 'IT Administrator');
 
-        $this->fakeIdp('idp-super-1', 'it@example.com', 'System Administrator');
+        $this->fakeIdp('idp-super-1', 'it@example.com', 'Admin');
 
         $response = $this->hitCallback();
 
-        // The full success path: admin guard + admin destination.
-        $response->assertRedirect(route('admin.dashboard'));
-        $this->assertAuthenticatedAs($admin, 'admin');
+        // Enters the ADMIN MFA step — not the student module.
+        $response->assertRedirect(route('mfa.verify.show'));
         $this->assertGuest('student');
 
         $location = (string) $response->headers->get('location');
-        $this->assertStringNotContainsString('student', $location, 'A System Administrator must never be sent to the student module.');
+        $this->assertStringNotContainsString('student', $location, 'An administrator must never be sent to the student module.');
+    }
+
+    /**
+     * The pending MFA challenge carries the admin guard and the resolved local
+     * account, so completing it authenticates on the admin guard. The final
+     * destination is chosen by MfaController from the LOCAL role — Super Admin
+     * for an IT Administrator, Admin otherwise. That is asserted directly in
+     * `test_mfa_destination_is_driven_by_the_local_role_not_the_idp_role`.
+     */
+    public function test_idp_login_creates_an_admin_scoped_mfa_challenge(): void
+    {
+        $itAdmin = $this->createAdmin('it3@example.com', 'IT Administrator');
+
+        $this->fakeIdp('idp-e2e-it', 'it3@example.com', 'Admin');
+        $this->hitCallback()->assertRedirect(route('mfa.verify.show'));
+
+        $pending = session(\App\Support\MfaService::SESSION_KEY);
+
+        $this->assertIsArray($pending);
+        $this->assertSame('admin', $pending['guard']);
+        $this->assertSame((string) $itAdmin->getKey(), (string) $pending['identifier']);
+        // The challenge must be the privileged (admin) form, not the student one.
+        $this->assertSame('select', $pending['stage']);
+        $this->assertContains('totp', $pending['methods']);
     }
 
     // ==================================================================
@@ -467,15 +543,15 @@ class AdminIdpLoginTest extends TestCase
         Config::set('services.idp.client_secret', '');
 
         $this->createAdmin('it@example.com', 'IT Administrator');
-        $this->fakeIdp('idp-independent', 'it@example.com', 'System Administrator');
+        $this->fakeIdp('idp-independent', 'it@example.com', 'Admin');
 
         // Start still works, using the admin client.
         $location = (string) $this->get(route('admin.idp.login'))->headers->get('location');
         $this->assertStringContainsString('client_id=admin-client', $location);
 
-        // And the callback still completes.
-        $this->hitCallback()->assertRedirect(route('admin.dashboard'));
-        $this->assertAuthenticated('admin');
+        // And the callback still completes, reaching the admin MFA challenge.
+        $this->hitCallback()->assertRedirect(route('mfa.verify.show'));
+        $this->assertGuest('admin');
     }
 
     public function test_mismatched_state_is_rejected(): void
@@ -521,9 +597,9 @@ class AdminIdpLoginTest extends TestCase
     public function test_admin_token_exchange_uses_the_admin_credentials(): void
     {
         $this->createAdmin('it@example.com', 'IT Administrator');
-        $this->fakeIdp('idp-creds', 'it@example.com', 'System Administrator');
+        $this->fakeIdp('idp-creds', 'it@example.com', 'Admin');
 
-        $this->hitCallback()->assertRedirect(route('admin.dashboard'));
+        $this->hitCallback()->assertRedirect(route('mfa.verify.show'));
 
         Http::assertSent(function ($request) {
             if (! str_contains($request->url(), '/auth/token')) {
