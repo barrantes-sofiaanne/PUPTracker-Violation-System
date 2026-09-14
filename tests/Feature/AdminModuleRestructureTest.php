@@ -272,7 +272,15 @@ class AdminModuleRestructureTest extends TestCase
     {
         $admin = $this->createAdmin();
 
+        // The standalone AI Program Report URL is now a redirect to the Reports
+        // tab; follow it so this still inspects the real form markup.
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.program-report.index'))
+            ->assertRedirect(route('admin.reports', ['tab' => 'ai-program']))
+            ->assertSessionHasNoErrors();
+
         $html = $this->actingAs($admin, 'admin')
+            ->followingRedirects()
             ->get(route('admin.program-report.index'))
             ->assertOk()
             ->getContent();
@@ -305,6 +313,170 @@ class AdminModuleRestructureTest extends TestCase
         $report = ProgramReport::latest('report_id')->first();
         $this->assertNotNull($report);
         $this->assertSame('graduating', (string) $report->report_mode);
+    }
+
+    // ==================================================================
+    // 5. Reports page — three tabs, existing processes relocated
+    // ==================================================================
+
+    public function test_reports_page_has_three_tabs_in_order_with_one_parent_header(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports'))
+            ->assertOk()
+            ->getContent();
+
+        // ONE parent-level header for the page.
+        $this->assertStringContainsString('>Reports</h2>', $html);
+        $this->assertStringContainsString('Manage and generate administrative reports.', $html);
+
+        $violationPos = strpos($html, 'id="violation-reports-tab"');
+        $aiPos = strpos($html, 'id="ai-program-tab"');
+        $historyPos = strpos($html, 'id="history-tab"');
+
+        $this->assertNotFalse($violationPos, 'Violation Reports tab must exist.');
+        $this->assertNotFalse($aiPos, 'AI Program Report tab must exist.');
+        $this->assertNotFalse($historyPos, 'Report History tab must exist.');
+
+        $this->assertTrue(
+            $violationPos < $aiPos && $aiPos < $historyPos,
+            'Tabs must be ordered: Violation Reports, AI Program Report, Report History.'
+        );
+
+        // The default tab is the Violation Reports one.
+        $this->assertSame(1, substr_count($html, 'tab-pane fade show active'));
+    }
+
+    public function test_reports_ai_program_tab_renders_the_existing_form(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports', ['tab' => 'ai-program']))
+            ->assertOk()
+            ->getContent();
+
+        // Existing form, fields, preview and removal wiring are all intact.
+        $this->assertStringContainsString('id="programReportForm"', $html);
+        $this->assertStringContainsString('name="program_id"', $html);
+        $this->assertStringContainsString('name="report_type"', $html);
+        $this->assertStringContainsString('id="previewGraduatingBtn"', $html);
+        $this->assertStringContainsString('id="graduatingPreviewBody"', $html);
+        $this->assertStringContainsString('id="excludedStudentsInputs"', $html);
+        $this->assertStringContainsString(route('admin.program-report.generate'), $html);
+
+        // Program Sanction Report remains removed from this workflow.
+        $this->assertStringNotContainsString('Program Sanction Report', $html);
+
+        // Only the AI tab pane is active.
+        $this->assertSame(1, substr_count($html, 'tab-pane fade show active'));
+        $this->assertStringContainsString('id="ai-program"', $html);
+    }
+
+    public function test_reports_history_tab_renders_the_existing_history_table(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports', ['tab' => 'history']))
+            ->assertOk()
+            ->getContent();
+
+        // The history filters (including the retained Report Mode filter) survive.
+        $this->assertStringContainsString(route('admin.program-report.history'), $html);
+        $this->assertStringContainsString('name="report_mode"', $html);
+        $this->assertStringContainsString('Report Mode', $html);
+        $this->assertStringContainsString('name="report_type"', $html);
+
+        $this->assertSame(1, substr_count($html, 'tab-pane fade show active'));
+        $this->assertStringContainsString('id="history"', $html);
+    }
+
+    public function test_unknown_tab_falls_back_to_the_default_tab(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports', ['tab' => 'not-a-real-tab']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('id="violation-reports"', $html);
+        $this->assertSame(1, substr_count($html, 'tab-pane fade show active'));
+    }
+
+    // ==================================================================
+    // 6. Backward compatibility for the moved report pages
+    // ==================================================================
+
+    public function test_old_ai_program_report_url_redirects_to_its_tab(): void
+    {
+        $admin = $this->createAdmin();
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.program-report.index'))
+            ->assertRedirect(route('admin.reports', ['tab' => 'ai-program']));
+    }
+
+    public function test_old_report_history_url_redirects_to_its_tab(): void
+    {
+        $admin = $this->createAdmin();
+
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.program-report.history'))
+            ->assertRedirect(route('admin.reports', ['tab' => 'history']));
+    }
+
+    public function test_old_history_url_preserves_its_filters_through_the_redirect(): void
+    {
+        $admin = $this->createAdmin();
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.program-report.history', [
+                'program_id' => 7,
+                'report_type' => 'violations',
+                'report_mode' => 'graduating',
+            ]));
+
+        $response->assertRedirect();
+
+        $location = (string) $response->headers->get('location');
+        $this->assertStringContainsString('tab=history', $location);
+        $this->assertStringContainsString('program_id=7', $location);
+        $this->assertStringContainsString('report_type=violations', $location);
+        $this->assertStringContainsString('report_mode=graduating', $location);
+    }
+
+    public function test_sidebar_drops_the_standalone_report_entries_but_keeps_reports(): void
+    {
+        $sidebar = file_get_contents(resource_path('views/admin/partials/sidebar.blade.php'));
+
+        $this->assertStringContainsString("route('admin.reports')", $sidebar);
+
+        $this->assertStringNotContainsString(
+            "route('admin.program-report.index')",
+            $sidebar,
+            'The standalone AI Program Report sidebar entry must be gone.'
+        );
+        $this->assertStringNotContainsString(
+            "route('admin.program-report.history')",
+            $sidebar,
+            'The standalone Report History sidebar entry must be gone.'
+        );
+    }
+
+    public function test_superseded_standalone_views_are_deleted_and_tabs_exist(): void
+    {
+        $this->assertFileDoesNotExist(resource_path('views/admin/reports/index.blade.php'));
+        $this->assertFileDoesNotExist(resource_path('views/admin/program-report/index.blade.php'));
+        $this->assertFileDoesNotExist(resource_path('views/admin/program-report/history.blade.php'));
+
+        $this->assertFileExists(resource_path('views/admin/reports/show.blade.php'));
+        $this->assertFileExists(resource_path('views/admin/reports/tabs/violation-reports.blade.php'));
+        $this->assertFileExists(resource_path('views/admin/reports/tabs/ai-program-report.blade.php'));
+        $this->assertFileExists(resource_path('views/admin/reports/tabs/report-history.blade.php'));
     }
 
     // ==================================================================

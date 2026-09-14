@@ -154,30 +154,6 @@
             </a>
 
         </li>
-
-        <li>
-
-            <a href="{{ route('admin.program-report.index') }}" class="{{ request()->routeIs('admin.program-report.index') ? 'active' : '' }}">
-
-                <i class="bi bi-stars"></i>
-
-                AI Program Report
-
-            </a>
-
-        </li>
-
-        <li>
-
-            <a href="{{ route('admin.program-report.history') }}" class="{{ request()->routeIs('admin.program-report.history') ? 'active' : '' }}">
-
-                <i class="bi bi-clock-history"></i>
-
-                Report History
-
-            </a>
-
-        </li>
         @endunless
 
         <li class="sidebar-section-label">Records & Security</li>

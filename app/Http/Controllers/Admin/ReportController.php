@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Course;
+use App\Models\Program;
+use App\Models\ProgramReport;
 use App\Models\Violation;
 use App\Models\ViolationCategory;
 use App\Models\ViolationType;
 use App\Models\Year;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -17,33 +21,123 @@ class ReportController extends Controller
 {
     public function index(Request $request)
     {
-        $statistics = $this->getStatistics($request);
+        /*
+         * The Admin Reports page is now ONE page with three tabs. The server
+         * decides which tab is active and only builds that tab's dataset, so the
+         * other two processes do not run on every request.
+         *
+         * The existing per-tab processes are unchanged — this method only acts as
+         * the page composer.
+         */
+        $activeReportsTab = $this->activeReportsTab($request);
 
-        $perPage = in_array((int) $request->input('per_page'), [25, 50, 100], true)
-            ? (int) $request->input('per_page')
-            : 25;
+        $data = ['activeReportsTab' => $activeReportsTab];
 
-        $reports = $this->buildQuery($request)
-            ->latest('violation_date')
-            ->paginate($perPage)
-            ->withQueryString();
+        if ($activeReportsTab === 'violation-reports') {
+            $resultsPerPage = in_array((int) $request->input('per_page'), [25, 50, 100], true)
+                ? (int) $request->input('per_page')
+                : 25;
 
-        $courses = Course::orderBy('program_name')->get();
-        $years = Year::orderBy('year')->get();
-        $categories = ViolationCategory::orderBy('category_name')->get();
-        $violationTypes = ViolationType::orderBy('violation_type')->get();
+            $data += [
+                'statistics' => $this->getStatistics($request),
+                'reports' => $this->buildQuery($request)
+                    ->latest('violation_date')
+                    ->paginate($resultsPerPage)
+                    ->withQueryString(),
+                'courses' => Course::orderBy('program_name')->get(),
+                'years' => Year::orderBy('year')->get(),
+                'categories' => ViolationCategory::orderBy('category_name')->get(),
+                'violationTypes' => ViolationType::orderBy('violation_type')->get(),
+            ];
+        }
 
-        return view(
-            'admin.reports.index',
-            compact(
-                'reports',
-                'statistics',
-                'courses',
-                'years',
-                'categories',
-                'violationTypes'
-            )
-        );
+        if ($activeReportsTab === 'ai-program') {
+            $data += $this->programReportIndexData();
+        }
+
+        if ($activeReportsTab === 'history') {
+            $data += $this->programReportHistoryData($request);
+        }
+
+        return view('admin.reports.show', $data);
+    }
+
+    /**
+     * The tabs this page understands. Kept in one place so a typo in ?tab= falls
+     * back to the default rather than rendering an empty page.
+     */
+    protected const REPORTS_TABS = ['violation-reports', 'ai-program', 'history'];
+
+    protected function activeReportsTab(Request $request): string
+    {
+        $tab = (string) $request->input('tab', '');
+
+        return in_array($tab, self::REPORTS_TABS, true) ? $tab : 'violation-reports';
+    }
+
+    /**
+     * Data for the "AI Program Report" tab.
+     *
+     * Body lifted verbatim from ProgramReportController::index() so the form
+     * behaviour is identical.
+     *
+     * @return array{programs: \Illuminate\Database\Eloquent\Collection, ladderizedPrograms: array<int, string>}
+     */
+    protected function programReportIndexData(): array
+    {
+        return [
+            'programs' => Program::orderBy('program_name')->get(),
+            'ladderizedPrograms' => config('graduation_review.graduating.ladderized_programs', ['BSOA', 'BSIT']),
+        ];
+    }
+
+    /**
+     * Data for the "Report History" tab.
+     *
+     * Body lifted verbatim from ProgramReportController::history(), including the
+     * authorization rule: a non-Super-Admin only ever sees their own reports.
+     *
+     * The dataset is bound as `$programReports` (NOT `$reports`) because the
+     * page already uses `$reports` for the violation-report paginator. The tab
+     * partial receives it explicitly as `$reports` so its own markup is unchanged.
+     *
+     * @return array{programReports: \Illuminate\Contracts\Pagination\LengthAwarePaginator, programs: \Illuminate\Database\Eloquent\Collection, isSuperAdmin: bool}
+     */
+    protected function programReportHistoryData(Request $request): array
+    {
+        $query = ProgramReport::with(['program', 'generatedBy'])
+            ->latest('generated_at');
+
+        $admin = Auth::guard('admin')->user();
+
+        // Non-super admins only see their own generated reports.
+        if ($admin && method_exists($admin, 'isItAdministrator') && ! $admin->isItAdministrator()) {
+            $query->where('generated_by_admin_id', $admin->id);
+        }
+
+        if ($request->filled('program_id')) {
+            $query->where('program_id', (int) $request->integer('program_id'));
+        }
+
+        if ($request->filled('report_type')) {
+            $query->where('report_type', $request->string('report_type')->toString());
+        }
+
+        // The report_mode filter is deliberately kept: historical records still
+        // carry report_mode = 'regular' (Program Sanction Report), and removing
+        // the filter would make those records unfilterable. Only the AI Program
+        // Report FORM no longer offers that mode.
+        if ($request->filled('report_mode') && Schema::hasColumn('program_reports', 'report_mode')) {
+            $query->where('report_mode', $request->string('report_mode')->toString());
+        }
+
+        $isSuperAdmin = $admin && method_exists($admin, 'isItAdministrator') && $admin->isItAdministrator();
+
+        return [
+            'programReports' => $query->paginate(15)->withQueryString(),
+            'programs' => Program::orderBy('program_name')->get(),
+            'isSuperAdmin' => $isSuperAdmin,
+        ];
     }
 
     private function buildQuery(Request $request = null)
@@ -153,7 +247,11 @@ class ReportController extends Controller
 
         $statistics = $this->getStatistics($request);
 
-        return view('admin.reports.index', [
+        // The Reports page is now tabbed. A non-AJAX filter submit re-renders the
+        // Violation Reports tab with the filtered dataset; ?tab= keeps the user
+        // on the tab they were using instead of bouncing them to the default.
+        return view('admin.reports.show', [
+            'activeReportsTab' => 'violation-reports',
             'reports' => $reports,
             'statistics' => $statistics,
             'courses' => Course::orderBy('program_name')->get(),

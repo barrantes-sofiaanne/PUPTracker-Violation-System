@@ -359,9 +359,11 @@ class GraduationReviewEnhancementTest extends TestCase
             'report_type' => 'full',
         ])->assertRedirect();
 
-        // Super admin (adminA) can see ALL reports via history.
+        // Super admin (adminA) can see ALL reports via history. The standalone
+        // history URL now redirects to the Reports → Report History tab, so the
+        // request is followed to reach the rendered table.
         $this->actingAs($adminA, 'admin');
-        $response = $this->get(route('admin.program-report.history'));
+        $response = $this->followingRedirects()->get(route('admin.program-report.history'));
         $response->assertOk();
         // The history shows the generating admin's email.
         $response->assertSee('guidance.administrator@example.com');

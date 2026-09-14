@@ -49,6 +49,55 @@
         color: #5f0000;
     }
 
+    /* ------------------------------------------------------------------
+       Wizard presentation — visually aligned with the Security module's
+       Record Violation modal.
+
+       These classes are PRESENTATION ONLY: the Admin modal keeps its own ids
+       (`studentStepIndicator`, `violationWizardProgress`, ...), its own form
+       submission, validation and controller. Only the visuals are shared so
+       the two modules' Record Violation interfaces look the same.
+       ------------------------------------------------------------------ */
+    .admin-record-modal .wizard-bubble {
+        width: 52px;
+        height: 52px;
+        border-radius: 999px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 6px 12px rgba(128, 0, 0, 0.15);
+    }
+
+    /* Step cards use the module's maroon/gold tone rather than a generic
+       shadow, matching Security's `.wizard-card`. */
+    .admin-record-modal .wizard-card {
+        border: 1px solid rgba(128, 0, 0, 0.12) !important;
+        border-radius: 0.95rem;
+        box-shadow: 0 8px 20px rgba(128, 0, 0, 0.08) !important;
+        overflow: hidden;
+    }
+
+    .admin-record-modal .wizard-card .card-header {
+        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%) !important;
+        border-bottom: 1px solid rgba(128, 0, 0, 0.12);
+        color: #5f0000;
+        padding: 0.9rem 1.1rem;
+    }
+
+    .admin-record-modal .wizard-card .card-header i {
+        color: #800000 !important;
+    }
+
+    /* Disabled footer buttons stay readable — the maroon tone is preserved
+       instead of fading to a washed-out grey. */
+    .admin-record-modal .modal-footer .btn:disabled,
+    .admin-record-modal .modal-footer .btn.disabled {
+        opacity: 0.75;
+        filter: saturate(0.85);
+        cursor: not-allowed;
+    }
+
     .admin-record-modal .form-control,
     .admin-record-modal .form-select {
         border-color: rgba(128, 0, 0, 0.2);
@@ -76,7 +125,7 @@
             <!-- Header -->
             <!-- =============================================== -->
 
-            <div class="modal-header bg-danger text-white py-3">
+            <div class="modal-header text-white">
 
                 <div>
 
@@ -132,8 +181,7 @@
 
                             <div
                                 id="studentStepIndicator"
-                                class="rounded-circle bg-danger text-white mx-auto d-flex align-items-center justify-content-center fw-bold"
-                                style="width:46px;height:46px;">
+                                class="wizard-bubble bg-danger text-white mx-auto">
 
                                 1
 
@@ -151,8 +199,7 @@
 
                             <div
                                 id="violationStepIndicator"
-                                class="rounded-circle bg-secondary text-white mx-auto d-flex align-items-center justify-content-center fw-bold"
-                                style="width:46px;height:46px;">
+                                class="wizard-bubble bg-goldenrod text-white mx-auto">
 
                                 2
 
@@ -170,8 +217,7 @@
 
                             <div
                                 id="evidenceStepIndicator"
-                                class="rounded-circle bg-secondary text-white mx-auto d-flex align-items-center justify-content-center fw-bold"
-                                style="width:46px;height:46px;">
+                                class="wizard-bubble bg-goldenrod text-white mx-auto">
 
                                 3
 
@@ -189,8 +235,7 @@
 
                             <div
                                 id="reviewStepIndicator"
-                                class="rounded-circle bg-secondary text-white mx-auto d-flex align-items-center justify-content-center fw-bold"
-                                style="width:46px;height:46px;">
+                                class="wizard-bubble bg-goldenrod text-white mx-auto">
 
                                 4
 
@@ -224,7 +269,7 @@
 
                     <div id="studentStep">
 
-                        <div class="card border-0 shadow-sm">
+                        <div class="card wizard-card">
 
                             <div class="card-header bg-white">
 
@@ -268,7 +313,7 @@
                         <!-- Selected Student -->
                         <!-- ======================================= -->
 
-                        <div class="card border-0 shadow-sm mt-4">
+                        <div class="card wizard-card mt-4">
 
                             <div class="card-header bg-white">
 
@@ -398,7 +443,7 @@
 <!-- Violation Details -->
 <!-- =========================================== -->
 
-<div class="card border-0 shadow-sm">
+<div class="card wizard-card">
 
     <div class="card-header bg-white">
 
@@ -564,7 +609,7 @@
 <!-- Preview -->
 <!-- =========================================== -->
 
-<div class="card border-0 shadow-sm mt-4">
+<div class="card wizard-card">
 
     <div class="card-header bg-white">
 
@@ -672,7 +717,7 @@
 
                     <div id="evidenceStep" class="d-none">
 
-                        <div class="card border-0 shadow-sm">
+                        <div class="card wizard-card">
 
                             <div
                                 class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -1010,7 +1055,7 @@
 
                     <div id="reviewStep" class="d-none">
 
-                        <div class="card border-0 shadow-sm">
+                        <div class="card wizard-card">
 
                             <div class="card-header bg-white">
 

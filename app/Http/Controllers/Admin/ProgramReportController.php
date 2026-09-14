@@ -26,19 +26,34 @@ class ProgramReportController extends Controller
     }
 
     /**
-     * Program report page with the selection form.
+     * Backward-compatible entry point for the former standalone
+     * "AI Program Report" page.
+     *
+     * That page is now the "AI Program Report" tab of Admin → Reports. This
+     * redirects (preserving any query string) so bookmarks, sidebar links and
+     * the Report History "New Report" button keep working. No separate report
+     * implementation is kept alive behind this URL.
      */
-    public function index(): View
+    public function index(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $programs = Program::orderBy('program_name')->get();
-
-        // Programs that support the Ladderized filter (BSOA / BSIT).
-        $ladderizedPrograms = config('graduation_review.graduating.ladderized_programs', ['BSOA', 'BSIT']);
-
-        return view('admin.program-report.index', compact(
-            'programs',
-            'ladderizedPrograms'
+        return redirect()->route('admin.reports', array_merge(
+            $request->query(),
+            ['tab' => 'ai-program']
         ));
+    }
+
+    /**
+     * Data for the "AI Program Report" tab.
+     *
+     * Was the body of index(); now called by ReportController so the tabbed
+     * Reports page can compose the same dataset. Unchanged otherwise.
+     */
+    public function formData(): array
+    {
+        return [
+            'programs' => Program::orderBy('program_name')->get(),
+            'ladderizedPrograms' => config('graduation_review.graduating.ladderized_programs', ['BSOA', 'BSIT']),
+        ];
     }
 
     /**
@@ -419,37 +434,17 @@ class ProgramReportController extends Controller
 
     /**
      * Report history — any admin sees reports; Super Admin sees ALL.
+     *
+     * Was the standalone page; that page is now the "Report History" tab of
+     * Admin → Reports, so this redirects (preserving the query string, including
+     * program_id / report_type / report_mode filters and the page number).
      */
-    public function history(Request $request): View
+    public function history(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $query = ProgramReport::with(['program', 'generatedBy'])
-            ->latest('generated_at');
-
-        $admin = Auth::guard('admin')->user();
-
-        // Non-super admins only see their own generated reports.
-        if ($admin && method_exists($admin, 'isItAdministrator') && ! $admin->isItAdministrator()) {
-            $query->where('generated_by_admin_id', $admin->id);
-        }
-
-        if ($request->filled('program_id')) {
-            $query->where('program_id', (int) $request->integer('program_id'));
-        }
-
-        if ($request->filled('report_type')) {
-            $query->where('report_type', $request->string('report_type')->toString());
-        }
-
-        if ($request->filled('report_mode') && Schema::hasColumn('program_reports', 'report_mode')) {
-            $query->where('report_mode', $request->string('report_mode')->toString());
-        }
-
-        $reports = $query->paginate(15)->withQueryString();
-        $programs = Program::orderBy('program_name')->get();
-
-        $isSuperAdmin = $admin && method_exists($admin, 'isItAdministrator') && $admin->isItAdministrator();
-
-        return view('admin.program-report.history', compact('reports', 'programs', 'isSuperAdmin'));
+        return redirect()->route('admin.reports', array_merge(
+            $request->query(),
+            ['tab' => 'history']
+        ));
     }
 
     /**

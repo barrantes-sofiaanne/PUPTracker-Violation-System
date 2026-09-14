@@ -1,52 +1,31 @@
-@extends('layouts.admin')
+{{--
+    Admin → Reports → "Violation Reports" tab.
 
-@section('title', 'Violation Reports')
+    Content moved verbatim from the former standalone
+    `admin/reports/index.blade.php` page when Reports became tabbed. Only the
+    page-level header was dropped (the parent Reports page supplies the single
+    header). The PDF action is kept because it belongs to this report.
+
+    Expects: $reports, $statistics, $courses, $years, $categories, $violationTypes
+--}}
 
 @php
+    // These were declared at the top of the former standalone
+    // `admin/reports/index.blade.php` page, above the markup that was moved
+    // here. They must travel with the moved content.
     $selectedCourse = request('course');
     $selectedYear = request('year');
     $selectedCategory = request('category');
     $selectedViolationType = request('violation_type');
 @endphp
 
-@section('content')
+<div class="d-flex justify-content-end mb-3">
+    <button class="admin-btn admin-btn-neutral" id="exportPdf">
+        <i class="bi bi-file-earmark-pdf"></i>
+        PDF
+    </button>
+</div>
 
-<div class="container-fluid">
-
-    {{-- Page Header --}}
-    <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap mb-4">
-
-        <div>
-
-            <h2 class="fw-bold mb-1">
-
-                Violation Reports
-
-            </h2>
-
-            <p class="mb-0">
-
-                Generate, analyze, and export student disciplinary reports.
-
-            </p>
-
-        </div>
-
-        <div>
-
-            <button
-                class="admin-btn admin-btn-neutral"
-                id="exportPdf">
-
-                <i class="bi bi-file-earmark-pdf"></i>
-
-                PDF
-
-            </button>
-
-        </div>
-
-    </div>
     <div class="row mb-4">
 
     <div class="col-lg-3 col-md-6 mb-3">
@@ -557,65 +536,3 @@
 
 </div>
 
-</div>
-
-@endsection
-
-@push('styles')
-<style>
-    /* Violation Reports results table.
-
-       The page reuses the application's shared horizontal-scroll contract
-       (`.main-content .table-responsive`): the table keeps its normal desktop
-       width and appearance, and on smaller screens it scrolls horizontally
-       instead of breaking the layout. Long violation, sanction, course, and
-       recorder text is allowed to wrap so it stays readable without shrinking
-       the font. */
-    .main-content .report-results {
-        max-width: 100%;
-        overscroll-behavior-inline: contain;
-    }
-
-    .main-content .report-results th,
-    .main-content .report-results td {
-        vertical-align: middle;
-    }
-
-    @media (max-width: 991.98px) {
-        .main-content .report-results > table {
-            min-width: 50rem;
-        }
-
-        .main-content .report-results th,
-        .main-content .report-results td {
-            white-space: normal;
-            overflow-wrap: anywhere;
-            font-size: 0.86rem;
-        }
-
-        /* Keep the student number + name together so it stays readable. */
-        .main-content .report-results td:first-child {
-            white-space: nowrap;
-            min-width: 9.5rem;
-        }
-
-        /* Keep the View Record action on one line and easily tappable. */
-        .main-content .report-results td:last-child {
-            white-space: nowrap;
-            min-width: 8.5rem;
-        }
-    }
-</style>
-@endpush
-
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-window.ReportRoutes = {
-    filter: "{{ route('admin.reports.filter') }}",
-    assistant: "{{ route('admin.reports.assistant') }}",
-    pdf: "{{ route('admin.reports.export-pdf') }}"
-};
-</script>
-<script src="{{ asset('js/admin/reports.js') }}"></script>
-@endpush
