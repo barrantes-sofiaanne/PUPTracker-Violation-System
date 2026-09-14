@@ -1,14 +1,50 @@
 {{--
     Admin → Reports → "Graduation AI Report" tab.
 
-    Body moved verbatim from the former standalone
-    `admin/graduation-review/index.blade.php` page. The page-level header was
-    dropped because the parent Reports page supplies the single header; the
-    batch/report/rating/filter/modal content below is unchanged.
+    Body moved from the former standalone `admin/graduation-review/index.blade.php`
+    page. The page-level <h2> header was dropped because the parent Reports page
+    supplies the single header — but the module's OWN action controls (Generate AI
+    Review (Batch) and Retry Failed) were kept, because they are the feature's
+    entry points, not decoration. Dropping them left the tab with a dashboard and
+    no way to trigger the AI review.
 
     Expects: $programs, $years, $programFilter, $yearFilter, $screened, $report, $students
 --}}
 
+    {{-- AI batch actions: generate an AI-assisted review for the whole screened
+         cohort, or retry the students whose generation failed. These act on THIS
+         tab's dataset, so they live here rather than in the parent Reports header. --}}
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <strong class="d-block">
+                    <i class="bi bi-mortarboard-fill me-1"></i>
+                    AI-Assisted Graduation Disciplinary Review
+                </strong>
+                <small class="text-muted">
+                    Screen graduating students' disciplinary records and generate AI-assisted summaries.
+                </small>
+            </div>
+
+            <div class="d-flex gap-2">
+                <form action="{{ route('admin.graduation-review.retry-failed') }}" method="POST">
+                    @csrf
+                    <button type="submit" class="admin-btn admin-btn-neutral">
+                        <i class="bi bi-arrow-repeat"></i>
+                        Retry Failed
+                    </button>
+                </form>
+
+                <form action="{{ route('admin.graduation-review.generate-batch') }}" method="POST" id="aiBatchForm">
+                    @csrf
+                    <button type="submit" class="admin-btn admin-btn-secondary" id="aiBatchGenerateBtn">
+                        <i class="bi bi-stars"></i>
+                        Generate AI Review (Batch)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 
     {{-- AI loading overlay --}}
     <div id="aiReviewLoading" class="admin-loading d-none" data-button="aiBatchGenerateBtn" role="status" aria-live="polite">

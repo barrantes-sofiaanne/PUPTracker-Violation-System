@@ -382,6 +382,75 @@ class AdminModuleRestructureTest extends TestCase
     }
 
     /**
+     * REGRESSION GUARD — the AI graduation feature's entry points.
+     *
+     * When this tab's body was extracted from the standalone graduation page, the
+     * page header was dropped along with the Generate AI Review (Batch) and Retry
+     * Failed controls that sat inside it. The tab then rendered a dashboard with
+     * no way to actually run the AI review, and the scripts partial silently
+     * no-op'd because `#aiBatchForm` did not exist. The feature's action controls
+     * must live in the tab, wired to the graduation routes.
+     */
+    public function test_graduation_ai_tab_keeps_the_ai_review_action_controls(): void
+    {
+        $admin = $this->createAdmin();
+        $this->createGraduatingStudent('2026-0650', 'Controls', 'Present');
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports', ['tab' => 'graduation-ai']))
+            ->assertOk()
+            ->getContent();
+
+        // The batch form + its submit button (the scripts partial binds to both).
+        $this->assertStringContainsString('id="aiBatchForm"', $html);
+        $this->assertStringContainsString('id="aiBatchGenerateBtn"', $html);
+        $this->assertStringContainsString('Generate AI Review (Batch)', $html);
+
+        // Retry Failed, and both actions post to real routes.
+        $this->assertStringContainsString('Retry Failed', $html);
+        $this->assertStringContainsString(route('admin.graduation-review.generate-batch'), $html);
+        $this->assertStringContainsString(route('admin.graduation-review.retry-failed'), $html);
+
+        // The loading overlay the submit handler targets.
+        $this->assertStringContainsString('id="aiReviewLoading"', $html);
+
+        // The batch-progress poller's panel and its data attributes.
+        $this->assertStringContainsString('id="batchProgressPanel"', $html);
+        $this->assertStringContainsString(route('admin.graduation-review.batch-progress'), $html);
+    }
+
+    /**
+     * The standalone graduation page and the Reports tab must render the SAME
+     * feature — the tab body is now a single shared partial, so a control present
+     * on one is present on the other.
+     */
+    public function test_standalone_graduation_page_and_tab_render_the_same_controls(): void
+    {
+        $admin = $this->createAdmin();
+        $this->createGraduatingStudent('2026-0660', 'Shared', 'Partial');
+
+        $page = $this->actingAs($admin, 'admin')
+            ->get(route('admin.graduation-review.index'))
+            ->assertOk()
+            ->getContent();
+
+        $tab = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports', ['tab' => 'graduation-ai']))
+            ->assertOk()
+            ->getContent();
+
+        foreach (['id="aiBatchForm"', 'id="aiBatchGenerateBtn"', 'id="batchProgressPanel"', 'id="aiReviewLoading"', 'Retry Failed'] as $needle) {
+            $this->assertStringContainsString($needle, $page, "Standalone page missing {$needle}");
+            $this->assertStringContainsString($needle, $tab, "Reports tab missing {$needle}");
+        }
+
+        // The standalone page keeps its own page-level header; the tab must not
+        // duplicate it (the Reports page supplies one header).
+        $this->assertStringContainsString('AI-Assisted Graduation Disciplinary Review', $page);
+        $this->assertSame(1, substr_count($tab, '>Reports</h2>'));
+    }
+
+    /**
      * The program-statistics form itself is retained (only its host tab was
      * replaced), so rendering it directly must still produce the full markup.
      */
