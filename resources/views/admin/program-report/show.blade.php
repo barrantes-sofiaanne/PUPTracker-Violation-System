@@ -29,7 +29,7 @@
             : [];
     @endphp
 
-    <x-admin.page-header title="Program Sanction Report" :description="$report->program?->program_name . ($isGraduating ? ' · Graduating Students' : ' · Cohort ' . $report->academic_year)">
+    <x-admin.page-header :title="$isGraduating ? 'Graduating Violation AI Summary' : 'Program Sanction Report'" :description="$report->program?->program_name . ($isGraduating ? ' · Graduating Students' : ' · Cohort ' . $report->academic_year)">
         <x-slot name="actions">
             <a href="{{ route('admin.program-report.history') }}" class="admin-btn admin-btn-neutral">
                 <i class="bi bi-clock-history"></i> History

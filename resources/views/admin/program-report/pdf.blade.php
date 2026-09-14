@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Program Sanction Summary Report</title>
+    <title>{{ $report->report_mode === 'graduating' ? 'Graduating Violation AI Summary' : 'Program Sanction Summary Report' }}</title>
     <style>
         body { font-family: Arial, Helvetica, sans-serif; color: #111; font-size: 11px; }
         .header { text-align: center; border-bottom: 2px solid #8b0000; padding-bottom: 8px; margin-bottom: 14px; }
@@ -28,7 +28,10 @@
 
     <div class="header">
         <div class="system">PUPTRACKER VIOLATION SYSTEM</div>
-        <h1>PROGRAM SANCTION REPORT</h1>
+        {{-- Graduation AI reports carry their own title. Historical regular
+             (Program Sanction Report) rows keep theirs, so the label stays
+             faithful to the record actually being printed. --}}
+        <h1>{{ $report->report_mode === 'graduating' ? 'GRADUATING VIOLATION AI SUMMARY' : 'PROGRAM SANCTION REPORT' }}</h1>
     </div>
 
     @php

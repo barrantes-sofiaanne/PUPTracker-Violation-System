@@ -1177,6 +1177,94 @@ class AdminModuleRestructureTest extends TestCase
     }
 
     // ==================================================================
+    // 9. Graduation AI Summary — PDF title and filename
+    // ==================================================================
+
+    /**
+     * The Graduation AI report's PDF must be titled
+     * "GRADUATING VIOLATION AI SUMMARY" — not the retired Program Sanction
+     * Report title.
+     */
+    public function test_graduation_ai_pdf_uses_the_renamed_title(): void
+    {
+        $admin = $this->createAdmin();
+        $program = $this->graduatesProgram();
+
+        $report = $this->createGraduationReport($admin, $program, ['academic_year' => '4th Year']);
+
+        // The PDF template is what mPDF renders, so assert on it directly — this
+        // avoids asserting against compressed PDF bytes.
+        $html = view('admin.program-report.pdf', ['report' => $report->fresh(['program', 'generatedBy'])])->render();
+
+        $this->assertStringContainsString('GRADUATING VIOLATION AI SUMMARY', $html);
+        $this->assertStringNotContainsString('PROGRAM SANCTION REPORT', $html);
+    }
+
+    /**
+     * The PDF download's filename is Graduation_Ai_Summary_<Program>_<YY>.pdf,
+     * sanitised so spaces/special characters cannot produce an invalid name.
+     */
+    public function test_graduation_ai_pdf_filename_follows_the_required_format(): void
+    {
+        $admin = $this->createAdmin();
+
+        // Deliberately awkward program name: spaces + an ampersand, which must be
+        // sanitised rather than producing an invalid filename.
+        $program = Program::create([
+            'program_name' => 'BS Info & Tech',
+            'degree_type' => 'Bachelor',
+        ]);
+
+        $report = $this->createGraduationReport($admin, $program, ['academic_year' => '2026']);
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.program-report.pdf', $report->report_id));
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
+
+        $disposition = (string) $response->headers->get('content-disposition');
+        $this->assertStringContainsString('attachment', $disposition);
+
+        // Exact shape: Graduation_Ai_Summary_<Program>_<YY>.pdf
+        $this->assertStringContainsString(
+            'Graduation_Ai_Summary_BS-Info---Tech_2026.pdf',
+            $disposition
+        );
+
+        // No character outside the sanitised set survives in the filename.
+        preg_match('/filename="([^"]+)"/', $disposition, $m);
+        $this->assertNotEmpty($m, 'The Content-Disposition must carry a filename.');
+        $this->assertMatchesRegularExpression('/^[A-Za-z0-9\-_.]+\.pdf$/', $m[1]);
+        $this->assertStringStartsWith('Graduation_Ai_Summary_', $m[1]);
+        $this->assertStringEndsWith('.pdf', $m[1]);
+
+        // A real PDF was produced.
+        $this->assertStringStartsWith('%PDF-', $response->getContent());
+    }
+
+    /**
+     * REPORT HISTORY behaviour is unchanged: the history filter keeps its
+     * Program Sanction Report option so legacy report_mode='regular' rows stay
+     * findable. That label is for HISTORY, not for the Graduation AI report.
+     */
+    public function test_program_sanction_label_survives_only_for_report_history(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports', ['tab' => 'history']))
+            ->assertOk()
+            ->getContent();
+
+        $historyPane = substr($html, (int) strpos($html, 'id="history"'));
+
+        $this->assertStringContainsString('Program Sanction Report', $historyPane);
+        // ...but the AI feature itself must not carry the retired title.
+        $this->assertStringNotContainsString('PROGRAM SANCTION REPORT', $this->graduationAiPane($html));
+    }
+
+    // ==================================================================
     // Helpers
     // ==================================================================
 
@@ -1231,6 +1319,37 @@ class AdminModuleRestructureTest extends TestCase
         ]);
 
         return $program;
+    }
+
+    /**
+     * A persisted graduating report, as generation would have written it.
+     */
+    private function createGraduationReport(Admin $admin, Program $program, array $overrides = []): ProgramReport
+    {
+        return ProgramReport::create(array_merge([
+            'program_id' => $program->program_id,
+            'academic_year' => '4th Year',
+            'report_type' => 'full',
+            'report_mode' => 'graduating',
+            'degree_type' => 'Bachelor',
+            'graduating_year' => 4,
+            'admission_years' => [],
+            'ladderized' => null,
+            'additional_students' => [],
+            'excluded_students' => [],
+            'generated_by_admin_id' => $admin->id,
+            'generated_at' => now(),
+            'report_status' => 'generated',
+            'statistics_json' => [
+                'total_students' => 0,
+                'students_with_no_violations' => 0,
+                'students_with_completed_sanctions' => 0,
+                'students_with_outstanding_sanctions' => 0,
+                'violation_categories' => [],
+                'violation_types' => [],
+            ],
+            'ai_failed' => false,
+        ], $overrides));
     }
 
     private function createGraduatingStudent(string $number, string $first, string $last, ?int $programId = null): User
