@@ -1,13 +1,22 @@
 {{--
-    Admin → Reports → "AI Program Report" tab.
+    Admin → Reports → "Graduation AI Report" tab.
 
-    Body moved verbatim from the former standalone
-    `admin/program-report/index.blade.php` page when Reports became tabbed.
-    The old page header was dropped because the parent Reports page supplies
-    the single header; the form, preview, student removal and flash/error
-    alerts are unchanged.
+    This is the AI feature's ONLY workflow. It hosts the existing Graduation AI
+    Report process, moved here as a shared partial from the former standalone
+    `admin/program-report/index.blade.php` page: configure the report, retrieve
+    the automatically eligible graduating cohort, add specific students, preview
+    the list, remove a student from the preview, then generate.
 
-    Expects: $programs, $ladderizedPrograms
+    The former "Program Sanction Report" (regular) mode is gone from this feature
+    entirely, which is why there is no mode selector and no academic-year input.
+    Historical report_mode='regular' rows are untouched and remain listable in
+    the Report History tab.
+
+    The parent Reports page supplies the single page header; this partial
+    deliberately has no <h2> of its own.
+
+    Expects: $programs, $ladderizedPrograms ($ladderizedPrograms is also the
+    render guard in reports/show.blade.php, so it must not be renamed).
 --}}
 
 @if (session('success'))
@@ -37,15 +46,19 @@
                 @csrf
 
                 {{--
-                    The "Program Sanction Report" mode has been retired from this
-                    workflow: only the Graduating Students report is offered here.
-                    The report_mode value is still posted explicitly so the existing
-                    controller contract, validation and stored-report columns are
-                    untouched — nothing about the graduating workflow changes.
+                    The retired "Program Sanction Report" mode is gone from this
+                    feature: there is no mode selector and no academic-year input,
+                    because both existed only for regular (program-sanction) mode.
+                    `report_mode` is still posted as a fixed hidden value so the
+                    existing controller contract, validation and stored-report
+                    columns are untouched.
+
+                    Historical report_mode='regular' rows are NOT affected — the
+                    Report History tab still lists and filters them.
                 --}}
                 <input type="hidden" name="report_mode" id="reportMode" value="graduating">
 
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label">Program</label>
                     <select name="program_id" id="programSelect" class="form-select" data-ladderized-programs='@json($ladderizedPrograms)' required>
                         <option value="">Select Program</option>
@@ -54,14 +67,6 @@
                         @endforeach
                     </select>
                     @error('program_id')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="col-md-4" id="academicYearWrap">
-                    <label class="form-label">Academic Year</label>
-                    <input type="text" name="academic_year" class="form-control" placeholder="e.g. 2026" value="{{ old('academic_year') }}" required>
-                    @error('academic_year')
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
                 </div>
@@ -196,7 +201,7 @@
 
                 <div class="col-12">
                     <button type="submit" class="admin-btn admin-btn-primary">
-                        <i class="bi bi-stars"></i> Generate Program Report
+                        <i class="bi bi-stars"></i> Generate Graduation AI Report
                     </button>
                 </div>
             </form>

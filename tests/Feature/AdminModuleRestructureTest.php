@@ -269,6 +269,64 @@ class AdminModuleRestructureTest extends TestCase
     // 4. AI Program Report — Program Sanction Report option removed
     // ==================================================================
 
+    /**
+     * AUTHORIZATION — the AI feature is admin-only, and the tab is not a way
+     * around that.
+     *
+     * Guests are bounced by the app's EXISTING global guest redirect
+     * (`bootstrap/app.php` => student.login), which this task does not change —
+     * the point here is that the AI feature is behind the admin guard at all,
+     * not the shape of the redirect.
+     */
+    public function test_ai_feature_requires_an_authenticated_admin(): void
+    {
+        $guestRedirect = route('student.login');
+
+        // The tab itself.
+        $this->get(route('admin.reports', ['tab' => 'graduation-ai']))
+            ->assertRedirect($guestRedirect);
+
+        // Generation must not be reachable unauthenticated.
+        $this->post(route('admin.program-report.generate'), [
+            'program_id' => 1,
+            'report_mode' => 'graduating',
+            'report_type' => 'full',
+        ])->assertRedirect($guestRedirect);
+
+        // Neither must the preview, which exposes the eligible cohort.
+        $this->postJson(route('admin.program-report.preview-graduating'), [
+            'program_id' => 1,
+        ])->assertUnauthorized();
+
+        // Nor the search endpoint used to add specific students.
+        $this->getJson(route('admin.program-report.search-students'), [
+            'program_id' => 1,
+            'search' => '2026',
+        ])->assertUnauthorized();
+    }
+
+    /**
+     * A report generated through the AI feature is retrievable only by an
+     * authenticated admin — the show/PDF routes are not public.
+     */
+    public function test_generated_graduation_report_is_not_publicly_retrievable(): void
+    {
+        $report = ProgramReport::create([
+            'program_id' => $this->graduatesProgram()->program_id,
+            'report_type' => 'full',
+            'report_status' => 'generated',
+            'generated_at' => now(),
+        ]);
+
+        $guestRedirect = route('student.login');
+
+        $this->get(route('admin.program-report.show', $report->report_id))
+            ->assertRedirect($guestRedirect);
+
+        $this->get(route('admin.program-report.pdf', $report->report_id))
+            ->assertRedirect($guestRedirect);
+    }
+
     public function test_program_sanction_report_option_is_gone_from_the_report_form(): void
     {
         $admin = $this->createAdmin();
@@ -413,46 +471,62 @@ class AdminModuleRestructureTest extends TestCase
     }
 
     /**
-     * The standalone page and the Reports tab render the SAME builder — both
-     * include the shared partial, so a control on one is on the other.
+     * PROGRAM SANCTION REMOVAL — the AI feature offers ONLY the Graduation AI
+     * Report. There must be no mode/type selector offering Program Sanction
+     * Report, anywhere in the tab or in the partial itself.
      */
-    public function test_standalone_program_report_page_and_tab_render_the_same_builder(): void
+    public function test_ai_feature_offers_only_the_graduation_report_mode(): void
     {
         $admin = $this->createAdmin();
-        $this->createGraduatingStudent('2026-0660', 'Shared', 'Partial');
 
-        $page = $this->actingAs($admin, 'admin')
-            ->get(route('admin.program-report.index'))
-            ->assertOk()
-            ->getContent();
-
-        $tab = $this->actingAs($admin, 'admin')
+        $html = $this->actingAs($admin, 'admin')
             ->get(route('admin.reports', ['tab' => 'graduation-ai']))
             ->assertOk()
             ->getContent();
 
-        foreach ([
-            'id="programReportForm"',
-            'id="graduatingYearsWrap"',
-            'id="ladderizedWrap"',
-            'id="studentSearchInput"',
-            'id="addSpecificStudentBtn"',
-            'id="previewGraduatingBtn"',
-            'id="graduatingPreviewBody"',
-            'Graduation Eligibility (Automatic)',
-        ] as $needle) {
-            $this->assertStringContainsString($needle, $page, "Standalone page missing {$needle}");
-            $this->assertStringContainsString($needle, $tab, "Reports tab missing {$needle}");
-        }
+        $pane = $this->graduationAiPane($html);
+        $this->assertNotSame('', $pane, 'The Graduation AI pane must be present.');
 
-        // The standalone page keeps its own page-level header; the tab must not
-        // duplicate it (the Reports page supplies one header for the whole page).
-        $this->assertStringContainsString(
-            'page-header-modern d-flex justify-content-between align-items-center flex-wrap mb-4',
-            $page
-        );
-        $this->assertSame(1, substr_count($tab, '>Reports</h2>'));
-        $this->assertStringNotContainsString('>AI Program Report</h2>', $tab);
+        // No Program Sanction Report anywhere in the AI feature.
+        $this->assertStringNotContainsString('Program Sanction Report', $pane);
+        $this->assertStringNotContainsString('Program Sanction', $pane);
+
+        // No regular-mode selection controls survive: no radio/select offering
+        // "regular" and no academic-year input (it existed only for that mode).
+        $this->assertStringNotContainsString('value="regular"', $pane);
+        $this->assertStringNotContainsString('name="academic_year"', $pane);
+        $this->assertStringNotContainsString('academicYearWrap', $pane);
+
+        // report_mode still posted — but only as the fixed graduating value.
+        $this->assertStringContainsString('name="report_mode"', $pane);
+        $this->assertStringContainsString('value="graduating"', $pane);
+
+        // The AI feature is the Graduation AI Report.
+        $this->assertStringContainsString('Graduation AI Report', $html);
+    }
+
+    /**
+     * Removing it from the AI feature must NOT remove Program Sanction
+     * functionality elsewhere. The Report History tab keeps its Report Mode
+     * filter so historical report_mode='regular' rows stay findable.
+     */
+    public function test_program_sanction_history_remains_available_outside_the_ai_feature(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports', ['tab' => 'history']))
+            ->assertOk()
+            ->getContent();
+
+        // Scoped to the history pane: the AI pane must not contain this label.
+        $historyStart = strpos($html, 'id="history"');
+        $this->assertNotFalse($historyStart);
+        $historyPane = substr($html, $historyStart);
+
+        $this->assertStringContainsString('Report Mode', $historyPane);
+        $this->assertStringContainsString('Program Sanction Report', $historyPane);
+        $this->assertStringContainsString('value="regular"', $historyPane);
     }
 
     /**
@@ -538,18 +612,34 @@ class AdminModuleRestructureTest extends TestCase
     // 6. Backward compatibility for the moved report pages
     // ==================================================================
 
-    public function test_old_ai_program_report_url_is_a_working_page_again(): void
+    public function test_old_ai_program_report_url_redirects_to_the_graduation_ai_tab(): void
     {
         $admin = $this->createAdmin();
 
-        // The URL hosts the graduating cohort builder, which is the same process
-        // the Reports → Graduation AI Report tab renders, so it is a real page
-        // rather than a redirect to a tab that no longer shows it.
+        // The Graduation AI Report's canonical home is now the Reports tab. The
+        // historic URL is kept (bookmarks / internal links) and redirects there
+        // instead of serving a duplicate copy of the same process.
         $this->actingAs($admin, 'admin')
             ->get(route('admin.program-report.index'))
-            ->assertOk()
-            ->assertSee('id="programReportForm"', false)
-            ->assertSee('Graduation Eligibility (Automatic)');
+            ->assertRedirect(route('admin.reports', ['tab' => 'graduation-ai']));
+    }
+
+    /**
+     * The redirect must carry the query string through, so a bookmarked filter
+     * is not silently dropped.
+     */
+    public function test_old_url_redirect_preserves_its_query_string(): void
+    {
+        $admin = $this->createAdmin();
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.program-report.index', ['report_type' => 'violations']));
+
+        $response->assertRedirect();
+
+        $location = (string) $response->headers->get('location');
+        $this->assertStringContainsString('tab=graduation-ai', $location);
+        $this->assertStringContainsString('report_type=violations', $location);
     }
 
     /**
@@ -660,22 +750,23 @@ class AdminModuleRestructureTest extends TestCase
         $this->assertStringContainsString(route('admin.graduation-review.index'), $html);
     }
 
-    public function test_superseded_standalone_views_are_gone_but_the_cohort_builder_page_remains(): void
+    public function test_superseded_standalone_views_are_gone_and_the_tab_hosts_the_process(): void
     {
         // Superseded by the tabbed Reports page.
         $this->assertFileDoesNotExist(resource_path('views/admin/reports/index.blade.php'));
         $this->assertFileDoesNotExist(resource_path('views/admin/program-report/history.blade.php'));
 
+        // The Graduation AI Report process is reachable ONLY as the Reports tab,
+        // so there is no second standalone copy to drift out of sync.
+        $this->assertFileDoesNotExist(resource_path('views/admin/program-report/index.blade.php'));
+
         $this->assertFileExists(resource_path('views/admin/reports/show.blade.php'));
         $this->assertFileExists(resource_path('views/admin/reports/tabs/violation-reports.blade.php'));
         $this->assertFileExists(resource_path('views/admin/reports/tabs/report-history.blade.php'));
 
-        // The Graduation AI Report tab hosts the graduating cohort builder.
+        // The Graduation AI Report tab hosts the existing process as a partial.
         $this->assertFileExists(resource_path('views/admin/reports/tabs/ai-program-report.blade.php'));
-
-        // The cohort builder ALSO has a standalone page, so /admin/program-report
-        // keeps working instead of redirecting to a tab that does not show it.
-        $this->assertFileExists(resource_path('views/admin/program-report/index.blade.php'));
+        $this->assertFileExists(resource_path('views/admin/reports/tabs/_ai-program-report-scripts.blade.php'));
     }
 
     // ==================================================================
@@ -848,11 +939,28 @@ class AdminModuleRestructureTest extends TestCase
     // ==================================================================
 
     /**
-     * Dataset for rendering the retained program-statistics form partial.
+     * Extract just the Graduation AI Report pane from the rendered page.
      *
-     * The partial is no longer hosted by any Reports tab (its host tab became the
-     * Graduation AI Report), so tests render it directly with this dataset — the
-     * same shape `ProgramReportController::formData()` supplies.
+     * All three panes are rendered together, so page-wide assertions would also
+     * match the other tabs' content (e.g. the Report History tab legitimately
+     * still shows "Program Sanction Report" as a filter label).
+     */
+    private function graduationAiPane(string $html): string
+    {
+        $start = strpos($html, 'id="graduation-ai"');
+        if ($start === false) {
+            return '';
+        }
+
+        $end = strpos($html, 'id="history"', $start);
+
+        return $end === false ? substr($html, $start) : substr($html, $start, $end - $start);
+    }
+
+    /**
+     * Dataset for rendering the Graduation AI Report partial.
+     *
+     * Applied by `ProgramReportController::formData()` for the tab.
      *
      * @return array{programs: \Illuminate\Database\Eloquent\Collection, ladderizedPrograms: array<int, string>}
      */

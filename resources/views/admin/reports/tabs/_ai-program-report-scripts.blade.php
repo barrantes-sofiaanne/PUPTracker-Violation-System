@@ -2,8 +2,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const program = document.getElementById('programSelect');
-    const yearWrap = document.getElementById('academicYearWrap');
-    const yearInput = yearWrap?.querySelector('input[name="academic_year"]');
     const graduatingWrap = document.getElementById('graduatingYearsWrap');
     const previewBtn = document.getElementById('previewGraduatingBtn');
     const previewWrap = document.getElementById('graduatingPreviewWrap');
@@ -69,15 +67,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateMode() {
-        // Only the graduating workflow is offered on this page, so the year /
-        // graduating field groups are toggled once rather than per mode change.
-        const graduating = true;
-        yearWrap?.classList.toggle('d-none', graduating);
-        if (yearInput) yearInput.required = !graduating;
-        graduatingWrap?.classList.toggle('d-none', !graduating);
-        // Ladderized radio shows only for BSOA/BSIT in graduating mode.
+        // Only the graduating workflow exists in this feature, so the graduating
+        // field group is always shown. There is no mode selector to react to —
+        // the retired regular (Program Sanction Report) mode had the year input.
+        graduatingWrap?.classList.remove('d-none');
+        // Ladderized radio shows only for BSOA/BSIT.
         if (ladderizedWrap) {
-            ladderizedWrap.classList.toggle('d-none', !(graduating && isLadderizedProgram()));
+            ladderizedWrap.classList.toggle('d-none', !isLadderizedProgram());
         }
     }
 
