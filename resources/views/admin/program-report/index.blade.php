@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Program Sanction Summary Report')
+@section('title', 'AI Program Report')
 
 @section('content')
 
@@ -8,8 +8,8 @@
 
     <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap mb-4">
         <div>
-            <h2 class="fw-bold mb-1">Program Sanction Summary Report</h2>
-            <p class="mb-0">Generate a factual program sanction report, with optional AI-assisted observations for graduating cohorts.</p>
+            <h2 class="fw-bold mb-1">AI Program Report</h2>
+            <p class="mb-0">Generate a factual graduating-cohort report for a program, with optional AI-assisted observations.</p>
         </div>
         <a href="{{ route('admin.program-report.history') }}" class="admin-btn admin-btn-neutral">
             <i class="bi bi-clock-history"></i> Report History
@@ -42,13 +42,14 @@
             <form method="POST" action="{{ route('admin.program-report.generate') }}" class="row g-3" data-submit-guard="Generating report..." id="programReportForm">
                 @csrf
 
-                <div class="col-md-4">
-                    <label class="form-label">Report Type</label>
-                    <select name="report_mode" id="reportMode" class="form-select" required>
-                        <option value="regular" @selected(old('report_mode') === 'regular' || old('report_mode') === null)>Program Sanction Report</option>
-                        <option value="graduating" @selected(old('report_mode') === 'graduating')>Graduating Students</option>
-                    </select>
-                </div>
+                {{--
+                    The "Program Sanction Report" mode has been retired from this
+                    workflow: only the Graduating Students report is offered here.
+                    The report_mode value is still posted explicitly so the existing
+                    controller contract, validation and stored-report columns are
+                    untouched — nothing about the graduating workflow changes.
+                --}}
+                <input type="hidden" name="report_mode" id="reportMode" value="graduating">
 
                 <div class="col-md-4">
                     <label class="form-label">Program</label>
@@ -167,6 +168,7 @@
                                             <th>Program</th>
                                             <th>Year / Section</th>
                                             <th>Status</th>
+                                            <th class="text-end">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="graduatingPreviewBody">
@@ -174,6 +176,16 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <p class="text-muted small mt-2 mb-0">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Removing a student only excludes them from <strong>this</strong> report.
+                                Their student record is not changed or deleted. Re-running the preview restores the
+                                full eligible list.
+                            </p>
+
+                            {{-- Students removed from the preview. Submitted with the form so the
+                                 generated report uses the modified list. Re-authorised server-side. --}}
+                            <div id="excludedStudentsInputs" aria-hidden="true"></div>
                         </div>
                     </div>
                 </div>
@@ -204,7 +216,6 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const mode = document.getElementById('reportMode');
     const program = document.getElementById('programSelect');
     const yearWrap = document.getElementById('academicYearWrap');
     const yearInput = yearWrap?.querySelector('input[name="academic_year"]');
@@ -235,6 +246,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let selectedStudents = []; // { student_number, label }
 
+    // Students removed from the graduating preview for THIS report only.
+    // Preview-only state — the underlying student records are untouched.
+    let excludedStudents = [];
+    const excludedInputs = document.getElementById('excludedStudentsInputs');
+
+    function renderExcludedInputs() {
+        if (!excludedInputs) return;
+        excludedInputs.innerHTML = excludedStudents.map(function (n) {
+            return '<input type="hidden" name="excluded_students[]" value="' + n + '">';
+        }).join('');
+    }
+
     // Load any previously selected specific students from old input.
     document.querySelectorAll('#selectedSpecificStudents input[name="additional_students[]"]').forEach(function (input) {
         if (input.value && !selectedStudents.some(function (s) { return s.student_number === input.value; })) {
@@ -261,7 +284,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateMode() {
-        const graduating = mode?.value === 'graduating';
+        // Only the graduating workflow is offered on this page, so the year /
+        // graduating field groups are toggled once rather than per mode change.
+        const graduating = true;
         yearWrap?.classList.toggle('d-none', graduating);
         if (yearInput) yearInput.required = !graduating;
         graduatingWrap?.classList.toggle('d-none', !graduating);
@@ -412,8 +437,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: JSON.stringify({
                     program_id: programId,
                     additional_students: selectedStudents.map(function (s) { return s.student_number; }),
-                    ladderized: getSelectedLadderized(),
-                }),
+                    ladderized: getSelectedLadderized(),                      exclude_students: excludedStudents,                }),
             });
 
             const data = await response.json();
@@ -422,8 +446,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const ladderizedLabel = data.ladderized_filter === 1 ? ' (Ladderized: Yes)' : (data.ladderized_filter === 0 ? ' (Ladderized: No)' : '');
-            previewSummary.textContent = data.total + ' student(s) in the graduating list (automatic year level + specific students)' + ladderizedLabel + '.';
-
+              const removedLabel = excludedStudents.length > 0 ? (', ' + excludedStudents.length + ' removed') : '';
+              previewSummary.textContent = data.total + ' student(s) in the graduating list (automatic year level + specific students)' + ladderizedLabel + removedLabel + '.';
             if (data.total === 0) {
                 previewBody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">No students match the automatic year level for this program / specific students.</td></tr>';
                 return;
@@ -435,8 +459,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     '<td>' + s.name + '</td>' +
                     '<td>' + s.program + '</td>' +
                     '<td>' + (s.year || '-') + ' / ' + (s.section || '-') + '</td>' +
-                    '<td>' + (s.status || '-') + '</td>' +
-                '</tr>';
+                    '<td>' + (s.status || '-') + '</td>' +                      '<td class="text-end">' +
+                          '<button type="button" class="admin-btn admin-btn-danger admin-btn-sm remove-preview-student" ' +
+                              'data-student="' + s.student_number + '" ' +
+                              'aria-label="Remove ' + (s.name || s.student_number) + ' from this report">' +
+                              '<i class="bi bi-x-lg me-1"></i>Remove' +
+                          '</button>' +
+                      '</td>' +                '</tr>';
             }).join('');
         } catch (error) {
             console.error(error);
@@ -447,7 +476,23 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    mode?.addEventListener('change', updateMode);
+    // Remove a student from the preview. Preview-only: nothing is deleted, and
+    // the server re-authorises the exclusion when the report is generated.
+    previewBody?.addEventListener('click', function (event) {
+        const btn = event.target.closest('.remove-preview-student');
+        if (!btn) return;
+        const studentNumber = btn.dataset.student;
+        if (!studentNumber) return;
+        if (!excludedStudents.includes(studentNumber)) {
+            excludedStudents.push(studentNumber);
+        }
+        renderExcludedInputs();
+        // Re-request the preview so the count and list reflect the removal.
+        previewBtn?.click();
+    });
+
+    // report_mode is a fixed hidden value now, so only the program selection
+    // can change the graduating/ladderized visibility.
     program?.addEventListener('change', updateMode);
     updateMode();
 });

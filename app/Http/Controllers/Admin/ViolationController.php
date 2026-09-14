@@ -159,34 +159,64 @@ $students = User::with([
     ->paginate(15, ['*'], 'history_page')
     ->withQueryString();
 
+    /*
+    |--------------------------------------------------------------------------
+    | Confirmations Tab
+    |--------------------------------------------------------------------------
+    | The former standalone "Violation Confirmations" page is now the FIRST tab
+    | of this Violations page. The query below is the same one the standalone
+    | action used — it is only evaluated when that tab is active, so the other
+    | tabs do not pay for it.
+    |--------------------------------------------------------------------------
+    */
+    $confirmations = null;
+
+    if ($this->activeViolationsTab($request) === 'confirmations') {
+        $confirmations = $this->buildConfirmationsPayload($request);
+    }
+
     return view(
         'admin.violations.index',
-        compact(
-            'students',
-            'programs',
-            'years',
-            'sections',
-            'studentStatuses',
-            'categories',
-            'violationTypes',
-            'sanctions',
-            'violationHistory'
+        array_merge(
+            compact(
+                'students',
+                'programs',
+                'years',
+                'sections',
+                'studentStatuses',
+                'categories',
+                'violationTypes',
+                'sanctions',
+                'violationHistory'
+            ),
+            $confirmations ?? [],
+            ['activeViolationsTab' => $this->activeViolationsTab($request)]
         )
     );
 }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Violation Confirmation Queue
-    |--------------------------------------------------------------------------
-    |
-    | Security-recorded violations start as 'pending' and are sent here for an
-    | administrator to confirm or deny before they count toward the student's
-    | record. Confirmations are surfaced to admins via the notification bell.
-    |--------------------------------------------------------------------------
-    */
+    /**
+     * The tab keys this page understands. "confirmations" is FIRST by design.
+     */
+    protected const VIOLATION_TABS = ['confirmations', 'management', 'configuration', 'history'];
 
-    public function confirmations(Request $request)
+    protected function activeViolationsTab(Request $request): string
+    {
+        $tab = (string) $request->input('tab', '');
+
+        return in_array($tab, self::VIOLATION_TABS, true) ? $tab : 'confirmations';
+    }
+
+    /**
+     * Build the Violation Confirmations dataset.
+     *
+     * Body lifted unchanged from the former standalone `confirmations()` action —
+     * same query, filters, ordering and pagination — so the tab behaves exactly
+     * as the old page did.
+     *
+     * @return array{violations: \Illuminate\Contracts\Pagination\LengthAwarePaginator, pendingCount: int, highlightId: int}
+     */
+    protected function buildConfirmationsPayload(Request $request): array
     {
         $violations = Violation::with([
                 'student.studentInfo.program',
@@ -215,7 +245,40 @@ $students = User::with([
         // so the view can highlight the exact violation.
         $highlightId = $request->integer('pending_id');
 
-        return view('admin.violations.confirmations', compact('violations', 'pendingCount', 'highlightId'));
+        return compact('violations', 'pendingCount', 'highlightId');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Violation Confirmation Queue
+    |--------------------------------------------------------------------------
+    |
+    | Security-recorded violations start as 'pending' and are sent here for an
+    | administrator to confirm or deny before they count toward the student's
+    | record. Confirmations are surfaced to admins via the notification bell.
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Backward-compatible entry point for the former standalone
+     * "Violation Confirmations" page.
+     *
+     * That page is now the FIRST tab of the Violations page. This redirects
+     * (preserving the existing search/date filters and any notification
+     * highlight) so bookmarks, the notification bell and any existing links keep
+     * working. No separate implementation is kept alive behind this URL.
+     */
+    public function confirmations(Request $request)
+    {
+        $params = ['tab' => 'confirmations'];
+
+        foreach (['search', 'from', 'to', 'pending_id'] as $key) {
+            if ($request->filled($key)) {
+                $params[$key] = $request->input($key);
+            }
+        }
+
+        return redirect()->route('admin.violations.index', $params);
     }
 
     public function confirmViolation(Violation $violation): \Illuminate\Http\RedirectResponse

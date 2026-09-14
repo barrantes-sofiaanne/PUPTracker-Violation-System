@@ -68,6 +68,8 @@ class ProgramReportController extends Controller
             'additional_students' => ['nullable', 'array'],
             'additional_students.*' => ['nullable', 'string', 'max:50'],
             'ladderized' => ['nullable', 'in:0,1'],
+            'exclude_students' => ['nullable', 'array'],
+            'exclude_students.*' => ['nullable', 'string', 'max:50'],
         ]);
 
         $program = Program::findOrFail((int) $validated['program_id']);
@@ -84,8 +86,13 @@ class ProgramReportController extends Controller
             $ladderized = null;
         }
 
+        // Removal is preview-only state: intersect the requested exclusions with
+        // the students this administrator is actually authorised to see, so a
+        // stray/forged number cannot suppress an unrelated student.
+        $excluded = $this->authorizeExcludedStudents($program, (array) ($validated['exclude_students'] ?? []), $ladderized, $additional);
+
         try {
-            $students = $this->programReport->previewGraduating($program, [], $ladderized, $additional);
+            $students = $this->programReport->previewGraduating($program, [], $ladderized, $additional, $excluded);
         } catch (InvalidArgumentException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }
@@ -102,6 +109,48 @@ class ProgramReportController extends Controller
                 'status' => $s->studentInfo?->studentStatus?->status_name ?? '-',
             ]),
         ]);
+    }
+
+    /**
+     * Intersect administrator-requested exclusions with the students who are
+     * genuinely part of the authorised preview cohort for this program.
+     *
+     * This is the security boundary for the "remove a student from the preview"
+     * feature:
+     *   - the client list is NEVER trusted as-is;
+     *   - a number that is not in the eligible cohort is silently dropped, so it
+     *     can neither suppress an unrelated student nor inject one;
+     *   - the eligible cohort itself is recomputed from the database on every
+     *     request.
+     *
+     * Purely a narrowing operation: no student record is read-modify-written and
+     * nothing is deleted.
+     *
+     * @param  array<int, mixed>  $requested
+     * @return array<int, string>
+     */
+    protected function authorizeExcludedStudents(Program $program, array $requested, ?int $ladderized, array $additionalStudents): array
+    {
+        $clean = array_values(array_unique(array_filter(
+            array_map(fn ($v) => trim((string) $v), $requested),
+            fn ($v) => $v !== ''
+        )));
+
+        if ($clean === []) {
+            return [];
+        }
+
+        // Recompute the authorised cohort WITHOUT the exclusions applied, then
+        // keep only the requested numbers that actually appear in it.
+        try {
+            $eligible = $this->programReport->previewGraduating($program, [], $ladderized, $additionalStudents)
+                ->pluck('student_number')
+                ->all();
+        } catch (InvalidArgumentException $exception) {
+            return [];
+        }
+
+        return array_values(array_intersect($clean, $eligible));
     }
 
     /**
@@ -160,6 +209,12 @@ class ProgramReportController extends Controller
             'academic_year' => ['nullable', 'string', 'max:20', 'required_if:report_mode,regular'],
             'additional_students' => ['nullable', 'array'],
             'additional_students.*' => ['nullable', 'string', 'max:50'],
+            // Students the administrator REMOVED from the graduating preview.
+            // Only ever used to NARROW this request's candidate set, and
+            // re-authorised server-side below. Purely an input list — no
+            // student record is modified or deleted.
+            'excluded_students' => ['nullable', 'array'],
+            'excluded_students.*' => ['nullable', 'string', 'max:50'],
             'ladderized' => ['nullable', 'in:0,1'],
             'report_type' => ['required', 'in:full,violations,outstanding,manual_review'],
         ]);
@@ -179,6 +234,10 @@ class ProgramReportController extends Controller
             ? (int) $validated['ladderized']
             : null;
 
+        $excludedStudents = $reportMode === 'graduating'
+            ? $this->authorizeExcludedStudents($program, (array) ($validated['excluded_students'] ?? []), $ladderized, $additionalStudents)
+            : [];
+
         try {
             $statistics = $this->programReport->aggregate(
                 $program,
@@ -187,7 +246,8 @@ class ProgramReportController extends Controller
                 $reportMode,
                 [],
                 $ladderized,
-                $additionalStudents
+                $additionalStudents,
+                $excludedStudents
             );
         } catch (InvalidArgumentException $exception) {
             return back()->withInput()->withErrors(['graduating_years' => $exception->getMessage()]);
@@ -213,6 +273,7 @@ class ProgramReportController extends Controller
             'admission_years' => [],
             'ladderized' => $ladderized,
             'additional_students' => $reportMode === 'graduating' ? $additionalStudents : [],
+            'excluded_students' => $excludedStudents,
             'generated_by_admin_id' => $adminId,
             'generated_at' => now(),
             'report_status' => 'generated',
@@ -227,7 +288,7 @@ class ProgramReportController extends Controller
             'ai_failed' => ! $this->ai->isAvailable(),
         ];
 
-        foreach (['report_mode', 'degree_type', 'graduating_year', 'admission_years', 'ladderized', 'additional_students'] as $column) {
+        foreach (['report_mode', 'degree_type', 'graduating_year', 'admission_years', 'ladderized', 'additional_students', 'excluded_students'] as $column) {
             if (! Schema::hasColumn('program_reports', $column)) {
                 unset($reportData[$column]);
             }

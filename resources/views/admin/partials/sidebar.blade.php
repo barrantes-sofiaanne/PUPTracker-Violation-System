@@ -87,27 +87,11 @@
 
         <li>
 
-            <a href="{{ route('admin.violations.index') }}" class="{{ request()->routeIs('admin.violations*') && !request()->routeIs('admin.violations.confirmations') ? 'active' : '' }}">
+            <a href="{{ route('admin.violations.index') }}" class="{{ request()->routeIs('admin.violations*') ? 'active' : '' }}">
 
                 <i class="bi bi-exclamation-octagon"></i>
 
                 Violations
-
-                @if($pendingViolationCount > 0)
-                    <span class="sidebar-badge ms-auto" title="{{ $pendingViolationCount }} violation(s) awaiting confirmation">{{ $pendingViolationCount > 9 ? '9+' : $pendingViolationCount }}</span>
-                @endif
-
-            </a>
-
-        </li>
-
-        <li>
-
-            <a href="{{ route('admin.violations.confirmations') }}" class="{{ request()->routeIs('admin.violations.confirmations') ? 'active' : '' }}">
-
-                <i class="bi bi-shield-exclamation"></i>
-
-                Confirmations
 
                 @if($pendingViolationCount > 0)
                     <span class="sidebar-badge ms-auto" title="{{ $pendingViolationCount }} violation(s) awaiting confirmation">{{ $pendingViolationCount > 9 ? '9+' : $pendingViolationCount }}</span>

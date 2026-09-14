@@ -44,7 +44,8 @@ class ProgramReportService
         string $reportMode = 'regular',
         array $graduatingYears = [],
         ?int $ladderized = null,
-        array $additionalStudents = []
+        array $additionalStudents = [],
+        array $excludedStudents = []
     ): Collection {
         $query = User::query()
             ->with([
@@ -120,7 +121,14 @@ class ProgramReportService
             });
         }
 
-        return $query->orderBy('last_name')->get();
+        return $query
+            ->when($excludedStudents !== [], function ($q) use ($excludedStudents) {
+                // Drop students the administrator removed from the PREVIEW.
+                // This only narrows the candidate set for THIS request — no
+                // student record is ever modified or deleted.
+                $q->whereNotIn('student_number', $excludedStudents);
+            })
+            ->orderBy('last_name')->get();
     }
 
     /**
@@ -129,9 +137,9 @@ class ProgramReportService
      * determined by the program's graduating YEAR LEVEL; specific students
      * added manually by number are always included.
      */
-    public function previewGraduating(Program $program, array $graduatingYears = [], ?int $ladderized = null, array $additionalStudents = []): Collection
+    public function previewGraduating(Program $program, array $graduatingYears = [], ?int $ladderized = null, array $additionalStudents = [], array $excludedStudents = []): Collection
     {
-        return $this->studentsFor($program, null, 'graduating', $graduatingYears, $ladderized, $additionalStudents);
+        return $this->studentsFor($program, null, 'graduating', $graduatingYears, $ladderized, $additionalStudents, $excludedStudents);
     }
 
     /**
@@ -144,9 +152,10 @@ class ProgramReportService
         string $reportMode = 'regular',
         array $graduatingYears = [],
         ?int $ladderized = null,
-        array $additionalStudents = []
+        array $additionalStudents = [],
+        array $excludedStudents = []
     ): array {
-        $students = $this->studentsFor($program, $academicYear, $reportMode, $graduatingYears, $ladderized, $additionalStudents);
+        $students = $this->studentsFor($program, $academicYear, $reportMode, $graduatingYears, $ladderized, $additionalStudents, $excludedStudents);
 
         $screened = $students
             ->map(fn (User $student) => $this->screening->screenStudent($student))
@@ -184,6 +193,7 @@ class ProgramReportService
             'academic_year' => $academicYear,
             'report_type' => $reportType,
             'report_mode' => $reportMode,
+            'excluded_students' => array_values($excludedStudents),
             'degree_type' => $program->normalizedDegreeType(),
             // graduating_year stores the graduating YEAR LEVEL (4 = Bachelor's
             // / Ladderized Bachelor, 3 = Diploma). Admission years no longer

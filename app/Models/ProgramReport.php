@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property array|null $admission_years
  * @property int|null $ladderized
  * @property array|null $additional_students
+ * @property array|null $excluded_students
  * @property int|null $generated_by_admin_id
  * @property \Illuminate\Support\Carbon|null $generated_at
  * @property string|null $report_status
@@ -48,6 +49,7 @@ class ProgramReport extends Model
         'admission_years',
         'ladderized',
         'additional_students',
+        'excluded_students',
         'generated_by_admin_id',
         'generated_at',
         'report_status',
@@ -75,6 +77,7 @@ class ProgramReport extends Model
         'graduating_year' => 'integer',
         'admission_years' => 'array',
         'additional_students' => 'array',
+        'excluded_students' => 'array',
         'ladderized' => 'integer',
     ];
 

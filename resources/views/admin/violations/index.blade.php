@@ -32,7 +32,15 @@
 
             </div>
 
-            {{-- Main Navigation Tabs --}}
+            {{-- Main Navigation Tabs.
+                 "Violation Confirmations" is deliberately FIRST: it is the queue
+                 that needs an administrator's attention. The server decides which
+                 tab is active (see $activeViolationsTab) so a direct link,
+                 bookmark or notification deep link lands on the right tab. --}}
+            @php
+                $activeTab = $activeViolationsTab ?? 'confirmations';
+            @endphp
+
             <ul
                 class="nav nav-tabs mt-3"
                 id="violationTabs"
@@ -41,7 +49,29 @@
                 <li class="nav-item" role="presentation">
 
                     <button
-                        class="nav-link active"
+                        class="nav-link {{ $activeTab === 'confirmations' ? 'active' : '' }}"
+                        id="confirmations-tab"
+                        data-bs-toggle="tab"
+                        data-bs-target="#confirmations"
+                        type="button"
+                        role="tab">
+
+                        <i class="bi bi-shield-exclamation me-1"></i>
+
+                        Violation Confirmations
+
+                        @if(isset($pendingCount) && $pendingCount > 0)
+                            <span class="badge text-bg-warning ms-1">{{ $pendingCount }}</span>
+                        @endif
+
+                    </button>
+
+                </li>
+
+                <li class="nav-item" role="presentation">
+
+                    <button
+                        class="nav-link {{ $activeTab === 'management' ? 'active' : '' }}"
                         id="management-tab"
                         data-bs-toggle="tab"
                         data-bs-target="#management"
@@ -102,10 +132,24 @@
             <div class="tab-content">
 
                 {{-- ========================= --}}
+                {{-- Violation Confirmations (FIRST) --}}
+                {{-- ========================= --}}
+                <div
+                    class="tab-pane fade {{ $activeTab === 'confirmations' ? 'show active' : '' }}"
+                    id="confirmations"
+                    role="tabpanel">
+
+                    @if(isset($violations))
+                        @include('admin.violations.tabs.confirmations')
+                    @endif
+
+                </div>
+
+                {{-- ========================= --}}
                 {{-- Management --}}
                 {{-- ========================= --}}
                 <div
-                    class="tab-pane fade show active"
+                    class="tab-pane fade {{ $activeTab === 'management' ? 'show active' : '' }}"
                     id="management"
                     role="tabpanel">
 
@@ -117,7 +161,7 @@
                 {{-- Configuration --}}
                 {{-- ========================= --}}
                 <div
-                    class="tab-pane fade"
+                    class="tab-pane fade {{ $activeTab === 'configuration' ? 'show active' : '' }}"
                     id="configuration"
                     role="tabpanel">
 
@@ -129,7 +173,7 @@
                 {{-- History --}}
                 {{-- ========================= --}}
                 <div
-                    class="tab-pane fade"
+                    class="tab-pane fade {{ $activeTab === 'history' ? 'show active' : '' }}"
                     id="history"
                     role="tabpanel">
 
@@ -149,6 +193,11 @@
 {{-- Modals --}}
 {{-- ========================= --}}
 @include('admin.violations.partials.student-history-modal')
+
+{{-- Confirmation review/deny/evidence modals. Kept outside the tab pane so a
+     hidden `.tab-pane` cannot hide them. Only rendered for the Confirmations
+     tab, which is the only tab that has the data they need. --}}
+@include('admin.violations.partials.confirmation-modals')
 
 @include('admin.violations.partials.record-violation')
 @include('admin.violations.partials.category-modal')
@@ -202,17 +251,32 @@ sanctionUpdate: "{{ route('admin.disciplinary-sanctions.update', ':id') }}",
 sanctionDelete: "{{ route('admin.disciplinary-sanctions.destroy', ':id') }}",
 };
 
-document.addEventListener("DOMContentLoaded", function () {
+// Consumed by public/js/admin/violation-confirmations.js.
+window.ViolationConfirmationRoutes = {
 
-    const savedTab = localStorage.getItem("violationActiveTab");
+    confirm: "{{ route('admin.violations.confirm', ['violation' => '__ID__']) }}",
 
-    if (savedTab) {
-        const trigger = document.querySelector(
-            `[data-bs-target="${savedTab}"]`
-        );
+    deny: "{{ route('admin.violations.deny', ['violation' => '__ID__']) }}",
+};
 
-        if (trigger) {
-            bootstrap.Tab.getOrCreateInstance(trigger).show();
+    // The SERVER decides the active tab when the URL names one (direct link,
+    // bookmark, notification deep link, or a filter submit). localStorage is
+    // only a fallback for an in-page reload with no explicit tab, so it can
+    // never override an explicit ?tab=... request.
+    const serverTab = @json($activeTab);
+    const urlHasTab = new URLSearchParams(window.location.search).has('tab');
+
+    if (!urlHasTab) {
+        const savedTab = localStorage.getItem("violationActiveTab");
+
+        if (savedTab) {
+            const trigger = document.querySelector(
+                `[data-bs-target="${savedTab}"]`
+            );
+
+            if (trigger) {
+                bootstrap.Tab.getOrCreateInstance(trigger).show();
+            }
         }
     }
 
@@ -238,4 +302,5 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <script src="{{ asset('js/admin/record-violation.js') }}"></script>
 <script src="{{ asset('js/admin/violation-types.js') }}"></script>
+<script src="{{ asset('js/admin/violation-confirmations.js') }}"></script>
 @endpush
