@@ -530,6 +530,95 @@ class AdminModuleRestructureTest extends TestCase
     }
 
     /**
+     * REGRESSION GUARD — the Graduation AI tab must be fully OPERABLE, not just
+     * present.
+     *
+     * Every pane renders on every request, so the user can click into the
+     * Graduation AI tab without a page load. The tab's controls (graduating
+     * group, ladderized filter, student search, preview) must therefore be
+     * VISIBLE in the delivered markup, and the script that wires them must be
+     * loaded on the DEFAULT page — not only when ?tab=graduation-ai was the
+     * request. Gating the script on the active tab left the tab showing only
+     * Program / Result Filter / Generate.
+     */
+    public function test_graduation_ai_tab_is_operable_even_on_the_default_reports_page(): void
+    {
+        $admin = $this->createAdmin();
+
+        // Deliberately the DEFAULT tab — this is the path that used to break.
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports'))
+            ->assertOk()
+            ->getContent();
+
+        $pane = $this->graduationAiPane($html);
+        $this->assertNotSame('', $pane, 'The Graduation AI pane must be rendered.');
+
+        // The graduating group must be VISIBLE without JS having run yet: there
+        // is no mode selector left to reveal it, so it must not ship hidden.
+        $this->assertStringNotContainsString(
+            'd-none" id="graduatingYearsWrap"',
+            $pane,
+            'The graduating section must be visible without relying on JavaScript.'
+        );
+        $this->assertStringContainsString('id="graduatingYearsWrap"', $pane);
+
+        // Its controls are present in the delivered markup.
+        $this->assertStringContainsString('Graduation Eligibility (Automatic)', $pane);
+        $this->assertStringContainsString('id="studentSearchInput"', $pane);
+        $this->assertStringContainsString('id="addSpecificStudentBtn"', $pane);
+        $this->assertStringContainsString('id="previewGraduatingBtn"', $pane);
+        $this->assertStringContainsString('id="graduatingPreviewBody"', $pane);
+
+        // The Ladderized option (radios bound to name="ladderized").
+        $this->assertStringContainsString('name="ladderized"', $pane);
+        $this->assertStringContainsString('id="ladderizedAll"', $pane);
+        $this->assertStringContainsString('id="ladderizedYes"', $pane);
+        $this->assertStringContainsString('id="ladderizedNo"', $pane);
+
+        // And the script that makes them work must be on THIS response too.
+        $this->assertStringContainsString('const previewBtn = document.getElementById(\'previewGraduatingBtn\')', $html);
+        $this->assertStringContainsString('const addSpecificStudentBtn = document.getElementById(\'addSpecificStudentBtn\')', $html);
+
+        // Program Sanction Report must not appear in the AI feature.
+        $this->assertStringNotContainsString('Program Sanction', $pane);
+    }
+
+    /**
+     * The Ladderized control is present with its original values and is only
+     * meaningful for the ladderized programs (BSOA/BSIT).
+     */
+    public function test_graduation_ai_tab_restores_the_ladderized_option(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports', ['tab' => 'graduation-ai']))
+            ->assertOk()
+            ->getContent();
+
+        $pane = $this->graduationAiPane($html);
+
+        $this->assertStringContainsString('id="ladderizedWrap"', $pane);
+        $this->assertStringContainsString('>Ladderized</label>', $pane);
+
+        // Original three-way option set and values.
+        $this->assertStringContainsString('for="ladderizedAll">All (Both)</label>', $pane);
+        $this->assertStringContainsString('for="ladderizedYes">Yes</label>', $pane);
+        $this->assertStringContainsString('for="ladderizedNo">No</label>', $pane);
+        $this->assertStringContainsString('name="ladderized" id="ladderizedYes" value="1"', $pane);
+        $this->assertStringContainsString('name="ladderized" id="ladderizedNo" value="0"', $pane);
+
+        // The builder reads the ladderized list from the program select, so the
+        // BSOA/BSIT default must still travel with the markup.
+        $this->assertStringContainsString('data-ladderized-programs=', $pane);
+
+        // The script still resolves the selection and sends it to the preview.
+        $this->assertStringContainsString("document.querySelector('input[name=\"ladderized\"]:checked')", $html);
+        $this->assertStringContainsString('ladderized: getSelectedLadderized()', $html);
+    }
+
+    /**
      * The cohort builder partial renders completely on its own dataset.
      */
     public function test_cohort_builder_partial_renders_completely(): void

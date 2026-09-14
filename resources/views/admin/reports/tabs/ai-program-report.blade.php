@@ -74,7 +74,10 @@
                 {{-- ============================================= --}}
                 {{-- Graduating mode: auto by year level + manual specific students --}}
                 {{-- ============================================= --}}
-                <div class="col-12 d-none" id="graduatingYearsWrap">
+                {{-- Always visible: with the Program Sanction (regular) mode
+                     retired there is no mode selector left to toggle this, so
+                     hiding it until JS runs would show an incomplete form. --}}
+                <div class="col-12" id="graduatingYearsWrap">
                     <div class="border rounded-3 p-3 bg-light-subtle">
                         <div class="d-flex align-items-start gap-2">
                             <i class="bi bi-mortarboard text-primary fs-5"></i>

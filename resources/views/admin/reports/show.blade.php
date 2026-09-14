@@ -210,6 +210,14 @@ window.ReportRoutes = {
 @endpush
 @endif
 
-@if($activeReportsTab === 'graduation-ai')
+{{--
+    ALWAYS load the Graduation AI scripts — NOT only when ?tab=graduation-ai.
+
+    Every pane is rendered on every request (Bootstrap only toggles visibility),
+    so the user can switch tabs client-side without a page load. Gating this on
+    the active tab meant that clicking "Graduation AI Report" revealed markup
+    whose reveal/handlers had never run: the preview, student search, ladderized
+    filter and student removal stayed inoperative. The script is self-contained
+    and guards on element existence, so loading it always is safe.
+--}}
 @include('admin.reports.tabs._ai-program-report-scripts')
-@endif
