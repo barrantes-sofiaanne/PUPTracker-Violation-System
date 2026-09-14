@@ -285,16 +285,19 @@ class AdminModuleRestructureTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        // The retired option and its label are gone from the form.
-        $this->assertStringNotContainsString('Program Sanction Report', $html);
-        $this->assertStringNotContainsString('value="regular"', $html);
+        // The retired option and its label are gone from the AI FORM. (The
+        // Report History tab still shows "Program Sanction Report" as a filter
+        // option on purpose, so legacy report_mode='regular' rows stay findable —
+        // that is why this is scoped to the form, not the whole page.)
+        $this->assertStringNotContainsString('Program Sanction Report', $this->aiProgramPane($html));
+        $this->assertStringNotContainsString('value="regular"', $this->aiProgramPane($html));
 
         // The graduating workflow remains, with report_mode still posted so the
         // existing controller contract/validation is unchanged.
-        $this->assertStringContainsString('name="report_mode"', $html);
-        $this->assertStringContainsString('value="graduating"', $html);
-        $this->assertStringContainsString('Graduation Eligibility', $html);
-        $this->assertStringContainsString('Preview Students', $html);
+        $this->assertStringContainsString('name="report_mode"', $this->aiProgramPane($html));
+        $this->assertStringContainsString('value="graduating"', $this->aiProgramPane($html));
+        $this->assertStringContainsString('Graduation Eligibility', $this->aiProgramPane($html));
+        $this->assertStringContainsString('Preview Students', $this->aiProgramPane($html));
     }
 
     public function test_graduating_report_generation_still_works(): void
@@ -367,8 +370,9 @@ class AdminModuleRestructureTest extends TestCase
         $this->assertStringContainsString('id="excludedStudentsInputs"', $html);
         $this->assertStringContainsString(route('admin.program-report.generate'), $html);
 
-        // Program Sanction Report remains removed from this workflow.
-        $this->assertStringNotContainsString('Program Sanction Report', $html);
+        // Program Sanction Report remains removed from the AI FORM (the history
+        // tab keeps it as a filter label, so scope the check to the AI pane).
+        $this->assertStringNotContainsString('Program Sanction Report', $this->aiProgramPane($html));
 
         // Only the AI tab pane is active.
         $this->assertSame(1, substr_count($html, 'tab-pane fade show active'));
@@ -480,8 +484,185 @@ class AdminModuleRestructureTest extends TestCase
     }
 
     // ==================================================================
+    // 7. Tab switching must never reveal a blank pane
+    // ==================================================================
+
+    /**
+     * REGRESSION GUARD — the blank-tab bug.
+     *
+     * Bootstrap's tab plugin only toggles `display:none`; it never fetches
+     * content. An earlier version rendered ONLY the active pane, so switching to
+     * any other tab revealed an empty pane. Every tab is now rendered, so each
+     * pane's real content must be present in the SAME response.
+     */
+    public function test_every_tab_pane_is_rendered_so_switching_never_shows_a_blank_tab(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports'))
+            ->assertOk()
+            ->getContent();
+
+        // All three panes exist...
+        $this->assertStringContainsString('id="violation-reports"', $html);
+        $this->assertStringContainsString('id="ai-program"', $html);
+        $this->assertStringContainsString('id="history"', $html);
+
+        // ...and each carries REAL content, not an empty div.
+        // Violation Reports: the filter form.
+        $this->assertStringContainsString('id="reportFilterForm"', $html);
+        // AI Program Report: the generation form and graduation preview.
+        $this->assertStringContainsString('id="programReportForm"', $html);
+        $this->assertStringContainsString('id="graduatingPreviewBody"', $html);
+        // Report History: its filter form.
+        $this->assertStringContainsString(route('admin.program-report.history'), $html);
+
+        // Exactly one pane is active at a time.
+        $this->assertSame(1, substr_count($html, 'tab-pane fade show active'));
+    }
+
+    /**
+     * REGRESSION GUARD — the variable collision.
+     *
+     * The AI Program Report form and the Report History table both need a
+     * program list. When they shared the name `$programs`, the AI tab's guard
+     * passed using the HISTORY dataset and then failed on `$ladderizedPrograms`,
+     * producing a 500. Each tab must still render its own complete content on
+     * every tab URL.
+     */
+    public function test_no_variable_collision_between_the_tabs_on_any_tab_url(): void
+    {
+        $admin = $this->createAdmin();
+
+        foreach (['violation-reports', 'ai-program', 'history'] as $tab) {
+            $html = $this->actingAs($admin, 'admin')
+                ->get(route('admin.reports', ['tab' => $tab]))
+                ->assertOk()
+                ->getContent();
+
+            // The AI form must be complete (its ladderized config comes from the
+            // AI controller data, not from the history list).
+            $this->assertStringContainsString('id="programReportForm"', $html, "AI form missing on tab={$tab}");
+            $this->assertStringContainsString('Graduation Eligibility', $html, "AI config missing on tab={$tab}");
+
+            // The history table must be complete.
+            $this->assertStringContainsString('Report Mode', $html, "History filters missing on tab={$tab}");
+        }
+    }
+
+    // ==================================================================
+    // 8. Top 10 Most Common Violations chart
+    // ==================================================================
+
+    /**
+     * The chart is labelled "Top 10", so the SERVER must cap the dataset at 10
+     * (most common first) rather than shipping every type and hiding the extras.
+     */
+    public function test_top_violations_chart_is_limited_to_ten_most_common(): void
+    {
+        $admin = $this->createAdmin();
+
+        // The fixture seed already creates one violation type ('Cheating', id 1).
+        // The chart counts violations, so that type starts with a count of 12
+        // (the same as "Type01"), which would make the top-10 ORDER ambiguous.
+        // A distinct, strictly-descending sequence is used instead: the 12 seeded
+        // types get counts 25..14, so the top 10 is unambiguous and the pre-seed
+        // type is counted in the same way as every other type.
+        $this->assertSame(1, DB::table('violation_type_tbl')->count(), 'Expected exactly the one seeded type.');
+
+        $expectedTop = [];
+        for ($typeId = 2; $typeId <= 13; $typeId++) {
+            $name = 'Type' . str_pad((string) ($typeId - 1), 2, '0', STR_PAD_LEFT);
+            $this->createViolationType($typeId, $name);
+
+            // Counts 25 down to 14 — strictly descending, well above the seeded
+            // type's count so the ordering is deterministic.
+            $count = 27 - $typeId;
+            if ($typeId <= 11) {
+                $expectedTop[$name] = $count;
+            }
+
+            for ($n = 0; $n < $count; $n++) {
+                $number = '2027-' . str_pad((string) $typeId, 2, '0', STR_PAD_LEFT) . '-' . str_pad((string) $n, 3, '0', STR_PAD_LEFT);
+                $this->createStudent($number, 'Charted', $number);
+                $this->createViolation($number, now()->toDateString(), $typeId, Violation::STATUS_CONFIRMED);
+            }
+        }
+
+        $response = $this->actingAs($admin, 'admin')
+            ->postJson(route('admin.reports.filter'), [])
+            ->assertOk();
+
+        $top = $response->json('charts.topViolations');
+
+        $this->assertNotNull($top, 'The topViolations chart dataset must be present.');
+
+        // Exactly 10 bars, even though 12 types exist.
+        $this->assertCount(10, $top['labels'], 'The chart must contain exactly 10 violations.');
+        $this->assertCount(10, $top['data']);
+
+        // The 10 most common, in descending order.
+        $this->assertSame(array_keys($expectedTop), $top['labels']);
+        $this->assertSame(array_values($expectedTop), $top['data']);
+
+        // The 11th and 12th most common must NOT appear.
+        $this->assertNotContains('Type11', $top['labels']);
+        $this->assertNotContains('Type12', $top['labels']);
+
+        // Counts are unchanged — derived from the same query as before.
+        $this->assertSame(25, $top['data'][0], 'The most common type must keep its full count.');
+
+        // Descending order is enforced.
+        $sorted = $top['data'];
+        rsort($sorted);
+        $this->assertSame($sorted, $top['data'], 'The chart data must be sorted descending by frequency.');
+    }
+
+    public function test_top_violations_chart_shows_only_available_types_when_fewer_than_ten_exist(): void
+    {
+        $admin = $this->createAdmin();
+
+        // Only 3 distinct violation types.
+        for ($typeId = 1; $typeId <= 3; $typeId++) {
+            $this->createViolationType($typeId, 'Only' . $typeId);
+        }
+
+        for ($i = 1; $i <= 3; $i++) {
+            $this->createStudent('2028-000' . $i, 'Few', 'Types' . $i);
+            $this->createViolation('2028-000' . $i, now()->toDateString(), $i, Violation::STATUS_CONFIRMED);
+        }
+
+        $top = $this->actingAs($admin, 'admin')
+            ->postJson(route('admin.reports.filter'), [])
+            ->assertOk()
+            ->json('charts.topViolations');
+
+        $this->assertCount(3, $top['labels'], 'Fewer than 10 types must show only the available ones.');
+        $this->assertCount(3, $top['data']);
+    }
+
+    // ==================================================================
     // Helpers
     // ==================================================================
+
+    /**
+     * Extract just the AI Program Report tab pane from the rendered page.
+     *
+     * All three panes are rendered together, so page-wide string assertions would
+     * also match the other tabs' content (e.g. the Report History filter label).
+     */
+    private function aiProgramPane(string $html): string
+    {
+        $start = strpos($html, 'id="ai-program"');
+        if ($start === false) {
+            return '';
+        }
+
+        $end = strpos($html, 'id="history"', $start);
+
+        return $end === false ? substr($html, $start) : substr($html, $start, $end - $start);
+    }
 
     /**
      * A Bachelor's program whose graduating year level is 4.
@@ -540,6 +721,20 @@ class AdminModuleRestructureTest extends TestCase
         ]);
 
         return $user;
+    }
+
+    private function createViolationType(int $id, string $name): void
+    {
+        if (DB::table('violation_type_tbl')->where('violation_type_id', $id)->exists()) {
+            return;
+        }
+
+        DB::table('violation_type_tbl')->insert([
+            'violation_type_id' => $id,
+            'violation_type' => $name,
+            'violation_category_id' => 1,
+            'severity_level' => 1,
+        ]);
     }
 
     private function createViolation(string $studentNumber, string $date, int $typeId, string $status = 'pending'): Violation

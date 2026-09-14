@@ -22,23 +22,27 @@ class ReportController extends Controller
     public function index(Request $request)
     {
         /*
-         * The Admin Reports page is now ONE page with three tabs. The server
-         * decides which tab is active and only builds that tab's dataset, so the
-         * other two processes do not run on every request.
+         * ONE Reports page with three tabs.
          *
-         * The existing per-tab processes are unchanged — this method only acts as
-         * the page composer.
+         * ALL THREE datasets are built here, and all three panes are rendered.
+         * That is deliberate: Bootstrap's tab plugin only toggles `display:none`
+         * and never fetches content, so a tab whose data was not loaded would
+         * show an EMPTY pane. Rendering everything also preserves in-progress
+         * form values when the administrator switches tabs.
+         *
+         * Each dataset still comes from the same, unchanged per-tab process —
+         * this method is only the page composer.
          */
         $activeReportsTab = $this->activeReportsTab($request);
 
-        $data = ['activeReportsTab' => $activeReportsTab];
+        $resultsPerPage = in_array((int) $request->input('per_page'), [25, 50, 100], true)
+            ? (int) $request->input('per_page')
+            : 25;
 
-        if ($activeReportsTab === 'violation-reports') {
-            $resultsPerPage = in_array((int) $request->input('per_page'), [25, 50, 100], true)
-                ? (int) $request->input('per_page')
-                : 25;
-
-            $data += [
+        return view('admin.reports.show', array_merge(
+            ['activeReportsTab' => $activeReportsTab],
+            [
+                // --- Violation Reports tab ---
                 'statistics' => $this->getStatistics($request),
                 'reports' => $this->buildQuery($request)
                     ->latest('violation_date')
@@ -48,18 +52,10 @@ class ReportController extends Controller
                 'years' => Year::orderBy('year')->get(),
                 'categories' => ViolationCategory::orderBy('category_name')->get(),
                 'violationTypes' => ViolationType::orderBy('violation_type')->get(),
-            ];
-        }
-
-        if ($activeReportsTab === 'ai-program') {
-            $data += $this->programReportIndexData();
-        }
-
-        if ($activeReportsTab === 'history') {
-            $data += $this->programReportHistoryData($request);
-        }
-
-        return view('admin.reports.show', $data);
+            ],
+            $this->programReportIndexData(),
+            $this->programReportHistoryData($request)
+        ));
     }
 
     /**
@@ -135,7 +131,12 @@ class ReportController extends Controller
 
         return [
             'programReports' => $query->paginate(15)->withQueryString(),
-            'programs' => Program::orderBy('program_name')->get(),
+            // Deliberately NOT `programs`: the AI Program Report tab also needs a
+            // `$programs` collection, and both panes are rendered on every request
+            // (Bootstrap only toggles visibility). Sharing the name would let one
+            // tab's guard pass using the other tab's data and then fail on a
+            // variable it never received.
+            'historyPrograms' => Program::orderBy('program_name')->get(),
             'isSuperAdmin' => $isSuperAdmin,
         ];
     }
@@ -457,6 +458,16 @@ class ReportController extends Controller
         return empty($filters) ? 'None' : implode(' | ', $filters);
     }
 
+    /**
+     * How many bars the "Top N Most Common Violations" chart may show.
+     *
+     * The chart is labelled "Top 10 Most Common Violations", so the dataset is
+     * capped here — server-side, before it reaches the view. Limiting in the view
+     * (or hiding extra bars with CSS/JS) would still ship every type to the
+     * browser and make the labels/data lengths inconsistent.
+     */
+    private const TOP_VIOLATIONS_LIMIT = 10;
+
     private function buildCharts(Request $request): array
     {
         $reports = $this->buildQuery($request)
@@ -466,6 +477,14 @@ class ReportController extends Controller
         $monthly = $reports->groupBy(fn ($report) => Carbon::parse($report->violation_date)->format('M Y'));
         $categoryCounts = $reports->groupBy(fn ($report) => optional($report->violationType?->violationCategory)->category_name ?? 'Uncategorized');
         $violationCounts = $reports->groupBy(fn ($report) => optional($report->violationType)->violation_type ?? 'Unspecified');
+
+        // Most common first, then keep only the top N. Ties are broken by label so
+        // the order is deterministic between requests. When fewer than N types
+        // exist, this simply returns all of them.
+        $topViolations = $violationCounts
+            ->map(fn ($items) => $items->count())
+            ->sortByDesc(fn (int $count, string $label) => $count)
+            ->take(self::TOP_VIOLATIONS_LIMIT);
 
         return [
             'monthly' => [
@@ -477,8 +496,8 @@ class ReportController extends Controller
                 'data' => $categoryCounts->map(fn ($items) => $items->count())->values()->all(),
             ],
             'topViolations' => [
-                'labels' => $violationCounts->keys()->values()->all(),
-                'data' => $violationCounts->map(fn ($items) => $items->count())->values()->all(),
+                'labels' => $topViolations->keys()->values()->all(),
+                'data' => $topViolations->values()->all(),
             ],
         ];
     }

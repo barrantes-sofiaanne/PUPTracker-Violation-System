@@ -87,6 +87,14 @@
 
             <div class="tab-content">
 
+                {{-- ALL THREE PANES ARE ALWAYS RENDERED.
+                     Bootstrap's tab plugin only toggles `display:none`; it never
+                     fetches content. If a pane were omitted unless it was the
+                     active one, clicking that tab would reveal an EMPTY pane.
+                     The controller still only QUERIES the active tab's dataset,
+                     and each pane guards its own @include so a missing dataset
+                     can never crash the page. --}}
+
                 {{-- ===================================================== --}}
                 {{-- Violation Reports — the original Reports page content --}}
                 {{-- ===================================================== --}}
@@ -96,8 +104,10 @@
                     role="tabpanel"
                     aria-labelledby="violation-reports-tab">
 
-                    @if($activeReportsTab === 'violation-reports')
+                    @if(isset($reports))
                         @include('admin.reports.tabs.violation-reports')
+                    @else
+                        @include('admin.reports.tabs._placeholder')
                     @endif
 
                 </div>
@@ -111,8 +121,10 @@
                     role="tabpanel"
                     aria-labelledby="ai-program-tab">
 
-                    @if($activeReportsTab === 'ai-program')
+                    @if(isset($ladderizedPrograms))
                         @include('admin.reports.tabs.ai-program-report')
+                    @else
+                        @include('admin.reports.tabs._placeholder')
                     @endif
 
                 </div>
@@ -126,12 +138,18 @@
                     role="tabpanel"
                     aria-labelledby="history-tab">
 
-                    @if($activeReportsTab === 'history')
-                        {{-- The page already uses `$reports` for the violation-report
-                             paginator, so the history dataset travels as
-                             `$programReports` and is handed to the partial as
-                             `$reports` — keeping the moved markup unchanged. --}}
-                        @include('admin.reports.tabs.report-history', ['reports' => $programReports])
+                    @if(isset($programReports))
+                        {{-- `$reports` is bound explicitly because the page already uses
+                             that name for the violation-report paginator, and the
+                             history program list travels as `$historyPrograms` so it
+                             cannot collide with the AI tab's `$programs`. Both keep
+                             the moved markup byte-identical. --}}
+                        @include('admin.reports.tabs.report-history', [
+                            'reports' => $programReports,
+                            'programs' => $historyPrograms,
+                        ])
+                    @else
+                        @include('admin.reports.tabs._placeholder')
                     @endif
 
                 </div>
@@ -145,6 +163,34 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+/*
+ * Each tab's dataset is loaded only when that tab is requested (?tab=...).
+ * A tab whose data has not been fetched shows a placeholder; this wires its
+ * "Load this tab" button to navigate to that tab's URL, which is the same
+ * server-side path a normal tab click uses.
+ *
+ * Delegated on `document` because the placeholder is replaced whenever the
+ * page re-renders, so a directly-bound listener would stop working.
+ */
+document.addEventListener('click', function (event) {
+    const trigger = event.target.closest('[data-reports-load-tab]');
+    if (!trigger) {
+        return;
+    }
+
+    const pane = trigger.closest('.tab-pane');
+    const link = pane ? document.querySelector('[data-bs-target="#' + pane.id + '"]') : null;
+
+    if (link && link.getAttribute('href')) {
+        event.preventDefault();
+        window.location.assign(link.getAttribute('href'));
+    }
+});
+</script>
+@endpush
 
 @if($activeReportsTab === 'violation-reports')
 @push('scripts')
