@@ -26,29 +26,26 @@ class ProgramReportController extends Controller
     }
 
     /**
-     * Backward-compatible entry point for the former standalone
-     * "AI Program Report" page.
+     * Standalone "AI Program Report" page.
      *
-     * That report process is now the "Graduation AI Report" tab of Admin →
-     * Reports, so this redirects there (preserving any query string) rather than
-     * dead-ending on a superseded view. The `ai-program` query value is still
-     * accepted by ReportController as a legacy alias, but we emit the new name.
+     * Hosts the graduating cohort builder: automatic eligibility by year level
+     * (4th Year for Bachelor/Ladderized Bachelor, 3rd Year for Diploma), manually
+     * added students, the ladderized filter and the preview.
+     *
+     * This is also the body of the Reports → "Graduation AI Report" tab, so the
+     * page renders the shared partial rather than a second copy that could drift.
      */
-    public function index(Request $request): \Illuminate\Http\RedirectResponse
+    public function index(Request $request): View
     {
-        return redirect()->route('admin.reports', array_merge(
-            $request->query(),
-            ['tab' => 'graduation-ai']
-        ));
+        return view('admin.program-report.index', $this->formData());
     }
 
     /**
-     * Data for the program-report form.
+     * Data for the graduating cohort builder.
      *
-     * The program-statistics feature is kept intact: its generation, preview,
-     * PDF and history endpoints all still work and the Report History tab still
-     * lists the records. Only its entry-point tab was replaced by the Graduation
-     * AI Report, so this dataset is no longer composed by ReportController.
+     * Shared by the standalone page and the Reports tab, so the dataset is
+     * defined once. `ladderizedPrograms` doubles as the tab's render guard, which
+     * is why it must never be renamed.
      */
     public function formData(): array
     {

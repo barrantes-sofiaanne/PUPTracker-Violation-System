@@ -53,11 +53,24 @@ class ReportController extends Controller
                 'categories' => ViolationCategory::orderBy('category_name')->get(),
                 'violationTypes' => ViolationType::orderBy('violation_type')->get(),
             ],
+            $this->programReportFormData(),
             $this->programReportHistoryData($request),
             $this->graduationReviewData($request)
         ));
     }
 
+    /**
+     * Data for the "Graduation AI Report" tab.
+     *
+     * The tab hosts the graduating cohort builder — automatic eligibility by year
+     * level, manually added students, the ladderized filter and the preview — whose
+     * dataset is defined by ProgramReportController. Delegated rather than
+     * re-implemented so the two surfaces cannot drift apart.
+     */
+    protected function programReportFormData(): array
+    {
+        return app(ProgramReportController::class)->formData();
+    }
     /**
      * Data for the "Graduation AI Report" tab.
      *
@@ -264,6 +277,7 @@ class ReportController extends Controller
                 'categories' => ViolationCategory::orderBy('category_name')->get(),
                 'violationTypes' => ViolationType::orderBy('violation_type')->get(),
             ],
+            $this->programReportFormData(),
             $this->programReportHistoryData($request),
             $this->graduationReviewData($request)
         ));

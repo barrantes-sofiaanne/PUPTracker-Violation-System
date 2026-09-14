@@ -121,8 +121,12 @@
                     role="tabpanel"
                     aria-labelledby="graduation-ai-tab">
 
-                    @if(isset($screened))
-                        @include('admin.reports.tabs.graduation-ai-report')
+                    {{-- Guarded on `$ladderizedPrograms`, which ONLY the
+                         program-report dataset supplies. `$programs` is NOT a
+                         safe guard: the history dataset also sets it, so the
+                         guard could pass on the wrong data and 500. --}}
+                    @if(isset($ladderizedPrograms))
+                        @include('admin.reports.tabs.ai-program-report')
                     @else
                         @include('admin.reports.tabs._placeholder')
                     @endif
@@ -207,5 +211,5 @@ window.ReportRoutes = {
 @endif
 
 @if($activeReportsTab === 'graduation-ai')
-@include('admin.reports.tabs._graduation-ai-report-scripts')
+@include('admin.reports.tabs._ai-program-report-scripts')
 @endif
