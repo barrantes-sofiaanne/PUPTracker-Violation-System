@@ -547,20 +547,36 @@ class SanctionController extends Controller
         return back()->with('success', 'Proof rejected. The student was notified and may resubmit.');
     }
 
-    public function revertRecordToPending(StudentSanctionRecord $studentSanctionRecord): RedirectResponse
+    /**
+     * Reopen a completed sanction.
+     *
+     * A reason is REQUIRED and is validated server-side, so the rule holds even
+     * if the request is submitted without the modal. The reason is stored on the
+     * record (reopen_reason/reopened_at) and mirrored into the audit log, and the
+     * affected student is notified.
+     */
+    public function revertRecordToPending(Request $request, StudentSanctionRecord $studentSanctionRecord): RedirectResponse
     {
+        $validated = $request->validate([
+            'reason' => 'required|string|min:3|max:1000',
+        ], [
+            'reason.required' => 'Please provide a reason for reopening this sanction.',
+            'reason.min' => 'Please provide a reason for reopening this sanction.',
+        ]);
+
         if (strcasecmp((string) $studentSanctionRecord->status, 'Completed') !== 0) {
             return back()->withErrors([
                 'sanction_record' => 'Only completed sanctions can be reopened.',
             ]);
         }
 
+        $reason = trim($validated['reason']);
         $adminId = Auth::guard('admin')->id();
 
-        DB::transaction(function () use ($studentSanctionRecord, $adminId): void {
+        DB::transaction(function () use ($studentSanctionRecord, $adminId, $reason): void {
             // Reverting a completed sanction reopens it as In Progress (it was
             // already assigned). The proof history rows are retained.
-            $studentSanctionRecord->update([
+            $reopen = [
                 'status' => StudentSanctionRecord::STATUS_IN_PROGRESS,
                 'date_completed' => null,
                 'completion_reviewed_by_admin_id' => null,
@@ -570,14 +586,31 @@ class SanctionController extends Controller
                 'proof_original_name' => null,
                 'proof_submitted_at' => null,
                 'proof_notes' => null,
-            ]);
+            ];
+
+            // Persist the reason on the record where those columns exist.
+            foreach (['reopen_reason', 'reopened_at', 'reopened_by_admin_id'] as $column) {
+                if (! \Illuminate\Support\Facades\Schema::hasColumn('student_sanction_records_tbl', $column)) {
+                    continue;
+                }
+
+                $reopen[$column] = match ($column) {
+                    'reopen_reason' => $reason,
+                    'reopened_at' => now(),
+                    default => $adminId,
+                };
+            }
+
+            $studentSanctionRecord->update($reopen);
 
             try {
                 app(\App\Services\StudentNotificationService::class)->create(
                     studentNumber: $studentSanctionRecord->student_number,
                     type: 'sanction',
                     title: 'Sanction Reopened',
-                    message: 'Your completed sanction was reopened by the administration. You may submit a new proof of completion for verification.',
+                    message: 'Your completed sanction was reopened by the administration. Reason: '
+                        . $reason
+                        . '. You may submit a new proof of completion for verification.',
                     targetType: 'sanction_request',
                     targetId: (int) $studentSanctionRecord->record_id,
                 );
@@ -590,7 +623,8 @@ class SanctionController extends Controller
                 'actor_id' => $adminId,
                 'action' => 'Revert',
                 'module' => 'Sanction Records',
-                'description' => 'Reopened sanction record #' . $studentSanctionRecord->record_id . ' as in progress.',
+                'description' => 'Reopened sanction record #' . $studentSanctionRecord->record_id
+                    . ' as in progress. Reason: ' . $reason . '.',
             ]);
         });
 
@@ -801,14 +835,12 @@ class SanctionController extends Controller
     public function downloadProof(StudentSanctionRecord $studentSanctionRecord, Request $request)
     {
         if ($studentSanctionRecord->proof_path === null || $studentSanctionRecord->proof_path === '') {
-            abort(404);
-        }
-
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = \Illuminate\Support\Facades\Storage::disk((string) config('filesystems.evidence_disk', 'local'));
-
-        if (! $disk->exists($studentSanctionRecord->proof_path)) {
-            abort(404);
+            return \App\Services\PrivateFileResponder::stream(
+                'proof',
+                null,
+                $studentSanctionRecord->proof_original_name,
+                ['record_id' => $studentSanctionRecord->record_id]
+            );
         }
 
         // Audit the access (admin reviewing a proof of completion).
@@ -827,9 +859,11 @@ class SanctionController extends Controller
             // Logging must never break the proof view.
         }
 
-        return $disk->response(
+        return \App\Services\PrivateFileResponder::stream(
+            'proof',
             $studentSanctionRecord->proof_path,
-            $studentSanctionRecord->proof_original_name ?: basename($studentSanctionRecord->proof_path)
+            $studentSanctionRecord->proof_original_name,
+            ['record_id' => $studentSanctionRecord->record_id]
         );
     }
 }

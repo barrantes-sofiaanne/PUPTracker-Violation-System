@@ -1122,8 +1122,13 @@ class StudentViolationController extends Controller
 
         $disk = $this->evidenceDisk();
 
-        if (! $evidence->disk_path || ! $disk->exists($evidence->disk_path)) {
-            abort(404);
+        if (! $evidence->disk_path) {
+            return \App\Services\PrivateFileResponder::stream(
+                'evidence',
+                null,
+                $evidence->original_name,
+                ['evidence_id' => $evidence->evidence_id ?? null]
+            );
         }
 
         // Audit the access + record an evidence security event.
@@ -1132,13 +1137,14 @@ class StudentViolationController extends Controller
             $evidence,
             'security',
             (int) $security->id,
-            $request ?? request(),
+            request(),
         );
 
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        return $disk->response(
+        return \App\Services\PrivateFileResponder::stream(
+            'evidence',
             $evidence->disk_path,
-            $evidence->original_name ?: basename($evidence->disk_path)
+            $evidence->original_name,
+            ['evidence_id' => $evidence->evidence_id ?? null]
         );
     }
 

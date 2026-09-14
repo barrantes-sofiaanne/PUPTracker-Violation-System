@@ -345,6 +345,21 @@ h6 {
     border-left-color: var(--color-goldenrod);
 }
 
+/* Informational stat card (pending confirmations queue).
+   Mirrors the .icon-badge.info tone so the badge and the card agree. */
+.bg-info-light {
+    background: linear-gradient(
+        140deg,
+        rgba(29, 95, 168, 0.12) 0%,
+        rgba(29, 95, 168, 0.04) 100%
+    );
+    border-left-color: #1d5fa8;
+}
+
+.text-info {
+    color: #1d5fa8 !important;
+}
+
 /* Solid goldenrod utility (used by security wizard bubbles etc.) */
 .bg-goldenrod {
     background-color: var(--color-goldenrod);
@@ -397,6 +412,14 @@ h6 {
 .icon-badge.info {
     background: rgba(29, 95, 168, 0.12);
     color: #1d5fa8;
+}
+
+/* Required-field indicator. Reflects SERVER-SIDE validation only, so a field
+   only carries this when its rule is actually `required`. */
+.required-asterisk {
+    color: #b91c1c;
+    font-weight: 700;
+    margin-left: 2px;
 }
 
 .table {
@@ -583,6 +606,84 @@ h6 {
     padding: 1.1rem 1.2rem;
     margin-bottom: 1rem;
     box-shadow: var(--shadow-soft);
+}
+
+/* ---------------------------------------------------------------------------
+   Shared module header + PHT clock.
+
+   The SECURITY module is the source of truth for the module header and the
+   time display. The admin layout does not load portal.css, so Security's
+   `.portal-hero` gradient/padding and its time-widget rules are reproduced here
+   with the SAME literal values. Keeping them in the shared stylesheet (rather
+   than inline per page) is what makes the header consistent across every
+   Admin/Super Admin module page, not just the dashboard.
+   --------------------------------------------------------------------------- */
+
+/* Security's `.portal-hero` — same gradient stops, radius and spacing. */
+.portal-hero.page-header-modern {
+    background: linear-gradient(
+        120deg,
+        rgba(128, 0, 0, 0.96) 0%,
+        rgba(95, 0, 0, 0.96) 68%,
+        rgba(218, 165, 32, 0.94) 170%
+    );
+    padding: 1.25rem 1.4rem;
+}
+
+/* Header content grid (title/subtitle + time). */
+.dashboard-hero-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.dashboard-hero-title {
+    margin-bottom: 0.35rem;
+    line-height: 1.12;
+}
+
+.dashboard-hero-subtitle {
+    margin-bottom: 0;
+    opacity: 0.95;
+}
+
+.dashboard-time-wrap {
+    text-align: right;
+    min-width: 240px;
+}
+
+.dashboard-time-label {
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.8;
+    margin-bottom: 0.2rem;
+}
+
+.dashboard-time-value {
+    font-size: 1.18rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    padding: 0.45rem 0.85rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+    .dashboard-time-wrap {
+        text-align: left;
+        min-width: unset;
+    }
+
+    .dashboard-time-value {
+        font-size: 1rem;
+    }
 }
 
 .page-header-modern h2,

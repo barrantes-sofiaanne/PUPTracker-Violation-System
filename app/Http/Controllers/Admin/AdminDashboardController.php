@@ -24,17 +24,24 @@ class AdminDashboardController extends Controller
             'Pending'
         )->count();
 
+        // Violations awaiting an administrator's confirmation. This is the
+        // operational queue, distinct from student-raised sanction requests.
+        $pendingConfirmations = Violation::query()
+            ->pendingConfirmation()
+            ->count();
+
         // Violations recorded on the current calendar day (app timezone).
         $recordedViolationToday = Violation::effective()
             ->whereDate('violation_date', now()->toDateString())
             ->count();
 
+        // The dashboard's "Recent Violations" is capped at the 5 newest records.
         $recentViolations = Violation::with(
             'violationType'
         )
         ->effective()
         ->latest('violation_date')
-        ->take(10)
+        ->take(5)
         ->get();
 
         // Get top students with most violations
@@ -54,6 +61,7 @@ class AdminDashboardController extends Controller
                 'totalStudents',
                 'totalViolations',
                 'pendingRequests',
+                'pendingConfirmations',
                 'recordedViolationToday',
                 'recentViolations',
                 'topOffenders',

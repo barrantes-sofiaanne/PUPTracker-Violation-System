@@ -50,13 +50,19 @@
     }
 
     /* ------------------------------------------------------------------
-       Wizard presentation — visually aligned with the Security module's
-       Record Violation modal.
+       Wizard presentation — the Security module's Record Violation modal is
+       the SOURCE OF TRUTH for this UI. Every visual value below mirrors it
+       exactly.
+
+       The admin layout does not load portal.css, so the Security-only tokens
+       (`--portal-radius-lg`, `--portal-shadow`) and classes (`portal-btn`)
+       are NOT available here; their literal values are reproduced instead.
+       Maroon/gold are admin.css tokens and are used via those.
 
        These classes are PRESENTATION ONLY: the Admin modal keeps its own ids
        (`studentStepIndicator`, `violationWizardProgress`, ...), its own form
-       submission, validation and controller. Only the visuals are shared so
-       the two modules' Record Violation interfaces look the same.
+       submission, validation and controller, so Admin authorization and
+       business rules are unchanged.
        ------------------------------------------------------------------ */
     .admin-record-modal .wizard-bubble {
         width: 52px;
@@ -66,27 +72,54 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 6px 12px rgba(128, 0, 0, 0.15);
+        box-shadow: 0 6px 12px rgba(122, 15, 30, 0.15);
     }
 
     /* Step cards use the module's maroon/gold tone rather than a generic
        shadow, matching Security's `.wizard-card`. */
     .admin-record-modal .wizard-card {
-        border: 1px solid rgba(128, 0, 0, 0.12) !important;
-        border-radius: 0.95rem;
-        box-shadow: 0 8px 20px rgba(128, 0, 0, 0.08) !important;
+        border: 1px solid rgba(122, 15, 30, 0.12);
+        border-radius: 1rem;
+        box-shadow: 0 8px 24px rgba(128, 0, 0, 0.12);
         overflow: hidden;
     }
 
     .admin-record-modal .wizard-card .card-header {
-        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%) !important;
-        border-bottom: 1px solid rgba(128, 0, 0, 0.12);
-        color: #5f0000;
+        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
+        border-bottom: 1px solid rgba(122, 15, 30, 0.12);
+        color: #4a0209;
         padding: 0.9rem 1.1rem;
     }
 
     .admin-record-modal .wizard-card .card-header i {
-        color: #800000 !important;
+        color: #7a0f1e !important;
+    }
+
+    /* Preview/read-only summary panels (Review step). */
+    .admin-record-modal .preview-box {
+        border: 1px solid rgba(122, 15, 30, 0.1);
+        border-radius: 0.9rem;
+        background: #fffdf7;
+    }
+
+    .admin-record-modal .preview-box strong {
+        color: #4a0209;
+    }
+
+    /* Controlled camera capture — the live preview is obscured while the
+       video is interrupted, exactly as Security does. */
+    .admin-record-modal #cameraPreview {
+        filter: none;
+        transition: filter 0.15s ease;
+        background: #000;
+    }
+
+    .admin-record-modal #cameraPreview.camera-obscured {
+        filter: blur(18px) brightness(0.5);
+    }
+
+    .admin-record-modal #cameraWrap.video-interrupted #cameraPreview {
+        filter: blur(18px) brightness(0.5);
     }
 
     /* Disabled footer buttons stay readable — the maroon tone is preserved
@@ -98,16 +131,41 @@
         cursor: not-allowed;
     }
 
+    /* Mirrors Security's `.portal-btn:disabled` rule: the primary CTA keeps a
+       readable maroon fill when disabled. */
+    .admin-record-modal .modal-footer .admin-btn-primary:disabled,
+    .admin-record-modal .modal-footer .admin-btn-primary.disabled {
+        color: #fff;
+        background: linear-gradient(135deg, #a24a55 0%, #8a3a44 100%);
+        border-color: #a24a55;
+        box-shadow: none;
+    }
+
     .admin-record-modal .form-control,
     .admin-record-modal .form-select {
-        border-color: rgba(128, 0, 0, 0.2);
+        border-color: rgba(122, 15, 30, 0.2);
         border-radius: 0.72rem;
     }
 
     .admin-record-modal .form-control:focus,
     .admin-record-modal .form-select:focus {
-        border-color: rgba(128, 0, 0, 0.5);
-        box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.12);
+        border-color: rgba(122, 15, 30, 0.5);
+        box-shadow: 0 0 0 0.2rem rgba(122, 15, 30, 0.12);
+    }
+
+    /* Header/footer chrome — literally the Security values (its radius token
+       is 1rem and its border tone is rgba(122, 15, 30, ...)). */
+    .admin-record-modal .modal-header {
+        background: linear-gradient(120deg, #7a0f1e 0%, #4a0209 65%, #c9981f 180%) !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        color: #fff;
+        padding: 1.1rem 1.25rem;
+    }
+
+    .admin-record-modal .modal-footer {
+        background: #fffdf6;
+        border-top: 1px solid rgba(122, 15, 30, 0.12);
+        padding: 0.8rem 1rem;
     }
 </style>
 
@@ -484,7 +542,9 @@
 
     @foreach($categories as $category)
         <option value="{{ $category->violation_category_id }}">
-            {{ $category->category_name }} ({{ $category->violation_category_id }})
+            {{-- Human-readable label only. Security renders exactly this, so the
+                 admin dropdown must not append the raw category ID. --}}
+            {{ $category->category_name }}
         </option>
     @endforeach
 

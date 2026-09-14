@@ -348,12 +348,12 @@
                                                         </button>
                                                     </form>
                                                 @else
-                                                    <form action="{{ route('admin.sanctions.records.revert', $record) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        <button type="submit" class="admin-btn admin-btn-view admin-btn-sm">
-                                                            Reopen
-                                                        </button>
-                                                    </form>
+                                                    <button type="button"
+                                                            class="admin-btn admin-btn-view admin-btn-sm reopen-sanction-btn"
+                                                            data-record-id="{{ $record->record_id }}"
+                                                            data-student="{{ $record->student_number }}">
+                                                        Reopen
+                                                    </button>
                                                 @endif
                                             @elseif($record->has_pending_proof)
                                                 <form action="{{ route('admin.sanctions.records.complete', $record) }}" method="POST" class="d-inline">
@@ -376,12 +376,12 @@
                                             @elseif($isOpen)
                                                 <span class="text-muted small">Awaiting proof</span>
                                             @elseif(strcasecmp((string) $record->status, 'Completed') === 0)
-                                                <form action="{{ route('admin.sanctions.records.revert', $record) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    <button type="submit" class="admin-btn admin-btn-view admin-btn-sm">
-                                                        Reopen
-                                                    </button>
-                                                </form>
+                                                <button type="button"
+                                                        class="admin-btn admin-btn-view admin-btn-sm reopen-sanction-btn"
+                                                        data-record-id="{{ $record->record_id }}"
+                                                        data-student="{{ $record->student_number }}">
+                                                    Reopen
+                                                </button>
                                             @else
                                                 <span class="text-muted small">No action needed</span>
                                             @endif
@@ -491,6 +491,40 @@
     </div>
 </div>
 
+{{-- Reopen completed sanction modal.
+     A reason is REQUIRED and is re-validated server-side. --}}
+<div class="modal fade admin-modal" id="reopenSanctionModal" tabindex="-1" aria-labelledby="reopenSanctionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content admin-modal-content">
+            <div class="modal-header admin-modal-header">
+                <h5 class="modal-title admin-modal-title" id="reopenSanctionModalLabel">Reopen Sanction</h5>
+                <button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="reopenSanctionForm" method="POST">
+                @csrf
+                <div class="modal-body admin-modal-body">
+                    <p class="text-muted">
+                        The sanction will be set back to <strong>In Progress</strong> and the student will be notified of the reason. They may submit a new proof of completion.
+                    </p>
+                    <div class="mb-2"><strong>Student Number:</strong> <span id="reopenModalStudent">-</span></div>
+                    <label for="reopenReason" class="form-label fw-semibold mt-2">Reason for reopening <span class="text-danger">*</span></label>
+                    <textarea name="reason" id="reopenReason" class="form-control" rows="3" placeholder="Required — explain why this sanction is being reopened..." maxlength="1000" required></textarea>
+                    <div class="invalid-feedback d-block" id="reopenReasonError"></div>
+                    @error('reason')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="modal-footer admin-modal-footer">
+                    <button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="admin-btn admin-btn-primary">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reopen Sanction
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {{-- Reject proof of completion modal --}}
 <div class="modal fade admin-modal" id="rejectProofModal" tabindex="-1" aria-labelledby="rejectProofModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -563,6 +597,7 @@
             'approveUrlTemplate' => route('admin.sanctions.requests.approve', ['sanctionRequest' => '__REQUEST_ID__']),
             'declineUrlTemplate' => route('admin.sanctions.requests.decline', ['sanctionRequest' => '__REQUEST_ID__']),
             'rejectProofUrlTemplate' => route('admin.sanctions.records.reject-proof', ['studentSanctionRecord' => '__RECORD_ID__']),
+            'revertUrlTemplate' => route('admin.sanctions.records.revert', ['studentSanctionRecord' => '__RECORD_ID__']),
             'serviceAssignmentUrlTemplate' => route('admin.sanctions.records.update-service-assignment', ['studentSanctionRecord' => '__RECORD_ID__']),
         ],
     ];
@@ -658,6 +693,42 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('rejectModalStudent').textContent = button.dataset.student || '-';
                 document.getElementById('rejectReason').value = '';
             });
+        });
+    }
+
+    // Reopen completed sanction modal wiring. The reason is required, so the
+    // modal is opened from every Reopen trigger rather than submitting directly.
+    const reopenSanctionModalEl = document.getElementById('reopenSanctionModal');
+    const reopenSanctionForm = document.getElementById('reopenSanctionForm');
+    if (reopenSanctionModalEl && reopenSanctionForm && pageData.routes.revertUrlTemplate) {
+        document.querySelectorAll('.reopen-sanction-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const recordId = button.dataset.recordId;
+                reopenSanctionForm.action = pageData.routes.revertUrlTemplate.replace('__RECORD_ID__', recordId);
+                document.getElementById('reopenModalStudent').textContent = button.dataset.student || '-';
+
+                const reasonInput = document.getElementById('reopenReason');
+                reasonInput.value = '';
+                const errorEl = document.getElementById('reopenReasonError');
+                if (errorEl) { errorEl.textContent = ''; }
+
+                bootstrap.Modal.getOrCreateInstance(reopenSanctionModalEl).show();
+            });
+        });
+
+        // Client-side hint only — the server re-validates the same rule.
+        reopenSanctionForm.addEventListener('submit', function (event) {
+            const reasonInput = document.getElementById('reopenReason');
+            const errorEl = document.getElementById('reopenReasonError');
+            const value = (reasonInput.value || '').trim();
+
+            if (value === '') {
+                event.preventDefault();
+                if (errorEl) {
+                    errorEl.textContent = 'Please provide a reason for reopening this sanction.';
+                }
+                reasonInput.focus();
+            }
         });
     }
 

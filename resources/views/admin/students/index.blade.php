@@ -6,12 +6,11 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="page-header-modern mb-3">
-        <div>
-            <h3 class="mb-1">User Management</h3>
-            <p class="mb-0">Manage student, admin, and security accounts in one place.</p>
-        </div>
-    </div>
+    {{-- Standardized header — matches the Security module header (hero gradient
+         + PHT clock). --}}
+    <x-admin.page-header
+        title="User Management"
+        description="Manage student, admin, and security accounts in one place." />
 
     <div class="card shadow-sm user-management-shell">
         <div class="card-header bg-white">
@@ -483,12 +482,23 @@
             @csrf
             <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createStudentModalLabel">Create Student Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
             <div class="modal-body admin-modal-body"><div class="row g-3">
-                <div class="col-md-6"><label class="form-label">Student Number</label><input name="student_number" class="form-control" required></div>
-                <div class="col-md-6"><label class="form-label">Gender</label><select name="gender_id" class="form-select" required>@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
-                <div class="col-md-6"><label class="form-label">Program</label><select name="program_id" class="form-select" required onchange="toggleLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
-                <div class="col-md-3"><label class="form-label">Year</label><select name="year_id" class="form-select" required>@foreach($years as $year)<option value="{{ $year->year_id }}">{{ $year->year }}</option>@endforeach</select></div>
-                <div class="col-md-3"><label class="form-label">Section</label><select name="section_id" class="form-select" required>@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
-                <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" class="form-select" required>@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
+                <div class="col-md-6"><label class="form-label">Student Number <span class="required-asterisk">*</span></label><input name="student_number" class="form-control" required value="{{ old('student_number') }}"></div>
+                <div class="col-md-6"><label class="form-label">Gender <span class="required-asterisk">*</span></label><select name="gender_id" class="form-select" required>@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
+
+                {{-- Identity fields.
+                     The administrator enters the name so a student record is
+                     complete even before the student links their PUP IDP account.
+                     Only EMAIL is exclusively IDP-provided, so it is not an input
+                     here at all. --}}
+                <div class="col-md-6"><label class="form-label">First Name <span class="required-asterisk">*</span></label><input name="first_name" class="form-control" required value="{{ old('first_name') }}"></div>
+                <div class="col-md-6"><label class="form-label">Middle Name</label><input name="middle_name" class="form-control" value="{{ old('middle_name') }}"></div>
+                <div class="col-md-6"><label class="form-label">Last Name <span class="required-asterisk">*</span></label><input name="last_name" class="form-control" required value="{{ old('last_name') }}"></div>
+                <div class="col-md-6"><label class="form-label">Name Suffix</label><input name="name_suffix" class="form-control" placeholder="e.g. Jr., III" value="{{ old('name_suffix') }}"></div>
+
+                <div class="col-md-6"><label class="form-label">Program <span class="required-asterisk">*</span></label><select name="program_id" class="form-select" required onchange="toggleLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
+                <div class="col-md-3"><label class="form-label">Year <span class="required-asterisk">*</span></label><select name="year_id" class="form-select" required>@foreach($years as $year)<option value="{{ $year->year_id }}">{{ $year->year }}</option>@endforeach</select></div>
+                <div class="col-md-3"><label class="form-label">Section <span class="required-asterisk">*</span></label><select name="section_id" class="form-select" required>@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
+                <div class="col-md-6"><label class="form-label">Status <span class="required-asterisk">*</span></label><select name="status_id" class="form-select" required>@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
                 <div class="col-12 d-none" id="createLadderizedWrap">
                     <label class="form-label d-block">Ladderized</label>
                     <div class="form-check form-check-inline">
@@ -503,7 +513,7 @@
                 <div class="col-12">
                     <div class="alert alert-info small mb-0 py-2">
                         <i class="bi bi-info-circle me-1"></i>
-                        Name and email are managed by the PUP IDP and are added when the student connects their PUP IDP account. Passwords are also managed by the PUP Identity Provider (IDP).
+                        The student's <strong>email</strong> is provided by the PUP IDP and is stored when the student links their PUP IDP account. Authentication and passwords are also managed by the PUP Identity Provider (IDP) — no local password is required. The name and enrollment details above are stored on the student's PUPTracker record.
                     </div>
                 </div>
             </div></div>
@@ -839,7 +849,7 @@ const importTemplateBaseUrl = "{{ route('admin.users.import.template') }}";
 const importAccountsModal = document.getElementById('importAccountsModal');
 const importGuides = {
     student_create_activate: {
-        columns: ['student_number', 'first_name', 'middle_name', 'last_name', 'name_suffix', 'email', 'program', 'year', 'section', 'gender', 'ladderized'],
+        columns: ['student_number', 'first_name', 'middle_name', 'last_name', 'name_suffix', 'program', 'year', 'section', 'gender', 'ladderized'],
         help: 'Program, year, section, and gender can use names (e.g., BSIT, 1, 1A, Male). Ladderized accepts Yes/No or 1/0.',
     },
     student_deactivate_students: {

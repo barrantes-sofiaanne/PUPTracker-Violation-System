@@ -646,14 +646,12 @@ public function requestSanction(Request $request)
         }
 
         if ($studentSanctionRecord->proof_path === null || $studentSanctionRecord->proof_path === '') {
-            abort(404);
-        }
-
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = \Illuminate\Support\Facades\Storage::disk((string) config('filesystems.evidence_disk', 'local'));
-
-        if (! $disk->exists($studentSanctionRecord->proof_path)) {
-            abort(404);
+            return \App\Services\PrivateFileResponder::stream(
+                'proof',
+                null,
+                $studentSanctionRecord->proof_original_name,
+                ['record_id' => $studentSanctionRecord->record_id]
+            );
         }
 
         // Audit the access (owning student viewing their own proof of completion).
@@ -672,9 +670,11 @@ public function requestSanction(Request $request)
             // Logging must never break the proof view.
         }
 
-        return $disk->response(
+        return \App\Services\PrivateFileResponder::stream(
+            'proof',
             $studentSanctionRecord->proof_path,
-            $studentSanctionRecord->proof_original_name ?: basename($studentSanctionRecord->proof_path)
+            $studentSanctionRecord->proof_original_name,
+            ['record_id' => $studentSanctionRecord->record_id]
         );
     }
 
@@ -705,11 +705,13 @@ public function requestSanction(Request $request)
             abort(403);
         }
 
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = \Illuminate\Support\Facades\Storage::disk((string) config('filesystems.evidence_disk', 'local'));
-
-        if (! $evidence->disk_path || ! $disk->exists($evidence->disk_path)) {
-            abort(404);
+        if (! $evidence->disk_path) {
+            return \App\Services\PrivateFileResponder::stream(
+                'evidence',
+                null,
+                $evidence->original_name,
+                ['evidence_id' => $evidence->evidence_id ?? null]
+            );
         }
 
         // Audit the access (owning student viewing their confirmed evidence).
@@ -721,9 +723,11 @@ public function requestSanction(Request $request)
             $request,
         );
 
-        return $disk->response(
+        return \App\Services\PrivateFileResponder::stream(
+            'evidence',
             $evidence->disk_path,
-            $evidence->original_name ?: basename($evidence->disk_path)
+            $evidence->original_name,
+            ['evidence_id' => $evidence->evidence_id ?? null]
         );
     }
 }

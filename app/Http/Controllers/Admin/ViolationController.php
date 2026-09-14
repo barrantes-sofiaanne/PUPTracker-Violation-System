@@ -477,8 +477,37 @@ public function show(Request $request, string $student_number)
         ->filter(fn ($r) => strcasecmp((string) $r->status, 'Completed') === 0)
         ->count();
 
+    // Group by the RESOLVED violation type, not the raw column.
+    //
+    // `violation_tbl.violation_type` holds the type ID for records created by
+    // the app, but legacy rows can hold the type NAME. Grouping on the raw column
+    // therefore split one violation type into two rows (one keyed by "10", one by
+    // "No ID") and the table printed the bare number. Keying on the relationship's
+    // ID keeps one row per real type and lets every row print its human-readable
+    // name.
+    //
+    // A legacy name-valued row has no relationship match, so its raw value is
+    // resolved back to a type ID through the same violation_type_tbl data.
+    $typeIdByName = ViolationType::query()
+        ->pluck('violation_type_id', 'violation_type')
+        ->mapWithKeys(fn ($id, $name) => [mb_strtolower(trim((string) $name)) => $id])
+        ->all();
+
     $summary = $allViolations
-        ->groupBy('violation_type')
+        ->groupBy(function (Violation $violation) use ($typeIdByName) {
+            $resolvedId = optional($violation->violationType)->violation_type_id;
+
+            if ($resolvedId !== null) {
+                return 'type:' . $resolvedId;
+            }
+
+            $raw = mb_strtolower(trim((string) $violation->violation_type));
+
+            // Legacy row: map the stored NAME back to its type ID.
+            return isset($typeIdByName[$raw])
+                ? 'type:' . $typeIdByName[$raw]
+                : 'raw:' . $raw;
+        })
         ->map(function ($records) {
             $latest = $records->first();
             $offenseLevel = $this->formatOffenseLevel($records->count());
@@ -508,7 +537,10 @@ public function show(Request $request, string $student_number)
 
             return [
                 'category' => optional(optional($latest->violationType)->violationCategory)->category_name,
-                'violation_type' => $latest->violation_type,
+                // Human-readable type name. The `violation_type` column stores the
+                // TYPE ID, so printing it directly showed numbers like "10"/"24".
+                // The relationship is the source of truth; Security does the same.
+                'violation_type' => optional($latest->violationType)->violation_type ?? $latest->violation_type,
                 'offense_level' => $offenseLevel,
                 'status' => $sanctionRequest?->status ?? 'No Request',
                 'violation_status' => $violationStatus,
@@ -1132,11 +1164,16 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
 
         $adminId = (int) Auth::guard('admin')->id();
 
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = Storage::disk((string) config('filesystems.evidence_disk', 'local'));
-
-        if (! $evidence->disk_path || ! $disk->exists($evidence->disk_path)) {
-            abort(404);
+        // A present violation but an absent/older-format storage key is handled
+        // by the shared responder, which returns a controlled error rather than
+        // a raw 404 page. Storage stays private — the file is streamed.
+        if (! $evidence->disk_path) {
+            return \App\Services\PrivateFileResponder::stream(
+                'evidence',
+                null,
+                $evidence->original_name,
+                ['evidence_id' => $evidence->evidence_id ?? null]
+            );
         }
 
         // Audit the access + record an evidence security event.
@@ -1148,10 +1185,11 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
             $request,
         );
 
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        return $disk->response(
+        return \App\Services\PrivateFileResponder::stream(
+            'evidence',
             $evidence->disk_path,
-            $evidence->original_name ?: basename($evidence->disk_path)
+            $evidence->original_name,
+            ['evidence_id' => $evidence->evidence_id ?? null]
         );
     }
 

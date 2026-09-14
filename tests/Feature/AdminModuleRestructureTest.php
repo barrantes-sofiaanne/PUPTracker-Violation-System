@@ -800,43 +800,58 @@ class AdminModuleRestructureTest extends TestCase
     }
 
     /**
-     * REGRESSION GUARD — the AI Graduation Review sidebar entry.
+     * The duplicate "AI Graduation Review" sidebar entry is REMOVED.
      *
-     * Commit 235d56c ("Removed deprecated AI Graduation Review routes and related
-     * functionality") deleted both the routes and this sidebar entry as part of
-     * retiring the feature. The module is live again, so the entry must be back —
-     * otherwise the feature exists but is unreachable except by typing its URL.
+     * The Graduation AI feature is reached through Reports → Graduation AI
+     * Report, so the separate "AI Assistance" entry was duplicate navigation.
+     * The feature itself is untouched — only the redundant nav entry is gone.
      */
-    public function test_sidebar_restores_the_ai_graduation_review_entry(): void
+    public function test_sidebar_no_longer_duplicates_the_ai_graduation_entry(): void
     {
         $sidebar = file_get_contents(resource_path('views/admin/partials/sidebar.blade.php'));
 
-        $this->assertStringContainsString(
+        $this->assertStringNotContainsString(
             "route('admin.graduation-review.index')",
             $sidebar,
-            'The AI Graduation Review sidebar entry must be present.'
+            'The duplicate AI Graduation Review sidebar entry must be removed.'
         );
-        $this->assertStringContainsString('AI Graduation Review', $sidebar);
-        $this->assertStringContainsString('AI Assistance', $sidebar);
+        $this->assertStringNotContainsString('AI Graduation Review', $sidebar);
+        $this->assertStringNotContainsString('AI Assistance', $sidebar);
 
-        // It must highlight while anywhere in the module (index + per-student).
-        $this->assertStringContainsString("request()->routeIs('admin.graduation-review*')", $sidebar);
+        // Reports (which hosts the Graduation AI Report tab) stays.
+        $this->assertStringContainsString("route('admin.reports')", $sidebar);
     }
 
     /**
-     * The entry is rendered for an admin, and links straight to the module.
+     * The Graduation AI Report remains reachable via Reports, and its route
+     * still works — removing the nav entry must not remove the feature.
      */
-    public function test_ai_graduation_review_entry_is_rendered_and_links_to_the_module(): void
+    public function test_graduation_ai_feature_remains_reachable_after_nav_removal(): void
     {
         $admin = $this->createAdmin();
 
+        // The Reports page still offers the Graduation AI Report tab...
         $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports', ['tab' => 'graduation-ai']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Graduation AI Report', $html);
+        $this->assertStringContainsString('id="graduation-ai"', $html);
+        $this->assertStringContainsString('id="programReportForm"', $html);
+
+        // ...and the sidebar must not advertise it separately any more.
+        $dashboard = $this->actingAs($admin, 'admin')
             ->get(route('admin.dashboard'))
             ->assertOk()
             ->getContent();
 
-        $this->assertStringContainsString('AI Graduation Review', $html);
-        $this->assertStringContainsString(route('admin.graduation-review.index'), $html);
+        $this->assertStringNotContainsString('AI Graduation Review', $dashboard);
+
+        // The underlying feature/routes are untouched.
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.graduation-review.index'))
+            ->assertOk();
     }
 
     public function test_superseded_standalone_views_are_gone_and_the_tab_hosts_the_process(): void
