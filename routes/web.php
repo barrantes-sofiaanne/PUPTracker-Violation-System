@@ -667,6 +667,46 @@ Route::middleware('auth:admin')
         Route::get('/program-report/history/all', [App\Http\Controllers\Admin\ProgramReportController::class, 'history'])
             ->name('admin.program-report.history');
 
+        /*
+        |--------------------------------------------------------------------------
+        | Graduation AI Review
+        |--------------------------------------------------------------------------
+        |
+        | AI-assisted disciplinary screening of the graduating cohort. These
+        | routes existed as unreferenced controller/view code with no registered
+        | routes, which is why `GraduationReviewTest` and part of
+        | `GraduationReviewEnhancementTest` were failing with
+        | "Route [admin.graduation-review.index] not defined".
+        |
+        | Ordering matters: the literal paths must be declared BEFORE the
+        | `{student_number}` catch-all, otherwise `/generate-batch` would be
+        | swallowed as a student number.
+        |
+        | Authorization is unchanged — the whole Admin module group is already
+        | behind `auth:admin`, and the existing `super.admin` middleware guard is
+        | untouched.
+        */
+        Route::get('/graduation-review', [\App\Http\Controllers\Admin\GraduationReviewController::class, 'index'])
+            ->name('admin.graduation-review.index');
+
+        Route::post('/graduation-review/generate-batch', [\App\Http\Controllers\Admin\GraduationReviewController::class, 'generateBatch'])
+            ->name('admin.graduation-review.generate-batch');
+
+        Route::post('/graduation-review/retry-failed', [\App\Http\Controllers\Admin\GraduationReviewController::class, 'retryFailed'])
+            ->name('admin.graduation-review.retry-failed');
+
+        Route::get('/graduation-review/batch-progress', [\App\Http\Controllers\Admin\GraduationReviewController::class, 'batchProgress'])
+            ->name('admin.graduation-review.batch-progress');
+
+        Route::post('/graduation-review/{student_number}/generate', [\App\Http\Controllers\Admin\GraduationReviewController::class, 'generate'])
+            ->name('admin.graduation-review.generate');
+
+        Route::post('/graduation-review/{student_number}/decision', [\App\Http\Controllers\Admin\GraduationReviewController::class, 'storeDecision'])
+            ->name('admin.graduation-review.decision');
+
+        Route::get('/graduation-review/{student_number}', [\App\Http\Controllers\Admin\GraduationReviewController::class, 'show'])
+            ->name('admin.graduation-review.show');
+
         Route::get('/audit-logs', [AuditLogController::class, 'index'])
             ->name('admin.audit-logs');
 

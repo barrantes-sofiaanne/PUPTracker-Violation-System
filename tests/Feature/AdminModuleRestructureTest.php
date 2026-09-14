@@ -18,6 +18,7 @@ use App\Services\ProgramReportService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 /**
@@ -272,32 +273,24 @@ class AdminModuleRestructureTest extends TestCase
     {
         $admin = $this->createAdmin();
 
-        // The standalone AI Program Report URL is now a redirect to the Reports
-        // tab; follow it so this still inspects the real form markup.
-        $this->actingAs($admin, 'admin')
-            ->get(route('admin.program-report.index'))
-            ->assertRedirect(route('admin.reports', ['tab' => 'ai-program']))
-            ->assertSessionHasNoErrors();
+        // The retired mode is gone from the report form. Load the form partial
+        // DIRECTLY rather than through a page, because the form's former host —
+        // the Reports "AI Program Report" tab — is now the Graduation AI Report.
+        // (The Report History tab still shows "Program Sanction Report" as a
+        // filter option on purpose, so legacy report_mode='regular' rows stay
+        // findable — that is why this is scoped to the form, not a whole page.)
+        $form = view('admin.reports.tabs.ai-program-report', $this->programReportFormData())
+            ->render();
 
-        $html = $this->actingAs($admin, 'admin')
-            ->followingRedirects()
-            ->get(route('admin.program-report.index'))
-            ->assertOk()
-            ->getContent();
-
-        // The retired option and its label are gone from the AI FORM. (The
-        // Report History tab still shows "Program Sanction Report" as a filter
-        // option on purpose, so legacy report_mode='regular' rows stay findable —
-        // that is why this is scoped to the form, not the whole page.)
-        $this->assertStringNotContainsString('Program Sanction Report', $this->aiProgramPane($html));
-        $this->assertStringNotContainsString('value="regular"', $this->aiProgramPane($html));
+        $this->assertStringNotContainsString('Program Sanction Report', $form);
+        $this->assertStringNotContainsString('value="regular"', $form);
 
         // The graduating workflow remains, with report_mode still posted so the
         // existing controller contract/validation is unchanged.
-        $this->assertStringContainsString('name="report_mode"', $this->aiProgramPane($html));
-        $this->assertStringContainsString('value="graduating"', $this->aiProgramPane($html));
-        $this->assertStringContainsString('Graduation Eligibility', $this->aiProgramPane($html));
-        $this->assertStringContainsString('Preview Students', $this->aiProgramPane($html));
+        $this->assertStringContainsString('name="report_mode"', $form);
+        $this->assertStringContainsString('value="graduating"', $form);
+        $this->assertStringContainsString('Graduation Eligibility', $form);
+        $this->assertStringContainsString('Preview Students', $form);
     }
 
     public function test_graduating_report_generation_still_works(): void
@@ -336,47 +329,77 @@ class AdminModuleRestructureTest extends TestCase
         $this->assertStringContainsString('Manage and generate administrative reports.', $html);
 
         $violationPos = strpos($html, 'id="violation-reports-tab"');
-        $aiPos = strpos($html, 'id="ai-program-tab"');
+        $aiPos = strpos($html, 'id="graduation-ai-tab"');
         $historyPos = strpos($html, 'id="history-tab"');
 
         $this->assertNotFalse($violationPos, 'Violation Reports tab must exist.');
-        $this->assertNotFalse($aiPos, 'AI Program Report tab must exist.');
+        $this->assertNotFalse($aiPos, 'Graduation AI Report tab must exist.');
         $this->assertNotFalse($historyPos, 'Report History tab must exist.');
+
+        // The retired "AI Program Report" tab label must be gone entirely.
+        $this->assertStringNotContainsString('id="ai-program-tab"', $html);
+        $this->assertStringNotContainsString('AI Program Report<', $html);
 
         $this->assertTrue(
             $violationPos < $aiPos && $aiPos < $historyPos,
-            'Tabs must be ordered: Violation Reports, AI Program Report, Report History.'
+            'Tabs must be ordered: Violation Reports, Graduation AI Report, Report History.'
         );
 
         // The default tab is the Violation Reports one.
         $this->assertSame(1, substr_count($html, 'tab-pane fade show active'));
     }
 
-    public function test_reports_ai_program_tab_renders_the_existing_form(): void
+    public function test_reports_graduation_ai_tab_renders_the_graduation_ai_report(): void
     {
         $admin = $this->createAdmin();
+        $this->createGraduatingStudent('2026-0601', 'Tab', 'Rendered');
 
         $html = $this->actingAs($admin, 'admin')
-            ->get(route('admin.reports', ['tab' => 'ai-program']))
+            ->get(route('admin.reports', ['tab' => 'graduation-ai']))
             ->assertOk()
             ->getContent();
 
-        // Existing form, fields, preview and removal wiring are all intact.
-        $this->assertStringContainsString('id="programReportForm"', $html);
-        $this->assertStringContainsString('name="program_id"', $html);
-        $this->assertStringContainsString('name="report_type"', $html);
-        $this->assertStringContainsString('id="previewGraduatingBtn"', $html);
-        $this->assertStringContainsString('id="graduatingPreviewBody"', $html);
-        $this->assertStringContainsString('id="excludedStudentsInputs"', $html);
-        $this->assertStringContainsString(route('admin.program-report.generate'), $html);
+        // The Graduation AI Report's own content is present.
+        $this->assertStringContainsString('id="aiReviewLoading"', $html);
+        $this->assertStringContainsString('Graduating Students — Disciplinary Screening', $html);
+        $this->assertStringContainsString('Students Reviewed', $html);
+        $this->assertStringContainsString('Outstanding Sanctions', $html);
 
-        // Program Sanction Report remains removed from the AI FORM (the history
-        // tab keeps it as a filter label, so scope the check to the AI pane).
-        $this->assertStringNotContainsString('Program Sanction Report', $this->aiProgramPane($html));
+        // Its filter form and per-student review links point at the graduation
+        // routes, which are now registered.
+        $this->assertStringContainsString(route('admin.graduation-review.index'), $html);
+        $this->assertStringContainsString(
+            route('admin.graduation-review.show', '2026-0601'),
+            $html
+        );
 
-        // Only the AI tab pane is active.
+        // The program-statistics FORM is no longer part of this tab.
+        $this->assertStringNotContainsString('id="programReportForm"', $html);
+
+        // Only the Graduation AI pane is active.
         $this->assertSame(1, substr_count($html, 'tab-pane fade show active'));
-        $this->assertStringContainsString('id="ai-program"', $html);
+        $this->assertStringContainsString('id="graduation-ai"', $html);
+    }
+
+    /**
+     * The program-statistics form itself is retained (only its host tab was
+     * replaced), so rendering it directly must still produce the full markup.
+     */
+    public function test_retained_program_report_form_still_renders_completely(): void
+    {
+        $form = view('admin.reports.tabs.ai-program-report', $this->programReportFormData())
+            ->render();
+
+        $this->assertStringContainsString('id="programReportForm"', $form);
+        $this->assertStringContainsString('name="program_id"', $form);
+        $this->assertStringContainsString('name="report_type"', $form);
+        $this->assertStringContainsString('id="previewGraduatingBtn"', $form);
+        $this->assertStringContainsString('id="graduatingPreviewBody"', $form);
+        $this->assertStringContainsString('id="excludedStudentsInputs"', $form);
+        $this->assertStringContainsString(route('admin.program-report.generate'), $form);
+
+        // Program Sanction Report remains removed from the form.
+        $this->assertStringNotContainsString('Program Sanction Report', $form);
     }
 
     public function test_reports_history_tab_renders_the_existing_history_table(): void
@@ -411,17 +434,66 @@ class AdminModuleRestructureTest extends TestCase
         $this->assertSame(1, substr_count($html, 'tab-pane fade show active'));
     }
 
+    /**
+     * The no-JavaScript filter submit re-renders the whole page, so the tabs the
+     * user is NOT on must still be fully populated (not left as placeholders).
+     */
+    public function test_non_ajax_filter_submit_still_renders_all_three_tabs(): void
+    {
+        $admin = $this->createAdmin();
+        $this->createStudent('2026-0701', 'Filtered', 'Student');
+        $this->createViolation('2026-0701', now()->toDateString(), 1, Violation::STATUS_CONFIRMED);
+        $this->createGraduatingStudent('2026-0702', 'Filter', 'Graduate');
+
+        $html = $this->actingAs($admin, 'admin')
+            ->post(route('admin.reports.filter'), [])
+            ->assertOk()
+            ->getContent();
+
+        // The filtered Violation Reports pane...
+        $this->assertStringContainsString('id="reportFilterForm"', $html);
+        // ...and the other two tabs are fully rendered, not placeholders.
+        $this->assertStringContainsString('id="aiReviewLoading"', $html);
+        $this->assertStringContainsString(route('admin.program-report.history'), $html);
+        // `bi-hourglass-split` is the deferred-content placeholder's icon and
+        // appears nowhere else, so its absence proves no tab fell back to it.
+        $this->assertStringNotContainsString('bi-hourglass-split', $html);
+        $this->assertSame(1, substr_count($html, 'tab-pane fade show active'));
+    }
+
     // ==================================================================
     // 6. Backward compatibility for the moved report pages
     // ==================================================================
 
-    public function test_old_ai_program_report_url_redirects_to_its_tab(): void
+    public function test_old_ai_program_report_url_redirects_to_the_graduation_ai_tab(): void
     {
         $admin = $this->createAdmin();
 
+        // The process formerly hosted at the AI Program Report URL is now the
+        // Graduation AI Report, so the legacy URL forwards there rather than
+        // dead-ending on a superseded view.
         $this->actingAs($admin, 'admin')
             ->get(route('admin.program-report.index'))
-            ->assertRedirect(route('admin.reports', ['tab' => 'ai-program']));
+            ->assertRedirect(route('admin.reports', ['tab' => 'graduation-ai']));
+    }
+
+    /**
+     * The old `?tab=ai-program` value is kept as an alias so existing bookmarks
+     * do not silently fall back to the default tab.
+     */
+    public function test_legacy_ai_program_tab_value_resolves_to_the_graduation_ai_tab(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports', ['tab' => 'ai-program']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('id="aiReviewLoading"', $html);
+        $this->assertStringContainsString('tab-pane fade show active', $html);
+        $this->assertStringContainsString('id="graduation-ai"', $html);
+        $this->assertSame(1, substr_count($html, 'tab-pane fade show active'));
     }
 
     public function test_old_report_history_url_redirects_to_its_tab(): void
@@ -479,8 +551,14 @@ class AdminModuleRestructureTest extends TestCase
 
         $this->assertFileExists(resource_path('views/admin/reports/show.blade.php'));
         $this->assertFileExists(resource_path('views/admin/reports/tabs/violation-reports.blade.php'));
-        $this->assertFileExists(resource_path('views/admin/reports/tabs/ai-program-report.blade.php'));
         $this->assertFileExists(resource_path('views/admin/reports/tabs/report-history.blade.php'));
+
+        // The Graduation AI Report tab replaced the AI Program Report tab.
+        $this->assertFileExists(resource_path('views/admin/reports/tabs/graduation-ai-report.blade.php'));
+
+        // The program-statistics form partial is RETAINED (only its host tab was
+        // replaced), so the feature is not deleted.
+        $this->assertFileExists(resource_path('views/admin/reports/tabs/ai-program-report.blade.php'));
     }
 
     // ==================================================================
@@ -506,17 +584,19 @@ class AdminModuleRestructureTest extends TestCase
 
         // All three panes exist...
         $this->assertStringContainsString('id="violation-reports"', $html);
-        $this->assertStringContainsString('id="ai-program"', $html);
+        $this->assertStringContainsString('id="graduation-ai"', $html);
         $this->assertStringContainsString('id="history"', $html);
 
         // ...and each carries REAL content, not an empty div.
         // Violation Reports: the filter form.
         $this->assertStringContainsString('id="reportFilterForm"', $html);
-        // AI Program Report: the generation form and graduation preview.
-        $this->assertStringContainsString('id="programReportForm"', $html);
-        $this->assertStringContainsString('id="graduatingPreviewBody"', $html);
+        // Graduation AI Report: the AI loading overlay and the screening table.
+        $this->assertStringContainsString('id="aiReviewLoading"', $html);
+        $this->assertStringContainsString('Graduating Students — Disciplinary Screening', $html);
         // Report History: its filter form.
         $this->assertStringContainsString(route('admin.program-report.history'), $html);
+        // The superseded AI Program Report tab is gone.
+        $this->assertStringNotContainsString('id="ai-program"', $html);
 
         // Exactly one pane is active at a time.
         $this->assertSame(1, substr_count($html, 'tab-pane fade show active'));
@@ -535,16 +615,19 @@ class AdminModuleRestructureTest extends TestCase
     {
         $admin = $this->createAdmin();
 
-        foreach (['violation-reports', 'ai-program', 'history'] as $tab) {
+        // The `ai-program` value is still honoured as a legacy alias, so it is
+        // included here to prove the alias renders the same complete page.
+        foreach (['violation-reports', 'graduation-ai', 'ai-program', 'history'] as $tab) {
             $html = $this->actingAs($admin, 'admin')
                 ->get(route('admin.reports', ['tab' => $tab]))
                 ->assertOk()
                 ->getContent();
 
-            // The AI form must be complete (its ladderized config comes from the
-            // AI controller data, not from the history list).
-            $this->assertStringContainsString('id="programReportForm"', $html, "AI form missing on tab={$tab}");
-            $this->assertStringContainsString('Graduation Eligibility', $html, "AI config missing on tab={$tab}");
+            // The Graduation AI Report must be complete (its program list comes
+            // from the graduation dataset, not from the history list).
+            $this->assertStringContainsString('id="aiReviewLoading"', $html, "Graduation AI content missing on tab={$tab}");
+            $this->assertStringContainsString('Graduating Students — Disciplinary Screening', $html, "Graduation table missing on tab={$tab}");
+            $this->assertStringContainsString(route('admin.graduation-review.index'), $html, "Graduation filter action missing on tab={$tab}");
 
             // The history table must be complete.
             $this->assertStringContainsString('Report Mode', $html, "History filters missing on tab={$tab}");
@@ -647,21 +730,23 @@ class AdminModuleRestructureTest extends TestCase
     // ==================================================================
 
     /**
-     * Extract just the AI Program Report tab pane from the rendered page.
+     * Dataset for rendering the retained program-statistics form partial.
      *
-     * All three panes are rendered together, so page-wide string assertions would
-     * also match the other tabs' content (e.g. the Report History filter label).
+     * The partial is no longer hosted by any Reports tab (its host tab became the
+     * Graduation AI Report), so tests render it directly with this dataset — the
+     * same shape `ProgramReportController::formData()` supplies.
+     *
+     * @return array{programs: \Illuminate\Database\Eloquent\Collection, ladderizedPrograms: array<int, string>}
      */
-    private function aiProgramPane(string $html): string
+    private function programReportFormData(): array
     {
-        $start = strpos($html, 'id="ai-program"');
-        if ($start === false) {
-            return '';
-        }
-
-        $end = strpos($html, 'id="history"', $start);
-
-        return $end === false ? substr($html, $start) : substr($html, $start, $end - $start);
+        return [
+            'programs' => Program::orderBy('program_name')->get(),
+            'ladderizedPrograms' => config('graduation_review.graduating.ladderized_programs', ['BSOA', 'BSIT']),
+            // The partial reads `$errors`, which Laravel normally shares with
+            // every view during a request. Rendering it directly needs the bag.
+            'errors' => new ViewErrorBag(),
+        ];
     }
 
     /**

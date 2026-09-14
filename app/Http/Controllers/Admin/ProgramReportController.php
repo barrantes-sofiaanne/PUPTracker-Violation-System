@@ -29,24 +29,26 @@ class ProgramReportController extends Controller
      * Backward-compatible entry point for the former standalone
      * "AI Program Report" page.
      *
-     * That page is now the "AI Program Report" tab of Admin → Reports. This
-     * redirects (preserving any query string) so bookmarks, sidebar links and
-     * the Report History "New Report" button keep working. No separate report
-     * implementation is kept alive behind this URL.
+     * That report process is now the "Graduation AI Report" tab of Admin →
+     * Reports, so this redirects there (preserving any query string) rather than
+     * dead-ending on a superseded view. The `ai-program` query value is still
+     * accepted by ReportController as a legacy alias, but we emit the new name.
      */
     public function index(Request $request): \Illuminate\Http\RedirectResponse
     {
         return redirect()->route('admin.reports', array_merge(
             $request->query(),
-            ['tab' => 'ai-program']
+            ['tab' => 'graduation-ai']
         ));
     }
 
     /**
-     * Data for the "AI Program Report" tab.
+     * Data for the program-report form.
      *
-     * Was the body of index(); now called by ReportController so the tabbed
-     * Reports page can compose the same dataset. Unchanged otherwise.
+     * The program-statistics feature is kept intact: its generation, preview,
+     * PDF and history endpoints all still work and the Report History tab still
+     * lists the records. Only its entry-point tab was replaced by the Graduation
+     * AI Report, so this dataset is no longer composed by ReportController.
      */
     public function formData(): array
     {

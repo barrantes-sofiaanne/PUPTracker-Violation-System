@@ -53,38 +53,40 @@ class ReportController extends Controller
                 'categories' => ViolationCategory::orderBy('category_name')->get(),
                 'violationTypes' => ViolationType::orderBy('violation_type')->get(),
             ],
-            $this->programReportIndexData(),
-            $this->programReportHistoryData($request)
+            $this->programReportHistoryData($request),
+            $this->graduationReviewData($request)
         ));
+    }
+
+    /**
+     * Data for the "Graduation AI Report" tab.
+     *
+     * Delegates to GraduationReviewController so the tab and the standalone
+     * graduation-review page share ONE dataset-building path. The service is
+     * resolved from the container rather than re-implemented here.
+     */
+    protected function graduationReviewData(Request $request): array
+    {
+        return app(GraduationReviewController::class)->reviewData($request);
     }
 
     /**
      * The tabs this page understands. Kept in one place so a typo in ?tab= falls
      * back to the default rather than rendering an empty page.
      */
-    protected const REPORTS_TABS = ['violation-reports', 'ai-program', 'history'];
+    protected const REPORTS_TABS = ['violation-reports', 'graduation-ai', 'history'];
 
     protected function activeReportsTab(Request $request): string
     {
         $tab = (string) $request->input('tab', '');
 
-        return in_array($tab, self::REPORTS_TABS, true) ? $tab : 'violation-reports';
-    }
+        // `ai-program` was the previous name of the graduation tab; keep it as an
+        // alias so existing bookmarks/links do not fall back to the default.
+        if ($tab === 'ai-program') {
+            return 'graduation-ai';
+        }
 
-    /**
-     * Data for the "AI Program Report" tab.
-     *
-     * Body lifted verbatim from ProgramReportController::index() so the form
-     * behaviour is identical.
-     *
-     * @return array{programs: \Illuminate\Database\Eloquent\Collection, ladderizedPrograms: array<int, string>}
-     */
-    protected function programReportIndexData(): array
-    {
-        return [
-            'programs' => Program::orderBy('program_name')->get(),
-            'ladderizedPrograms' => config('graduation_review.graduating.ladderized_programs', ['BSOA', 'BSIT']),
-        ];
+        return in_array($tab, self::REPORTS_TABS, true) ? $tab : 'violation-reports';
     }
 
     /**
@@ -248,18 +250,23 @@ class ReportController extends Controller
 
         $statistics = $this->getStatistics($request);
 
-        // The Reports page is now tabbed. A non-AJAX filter submit re-renders the
-        // Violation Reports tab with the filtered dataset; ?tab= keeps the user
-        // on the tab they were using instead of bouncing them to the default.
-        return view('admin.reports.show', [
-            'activeReportsTab' => 'violation-reports',
-            'reports' => $reports,
-            'statistics' => $statistics,
-            'courses' => Course::orderBy('program_name')->get(),
-            'years' => Year::orderBy('year')->get(),
-            'categories' => ViolationCategory::orderBy('category_name')->get(),
-            'violationTypes' => ViolationType::orderBy('violation_type')->get(),
-        ]);
+        // Non-AJAX fallback (the filter form submitted without JS): render the
+        // full page. All three panes are always rendered, so the other two tabs'
+        // datasets must be supplied here too — otherwise they fall back to the
+        // "load this tab" placeholder and the page looks half-broken.
+        return view('admin.reports.show', array_merge(
+            [
+                'activeReportsTab' => 'violation-reports',
+                'reports' => $reports,
+                'statistics' => $statistics,
+                'courses' => Course::orderBy('program_name')->get(),
+                'years' => Year::orderBy('year')->get(),
+                'categories' => ViolationCategory::orderBy('category_name')->get(),
+                'violationTypes' => ViolationType::orderBy('violation_type')->get(),
+            ],
+            $this->programReportHistoryData($request),
+            $this->graduationReviewData($request)
+        ));
     }
 
     public function assistant(Request $request)

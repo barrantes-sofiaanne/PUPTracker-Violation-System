@@ -259,11 +259,13 @@ window.ViolationConfirmationRoutes = {
     deny: "{{ route('admin.violations.deny', ['violation' => '__ID__']) }}",
 };
 
+document.addEventListener('DOMContentLoaded', function () {
+
     // The SERVER decides the active tab when the URL names one (direct link,
-    // bookmark, notification deep link, or a filter submit). localStorage is
-    // only a fallback for an in-page reload with no explicit tab, so it can
-    // never override an explicit ?tab=... request.
-    const serverTab = @json($activeTab);
+    // bookmark, notification deep link, or a filter submit): it renders the
+    // `active` class into the matching tab. localStorage is therefore only a
+    // fallback for an in-page reload with no explicit tab, so it can never
+    // override an explicit ?tab=... request.
     const urlHasTab = new URLSearchParams(window.location.search).has('tab');
 
     if (!urlHasTab) {

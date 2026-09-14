@@ -30,6 +30,20 @@ class GraduationReviewController extends Controller
      */
     public function index(Request $request): View
     {
+        return view('admin.graduation-review.index', $this->reviewData($request));
+    }
+
+    /**
+     * Data for the graduation AI review view.
+     *
+     * Extracted from index() unchanged so the SAME dataset feeds both the
+     * standalone page and the "Graduation AI Report" tab of Admin → Reports.
+     * Having one method means the two entry points cannot drift apart.
+     *
+     * @return array{programs: \Illuminate\Database\Eloquent\Collection, years: \Illuminate\Database\Eloquent\Collection, programFilter: int, yearFilter: int, screened: \Illuminate\Support\Collection, report: array, students: \Illuminate\Support\Collection}
+     */
+    public function reviewData(Request $request): array
+    {
         $programs = Program::orderBy('program_name')->get();
         $years = Year::orderBy('year')->get();
 
@@ -58,7 +72,7 @@ class GraduationReviewController extends Controller
 
         $report = $this->buildReport($screened);
 
-        return view('admin.graduation-review.index', compact(
+        return compact(
             'programs',
             'years',
             'programFilter',
@@ -66,7 +80,7 @@ class GraduationReviewController extends Controller
             'screened',
             'report',
             'students',
-        ));
+        );
     }
 
     /**

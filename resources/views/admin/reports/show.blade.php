@@ -53,15 +53,15 @@
 
                 <li class="nav-item" role="presentation">
                     <a
-                        href="{{ route('admin.reports', array_merge(request()->except('tab'), ['tab' => 'ai-program'])) }}"
-                        class="nav-link {{ $activeReportsTab === 'ai-program' ? 'active' : '' }}"
-                        id="ai-program-tab"
+                        href="{{ route('admin.reports', array_merge(request()->except('tab'), ['tab' => 'graduation-ai'])) }}"
+                        class="nav-link {{ $activeReportsTab === 'graduation-ai' ? 'active' : '' }}"
+                        id="graduation-ai-tab"
                         data-bs-toggle="tab"
-                        data-bs-target="#ai-program"
+                        data-bs-target="#graduation-ai"
                         role="tab"
-                        aria-selected="{{ $activeReportsTab === 'ai-program' ? 'true' : 'false' }}">
-                        <i class="bi bi-stars me-1"></i>
-                        AI Program Report
+                        aria-selected="{{ $activeReportsTab === 'graduation-ai' ? 'true' : 'false' }}">
+                        <i class="bi bi-mortarboard-fill me-1"></i>
+                        Graduation AI Report
                     </a>
                 </li>
 
@@ -113,16 +113,16 @@
                 </div>
 
                 {{-- ===================================================== --}}
-                {{-- AI Program Report --}}
+                {{-- Graduation AI Report --}}
                 {{-- ===================================================== --}}
                 <div
-                    class="tab-pane fade {{ $activeReportsTab === 'ai-program' ? 'show active' : '' }}"
-                    id="ai-program"
+                    class="tab-pane fade {{ $activeReportsTab === 'graduation-ai' ? 'show active' : '' }}"
+                    id="graduation-ai"
                     role="tabpanel"
-                    aria-labelledby="ai-program-tab">
+                    aria-labelledby="graduation-ai-tab">
 
-                    @if(isset($ladderizedPrograms))
-                        @include('admin.reports.tabs.ai-program-report')
+                    @if(isset($screened))
+                        @include('admin.reports.tabs.graduation-ai-report')
                     @else
                         @include('admin.reports.tabs._placeholder')
                     @endif
@@ -206,6 +206,6 @@ window.ReportRoutes = {
 @endpush
 @endif
 
-@if($activeReportsTab === 'ai-program')
-@include('admin.reports.tabs._ai-program-report-scripts')
+@if($activeReportsTab === 'graduation-ai')
+@include('admin.reports.tabs._graduation-ai-report-scripts')
 @endif
