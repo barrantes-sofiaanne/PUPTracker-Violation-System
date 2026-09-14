@@ -863,6 +863,159 @@ class AdminModuleRestructureTest extends TestCase
     // ==================================================================
 
     /**
+     * GRADUATING PREVIEW ORDER.
+     *
+     * The preview must list, in this group order:
+     *   1. Bachelor (non-ladderized),
+     *   2. Ladderized,
+     *   3. students added by hand ("Add a Specific Student"),
+     * and be alphabetical by FIRST name (starting at A) within each group.
+     *
+     * Added students must actually appear in the preview, not just be posted.
+     */
+    public function test_graduating_preview_groups_and_orders_students(): void
+    {
+        $admin = $this->createAdmin();
+        $program = $this->graduatesProgram();
+
+        // Non-ladderized automatic (deliberately created out of A-Z order, and
+        // with last names that would sort differently under a last-name sort).
+        $this->createGraduatingStudent('2026-1001', 'Zoe', 'Aaron', $program->program_id);
+        $this->createGraduatingStudent('2026-1002', 'Alice', 'Zulu', $program->program_id);
+        $this->createGraduatingStudent('2026-1003', 'Mia', 'Mendez', $program->program_id);
+
+        // Ladderized automatic.
+        $this->createLadderizedGraduatingStudent('2026-1004', 'Bianca', 'Ladder', $program->program_id);
+        $this->createLadderizedGraduatingStudent('2026-1005', 'Aaron', 'Ladder', $program->program_id);
+
+        // Added by hand. This student is NOT in the automatic cohort: 2nd Year.
+        $added = $this->createStudent('2026-1099', 'Yvonne', 'Added', $this->yearId('2nd Year'), $program->program_id);
+        $this->assertNotNull($added);
+
+        $response = $this->actingAs($admin, 'admin')->postJson(
+            route('admin.program-report.preview-graduating'),
+            [
+                'program_id' => $program->program_id,
+                'additional_students' => ['2026-1099'],
+            ]
+        );
+
+        $response->assertOk();
+
+        $students = collect($response->json('students'));
+
+        // The added student made it into the preview at all.
+        $this->assertContains(
+            '2026-1099',
+            $students->pluck('student_number')->all(),
+            'A student added by hand must appear in the preview.'
+        );
+        $this->assertSame(6, $response->json('total'));
+
+        // Group order: non-ladderized, then ladderized, then added.
+        $expected = [
+            '2026-1002', // Alice   — non-ladderized
+            '2026-1003', // Mia     — non-ladderized
+            '2026-1001', // Zoe     — non-ladderized
+            '2026-1005', // Aaron   — ladderized
+            '2026-1004', // Bianca  — ladderized
+            '2026-1099', // Yvonne  — added by hand
+        ];
+        $this->assertSame($expected, $students->pluck('student_number')->all());
+
+        // Alphabetical by FIRST name within each group, starting at A.
+        $this->assertStringStartsWith('Zulu,', $students[0]['name']);   // Alice Zulu
+        $this->assertStringStartsWith('Mendez,', $students[1]['name']); // Mia Mendez
+        $this->assertStringStartsWith('Aaron,', $students[2]['name']);  // Zoe Aaron
+        $this->assertStringStartsWith('Ladder,', $students[3]['name']); // Aaron Ladder
+        $this->assertStringStartsWith('Ladder,', $students[4]['name']); // Bianca Ladder
+        $this->assertStringStartsWith('Added,', $students[5]['name']);  // Yvonne Added
+
+        // The payload flags the groups so the preview can label them.
+        $this->assertFalse((bool) $students[0]['is_ladderized']);
+        $this->assertFalse((bool) $students[0]['is_added']);
+        $this->assertTrue((bool) $students[3]['is_ladderized']);
+        $this->assertTrue((bool) $students[5]['is_added']);
+    }
+
+    /**
+     * Added students are kept even when a ladderized filter is active, and they
+     * still form their own final group.
+     */
+    public function test_added_students_survive_the_ladderized_filter_and_stay_last(): void
+    {
+        $admin = $this->createAdmin();
+
+        // The ladderized FILTER is gated on supportsLadderized(), which only
+        // applies to the configured ladderized programs (BSOA/BSIT), so the
+        // program must be one of those for this test to exercise the filter.
+        $program = Program::create([
+            'program_name' => 'BSOA',
+            'degree_type' => 'Bachelor',
+        ]);
+
+        $this->createGraduatingStudent('2026-1101', 'NonLad', 'Only', $program->program_id);
+        $this->createLadderizedGraduatingStudent('2026-1102', 'Lad', 'Only', $program->program_id);
+
+        // Added student is non-ladderized and outside the automatic cohort.
+        $this->createStudent('2026-1199', 'Zed', 'Added', $this->yearId('2nd Year'), $program->program_id);
+
+        $response = $this->actingAs($admin, 'admin')->postJson(
+            route('admin.program-report.preview-graduating'),
+            [
+                'program_id' => $program->program_id,
+                'ladderized' => 1,                       // ladderized only...
+                'additional_students' => ['2026-1199'],  // ...but the added student is kept
+            ]
+        );
+
+        $response->assertOk();
+
+        // The filter really was applied (otherwise the assertion below is vacuous).
+        $this->assertSame(1, $response->json('ladderized_filter'));
+
+        $numbers = collect($response->json('students'))->pluck('student_number')->all();
+
+        // Only the ladderized automatic student + the added one.
+        $this->assertSame(['2026-1102', '2026-1199'], $numbers);
+
+        // The added student is still last, flagged as added (not ladderized).
+        $last = collect($response->json('students'))->last();
+        $this->assertSame('2026-1199', $last['student_number']);
+        $this->assertTrue((bool) $last['is_added']);
+        $this->assertFalse((bool) $last['is_ladderized']);
+    }
+
+    /**
+     * The generated report must use the same grouped cohort as the preview.
+     */
+    public function test_generated_report_uses_the_grouped_preview_cohort(): void
+    {
+        $admin = $this->createAdmin();
+        $program = $this->graduatesProgram();
+
+        $this->createGraduatingStudent('2026-1201', 'Auto', 'One', $program->program_id);
+        $this->createStudent('2026-1299', 'Manual', 'One', $this->yearId('2nd Year'), $program->program_id);
+
+        $this->actingAs($admin, 'admin')->post(route('admin.program-report.generate'), [
+            'program_id' => $program->program_id,
+            'report_mode' => 'graduating',
+            'report_type' => 'full',
+            'additional_students' => ['2026-1299'],
+        ])->assertRedirect();
+
+        $report = ProgramReport::latest('report_id')->first();
+        $this->assertNotNull($report);
+
+        // The manually added student is part of the persisted cohort.
+        $this->assertContains('2026-1299', (array) $report->additional_students);
+        $this->assertSame(2, (int) $report->statistics_json['cohort_total']);
+
+        // No record was created or modified by the ordering change.
+        $this->assertSame(2, User::whereIn('student_number', ['2026-1201', '2026-1299'])->count());
+    }
+
+    /**
      * REGRESSION GUARD — the blank-tab bug.
      *
      * Bootstrap's tab plugin only toggles `display:none`; it never fetches
@@ -1089,6 +1242,21 @@ class AdminModuleRestructureTest extends TestCase
             yearId: $this->yearId('4th Year'),
             programId: $programId
         );
+    }
+
+    /**
+     * Like createGraduatingStudent(), but sets the ladderized flag that the
+     * preview groups on.
+     */
+    private function createLadderizedGraduatingStudent(string $number, string $first, string $last, int $programId): User
+    {
+        $user = $this->createGraduatingStudent($number, $first, $last, $programId);
+
+        DB::table('student_info_tbl')
+            ->where('user_id', $user->user_id)
+            ->update(['ladderized' => 1]);
+
+        return $user;
     }
 
     private function createAdmin(): Admin

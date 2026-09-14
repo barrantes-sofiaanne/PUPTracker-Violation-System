@@ -230,27 +230,53 @@ document.addEventListener('DOMContentLoaded', function () {
               const removedLabel = excludedStudents.length > 0 ? (', ' + excludedStudents.length + ' removed') : '';
               previewSummary.textContent = data.total + ' student(s) in the graduating list (automatic year level + specific students)' + ladderizedLabel + removedLabel + '.';
             if (data.total === 0) {
-                previewBody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">No students match the automatic year level for this program / specific students.</td></tr>';
+                previewBody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-muted">No students match the automatic year level for this program / specific students.</td></tr>';
                 return;
             }
 
+            // The SERVER already groups and orders this list:
+            //   non-ladderized automatic -> ladderized automatic -> added by hand,
+            // alphabetical by first name within each group. These headings just
+            // make that grouping visible in the table.
+            let previousHeading = '';
+
             previewBody.innerHTML = data.students.map(function (s) {
-                return '<tr>' +
+                let heading = s.is_added ? 'Added Student' : (s.is_ladderized ? 'Ladderized' : 'Bachelor (Non-Ladderized)');
+
+                let markup = '';
+
+                if (s.is_added) {
+                    // Added students are rendered as their own final group, so a
+                    // heading is emitted once when the group starts.
+                    if (previousHeading !== heading) {
+                        markup += '<tr class="table-light"><td colspan="6" class="fw-semibold small text-uppercase text-muted py-2">Added Student/s</td></tr>';
+                    }
+                } else if (previousHeading !== heading) {
+                    markup += '<tr class="table-light"><td colspan="6" class="fw-semibold small text-uppercase text-muted py-2">' + heading + '</td></tr>';
+                }
+
+                markup += '<tr>' +
                     '<td>' + s.student_number + '</td>' +
                     '<td>' + s.name + '</td>' +
                     '<td>' + s.program + '</td>' +
                     '<td>' + (s.year || '-') + ' / ' + (s.section || '-') + '</td>' +
-                    '<td>' + (s.status || '-') + '</td>' +                      '<td class="text-end">' +
+                    '<td>' + (s.status || '-') + '</td>' +
+                    '<td class="text-end">' +
                           '<button type="button" class="admin-btn admin-btn-danger admin-btn-sm remove-preview-student" ' +
                               'data-student="' + s.student_number + '" ' +
                               'aria-label="Remove ' + (s.name || s.student_number) + ' from this report">' +
                               '<i class="bi bi-x-lg me-1"></i>Remove' +
                           '</button>' +
-                      '</td>' +                '</tr>';
+                      '</td>' +
+                '</tr>';
+
+                previousHeading = heading;
+
+                return markup;
             }).join('');
         } catch (error) {
             console.error(error);
-            previewBody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-danger">' + error.message + '</td></tr>';
+            previewBody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-danger">' + error.message + '</td></tr>';
         } finally {
             previewBtn.disabled = false;
             previewBtn.innerHTML = '<i class="bi bi-search me-1"></i> Preview Students';

@@ -179,6 +179,12 @@
                                 </table>
                             </div>
                             <p class="text-muted small mt-2 mb-0">
+                                <i class="bi bi-sort-alpha-down me-1"></i>
+                                Listed in groups — <strong>Bachelor (Non-Ladderized)</strong>,
+                                then <strong>Ladderized</strong>, then <strong>Added Student/s</strong> —
+                                and alphabetical by first name within each group.
+                            </p>
+                            <p class="text-muted small mt-2 mb-0">
                                 <i class="bi bi-info-circle me-1"></i>
                                 Removing a student only excludes them from <strong>this</strong> report.
                                 Their student record is not changed or deleted. Re-running the preview restores the

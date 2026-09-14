@@ -125,6 +125,12 @@ class ProgramReportController extends Controller
                 'year' => $s->studentInfo?->year?->year ?? '-',
                 'section' => $s->studentInfo?->section?->section_name ?? '-',
                 'status' => $s->studentInfo?->studentStatus?->status_name ?? '-',
+                // Lets the preview label the ladderized group. The server is the
+                // only place this flag is authoritative.
+                'is_ladderized' => (bool) ($s->studentInfo?->ladderized ?? false),
+                // True when the student is in the report because the
+                // administrator added them by hand rather than by eligibility.
+                'is_added' => in_array((string) $s->student_number, $additional, true),
             ]),
         ]);
     }
