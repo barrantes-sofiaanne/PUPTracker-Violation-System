@@ -727,9 +727,101 @@ class AdminIdpLoginTest extends TestCase
         $this->assertGuest('admin');
     }
 
-    public function test_admin_login_page_offers_both_login_options(): void
+    // ==================================================================
+    // 7. Logout also ends the IDP session (when the admin used the IDP)
+    // ==================================================================
+
+    /**
+     * Logging out of PUPTracker must also revoke the IDP session, but ONLY for
+     * an administrator who signed in through the IDP.
+     */
+    public function test_logout_revokes_the_idp_session_after_an_idp_login(): void
     {
-        $html = $this->get(route('admin.login'))->assertOk()->getContent();
+        $admin = $this->createAdmin('logout@example.com', 'Admin');
+
+        $this->fakeIdp('idp-logout', 'logout@example.com', 'Admin');
+        $this->hitCallback()->assertRedirect(route('admin.dashboard'));
+
+        // The IDP login stored the access token server-side so logout can use it.
+        $this->assertSame('token-abc', session('admin.idp.access_token'));
+
+        Http::fake(); // reset, then assert only the logout call
+
+        $this->post(route('admin.logout'))->assertRedirect(route('admin.login'));
+
+        $this->assertGuest('admin');
+
+        // The IDP revocation call was made, with the token as a Bearer header.
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), '/auth/logout')) {
+                return false;
+            }
+
+            return $request->hasHeader('Authorization', 'Bearer token-abc');
+        });
+    }
+
+    /**
+     * The access token must never be sent in the request BODY (it belongs in the
+     * Authorization header only), and must never leak from the controller.
+     */
+    public function test_admin_idp_logout_does_not_expose_tokens(): void
+    {
+        $this->fakeIdp('idp-logout-secret', 'secret@example.com', 'Admin');
+
+        $this->createAdmin('secret@example.com', 'Admin');
+        $this->hitCallback();
+
+        Http::fake();
+
+        $this->post(route('admin.logout'))->assertRedirect(route('admin.login'));
+
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), '/auth/logout')) {
+                return true;
+            }
+
+            $body = $request->data();
+
+            return ! in_array('token-abc', $body, true)
+                && ($body['client_id'] ?? null) === 'admin-client';
+        });
+    }
+
+    /**
+     * A password login never stores an IDP token, so logging out must not attempt
+     * any IDP call — the IDP session is not ours to touch in that case.
+     */
+    public function test_logout_does_not_call_the_idp_after_a_password_login(): void
+    {
+        $admin = Admin::create([
+            'username' => 'pw@example.com',
+            'email' => 'pw@example.com',
+            'password' => bcrypt('correct-password'),
+            'mfa_totp_enabled' => 0,
+        ]);
+
+        DB::table('admin_info_tbl')->insert([
+            'admin_id' => $admin->id,
+            'status_id' => 1,
+            'role_id' => $this->roleId('Admin'),
+            'Position' => 'Admin',
+        ]);
+
+        $this->actingAs($admin, 'admin');
+
+        Http::fake();
+
+        $this->post(route('admin.logout'))->assertRedirect(route('admin.login'));
+
+        $this->assertGuest('admin');
+
+        // No IDP logout request at all.
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/auth/logout'));
+    }
+
+    public function test_admin_login_page_offers_both_login_options(): void
+    {        $html = $this->get(route('admin.login'))->assertOk()->getContent();
 
         // Email + password form still present.
         $this->assertStringContainsString('name="email"', $html);

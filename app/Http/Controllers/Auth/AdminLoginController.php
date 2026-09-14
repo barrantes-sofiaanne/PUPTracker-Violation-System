@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Support\MfaService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -130,13 +131,68 @@ class AdminLoginController extends Controller
 
     public function logout(Request $request)
     {
+        // Capture the IDP access token BEFORE the session is destroyed, and only
+        // when this administrator actually signed in through the IDP (the token
+        // is written by AdminIdpLoginController on a successful IDP login).
+        //
+        // A password login never sets it, so this is a no-op there — the IDP
+        // session is never touched for an account that did not use the IDP.
+        $idpAccessToken = (string) $request->session()->get('admin.idp.access_token', '');
+
         Auth::guard('admin')->logout();
+
+        if ($idpAccessToken !== '') {
+            $this->revokeIdpSession($idpAccessToken);
+        }
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
 
         return redirect()->route('admin.login');
+    }
+
+    /**
+     * Revoke the PUP IDP SSO session server-side.
+     *
+     * Uses the dedicated administrator OAuth client's credentials via
+     * `services.idp.logout_path` (POST /auth/logout) with the access token as a
+     * Bearer header — the same call the Student IDP logout makes.
+     *
+     * Deliberately best-effort: the local logout has already completed, so a
+     * failure here (IDP unreachable, token already expired) is logged and
+     * swallowed. The admin's PUPTracker session is gone either way, and the
+     * error is never surfaced to the browser.
+     */
+    protected function revokeIdpSession(string $accessToken): void
+    {
+        $baseUrl = rtrim((string) config('services.idp.base_url', ''), '/');
+        $logoutPath = (string) config('services.idp.logout_path', '/auth/logout');
+        $clientId = trim((string) config('services.idp.admin_client_id', ''));
+        $timeout = (int) config('services.idp.admin_timeout', config('services.idp.timeout', 15));
+
+        if ($baseUrl === '' || $logoutPath === '') {
+            return;
+        }
+
+        try {
+            $response = Http::baseUrl($baseUrl)
+                ->acceptJson()
+                ->asJson()
+                ->withToken($accessToken)
+                ->timeout($timeout)
+                ->post($logoutPath . ($clientId !== '' ? '?client_id=' . urlencode($clientId) : ''), array_filter([
+                    'client_id' => $clientId,
+                ], fn ($value) => $value !== null && $value !== ''));
+
+            Log::info('Admin IDP logout request completed', [
+                'status' => $response->status(),
+            ]);
+        } catch (\Throwable $exception) {
+            Log::warning('Admin IDP logout failed', [
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
     /**

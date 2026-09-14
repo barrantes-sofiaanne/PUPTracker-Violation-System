@@ -249,6 +249,16 @@ class AdminIdpLoginController extends Controller
             //
             // The email/password path in AdminLoginController is unchanged and
             // still requires MFA.
+            // Keep the token server-side (session) only — never exposed to the
+            // browser — so logout can revoke the IDP SSO session as well as the
+            // local one. This is what makes "logout here = logout at the IDP".
+            $request->session()->put('admin.idp.access_token', $accessToken);
+
+            $refreshToken = (string) $tokenResponse->json('refresh_token');
+            if ($refreshToken !== '') {
+                $request->session()->put('admin.idp.refresh_token', $refreshToken);
+            }
+
             Auth::guard('admin')->login($admin);
             $request->session()->regenerate();
             $request->session()->put('show_privacy_consent_modal', true);
