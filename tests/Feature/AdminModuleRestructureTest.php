@@ -612,6 +612,46 @@ class AdminModuleRestructureTest extends TestCase
         );
     }
 
+    /**
+     * REGRESSION GUARD — the AI Graduation Review sidebar entry.
+     *
+     * Commit 235d56c ("Removed deprecated AI Graduation Review routes and related
+     * functionality") deleted both the routes and this sidebar entry as part of
+     * retiring the feature. The module is live again, so the entry must be back —
+     * otherwise the feature exists but is unreachable except by typing its URL.
+     */
+    public function test_sidebar_restores_the_ai_graduation_review_entry(): void
+    {
+        $sidebar = file_get_contents(resource_path('views/admin/partials/sidebar.blade.php'));
+
+        $this->assertStringContainsString(
+            "route('admin.graduation-review.index')",
+            $sidebar,
+            'The AI Graduation Review sidebar entry must be present.'
+        );
+        $this->assertStringContainsString('AI Graduation Review', $sidebar);
+        $this->assertStringContainsString('AI Assistance', $sidebar);
+
+        // It must highlight while anywhere in the module (index + per-student).
+        $this->assertStringContainsString("request()->routeIs('admin.graduation-review*')", $sidebar);
+    }
+
+    /**
+     * The entry is rendered for an admin, and links straight to the module.
+     */
+    public function test_ai_graduation_review_entry_is_rendered_and_links_to_the_module(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('AI Graduation Review', $html);
+        $this->assertStringContainsString(route('admin.graduation-review.index'), $html);
+    }
+
     public function test_superseded_standalone_views_are_deleted_and_tabs_exist(): void
     {
         $this->assertFileDoesNotExist(resource_path('views/admin/reports/index.blade.php'));
