@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
-use App\Support\MfaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -17,10 +17,11 @@ use Illuminate\Support\Str;
  *
  * This is the second of the two administrator login processes:
  *
- *   1. Email + password  → AdminLoginController, then the MFA challenge.
- *   2. PUP IDP           → this controller. The IDP is the identity source and
- *                          its own authentication is the second factor, so no
- *                          MFA challenge is issued.
+ *   1. Email + password  → AdminLoginController, then the PUPTracker MFA
+ *                          challenge (unchanged).
+ *   2. PUP IDP           → this controller. A successful IDP login completes
+ *                          the sign-in directly; no separate PUPTracker MFA
+ *                          challenge is raised on this path.
  *
  * Both paths end at the SAME authenticated placement: an `admins` account on
  * the `admin` guard, so every downstream Admin Module route/authorization is
@@ -37,9 +38,10 @@ use Illuminate\Support\Str;
  *     role the account holds, so a successful IDP login can never grant (or
  *     revoke) IT Administrator / Super Admin privileges. Those continue to come
  *     exclusively from the local admin record (`Admin::isItAdministrator()`).
- *   - MFA is still required. After the IDP authenticates the user, the normal
- *     PUPTracker MFA challenge is raised and the account is NOT authenticated
- *     until that challenge passes.
+ *   - The IDP is the sole authentication factor on this path. That is a
+ *     deliberate, explicit trade-off: the IDP is trusted to have authenticated
+ *     the user (including any MFA it enforces), and PUPTracker does not add a
+ *     second challenge. The email/password path keeps MFA.
  *   - Binding is matched on the IDP-VERIFIED email only. The email is never
  *     taken from user input, so an officer cannot claim someone else's account.
  *   - An account already bound to a different IDP identity can never be
@@ -47,8 +49,17 @@ use Illuminate\Support\Str;
  */
 class AdminIdpLoginController extends Controller
 {
-    public function __construct(private readonly MfaService $mfaService)
+    /**
+     * Where a successfully authenticated administrator lands.
+     *
+     * Derived from the LOCAL admin record only — never from the IDP role — so
+     * the IDP can neither grant nor remove Super Admin access.
+     */
+    protected function destinationRouteFor(Admin $admin): string
     {
+        return $admin->isItAdministrator()
+            ? 'admin.super-admin.dashboard'
+            : 'admin.dashboard';
     }
 
     /**
@@ -231,30 +242,26 @@ class AdminIdpLoginController extends Controller
 
             $this->persistIdpBinding($admin, $idpSubject, $email);
 
-            // MFA is NOT bypassed. The IDP proves who the user is, but the
-            // administrator account still has to clear the same challenge the
-            // email/password path raises. Nothing is authenticated until then:
-            // MfaController performs Auth::guard('admin')->login() on success,
-            // so no admin session exists at this point.
-            $this->mfaService->beginChallenge(
-                $request,
-                'admin',
-                (string) $admin->getKey(),
-                (string) $admin->email,
-                $this->readTotpSecret($admin),
-                (bool) $admin->mfa_totp_enabled,
-                $admin->mfa_backup_codes,
-                $admin->mfa_backup_codes_used,
-                false
-            );
+            // The PUP IDP is the sole authentication authority here, so a
+            // successful IDP login completes the sign-in directly. No separate
+            // PUPTracker MFA challenge is raised on this path — the IDP's own
+            // authentication (including any MFA it enforces) is the factor.
+            //
+            // The email/password path in AdminLoginController is unchanged and
+            // still requires MFA.
+            Auth::guard('admin')->login($admin);
+            $request->session()->regenerate();
+            $request->session()->put('show_privacy_consent_modal', true);
 
-            Log::info('Admin IDP login verified; MFA challenge started', [
+            Log::info('Admin IDP login succeeded', [
                 'admin_id' => $admin->getKey(),
                 'idp_role' => $idpRole,
             ]);
 
-            return redirect()->route('mfa.verify.show')
-                ->with('success', 'Continue with multi-factor verification.');
+            // Destination is chosen from the LOCAL role, never from the IDP role:
+            // an IT Administrator goes to the Super Admin dashboard, every other
+            // administrator to the standard Admin dashboard.
+            return redirect()->route($this->destinationRouteFor($admin));
         } catch (\Throwable $exception) {
             Log::error('Admin IDP login failed.', [
                 'error' => $exception->getMessage(),
@@ -302,31 +309,6 @@ class AdminIdpLoginController extends Controller
     protected function adminRedirectUri(): string
     {
         return trim((string) config('services.idp.admin_redirect_uri'));
-    }
-
-    /**
-     * Read the TOTP secret through the encrypted cast, tolerating an
-     * undecryptable legacy value.
-     *
-     * AdminLoginController treats a cast failure as a hard error because it can
-     * inform the user precisely. Here the IDP has already authenticated the
-     * user, so an undecryptable secret must simply degrade to the other MFA
-     * methods (which MfaService derives from `mfa_totp_enabled` / backup codes)
-     * rather than blocking sign-in outright.
-     */
-    protected function readTotpSecret(Admin $admin): ?string
-    {
-        try {
-            return $admin->mfa_totp_secret;
-        } catch (\Throwable $exception) {
-            Log::error('Admin IDP login: MFA secret decryption FAILED (cast read)', [
-                'admin_id' => $admin->getKey(),
-                'hint' => 'Stored mfa_totp_secret is not decryptable with the current APP_KEY (legacy plaintext or key mismatch). Run mfa:diagnose-totp, then mfa:encrypt-totp-secrets once if the key is stable.',
-                'exception' => get_class($exception),
-            ]);
-
-            return null;
-        }
     }
 
     /**
