@@ -6,11 +6,11 @@
 
 @section('content')
 <div class="container-fluid">
-    {{-- Standardized header — matches the Security module header (hero gradient
-         + PHT clock). --}}
+    {{-- Standardized header (Security-style hero). The PHT clock is opt-in and
+         deliberately NOT requested here — this page is about student records. --}}
     <x-admin.page-header
         title="User Management"
-        description="Manage student, admin, and security accounts in one place." />
+        description="Manage student accounts and student records." />
 
     <div class="card shadow-sm user-management-shell">
         <div class="card-header bg-white">

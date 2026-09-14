@@ -3,11 +3,12 @@
 @section('title', 'Super Admin Dashboard')
 
 @section('content')
-{{-- Standardized header — matches the Security module header (hero gradient
-     + PHT clock). --}}
+{{-- Standardized header — same shared component as the Admin Dashboard, with
+     the PHT clock opt-in on the RIGHT of the hero. --}}
 <x-admin.page-header
     title="Super Admin Dashboard"
-    description="Exclusive controls for the IT Administrator." />
+    description="Exclusive controls for the IT Administrator."
+    :time="true" />
 
 @php
     $maintenanceModeOff = ! $maintenanceStatus;

@@ -10,11 +10,12 @@
 
 <div class="container-fluid">
     
-    {{-- Page Header — standardized to match the Security module header
-         (same hero gradient, spacing and PHT clock widget). --}}
+    {{-- Page Header — Security-style hero with the PHT clock on the RIGHT.
+         The clock is opt-in (:time="true") so other modules do not inherit it. --}}
     <x-admin.page-header
         title="Dashboard"
-        description="Welcome back! Here's your system overview." />
+        description="Welcome back! Here's your system overview."
+        :time="true" />
 
     {{-- Statistics Cards --}}
     <div class="row mb-4 g-3">

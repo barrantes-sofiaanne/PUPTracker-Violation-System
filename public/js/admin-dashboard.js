@@ -2,34 +2,9 @@
    PHP data is passed via data-* attributes (read below). */
 
 document.addEventListener("DOMContentLoaded", function () {
-    // Philippine Standard Time live clock
-    var phTimeDisplay = document.getElementById("phTimeDisplay");
-
-    function updatePhilippineTime() {
-        if (!phTimeDisplay) {
-            return;
-        }
-
-        var now = new Date();
-        var formatted = new Intl.DateTimeFormat("en-PH", {
-            timeZone: "Asia/Manila",
-            month: "short",
-            day: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-        }).format(now);
-
-        var span = phTimeDisplay.querySelector("span");
-        if (span) {
-            span.textContent = formatted + " PHT";
-        }
-    }
-
-    updatePhilippineTime();
-    setInterval(updatePhilippineTime, 1000);
+    // The Philippine Standard Time clock is owned by the shared page-header
+    // component (x-admin.page-header), which emits ONE updater per page. The
+    // dashboard must not run a second one against the same #phTimeDisplay.
 
     // Daily violations bar chart (last 7 days, including today)
     var dailyCanvas = document.getElementById("dailyViolationChart");

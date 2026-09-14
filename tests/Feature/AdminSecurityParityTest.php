@@ -255,29 +255,117 @@ class AdminSecurityParityTest extends TestCase
     // H. HEADER + PHT TIME
     // ==================================================================
 
+    /**
+     * Both pages use the standard Security-style hero, but the PHT clock is
+     * OPT-IN: only the Dashboard carries it. User Management must render the
+     * hero WITHOUT any clock.
+     */
     public function test_admin_pages_use_the_standardized_module_header(): void
     {
         $admin = $this->createAdmin();
 
-        foreach ([
-            route('admin.dashboard'),
-            route('admin.students'),
-        ] as $url) {
+        // Both pages: the shared hero structure.
+        foreach ([route('admin.dashboard'), route('admin.students')] as $url) {
             $html = $this->actingAs($admin, 'admin')->get($url)->assertOk()->getContent();
 
-            // The Security hero structure: hero class + title + PHT clock.
             $this->assertStringContainsString('page-header-modern', $html, "Missing header on {$url}");
             $this->assertStringContainsString('dashboard-hero-grid', $html, "Missing hero grid on {$url}");
-            $this->assertStringContainsString('dashboard-time-label', $html, "Missing time label on {$url}");
-            $this->assertStringContainsString('Philippine Standard Time', $html, "Missing PHT label on {$url}");
-            $this->assertStringContainsString('id="phTimeDisplay"', $html, "Missing clock on {$url}");
-            $this->assertStringContainsString('bi-clock-history', $html, "Missing clock icon on {$url}");
         }
+
+        // Dashboard: clock PRESENT.
+        $dashboard = $this->actingAs($admin, 'admin')
+            ->get(route('admin.dashboard'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="phTimeDisplay"', $dashboard);
+        $this->assertStringContainsString('Philippine Standard Time', $dashboard);
+        $this->assertStringContainsString('bi-clock-history', $dashboard);
+
+        // User Management: clock ABSENT.
+        $students = $this->actingAs($admin, 'admin')
+            ->get(route('admin.students'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('id="phTimeDisplay"', $students);
+        $this->assertStringNotContainsString('Philippine Standard Time', $students);
+        $this->assertStringNotContainsString('dashboard-time-label', $students);
+        $this->assertStringNotContainsString('bi-clock-history', $students);
+    }
+
+    /**
+     * USER MANAGEMENT HEADER CONTENT.
+     *
+     * The description must describe STUDENT management only — no reference to
+     * admin or security accounts.
+     */
+    public function test_user_management_header_describes_students_only(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.students'))
+            ->assertOk()
+            ->getContent();
+
+        $header = $this->pageHeader($html);
+
+        $this->assertNotSame('', $header, 'The User Management page header must render.');
+
+        $this->assertStringContainsString('User Management', $header);
+        $this->assertStringContainsString('Manage student accounts and student records.', $header);
+
+        // The retired wording must be gone from the header.
+        $this->assertStringNotContainsString('Manage student, admin, and security accounts', $header);
+        $this->assertStringNotContainsString('in one place', $header);
+
+        // ...and specifically no admin/security account references.
+        $description = 'Manage student accounts and student records.';
+        $this->assertStringNotContainsString('admin', strtolower($description));
+        $this->assertStringNotContainsString('security', strtolower($description));
+    }
+
+    /**
+     * Dashboard clock must sit on the RIGHT of the hero, on the same row as the
+     * title — not as a second row underneath it.
+     */
+    public function test_dashboard_clock_is_positioned_on_the_right_of_the_hero(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->getContent();
+
+        $header = $this->pageHeader($html);
+
+        // The hero is a flex row that puts the clock on the right.
+        $this->assertStringContainsString('dashboard-hero-grid', $header);
+
+        // The clock lives INSIDE the hero grid (same row), and appears after the
+        // title/subtitle in source order — i.e. the right-hand column.
+        $gridStart = strpos($header, 'dashboard-hero-grid');
+        $titlePos = strpos($header, 'dashboard-hero-title');
+        $clockPos = strpos($header, 'id="phTimeDisplay"');
+
+        $this->assertNotFalse($gridStart);
+        $this->assertNotFalse($titlePos);
+        $this->assertNotFalse($clockPos);
+
+        $this->assertGreaterThan($titlePos, $clockPos, 'The clock must follow the title (right column).');
+
+        // The clock block sits within the grid container, so it cannot wrap to a
+        // separate row of its own.
+        $gridEnd = strpos($header, '</div>', $clockPos);
+        $this->assertNotFalse($gridEnd);
+
+        // No layout rule forcing the time block onto its own full-width row.
+        $css = file_get_contents(public_path('css/admin.css'));
+        $this->assertStringContainsString('.dashboard-time-wrap {', $css);
+        $this->assertStringContainsString('text-align: right;', $css);
     }
 
     /**
      * The clock must be the SAME implementation as Security's: en-PH locale,
-     * Asia/Manila, 24-hour, suffixed " PHT".
+     * Asia/Manila, 24-hour, suffixed " PHT" — and exactly ONE updater per page.
      */
     public function test_header_clock_uses_the_same_pht_formatting_as_security(): void
     {
@@ -294,11 +382,27 @@ class AdminSecurityParityTest extends TestCase
         $this->assertStringContainsString('hour12: false', $html);
         $this->assertStringContainsString("+ ' PHT'", $html);
 
-        // Exactly ONE clock implementation per page (no duplicate timers).
+        // Exactly ONE clock implementation on the page — the dashboard's own
+        // script must no longer run a second updater against the same element.
         $this->assertSame(1, substr_count($html, "getElementById('phTimeDisplay')"));
+
+        $dashboardJs = file_get_contents(public_path('js/admin-dashboard.js'));
+        $this->assertStringNotContainsString(
+            'setInterval(updatePhilippineTime',
+            $dashboardJs,
+            'The dashboard script must not duplicate the shared clock updater.'
+        );
     }
 
-    public function test_super_admin_dashboard_uses_the_standardized_header(): void
+    /**
+     * The Super Admin dashboard uses the SAME shared header as the Admin
+     * dashboard, INCLUDING the PHT clock on the right of the hero.
+     *
+     * Both dashboards opt in explicitly (:time="true"), so the two are
+     * consistent, while modules that do not opt in (e.g. User Management) stay
+     * clock-free.
+     */
+    public function test_super_admin_dashboard_header_matches_the_admin_dashboard(): void
     {
         $super = $this->createAdmin(true);
 
@@ -307,10 +411,64 @@ class AdminSecurityParityTest extends TestCase
             ->assertOk()
             ->getContent();
 
+        // Shared hero structure.
         $this->assertStringContainsString('page-header-modern', $html);
         $this->assertStringContainsString('dashboard-hero-grid', $html);
-        $this->assertStringContainsString('id="phTimeDisplay"', $html);
         $this->assertStringContainsString('Super Admin Dashboard', $html);
+
+        $header = $this->pageHeader($html);
+        $this->assertNotSame('', $header, 'The Super Admin header must render.');
+
+        // The PHT clock is present, with the same markup as the Admin dashboard.
+        $this->assertStringContainsString('id="phTimeDisplay"', $header);
+        $this->assertStringContainsString('Philippine Standard Time', $header);
+        $this->assertStringContainsString('dashboard-time-label', $header);
+        $this->assertStringContainsString('bi-clock-history', $header);
+
+        // Same PHT formatter as the shared component / Security.
+        $this->assertStringContainsString("timeZone: 'Asia/Manila'", $html);
+        $this->assertStringContainsString("'en-PH'", $html);
+        $this->assertStringContainsString('hour12: false', $html);
+        $this->assertStringContainsString("+ ' PHT'", $html);
+
+        // ONE updater only — no duplicate clock implementation on this page.
+        $this->assertSame(
+            1,
+            substr_count($html, "getElementById('phTimeDisplay')"),
+            'The Super Admin dashboard must use the single shared clock updater.'
+        );
+
+        // The clock sits on the RIGHT: it follows the title in source order and
+        // lives inside the hero grid, so it cannot form its own row.
+        $titlePos = strpos($header, 'dashboard-hero-title');
+        $clockPos = strpos($header, 'id="phTimeDisplay"');
+
+        $this->assertNotFalse($titlePos);
+        $this->assertNotFalse($clockPos);
+        $this->assertGreaterThan($titlePos, $clockPos, 'The clock must follow the title (right column).');
+    }
+
+    /** Slice the rendered page down to its module page header. */
+    private function pageHeader(string $html): string
+    {
+        $start = strpos($html, 'page-header-modern');
+        if ($start === false) {
+            return '';
+        }
+
+        $open = strrpos(substr($html, 0, $start), '<div');
+        if ($open !== false) {
+            $start = $open;
+        }
+
+        // The header ends where the first card/row of the page body starts.
+        $end = strpos($html, '<div class="row', $start);
+        $end2 = strpos($html, '<div class="card', $start);
+        if ($end === false || ($end2 !== false && $end2 < $end)) {
+            $end = $end2;
+        }
+
+        return $end === false ? substr($html, $start) : substr($html, $start, $end - $start);
     }
 
     // ==================================================================

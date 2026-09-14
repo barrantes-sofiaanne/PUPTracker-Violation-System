@@ -18,8 +18,9 @@
     - icon: optional Bootstrap icon class rendered beside the title
     - level: heading level (h1/h2/h3), default h2
     - breadcrumbs: optional array of ['label' => ..., 'url' => ...]
-    - hero: render the full Security-style hero (title + PHT clock), default true
-    - time: show the PHT clock in the header, default true when hero is used
+    - hero: render the full Security-style hero (title + optional PHT clock), default true
+    - time: show the PHT clock in the header. OPT-IN — default false, so the clock
+            is only rendered where a page explicitly asks for it.
 --}}
 @props([
     'title' => '',
@@ -28,10 +29,14 @@
     'level' => 'h2',
     'breadcrumbs' => [],
     'hero' => true,
-    'time' => true,
+    'time' => false,
 ])
 
 @php
+    // The clock is OPT-IN: only pages that genuinely need it (the Dashboards)
+    // pass :time="true". Every other module header keeps the Security-style hero
+    // WITHOUT a clock.
+    //
     // The clock markup + behaviour is shared: this one widget is what the
     // Security module renders, so the JavaScript below matches its formatting
     // (en-PH, Asia/Manila, 24-hour, suffixed " PHT") exactly.
