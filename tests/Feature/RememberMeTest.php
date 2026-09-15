@@ -14,16 +14,19 @@ use Symfony\Component\HttpFoundation\Cookie;
 use Tests\TestCase;
 
 /**
- * "Remember me" (30-day trusted device) for the Administrator & Security
+ * "Remember me" (12-hour trusted device) for the Administrator & Security
  * login modules.
  *
- * Rules:
- *   - The checkbox appears only on the admin & security login forms.
- *   - Only when the box is ticked is a remember/recaller cookie issued (after
- *     password + MFA complete).
- *   - The cookie expires after 30 days (per-guard `auth.guards.*.remember`
- *     duration); after that the user must log in again (password + MFA).
- *   - Student logins never issue a remember cookie.
+ * Rules (PART 6-14 of the account/session security brief):
+ *   - The checkbox appears ONLY on the selected MFA verification screen
+ *     (PART 10). It must NOT appear on the credential login form (PART 8) or
+ *     on the MFA method-selection step (PART 9).
+ *   - Only when the box is ticked is a remember/recaller cookie issued, and
+ *     only AFTER password + MFA have both succeeded (PART 12).
+ *   - The cookie expires after 12 hours / 43200 minutes
+ *     (per-guard `auth.guards.*.remember`), so it cannot survive overnight
+ *     (PART 14/15); after that the user must log in again (password + MFA).
+ *   - Student logins never issue a remember cookie (PART 11).
  */
 class RememberMeTest extends TestCase
 {
@@ -34,20 +37,22 @@ class RememberMeTest extends TestCase
         $this->ensureAuthTablesForTests();
     }
 
-    public function test_admin_login_form_shows_remember_me_checkbox(): void
+    public function test_admin_login_form_hides_remember_me_checkbox(): void
     {
+        // PART 8 — the option must NOT appear on the credential login screen.
         $this->get(route('admin.login'))
             ->assertOk()
-            ->assertSee('Remember me for 30 days')
-            ->assertSee('name="remember"', false);
+            ->assertDontSee('name="remember"', false)
+            ->assertDontSee('Remember this device for 12 hours');
     }
 
-    public function test_security_login_form_shows_remember_me_checkbox(): void
+    public function test_security_login_form_hides_remember_me_checkbox(): void
     {
+        // PART 8 — the option must NOT appear on the credential login screen.
         $this->get(route('security.login'))
             ->assertOk()
-            ->assertSee('Remember me for 30 days')
-            ->assertSee('name="remember"', false);
+            ->assertDontSee('name="remember"', false)
+            ->assertDontSee('Remember this device for 12 hours');
     }
 
     public function test_admin_remember_duration_is_30_days(): void
@@ -68,7 +73,9 @@ class RememberMeTest extends TestCase
 
         $pending = session('mfa.pending');
         $this->assertIsArray($pending);
-        $this->assertTrue($pending['remember'], 'The remember flag must be carried into the pending MFA session.');
+        // PART 8 — the credential stage can no longer pre-enable Remember Me;
+        // it is chosen on the MFA verification screen only.
+        $this->assertFalse((bool) $pending['remember'], 'The credential stage must never pre-enable Remember Me.');
     }
 
     public function test_admin_login_without_remember_stores_false_flag(): void
@@ -99,7 +106,8 @@ class RememberMeTest extends TestCase
         ])->assertRedirect(route('mfa.verify.show'));
 
         $pending = session('mfa.pending');
-        $this->assertTrue($pending['remember']);
+        // PART 8 — see the admin case above.
+        $this->assertFalse((bool) $pending['remember']);
     }
 
     public function test_verified_admin_login_with_remember_issues_recaller_cookie(): void
@@ -114,7 +122,8 @@ class RememberMeTest extends TestCase
         $rememberCookie = $this->findRememberCookie($verify);
         $this->assertNotNull($rememberCookie, 'A remember (recaller) cookie must be set after a remember-me login.');
 
-        // The recaller cookie must be configured to live ~30 days (43200 min).
+        // PART 6/14 — the recaller cookie must live ~12 hours (43200 minutes),
+        // NOT 30 days. A 30-day window would survive overnight.
         $this->assertGreaterThanOrEqual(time() + (43200 - 1) * 60, $rememberCookie->getExpiresTime());
 
         // The DB remember token must have been written and rotated.
@@ -136,11 +145,11 @@ class RememberMeTest extends TestCase
             'remember' => '1',
         ])->assertRedirect(route('mfa.verify.show'));
 
-        // The MFA screen must offer the Remember Me option, pre-ticked to match
-        // the login screen's choice.
+        // The MFA screen must offer the Remember Me option. It starts UNticked
+        // because PART 8 removed the credential-stage choice it used to mirror.
         $this->get(route('mfa.verify.show'))
             ->assertOk()
-            ->assertSee('Remember me for 30 days')
+            ->assertSee('Remember this device for 12 hours')
             ->assertSee('id="mfaRememberMe"', false);
     }
 
@@ -331,7 +340,7 @@ class RememberMeTest extends TestCase
 
         $this->get(route('mfa.verify.show'))
             ->assertOk()
-            ->assertSee('Remember me for 30 days');
+            ->assertSee('Remember this device for 12 hours');
     }
 
     public function test_verified_admin_login_without_remember_does_not_issue_recaller_cookie(): void

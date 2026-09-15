@@ -24,6 +24,15 @@
                 </div>
             @endif
 
+            {{-- PART 5 — inactivity expiry notice. Carried on the fresh session
+                 by EnforceInactivityTimeout; contains no session details. --}}
+            @if(session('auth.expired_reason'))
+                <div class="login-error" role="alert">
+                    <i class="bi bi-clock-history" aria-hidden="true"></i>
+                    <span>{{ session('auth.expired_reason') }}</span>
+                </div>
+            @endif
+
             <div class="mb-3">
 
                 <label class="form-label" for="email">
@@ -87,20 +96,12 @@
 
             </div>
 
-            <div class="remember-row">
-                <div class="form-check remember-check">
-                    <input
-                        type="checkbox"
-                        class="form-check-input"
-                        id="rememberMe"
-                        name="remember"
-                        value="1"
-                        @checked(old('remember'))>
-                    <label class="form-check-label remember-label" for="rememberMe">
-                        Remember me for 30 days
-                    </label>
-                </div>
-            </div>
+            {{--
+                PART 8 — the "Remember Me" option intentionally does NOT appear
+                here. It is offered ONLY on the selected MFA verification screen
+                (PART 10), so a persistent credential can never be requested
+                before MFA has been satisfied.
+            --}}
 
             <button
                 type="submit"

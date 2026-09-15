@@ -142,7 +142,10 @@ $students = User::with([
     $violationHistory = Violation::with([
         'student.studentInfo.program',
         'violationType.violationCategory',
-        'recorder.adminInfo'
+        'recorder.adminInfo',
+        // Eager-loaded so the history table's Evidence column can render the
+        // per-violation count without an N+1 query per row.
+        'evidence',
     ])
     ->notDenied()
     ->latest('violation_date')
@@ -660,6 +663,11 @@ public function searchStudents(Request $request)
             'student_number' => $student->student_number,
             'first_name' => $student->first_name,
             'last_name' => $student->last_name,
+            // PUPTracker ACCOUNT status. The client uses this to warn/warn-off
+            // recording a violation for an inactive student BEFORE the wizard
+            // ends. It is a UI convenience only — the server re-checks the same
+            // rule in StoreViolationRequest and rejects the submission either way.
+            'account_active' => $student->isActiveAccount(),
             'program' => [
                 'program_name' => $student->studentInfo?->program?->program_name,
             ],

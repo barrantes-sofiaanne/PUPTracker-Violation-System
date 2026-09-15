@@ -1,7 +1,10 @@
 <aside class="sidebar" id="adminSidebar">
 
-    <button type="button" class="btn btn-sm btn-light mobile-only mb-2" id="sidebarClose">
-        <i class="bi bi-x-lg"></i>
+    {{-- Mobile-only sidebar close (×). Uses `.sidebar-close` rather than Bootstrap's
+         light button variant, which painted a solid white pill over the maroon
+         sidebar gradient. --}}
+    <button type="button" class="sidebar-close" id="sidebarClose" aria-label="Close sidebar">
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
     </button>
 
     @php
@@ -183,10 +186,25 @@
         </li>
 
         @if($isItAdministrator)
+            {{--
+                SUPER ADMIN NAVIGATION — mapped onto EXISTING pages. No new table,
+                controller or route was created for this sidebar.
+
+                  Dashboard           -> admin.super-admin.dashboard
+                  Backup Management   -> admin.super-admin.backups.index (relabelled)
+                  Settings            -> admin.super-admin.maintenance (relabelled)
+                  Audit Trail         -> the shared "Audit Logs" entry below
+                  User Administration -> the shared "User Management" entry above
+                  System Health       -> System Logs (below) + Backup Management
+
+                "Audit Logs" and "User Management" are SHARED with regular admins,
+                so they keep their existing labels — relabelling them would rename
+                the same entry for the other role too.
+            --}}
             <li>
                 <a href="{{ route('admin.super-admin.backups.index') }}" class="{{ request()->routeIs('admin.super-admin.backups*') ? 'active' : '' }}">
                     <i class="bi bi-database-check"></i>
-                    Backup History
+                    Backup Management
                 </a>
             </li>
         @endif
@@ -201,24 +219,30 @@
         @endif
 
         @if($isItAdministrator)
-            <li>
-                <a href="{{ route('admin.super-admin.email-incidents.index') }}" class="{{ request()->routeIs('admin.super-admin.email-incidents*') ? 'active' : '' }}">
-                    <i class="bi bi-envelope-exclamation"></i>
-                    Email Incidents
-                </a>
-            </li>
+            {{--
+                System Logs is KEPT as its own entry.
 
+                PART 2 permits folding it into the Audit Trail only "if it can be
+                properly integrated" — it cannot. System Logs reads the Laravel
+                application log FILE; Audit Logs reads the audit_logs TABLE. Two
+                different data sources, so merging them would drop data.
+
+                NOT LISTED HERE (removed from the navigation by PART 2):
+                  * Email Incidents — the page, route and controller are RETAINED
+                    because it is the DESTINATION for system-level email/OTP
+                    failure alerts: `system_email_failure` notifications resolve
+                    their URL to admin.super-admin.email-incidents.show. Hiding the
+                    nav entry keeps the sidebar focused without dead-ending those
+                    alerts; the page stays reachable at
+                    /admin/super-admin/email-incidents.
+                  * Audit & Risk Management — the risk register is not redundant
+                    with anything, so its page/route are retained and stay
+                    reachable at /admin/super-admin/audit-control-plan.
+            --}}
             <li>
                 <a href="{{ route('admin.super-admin.system-logs') }}" class="{{ request()->routeIs('admin.super-admin.system-logs') ? 'active' : '' }}">
                     <i class="bi bi-terminal"></i>
                     System Logs
-                </a>
-            </li>
-
-            <li>
-                <a href="{{ route('admin.super-admin.audit-control-plan') }}" class="{{ request()->routeIs('admin.super-admin.audit-control-plan') ? 'active' : '' }}">
-                    <i class="bi bi-shield-check"></i>
-                    Audit &amp; Risk Management
                 </a>
             </li>
         @endif
@@ -229,7 +253,7 @@
         <li>
             <a href="{{ route('admin.super-admin.maintenance') }}" class="{{ request()->routeIs('admin.super-admin.maintenance') ? 'active' : '' }}">
                 <i class="bi bi-tools"></i>
-                Maintenance Settings
+                Settings
             </a>
         </li>
 

@@ -87,20 +87,12 @@
 
             </div>
 
-            <div class="remember-row">
-                <div class="form-check remember-check">
-                    <input
-                        type="checkbox"
-                        class="form-check-input"
-                        id="rememberMe"
-                        name="remember"
-                        value="1"
-                        @checked(old('remember'))>
-                    <label class="form-check-label remember-label" for="rememberMe">
-                        Remember me for 30 days
-                    </label>
-                </div>
-            </div>
+            {{--
+                PART 8 — the "Remember Me" option intentionally does NOT appear
+                here. It is offered ONLY on the selected MFA verification screen
+                (PART 10), so a persistent credential can never be requested
+                before MFA has been satisfied.
+            --}}
 
             <button
                 type="submit"

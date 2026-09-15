@@ -14,15 +14,7 @@ class NotificationController extends Controller
     public function index(Request $request)
     {
         $adminId = auth('admin')->id();
-        $query = AdminNotification::query()
-            ->where(function ($recipientQuery) use ($adminId): void {
-                $recipientQuery->whereNull('recipient_type')
-                    ->orWhere('recipient_type', 'admin');
-            })
-            ->where(function ($recipientQuery) use ($adminId): void {
-                $recipientQuery->whereNull('recipient_id')
-                    ->orWhere('recipient_id', $adminId);
-            });
+        $query = $this->accessibleNotifications($adminId);
 
         // Status filter (read/unread/all)
         $status = $request->input('status', '');
@@ -138,23 +130,39 @@ class NotificationController extends Controller
         return redirect()->to($url);
     }
 
+    /**
+     * The ONLY query used for the admin/Super Admin inbox.
+     *
+     * Authorisation lives in the query (AdminNotification::scopeForAudience),
+     * so a Super Admin can never receive the operational notifications meant for
+     * regular admins — not via the list, not via the unread badge, and not via a
+     * directly requested notification id.
+     */
     private function accessibleNotifications(?int $adminId)
     {
-        return AdminNotification::query()
-            ->where(function ($query): void {
-                $query->whereNull('recipient_type')->orWhere('recipient_type', 'admin');
-            })
-            ->where(function ($query) use ($adminId): void {
-                $query->whereNull('recipient_id')->orWhere('recipient_id', $adminId);
-            });
+        return AdminNotification::query()->forAudience(
+            $adminId,
+            $this->isSuperAdmin()
+        );
+    }
+
+    private function isSuperAdmin(): bool
+    {
+        $admin = auth('admin')->user();
+
+        return $admin instanceof Admin && $admin->isItAdministrator();
     }
 
     private function authorizeNotification(AdminNotification $notification): void
     {
-        $adminId = auth('admin')->id();
-        $accessible = ($notification->recipient_type === null || $notification->recipient_type === 'admin')
-            && ($notification->recipient_id === null || (int) $notification->recipient_id === (int) $adminId);
-
-        abort_unless($accessible, 403);
+        // Same rule as the inbox query — an id that is not in the caller's
+        // audience is refused, so notification ids cannot be probed or replayed
+        // across the admin / Super Admin boundary.
+        abort_unless(
+            $this->accessibleNotifications(auth('admin')->id())
+                ->whereKey($notification->getKey())
+                ->exists(),
+            403
+        );
     }
 }

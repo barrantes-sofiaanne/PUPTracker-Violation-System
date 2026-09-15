@@ -48,6 +48,11 @@ return Application::configure(basePath: dirname(__DIR__))
     $middleware->alias([
         'super.admin' => \App\Http\Middleware\SuperAdminMiddleware::class,
         'student.profile.complete' => \App\Http\Middleware\EnsureStudentProfileComplete::class,
+        // PART 1/2 — narrows the security-operational surfaces to Security
+        // Personnel + Admin Assistant after the auth guard has run.
+        'security.operational' => \App\Http\Middleware\EnsureSecurityOperationalAccess::class,
+        // PART 3/4/5 — 15-minute inactivity expiry, enforced server-side.
+        'session.inactivity' => \App\Http\Middleware\EnforceInactivityTimeout::class,
     ]);
 
     // Exempt ONLY the machine-to-machine backup report webhook from CSRF

@@ -465,9 +465,60 @@
     color: rgba(255, 255, 255, 0.85) !important;
 }
 
-.admin-modal-header .admin-modal-close {
-    filter: invert(1) grayscale(1) brightness(200%);
-    opacity: 0.85;
+/* Modal close (×) on a DARK maroon/gold header.
+ *
+ * ROOT CAUSE of the "white box behind the ×": this rule used to be
+ *   filter: invert(1) grayscale(1) brightness(200%);
+ * A CSS `filter` re-renders the WHOLE element — the button box included — which
+ * is what produced a visible white pill/square around the glyph on mobile.
+ *
+ * Replaced with the same explicit-SVG technique `admin.css` already uses: the
+ * background stays fully transparent and the × is drawn white by its own SVG.
+ * No filter, so no box. 44px keeps an adequate touch target, and the button is
+ * a fixed-size flex item so it can never overlap the title or be clipped.
+ */
+.admin-modal-header .admin-modal-close,
+.modal-header .admin-modal-close {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background-color: transparent !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e") !important;
+    background-size: 1.1em auto;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.9;
+    box-shadow: none !important;
+    filter: none !important;
+}
+
+.admin-modal-header .admin-modal-close:hover,
+.admin-modal-header .admin-modal-close:focus-visible,
+.modal-header .admin-modal-close:hover,
+.modal-header .admin-modal-close:focus-visible {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.14) !important;
+    box-shadow: none !important;
+}
+
+/* The header lays out as title-block (flexible) + × (fixed), so the × never
+   collides with the title and the title wraps instead of overflowing. */
+.admin-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: nowrap;
+}
+
+.admin-modal-header > div,
+.admin-modal-header > .admin-modal-heading {
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 .admin-modal-body {

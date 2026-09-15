@@ -266,6 +266,10 @@ class StudentViolationController extends Controller
                 'last_name' => $student->last_name,
                 'text' => "{$student->student_number} - {$student->last_name}, {$student->first_name}",
                 'violations_count' => $student->violations_count,
+                // PUPTracker ACCOUNT status — the client warns before recording
+                // a violation for an inactive student. The server independently
+                // re-checks the rule in StoreViolationRequest.
+                'account_active' => $student->isActiveAccount(),
                 'program' => [
                     'program_name' => optional($student->studentInfo?->program)->program_name,
                 ],

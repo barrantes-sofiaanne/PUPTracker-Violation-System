@@ -185,6 +185,10 @@
 {{-- ========================= --}}
 @include('admin.violations.partials.student-history-modal')
 
+{{-- Violation History → multi-file evidence list. Outside the tab pane so a
+     hidden `.tab-pane` cannot hide it. --}}
+@include('admin.violations.partials.violation-evidence-modal')
+
 {{-- Confirmation review/deny/evidence modals. Kept outside the tab pane so a
      hidden `.tab-pane` cannot hide them. Only rendered for the Confirmations
      tab, which is the only tab that has the data they need. --}}

@@ -698,6 +698,76 @@ h6 {
     display: none;
 }
 
+/* ==========================================================================
+   Mobile sidebar close (×) — Admin, Student AND Security.
+
+   Replaces Bootstrap's `btn-light`, which rendered a solid WHITE pill on top of
+   the maroon sidebar gradient (very visible on phones, where the button only
+   appears). The × is now a bare, transparent, touch-friendly control that sits
+   naturally on the dark maroon header of the sidebar.
+
+   Loaded by every module: admin.css is linked by the admin, student and
+   security layouts, so one rule covers all three.
+   ========================================================================== */
+.sidebar-close {
+    /* Desktop: the sidebar is always visible, so the affordance is meaningless. */
+    display: none;
+
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+
+    /* 44px touch target (WCAG/Apple HIG comfortable minimum). */
+    width: 44px;
+    height: 44px;
+    padding: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    /* No white box: fully transparent, sitting directly on the maroon gradient. */
+    background: transparent;
+    background-color: transparent;
+
+    /* White × against the maroon sidebar. */
+    border: 1px solid transparent;
+    border-radius: 0.6rem;
+    color: #ffffff;
+    font-size: 1.05rem;
+    line-height: 1;
+
+    box-shadow: none;
+    cursor: pointer;
+
+    /* Keeps the × above the sidebar's own content if anything overlaps. */
+    z-index: 1;
+
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease;
+}
+
+/* A subtle translucent wash on interaction gives clear affordance WITHOUT
+   reintroducing a solid white pill. */
+.sidebar-close:hover,
+.sidebar-close:focus-visible {
+    background-color: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+    outline: none;
+}
+
+.sidebar-close:focus-visible {
+    box-shadow: 0 0 0 0.2rem rgba(218, 165, 32, 0.45);
+}
+
+/* Only shown where the sidebar becomes an off-canvas drawer. */
+@media (max-width: 991.98px) {
+    .sidebar-close {
+        display: inline-flex;
+    }
+}
+
 #sidebarBackdrop {
     display: none;
     position: fixed;
@@ -1300,6 +1370,40 @@ h6 {
     .btn-close {
         background-size: 0.9em auto;
     }
+}
+
+/* Guarantee an adequate TOUCH TARGET for every modal close (×), in every
+   module and whatever the header theme.
+ *
+ * Bootstrap sizes `.btn-close` as `content-box` at 1em + 0.25em padding, which
+ * renders a 32px tap target — below the 44px minimum for comfortable use on a
+ * phone. Setting an explicit border-box footprint fixes it once for all modals
+ * instead of per-view, so a modal added later inherits the fix.
+ *
+ * Only geometry is set here: the per-header rules above still own the glyph
+ * colour and the transparent background. */
+.modal-header .btn-close,
+.modal-header .admin-modal-close {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: 0;
+    border-radius: 999px;
+}
+
+/* Keep the × clear of the title: the heading flexes, the button does not. */
+.modal-header {
+    gap: 0.75rem;
+}
+
+.modal-header > .modal-title,
+.modal-header > div {
+    min-width: 0;
 }
 
 .import-dropzone {

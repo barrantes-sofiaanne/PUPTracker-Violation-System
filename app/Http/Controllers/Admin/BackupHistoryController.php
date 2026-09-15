@@ -199,10 +199,79 @@ class BackupHistoryController extends Controller
         // Record an audit entry so this also shows up in Audit Logs.
         $this->auditBackup($backup);
 
+        // §7 — a failed backup MUST reach the Super Admin as a system alert.
+        // Deliberately AFTER the audit entry: the backup record is the source of
+        // truth and must exist before anything tries to notify about it.
+        $this->notifySuperAdminOfBackup($backup);
+
         return response()->json([
             'success' => true,
             'backup_history_id' => $backup->id,
         ], $existing ? 200 : 201);
+    }
+
+    /**
+     * Raise a SYSTEM-LEVEL Super Admin alert for a backup that needs attention.
+     *
+     * §7 flow: backup runs -> fails -> record failure -> Super Admin system
+     * notification -> Super Admin reviews Backup Management.
+     *
+     * Only failures and unverified backups notify. A successful, verified backup
+     * is a normal system event and would only add noise (§5: do not flood), so
+     * it is recorded in backup_history + audit_logs and stays silent here.
+     *
+     * This never throws into the webhook: the external backup job must still get
+     * a clean 2xx even if notification writing fails, otherwise it would retry
+     * and duplicate the backup record.
+     */
+    private function notifySuperAdminOfBackup(BackupHistory $backup): void
+    {
+        try {
+            if ($backup->isSuccessful() && $backup->verified_at !== null) {
+                return;
+            }
+
+            $service = app(\App\Services\AdminNotificationService::class);
+            $typeLabel = method_exists($backup, 'typeLabel') ? $backup->typeLabel() : 'database';
+            $destination = $backup->destination ?: 'Cloudflare R2';
+
+            if (! $backup->isSuccessful()) {
+                // A failed backup is CRITICAL: there is no usable recovery point.
+                $reason = trim((string) $backup->error_message);
+
+                $service->createSystemAlert(
+                    type: 'system_backup_failure',
+                    title: 'Database Backup Failed',
+                    message: 'The scheduled ' . $typeLabel . ' backup "' . $backup->backup_name
+                        . '" FAILED and no recovery point was produced. Reason: '
+                        . ($reason !== '' ? $reason : 'not reported by the backup job.')
+                        . ' Review Backup Management immediately.',
+                    targetType: 'backup',
+                    targetId: (int) $backup->id,
+                    priority: \App\Models\AdminNotification::PRIORITY_CRITICAL,
+                );
+
+                return;
+            }
+
+            // Succeeded but never verified — worth attention, not an emergency.
+            $service->createSystemAlert(
+                type: 'system_backup_unverified',
+                title: 'Backup Verification Outstanding',
+                message: 'The ' . $typeLabel . ' backup "' . $backup->backup_name
+                    . '" completed to ' . $destination
+                    . ' but has not been verified. Integrity is unconfirmed.',
+                targetType: 'backup',
+                targetId: (int) $backup->id,
+                priority: \App\Models\AdminNotification::PRIORITY_WARNING,
+            );
+        } catch (\Throwable $e) {
+            // Never break the backup report webhook.
+            \Illuminate\Support\Facades\Log::warning('Unable to raise Super Admin backup notification', [
+                'backup_id' => $backup->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function auditBackup(BackupHistory $backup): void

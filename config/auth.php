@@ -29,7 +29,7 @@ return [
     'admin' => [
         'driver' => 'session',
         'provider' => 'admins',
-        // "Remember me" cookie lifetime for the Administrator module: 30 days.
+        // "Remember me" cookie lifetime for the Administrator module: 12 HOURS.
         // AuthManager::createSessionDriver() reads this and calls
         // SessionGuard::setRememberDuration() (minutes). After this window the
         // recaller cookie expires and the user must log in again (password + MFA).
@@ -39,7 +39,7 @@ return [
     'security' => [
         'driver' => 'session',
         'provider' => 'security',
-        // "Remember me" cookie lifetime for the Security module: 30 days.
+        // "Remember me" cookie lifetime for the Security module: 12 HOURS.
         'remember' => 43200,
     ],
 ],

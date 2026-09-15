@@ -31,7 +31,15 @@ class AnnouncementController extends Controller
             ->latest('created_at')
             ->paginate(10, ['*'], 'my_page');
 
-        $unreadNotificationCount = AdminNotification::where('is_read', false)->count();
+        // Audience-scoped: an unscoped count here would badge the Super Admin
+        // with operational notifications they are not the audience for.
+        $unreadNotificationCount = AdminNotification::query()
+            ->forAudience(
+                $admin?->getKey() !== null ? (int) $admin->getKey() : null,
+                $admin instanceof Admin && $admin->isItAdministrator()
+            )
+            ->where('is_read', false)
+            ->count();
         $announcementStats = [
             'total' => Announcement::count(),
             'with_attachments' => Announcement::whereNotNull('attachment_path')

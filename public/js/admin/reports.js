@@ -70,11 +70,19 @@ function loadReports(page = 1) {
 }
 
 function updateSummaryCards(stats) {
-    document.getElementById("totalViolations").textContent = stats.total;
-    document.getElementById("minorViolations").textContent = stats.minor;
-    document.getElementById("majorViolations").textContent = stats.major;
-    document.getElementById("repeatOffenders").textContent =
-        stats.repeat_offenders;
+    // The Minor Violations and Major Violations cards were removed from the
+    // Violation Reports summary, so this reads the remaining cards defensively:
+    // a missing card must never throw and abort the rest of the AJAX update
+    // (table + charts). The values are still on the page when present.
+    setText("totalViolations", stats.total);
+    setText("repeatOffenders", stats.repeat_offenders);
+}
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.textContent = value;
+    }
 }
 
 function updateTable(html) {

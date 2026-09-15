@@ -199,6 +199,11 @@ Route::post('/password/reset/{guard}', [ForgotPasswordController::class, 'reset'
 |--------------------------------------------------------------------------
 | Two-Factor Authentication (TOTP) Setup
 |--------------------------------------------------------------------------
+|
+| NOTE: this group deliberately does NOT carry `security.operational`.
+| TOTP enrolment is authentication SELF-SERVICE — every admin and security
+| account must be able to enrol its own second factor. Gating it would stop
+| ordinary administrators from ever setting up MFA.
 */
 
 Route::middleware('auth:admin,security')
@@ -256,7 +261,7 @@ Route::middleware('auth:student,security,admin')
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:student', 'student.profile.complete'])
+Route::middleware(['auth:student', 'student.profile.complete', 'session.inactivity'])
     ->prefix('student')
     ->group(function () {
 
@@ -303,7 +308,7 @@ Route::middleware(['auth:student', 'student.profile.complete'])
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth:admin')
+Route::middleware(['auth:admin', 'session.inactivity'])
     ->prefix('admin')
     ->group(function () {
 
@@ -831,7 +836,7 @@ Route::post('/admin/super-admin/backups/report', [App\Http\Controllers\Admin\Bac
     ->middleware(['web', 'throttle:backup-report'])
     ->name('admin.super-admin.backups.report');
 
-Route::middleware('auth:security')
+Route::middleware(['auth:security,admin', 'security.operational', 'session.inactivity'])
     ->prefix('security')
     ->group(function () {
 

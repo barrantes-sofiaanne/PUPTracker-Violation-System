@@ -44,6 +44,10 @@ class MfaController extends Controller
             // ever hold the remember flag. This mirrors the normalization applied
             // in MfaService::beginChallenge(), so a hand-crafted request cannot
             // enable "Remember me" on a student login.
+            //
+            // PART 11 — the IT Administrator (Super Admin) IS an admin-guard
+            // account, so it is covered by this same list. Students are the only
+            // guard deliberately excluded.
             if (in_array((string) ($pending['guard'] ?? ''), ['admin', 'security'], true)) {
                 $pending['remember'] = $request->boolean('remember');
                 $request->session()->put(MfaService::SESSION_KEY, $pending);

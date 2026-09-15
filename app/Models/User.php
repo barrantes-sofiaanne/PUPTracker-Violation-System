@@ -127,6 +127,62 @@ protected $fillable = [
         return $this->profile_completed_at !== null;
     }
 
+    /**
+     * Fallback "Active" id when status_tbl cannot be read (legacy environments
+     * and the in-memory test schema). Matches the seeded Active row.
+     */
+    public const FALLBACK_ACTIVE_STATUS_ID = 1;
+
+    /**
+     * Resolve the id of the "Active" account status.
+     *
+     * Read from `status_tbl.status_name` (case-insensitive) so the rule follows
+     * the real reference data rather than assuming an id. Falls back to 1, which
+     * is the seeded Active row in this project.
+     */
+    public static function activeStatusId(): int
+    {
+        static $cached = null;
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        try {
+            if (! \Illuminate\Support\Facades\Schema::hasTable('status_tbl')) {
+                return $cached = self::FALLBACK_ACTIVE_STATUS_ID;
+            }
+
+            $id = \Illuminate\Support\Facades\DB::table('status_tbl')
+                ->whereRaw('LOWER(status_name) = ?', ['active'])
+                ->value('status_id');
+
+            return $cached = ($id !== null ? (int) $id : self::FALLBACK_ACTIVE_STATUS_ID);
+        } catch (\Throwable $e) {
+            return $cached = self::FALLBACK_ACTIVE_STATUS_ID;
+        }
+    }
+
+    /**
+     * Is this student's PUPTracker ACCOUNT active?
+     *
+     * IDP authentication proves identity, but it does NOT grant PUPTracker
+     * access: the local account status is the authority. A deactivated account
+     * must be denied the Student Module even though its IDP login succeeds.
+     *
+     * A NULL status is treated as active for backward compatibility with
+     * pre-existing rows that never had a status set. Only an explicit
+     * non-Active value denies access.
+     */
+    public function isActiveAccount(): bool
+    {
+        if ($this->status_id === null) {
+            return true;
+        }
+
+        return (int) $this->status_id === self::activeStatusId();
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Relationships

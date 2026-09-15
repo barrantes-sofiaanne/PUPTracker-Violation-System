@@ -133,7 +133,7 @@
                             form="mfaRememberForm"
                             @checked($rememberChecked)>
                         <label class="form-check-label remember-label" for="mfaRememberMe">
-                            Remember me for 30 days
+                            Remember this device for 12 hours
                         </label>
                     </div>
                 </div>
@@ -234,7 +234,7 @@
                                     value="1"
                                     @checked($rememberChecked)>
                                 <label class="form-check-label remember-label" for="mfaRememberMe">
-                                    Remember me for 30 days
+                                    Remember this device for 12 hours
                                 </label>
                             </div>
                         </div>

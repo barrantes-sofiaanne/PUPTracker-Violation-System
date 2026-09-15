@@ -4,15 +4,54 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\AuditLog;
 use App\Support\MfaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AdminLoginController extends Controller
 {
+    /** PART 17 — failed credential attempts allowed before a temporary lock. */
+    public const MAX_LOGIN_ATTEMPTS = 3;
+
+    /**
+     * PART 17 — how long the account-level lock lasts once the threshold is hit.
+     * Short enough that a genuine user is not locked out for the day, long
+     * enough to make guessing impractical at this attempt budget.
+     */
+    public const LOGIN_LOCKOUT_SECONDS = 900;
+
+    /**
+     * Per-account throttle key for the login attempts limiter.
+     *
+     * Keyed on the SUBMITTED email, lower-cased, plus the client IP. The
+     * submitted value is used deliberately: keying on the resolved account would
+     * either let an unknown email bypass counting, or leak (via differing
+     * responses) whether an account exists.
+     */
+    private function loginThrottleKey(Request $request): string
+    {
+        return 'admin-login:' . sha1(
+            strtolower(trim((string) $request->input('email'))) . '|' . $request->ip()
+        );
+    }
+
+    /** Render a lockout duration for the user without leaking internals. */
+    private function humaniseSeconds(int $seconds): string
+    {
+        if ($seconds >= 60) {
+            $minutes = (int) ceil($seconds / 60);
+
+            return $minutes . ' minute(s)';
+        }
+
+        return max(1, $seconds) . ' second(s)';
+    }
+
     public function showLoginForm()
     {
         return view('auth.admin-login');
@@ -29,16 +68,62 @@ class AdminLoginController extends Controller
             $emailMask = $this->maskEmail((string) $request->input('email'));
             Log::info('Admin login attempt started', ['email_masked' => $emailMask]);
 
-            $admin = Admin::where('email', $request->email)->first();
+            // PART 17 — 3 failed credential attempts.
+            //
+            // The route throttle (`throttle:5,1`) is a PER-IP network backstop;
+            // this is the per-ACCOUNT lock the brief requires, so rotating IPs
+            // cannot buy extra guesses. Keyed on the submitted email (not the
+            // resolved account) so a wrong email still counts and the check
+            // cannot be used to enumerate accounts.
+            $throttleKey = $this->loginThrottleKey($request);
 
-            if (!$admin || !Hash::check($request->password, $admin->password)) {
-                Log::info('Admin login: invalid credentials');
+            if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_LOGIN_ATTEMPTS)) {
+                $seconds = RateLimiter::availableIn($throttleKey);
+
+                Log::warning('Admin login blocked: too many failed attempts', [
+                    'email_masked' => $emailMask,
+                    'retry_after_seconds' => $seconds,
+                ]);
+
+                AuditLog::create([
+                    'actor_type' => 'system',
+                    'actor_id' => null,
+                    'action' => 'Login Blocked',
+                    'module' => 'Authentication',
+                    'description' => 'Admin login blocked after ' . self::MAX_LOGIN_ATTEMPTS . ' failed attempts.',
+                    'created_at' => now(),
+                ]);
+
                 return back()
                     ->withErrors([
-                        'login' => 'Invalid email or password.'
+                        'login' => 'Too many failed login attempts. Please try again in ' . $this->humaniseSeconds($seconds) . '.',
                     ])
                     ->withInput();
             }
+
+            $admin = Admin::where('email', $request->email)->first();
+
+            if (!$admin || !Hash::check($request->password, $admin->password)) {
+                // Count the failure BEFORE responding so the threshold cannot be
+                // slipped past by a concurrent request.
+                RateLimiter::hit($throttleKey, self::LOGIN_LOCKOUT_SECONDS);
+
+                $remaining = max(0, self::MAX_LOGIN_ATTEMPTS - RateLimiter::attempts($throttleKey));
+
+                Log::info('Admin login: invalid credentials', ['attempts_remaining' => $remaining]);
+
+                return back()
+                    ->withErrors([
+                        'login' => $remaining > 0
+                            ? 'Invalid email or password. ' . $remaining . ' attempt(s) remaining.'
+                            : 'Too many failed login attempts. Please try again in ' . $this->humaniseSeconds(self::LOGIN_LOCKOUT_SECONDS) . '.',
+                    ])
+                    ->withInput();
+            }
+
+            // PART 17 — a SUCCESSFUL login clears the failed-attempt counter.
+            // "3 attempts" means three FAILURES, never three lifetime logins.
+            RateLimiter::clear($throttleKey);
 
             Log::info('Admin login: credentials verified', ['admin_id' => $admin->id]);
 
@@ -83,7 +168,12 @@ class AdminLoginController extends Controller
                     (bool) $admin->mfa_totp_enabled,
                     $admin->mfa_backup_codes,
                     $admin->mfa_backup_codes_used,
-                    $request->boolean('remember')
+                    // PART 8 — Remember Me is chosen on the MFA verification
+                    // screen only, never at the credential stage, so the pending
+                    // challenge always starts with it OFF. Passing `false` rather
+                    // than reading the request keeps a hand-crafted POST from
+                    // pre-enabling a persistent credential before MFA.
+                    false
                 );
                 Log::info('Admin login: MFA challenge started successfully');
             } catch (\Illuminate\Contracts\Encryption\DecryptException $exception) {

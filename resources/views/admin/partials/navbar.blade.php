@@ -39,14 +39,18 @@
                 $adminUnreadCount = 0;
                 try {
                     if (\Illuminate\Support\Facades\Schema::hasTable('admin_notifications_tbl')) {
-                        $notificationQuery = \App\Models\AdminNotification::query();
-                        if (\Illuminate\Support\Facades\Schema::hasColumn('admin_notifications_tbl', 'recipient_type')) {
-                            $notificationQuery->where(function ($query): void {
-                                $query->whereNull('recipient_type')->orWhere('recipient_type', 'admin');
-                            })->where(function ($query) use ($adminUser): void {
-                                $query->whereNull('recipient_id')->orWhere('recipient_id', $adminUser?->id);
-                            });
-                        }
+                        // Audience-scoped: a regular admin sees operational alerts,
+                        // the Super Admin sees system-level alerts ONLY. A Super
+                        // Admin must never inherit student/personnel notifications
+                        // just because they hold the highest role.
+                        $isSuperAdmin = $adminUser instanceof \App\Models\Admin
+                            && $adminUser->isItAdministrator();
+
+                        $notificationQuery = \App\Models\AdminNotification::query()
+                            ->forAudience(
+                                $adminUser?->id,
+                                $isSuperAdmin
+                            );
                         $adminRecentNotifications = (clone $notificationQuery)->orderBy('created_at', 'desc')->take(5)->get();
                         $adminUnreadCount = (clone $notificationQuery)->where('is_read', false)->count();
                     }

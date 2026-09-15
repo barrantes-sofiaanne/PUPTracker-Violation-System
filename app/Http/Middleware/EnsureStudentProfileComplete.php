@@ -35,6 +35,14 @@ class EnsureStudentProfileComplete
             return $next($request);
         }
 
+        // PUPTracker ACCOUNT STATUS is checked on EVERY request, not only at
+        // login. IDP authentication proves identity; it does not grant access.
+        // Checking here means an account deactivated mid-session loses access on
+        // its very next request instead of keeping it until the session expires.
+        if (! $student->isActiveAccount()) {
+            return $this->denyInactive($request);
+        }
+
         // Already registered → normal flow.
         if (method_exists($student, 'hasCompletedProfile') && $student->hasCompletedProfile()) {
             return $next($request);
@@ -60,6 +68,29 @@ class EnsureStudentProfileComplete
             ->route('student.login')
             ->withErrors([
                 'login' => 'Please sign in with your PUP IDP account to complete your registration.',
+            ]);
+    }
+
+    /**
+     * Deny an inactive account and end its session.
+     *
+     * The session is fully invalidated so the student cannot simply navigate
+     * back to a cached page or re-issue a request with the old cookie — access
+     * is blocked server-side, not hidden in the UI.
+     *
+     * The message is deliberately generic: it never reveals the internal status
+     * value, who changed it, or when.
+     */
+    private function denyInactive(Request $request): Response
+    {
+        Auth::guard('student')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()
+            ->route('student.login')
+            ->withErrors([
+                'login' => 'Your PUPTracker account is currently inactive. You cannot access the system at this time. Please contact the appropriate office for assistance.',
             ]);
     }
 }

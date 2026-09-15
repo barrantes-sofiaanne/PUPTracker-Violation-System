@@ -33,6 +33,47 @@
         background: #fffdf6;
         border-top: 1px solid rgba(122, 15, 30, 0.12);
         padding: 0.8rem 1rem;
+        /* Wrap rather than clip — buttons must never be cut off or overlap. */
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* The body scrolls independently so a tall step never pushes the header or
+       footer out of view. */
+    .security-record-modal .modal-body {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .security-record-modal .modal-content {
+        max-height: calc(100vh - 1rem);
+    }
+
+    /* Small screens: the primary CTA takes its own full-width row. */
+    @media (max-width: 575.98px) {
+        .security-record-modal .modal-dialog {
+            margin: 0.5rem;
+        }
+
+        .security-record-modal .modal-footer > .ms-auto {
+            margin-left: 0 !important;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .security-record-modal .modal-footer > .ms-auto > .portal-btn,
+        .security-record-modal .modal-footer > .ms-auto > .admin-btn {
+            flex: 1 1 auto;
+        }
+
+        .security-record-modal .modal-footer #saveViolation {
+            order: 3;
+            flex: 1 1 100%;
+        }
     }
 
     .security-record-modal .wizard-bubble {
@@ -44,6 +85,34 @@
         align-items: center;
         justify-content: center;
         box-shadow: 0 6px 12px rgba(122, 15, 30, 0.15);
+        border: 2px solid transparent;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    /* ------------------------------------------------------------------
+       Wizard step states — PUPTracker MAROON + GOLD ONLY.
+
+       These previously used Bootstrap's bg-success (GREEN) and bg-danger
+       (Bootstrap red). Replaced with palette-only states so the Security
+       wizard matches the Admin wizard exactly.
+       ------------------------------------------------------------------ */
+    .security-record-modal .wizard-bubble.wizard-step-current {
+        background: #7a0f1e;
+        border-color: #7a0f1e;
+        color: #fff;
+        box-shadow: 0 6px 14px rgba(122, 15, 30, 0.3);
+    }
+
+    .security-record-modal .wizard-bubble.wizard-step-completed {
+        background: #daa520;
+        border-color: #daa520;
+        color: #4a0209;
+    }
+
+    .security-record-modal .wizard-bubble.wizard-step-upcoming {
+        background: #fff8e8;
+        border-color: rgba(122, 15, 30, 0.28);
+        color: #7a0f1e;
     }
 
     .security-record-modal .wizard-card {
@@ -150,19 +219,19 @@
                 <div class="modal-body">
                     <div class="row text-center mb-4">
                         <div class="col">
-                            <div id="studentStepIndicator" class="wizard-bubble bg-danger text-white mx-auto">1</div>
+                            <div id="studentStepIndicator" class="wizard-bubble wizard-step-current mx-auto">1</div>
                             <div class="mt-2 fw-semibold">Student</div>
                         </div>
                         <div class="col">
-                            <div id="violationStepIndicator" class="wizard-bubble bg-goldenrod text-white mx-auto">2</div>
+                            <div id="violationStepIndicator" class="wizard-bubble wizard-step-upcoming mx-auto">2</div>
                             <div class="mt-2 fw-semibold">Violation</div>
                         </div>
                         <div class="col">
-                            <div id="evidenceStepIndicator" class="wizard-bubble bg-goldenrod text-white mx-auto">3</div>
+                            <div id="evidenceStepIndicator" class="wizard-bubble wizard-step-upcoming mx-auto">3</div>
                             <div class="mt-2 fw-semibold">Evidence</div>
                         </div>
                         <div class="col">
-                            <div id="reviewStepIndicator" class="wizard-bubble bg-goldenrod text-white mx-auto">4</div>
+                            <div id="reviewStepIndicator" class="wizard-bubble wizard-step-upcoming mx-auto">4</div>
                             <div class="mt-2 fw-semibold">Review</div>
                         </div>
                     </div>

@@ -190,10 +190,23 @@ class StudentIdpLoginController extends Controller
                     ]);
             }
 
-            if ((int) $user->status_id !== 1) {
+            // PUPTracker ACCOUNT STATUS gate.
+            //
+            // Successful IDP authentication proves IDENTITY but does not grant
+            // PUPTracker access. A deactivated account must be denied here even
+            // though its IDP credentials are valid and its email is real. This
+            // is the first of two checks — EnsureStudentProfileComplete re-checks
+            // on every subsequent request so a mid-session deactivation also
+            // takes effect.
+            if (! $user->isActiveAccount()) {
+                $this->logSecurityEvent('IDP login denied: PUPTracker account inactive', [
+                    'idp_subject' => $idpSubject,
+                    'user_id' => $user->user_id,
+                ]);
+
                 return redirect()->route('student.login')
                     ->withErrors([
-                        'login' => 'Your account has been deactivated. Please contact an administrator.',
+                        'login' => 'Your PUPTracker account is currently inactive. You cannot access the system at this time. Please contact the appropriate office for assistance.',
                     ]);
             }
 

@@ -154,18 +154,25 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         indicators.forEach(function (ind, i) {
+            // PUPTracker palette ONLY: maroon + gold. Never green/blue/purple.
+            //   completed -> gold (the "done" milestone tone)
+            //   current   -> maroon (the active step, strongest tone)
+            //   upcoming  -> muted/pale treatment that stays inside the palette
             ind.classList.remove(
+                "wizard-step-completed",
+                "wizard-step-current",
+                "wizard-step-upcoming",
                 "bg-danger",
                 "bg-goldenrod",
                 "bg-success",
                 "bg-secondary",
             );
             if (i < stepNumber - 1) {
-                ind.classList.add("bg-success"); // completed
+                ind.classList.add("wizard-step-completed");
             } else if (i === stepNumber - 1) {
-                ind.classList.add("bg-danger"); // current
+                ind.classList.add("wizard-step-current");
             } else {
-                ind.classList.add("bg-goldenrod"); // upcoming
+                ind.classList.add("wizard-step-upcoming");
             }
         });
 
@@ -1258,6 +1265,19 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     const selectStudent = (student) => {
+        // An inactive PUPTracker account may not receive a NEW violation.
+        // Refuse to select it so the operator is told immediately instead of at
+        // the end of the wizard. The server enforces the same rule on submit,
+        // so this is a UX guard and NOT the security boundary.
+        if (student.account_active === false) {
+            showAlert(
+                "error",
+                "Student account inactive",
+                "Violation cannot be recorded because this student account is inactive.",
+            );
+            return;
+        }
+
         document.getElementById("selectedStudentNumber").value =
             student.student_number;
         document.getElementById("studentNumber").value = student.student_number;
@@ -1316,7 +1336,17 @@ document.addEventListener("DOMContentLoaded", function () {
                         item.type = "button";
                         item.className =
                             "list-group-item list-group-item-action";
-                        item.innerHTML = `<strong>${student.student_number}</strong><br>${student.last_name}, ${student.first_name}`;
+
+                        // Inactive accounts are surfaced here so the operator
+                        // learns BEFORE filling in the whole wizard. This is a
+                        // convenience only — the server refuses the submission
+                        // regardless (StoreViolationRequest re-checks status).
+                        const inactive = student.account_active === false;
+                        const badge = inactive
+                            ? ' <span class="admin-badge" style="background:#fdecec;color:#8a1c1c;">Inactive account — cannot record</span>'
+                            : "";
+
+                        item.innerHTML = `<strong>${student.student_number}</strong>${badge}<br>${student.last_name}, ${student.first_name}`;
                         item.addEventListener("click", function () {
                             selectStudent(student);
                         });
