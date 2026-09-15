@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $email
  * @property string|null $idp_subject
  * @property string|null $idp_email
+ * @property \Illuminate\Support\Carbon|null $profile_completed_at
  * @property int|null $gender_id
  * @property int|null $status_id
  * @property int|null $roles_id
@@ -52,6 +53,7 @@ protected $fillable = [
     'idp_email',
     'idp_connected_at',
     'idp_last_login_at',
+    'profile_completed_at',
     'gender_id',
     'status_id',
     'roles_id',
@@ -86,6 +88,7 @@ protected $fillable = [
             'new_until'                => 'datetime',
             'idp_connected_at'         => 'datetime',
             'idp_last_login_at'        => 'datetime',
+            'profile_completed_at'     => 'datetime',
             'mfa_totp_secret'          => 'encrypted',
             'mfa_totp_enabled'         => 'boolean',
         ];
@@ -106,6 +109,22 @@ protected $fillable = [
     public function getRememberTokenName(): string
     {
         return '';
+    }
+
+    /**
+     * Has this student completed FIRST-TIME registration?
+     *
+     * The account is identity-linked through the PUP IDP (`idp_subject`), and
+     * `profile_completed_at` records that the guided registration step was
+     * finished. Both are required: a linked-but-not-registered account must
+     * still be sent to the registration page.
+     *
+     * Pre-existing linked accounts are grandfathered by the migration, so this
+     * returns true for them and they are never re-prompted.
+     */
+    public function hasCompletedProfile(): bool
+    {
+        return $this->profile_completed_at !== null;
     }
 
     /*

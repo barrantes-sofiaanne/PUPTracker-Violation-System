@@ -1,14 +1,14 @@
-@extends('layouts.auth-portal', ['title' => 'Connect Your PUPTracker Account', 'portal' => 'student'])
+@extends('layouts.auth-portal', ['title' => 'Complete Your PUPTracker Registration', 'portal' => 'student'])
 
 @section('auth-content')
 
         <p class="module-chip">Student Module</p>
 
-        <h2>Connect Your PUPTracker Account</h2>
+        <h2>Complete Your PUPTracker Registration</h2>
 
         <p class="subtitle">
-            Your PUP IDP account has been successfully authenticated. To connect it to your existing PUPTracker
-            student record, enter your student number.
+            Welcome to PUPTracker! Your university account has been successfully authenticated.
+            To complete your PUPTracker registration, please provide the required student information below.
         </p>
 
         @if (session('info'))
@@ -22,64 +22,213 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('student.idp.link.post') }}" autocomplete="off" class="auth-login-form" id="connectAccountForm">
+        @if($errors->has('registration'))
+            <div class="login-error">
+                <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+                <span>{{ $errors->first('registration') }}</span>
+            </div>
+        @endif
+
+        <form method="POST" action="{{ route('student.idp.link.post') }}" autocomplete="off"
+              class="auth-login-form" id="registrationForm">
             @csrf
 
-            <div class="mb-3">
-                <label class="form-label" for="student_number">Student Number</label>
-                <div class="input-group login-input-group">
-                    <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
-                    <input
-                        id="student_number"
-                        type="text"
-                        name="student_number"
-                        class="form-control @error('student_number') is-invalid @enderror"
-                        value="{{ old('student_number') }}"
-                        placeholder="e.g. 2026-00001"
-                        autocomplete="off"
-                        required>
+            {{--
+                SECTION A — IDENTITY FROM THE UNIVERSITY ACCOUNT.
+
+                These values are rendered for DISPLAY ONLY. The server never reads
+                them back: name and email are taken from the verified IDP session
+                when the account is created. `disabled` inputs are not submitted by
+                the browser at all, which makes casual tampering a non-issue; the
+                controller additionally ignores any such keys.
+            --}}
+            <section class="registration-section" aria-labelledby="idpSectionHeading">
+                <h3 class="registration-section-title" id="idpSectionHeading">
+                    <i class="bi bi-buildings-fill" aria-hidden="true"></i>
+                    Information from your university account
+                </h3>
+
+                <p class="registration-section-help" id="idpSectionHelp">
+                    These details were provided by your university account and cannot be edited in PUPTracker.
+                </p>
+
+                <div class="mb-3">
+                    <label class="form-label" for="verified_name">Full Name</label>
+                    <div class="input-group login-input-group">
+                        <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                        <input
+                            id="verified_name"
+                            type="text"
+                            class="form-control locked-field"
+                            value="{{ $verifiedName ?: '—' }}"
+                            aria-describedby="idpSectionHelp"
+                            disabled
+                            readonly>
+                        <span class="input-group-text locked-field-icon" title="Provided by PUP IDP" aria-hidden="true">
+                            <i class="bi bi-lock-fill"></i>
+                        </span>
+                    </div>
                 </div>
-                @error('student_number')
+
+                <div class="mb-3">
+                    <label class="form-label" for="verified_email">Email Address</label>
+                    <div class="input-group login-input-group">
+                        <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+                        <input
+                            id="verified_email"
+                            type="text"
+                            class="form-control locked-field"
+                            value="{{ $verifiedEmail ?: '—' }}"
+                            aria-describedby="idpSectionHelp"
+                            disabled
+                            readonly>
+                        <span class="input-group-text locked-field-icon" title="Provided by PUP IDP" aria-hidden="true">
+                            <i class="bi bi-lock-fill"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <p class="verified-identity-badge">
+                    <i class="bi bi-patch-check-fill" aria-hidden="true"></i>
+                    Verified by PUP Identity Provider
+                </p>
+            </section>
+
+            {{--
+                SECTION B — INFORMATION THE STUDENT SUPPLIES.
+
+                PUPTracker has no pre-existing student-number roster, so the student
+                number is COLLECTED here (not looked up). Program and Year come from
+                the real dropdown tables.
+            --}}
+            <section class="registration-section" aria-labelledby="pupSectionHeading">
+                <h3 class="registration-section-title" id="pupSectionHeading">
+                    <i class="bi bi-clipboard-data-fill" aria-hidden="true"></i>
+                    PUPTracker information
+                </h3>
+
+                <div class="mb-3">
+                    <label class="form-label" for="student_number">
+                        Student Number <span class="required-asterisk" aria-hidden="true">*</span>
+                    </label>
+                    <div class="input-group login-input-group">
+                        <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                        <input
+                            id="student_number"
+                            type="text"
+                            name="student_number"
+                            class="form-control @error('student_number') is-invalid @enderror"
+                            value="{{ old('student_number') }}"
+                            placeholder="e.g. 2026-00001"
+                            autocomplete="off"
+                            aria-describedby="studentNumberHelp"
+                            required>
+                    </div>
+                    <small class="form-text text-muted" id="studentNumberHelp">
+                        Enter your official student number. It is recorded on your new PUPTracker account.
+                    </small>
+                    @error('student_number')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="program_id">
+                        Program/Course <span class="required-asterisk" aria-hidden="true">*</span>
+                    </label>
+                    <select
+                        id="program_id"
+                        name="program_id"
+                        class="form-select @error('program_id') is-invalid @enderror"
+                        required>
+                        <option value="">Select Program/Course</option>
+                        @foreach ($programs as $program)
+                            <option value="{{ $program->program_id }}"
+                                @selected((string) old('program_id') === (string) $program->program_id)>
+                                {{ $program->program_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('program_id')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="year_id">
+                        Year Level <span class="required-asterisk" aria-hidden="true">*</span>
+                    </label>
+                    <select
+                        id="year_id"
+                        name="year_id"
+                        class="form-select @error('year_id') is-invalid @enderror"
+                        required>
+                        <option value="">Select Year Level</option>
+                        @foreach ($years as $year)
+                            <option value="{{ $year->year_id }}"
+                                @selected((string) old('year_id') === (string) $year->year_id)>
+                                {{ $year->year }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('year_id')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                </div>
+            </section>
+
+            {{--
+                INFORMATION PRIVACY NOTICE.
+
+                Displayed BEFORE submission so the student reads it before any data
+                is sent. The acknowledgement is worded as a notice acknowledgement
+                ("I have read and understood"), not as affirmative consent.
+            --}}
+            <div class="privacy-notice" role="note" aria-labelledby="privacyNoticeHeading">
+                <h3 class="privacy-notice-title" id="privacyNoticeHeading">
+                    <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
+                    Information Privacy Notice
+                </h3>
+
+                <p>
+                    The information you provide will be collected and processed solely for purposes related to
+                    the operation of the PUPTracker system, including student identification, violation and
+                    sanction management, record keeping, and other authorized student-related processes.
+                </p>
+
+                <p class="mb-0">
+                    Only information necessary for these purposes will be collected. Your information will be
+                    handled in accordance with applicable institutional policies and data privacy requirements.
+                    By proceeding with registration, you acknowledge that you have read and understood this notice.
+                </p>
+            </div>
+
+            <div class="form-check registration-acknowledgement">
+                <input
+                    class="form-check-input @error('privacy_acknowledged') is-invalid @enderror"
+                    type="checkbox"
+                    id="privacy_acknowledged"
+                    name="privacy_acknowledged"
+                    value="1"
+                    @checked(old('privacy_acknowledged'))
+                    required>
+                <label class="form-check-label" for="privacy_acknowledged">
+                    I have read and understood the Information Privacy Notice.
+                    <span class="required-asterisk" aria-hidden="true">*</span>
+                </label>
+                @error('privacy_acknowledged')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
                 @enderror
             </div>
 
-            <button type="button" class="btn btn-success w-100 login-btn" id="continueBtn">
-                Continue
+            <button type="submit" class="btn btn-success w-100 login-btn" id="completeRegistrationBtn">
+                <span class="btn-label">Complete Registration</span>
+                <span class="btn-spinner spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
             </button>
-
-            <p class="security-note">
-                <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
-                Your PUP IDP account is verified securely on the server. You are only connecting it to the
-                PUPTracker student record that belongs to you.
-            </p>
         </form>
 
         <div class="footer-links">
             <a href="{{ route('student.login') }}">&larr; Back to Login</a>
-        </div>
-
-        {{-- Confirm Student Number modal --}}
-        <div class="modal fade auth-modal" id="confirmStudentNumberModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="bi bi-person-check me-2"></i>Confirm Student Number</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p class="text-muted">You entered:</p>
-                        <p class="fs-4 fw-bold text-center" id="confirmStudentNumberDisplay">—</p>
-                        <p class="text-muted text-center mb-0">Is this your correct student number?</p>
-                    </div>
-                    <div class="modal-footer justify-content-between">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Go Back</button>
-                        <button type="button" class="btn portal-btn" id="confirmStudentNumberBtn">
-                            <i class="bi bi-check-circle me-1"></i>Yes, Continue
-                        </button>
-                    </div>
-                </div>
-            </div>
         </div>
 
 @endsection
@@ -87,39 +236,22 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('connectAccountForm');
-    const input = document.getElementById('student_number');
-    const continueBtn = document.getElementById('continueBtn');
-    const modalEl = document.getElementById('confirmStudentNumberModal');
-    if (!form || !input || !continueBtn || !modalEl) {
+    const form = document.getElementById('registrationForm');
+    const btn = document.getElementById('completeRegistrationBtn');
+    if (!form || !btn) {
         return;
     }
 
-    // The auth portal uses isolation:isolate + backdrop-filter on its shell,
-    // which traps nested Bootstrap modals inside a low stacking context (the
-    // body-level .modal-backdrop ends up covering the dialog). Relocating the
-    // modal to <body> lets Bootstrap stack it correctly (dialog above backdrop).
-    if (modalEl.parentElement !== document.body) {
-        document.body.appendChild(modalEl);
-    }
+    // Loading state while the registration submits. The form posts normally
+    // (no AJAX), so the button is disabled + a spinner shown to prevent a
+    // double-submit; the server also re-checks for duplicates.
+    form.addEventListener('submit', function () {
+        const label = btn.querySelector('.btn-label');
+        const spinner = btn.querySelector('.btn-spinner');
 
-    const modal = new bootstrap.Modal(modalEl);
-    const display = document.getElementById('confirmStudentNumberDisplay');
-    const confirmBtn = document.getElementById('confirmStudentNumberBtn');
-
-    continueBtn.addEventListener('click', function () {
-        const value = input.value.trim();
-        if (!value) {
-            input.focus();
-            return;
-        }
-        display.textContent = value;
-        modal.show();
-    });
-
-    confirmBtn.addEventListener('click', function () {
-        modal.hide();
-        form.submit();
+        btn.disabled = true;
+        if (label) { label.textContent = 'Submitting…'; }
+        if (spinner) { spinner.classList.remove('d-none'); }
     });
 });
 </script>

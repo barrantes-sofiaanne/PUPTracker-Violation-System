@@ -746,6 +746,10 @@ class AnnouncementViewTest extends TestCase
             'password_hash' => Hash::make('Password123!'),
             'roles_id' => 2,
             'status_id' => 1,
+            // Existing registered student. The production migration backfills
+            // pre-existing accounts the same way so the first-time-registration
+            // gate does not block them.
+            'profile_completed_at' => now()->subDay(),
         ]);
     }
 
@@ -851,6 +855,7 @@ class AnnouncementViewTest extends TestCase
                 $table->string('password_hash')->nullable();
                 $table->string('idp_subject')->nullable();
                 $table->string('idp_email')->nullable();
+            $table->timestamp('profile_completed_at')->nullable();
                 $table->unsignedInteger('roles_id')->nullable();
                 $table->unsignedInteger('status_id')->nullable();
                 $table->timestamp('created_at')->nullable();

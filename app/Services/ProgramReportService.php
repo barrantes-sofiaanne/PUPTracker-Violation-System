@@ -58,6 +58,11 @@ class ProgramReportService
             ->where('roles_id', 2)
             ->whereHas('studentInfo', fn ($q) => $q->where('program_id', $program->program_id));
 
+        // Declared OUTSIDE the branch below: `$explicit` is used after the
+        // if/else (the graduating sort), so defining it only inside
+        // `$reportMode === 'graduating'` left it undefined for regular reports.
+        $explicit = [];
+
         if ($reportMode === 'graduating') {
             $explicit = array_values(array_unique(array_filter(
                 array_map(fn ($v) => trim((string) $v), $additionalStudents),

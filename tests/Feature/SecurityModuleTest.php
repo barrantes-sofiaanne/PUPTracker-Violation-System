@@ -1329,15 +1329,9 @@ class SecurityModuleTest extends TestCase
             'password_hash' => Hash::make('Password123!'),
             'roles_id' => 2,
             'status_id' => 1,
+            // Existing registered student (see the migration backfill).
+            'profile_completed_at' => now()->subDay(),
         ]);
-
-        if (Schema::hasTable('student_info_tbl')) {
-            DB::table('student_info_tbl')->insert([
-                'user_id' => $user->user_id,
-                'program_id' => $programId,
-                'year_id' => $yearId,
-            ]);
-        }
 
         return $user;
     }
@@ -1447,6 +1441,7 @@ class SecurityModuleTest extends TestCase
                 $table->string('last_name')->nullable();
                 $table->string('name_suffix')->nullable();
                 $table->string('email')->nullable();
+                $table->timestamp('profile_completed_at')->nullable();
                 $table->string('password_hash')->nullable();
                 $table->unsignedInteger('roles_id')->nullable();
                 $table->unsignedInteger('status_id')->nullable();

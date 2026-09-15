@@ -13,15 +13,12 @@
         description="Manage student accounts and student records." />
 
     <div class="card shadow-sm user-management-shell">
+        {{-- Card Header.
+             The redundant secondary "User Management" heading has been REMOVED —
+             the main page header above already names the page. The tabs are now
+             the first visible module navigation. --}}
         <div class="card-header bg-white">
-            <div class="d-flex justify-content-between align-items-center">
-                <h4 class="mb-0">
-                    <i class="bi bi-people-fill me-2"></i>
-                    User Management
-                </h4>
-            </div>
-
-            <ul class="nav nav-tabs mt-3 user-management-tabs" id="userManagementTabs" role="tablist">
+            <ul class="nav nav-tabs user-management-tabs" id="userManagementTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link {{ request('tab', 'students') === 'students' ? 'active' : '' }}" id="students-tab" data-bs-toggle="tab" data-bs-target="#students-pane" type="button" role="tab">
                         <i class="bi bi-mortarboard-fill me-1"></i>

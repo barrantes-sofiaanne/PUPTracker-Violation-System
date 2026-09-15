@@ -2522,3 +2522,151 @@ html.is-navigating .auth-brand-mark::after {
 .auth-modal .modal-backdrop.show {
     opacity: 0.55;
 }
+
+/* ==========================================================================
+   First-Time Registration - Information Privacy Notice + verified identity.
+
+   Rendered on the student registration page (student/idp-link.blade.php).
+   Uses the existing auth-portal tokens so it matches the rest of the card.
+   ========================================================================== */
+
+.privacy-notice {
+    background: #fffaf0;
+    border: 1px solid rgba(218, 165, 32, 0.45);
+    border-left: 4px solid var(--login-goldenrod);
+    border-radius: 0.75rem;
+    padding: 0.9rem 1rem;
+    margin-bottom: 1.1rem;
+}
+
+.privacy-notice-title {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--login-maroon-dark);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.privacy-notice p {
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: var(--login-muted);
+    margin-bottom: 0.55rem;
+}
+
+/* Registration sections — the two halves of the form, so the student can see
+   at a glance which values came from the university and which they supply. */
+.registration-section {
+    border: 1px solid rgba(128, 0, 0, 0.14);
+    border-radius: 0.85rem;
+    padding: 0.95rem 1rem 0.35rem;
+    margin-bottom: 1.1rem;
+    background: rgba(255, 253, 246, 0.72);
+}
+
+.registration-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.84rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--login-maroon-dark);
+    margin-bottom: 0.35rem;
+}
+
+.registration-section-title i {
+    font-size: 0.95rem;
+    color: var(--login-maroon);
+}
+
+.registration-section-help {
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--login-muted);
+    margin-bottom: 0.9rem;
+}
+
+/* Locked IDP-sourced fields. `disabled` keeps them out of the submitted
+   payload entirely; the styling only communicates that they are not editable. */
+.locked-field,
+.locked-field:disabled {
+    background: rgba(238, 240, 236, 0.92);
+    color: var(--login-ink);
+    font-weight: 600;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.locked-field-icon {
+    background: rgba(238, 240, 236, 0.92);
+    color: #6b7280;
+}
+
+.verified-identity-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #1e7d3c;
+    margin-bottom: 1rem;
+}
+
+/* Privacy-notice acknowledgement. */
+.registration-acknowledgement {
+    margin-bottom: 1rem;
+    padding-left: 1.6rem;
+}
+
+.registration-acknowledgement .form-check-label {
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--login-ink);
+}
+
+.registration-acknowledgement .form-check-input {
+    margin-left: -1.6rem;
+    border-color: rgba(128, 0, 0, 0.4);
+}
+
+.registration-acknowledgement .form-check-input:checked {
+    background-color: var(--login-maroon);
+    border-color: var(--login-maroon);
+}
+
+.registration-acknowledgement .form-check-input:focus {
+    border-color: rgba(128, 0, 0, 0.5);
+    box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.11);
+}
+
+.auth-content-card .form-select {
+    border-color: rgba(128, 0, 0, 0.22);
+    border-radius: 0.7rem;
+    min-height: 44px;
+}
+
+.auth-content-card .form-select:focus {
+    border-color: rgba(128, 0, 0, 0.5);
+    box-shadow: 0 0 0 0.22rem rgba(128, 0, 0, 0.11);
+}
+
+/* Required-field indicator — matches SERVER-SIDE validation only. */
+.required-asterisk {
+    color: #b91c1c;
+    font-weight: 700;
+}
+
+/* Submit loading state. */
+.login-btn .btn-spinner {
+    vertical-align: middle;
+}
+
+@media (max-width: 480px) {
+    .registration-section {
+        padding: 0.85rem 0.8rem 0.25rem;
+    }
+}

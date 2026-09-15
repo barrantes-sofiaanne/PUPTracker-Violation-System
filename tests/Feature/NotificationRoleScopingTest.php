@@ -293,6 +293,7 @@ class NotificationRoleScopingTest extends TestCase
                 $table->unsignedBigInteger('status_id')->nullable();
                 $table->unsignedBigInteger('roles_id')->nullable();
                 $table->string('password_hash')->nullable();
+                $table->timestamp('profile_completed_at')->nullable();
                 $table->rememberToken();
                 $table->text('mfa_totp_secret')->nullable();
                 $table->boolean('mfa_totp_enabled')->default(false);
@@ -463,6 +464,8 @@ class NotificationRoleScopingTest extends TestCase
             'password_hash' => Hash::make('Password123!'),
             'roles_id' => 2,
             'status_id' => 1,
+            // Existing registered student (see the migration backfill).
+            'profile_completed_at' => now()->subDay(),
         ]);
     }
 

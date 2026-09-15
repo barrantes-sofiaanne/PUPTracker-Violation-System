@@ -47,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
     $middleware->alias([
         'super.admin' => \App\Http\Middleware\SuperAdminMiddleware::class,
+        'student.profile.complete' => \App\Http\Middleware\EnsureStudentProfileComplete::class,
     ]);
 
     // Exempt ONLY the machine-to-machine backup report webhook from CSRF

@@ -78,28 +78,22 @@ Route::get('/student/idp/callback', [StudentIdpLoginController::class, 'callback
 Route::post('/student/idp/start', [StudentIdpLoginController::class, 'start'])
     ->name('student.idp.start');
 
-// Secure student self-linking: after IDP auth with an unlinked account, the
-// student verifies their local identity by entering their PUPTracker student
-// number. The IDP id (from the authenticated session) is then bound to the
-// verified local student. The student never types their IDP id.
+// FIRST-TIME STUDENT REGISTRATION.
+//
+// Reached only after a successful IDP login with no IDP-linked PUPTracker
+// account. The student supplies their student number / program / year and
+// acknowledges the Information Privacy Notice; the server creates the account
+// using the VERIFIED IDP identity from the session.
+//
+// PUPTracker has no pre-existing student-number roster, so the student number
+// is COLLECTED here rather than looked up. There is deliberately no "verify an
+// existing record" step.
 Route::get('/student/idp/link', [StudentIdpLoginController::class, 'showLinkForm'])
     ->name('student.idp.link');
 
 Route::post('/student/idp/link', [StudentIdpLoginController::class, 'linkAccount'])
     ->middleware('throttle:5,1')
     ->name('student.idp.link.post');
-
-// "Connect / Verify your PUPTracker Account" — staged preview & final submit.
-Route::get('/student/idp/link/preview', [StudentIdpLoginController::class, 'showPreview'])
-    ->name('student.idp.link.preview');
-
-Route::post('/student/idp/link/program-year', [StudentIdpLoginController::class, 'updateProgramYear'])
-    ->middleware('throttle:5,1')
-    ->name('student.idp.link.program-year');
-
-Route::post('/student/idp/link/submit', [StudentIdpLoginController::class, 'submitLink'])
-    ->middleware('throttle:5,1')
-    ->name('student.idp.link.submit');
 
 Route::post('/logout', [LoginController::class, 'logout'])
     ->name('logout');
@@ -253,10 +247,16 @@ Route::middleware('auth:student,security,admin')
 /*
 |--------------------------------------------------------------------------
 | Student Module
+|
+| Every route here requires a COMPLETED first-time registration
+| (`student.profile.complete`). A student who authenticated via the IDP but has
+| not finished registration is redirected to the registration page instead of
+| reaching the dashboard. The guard runs after `auth:student`, so an
+| unauthenticated request is still handled by the auth middleware first.
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth:student')
+Route::middleware(['auth:student', 'student.profile.complete'])
     ->prefix('student')
     ->group(function () {
 

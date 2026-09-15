@@ -17,20 +17,11 @@
 
     <div class="card shadow-sm">
 
-        {{-- Card Header --}}
+        {{-- Card Header.
+             The redundant secondary "Violation Management" heading has been
+             REMOVED — the main maroon page header above already names the page.
+             The tabs are now the first visible module navigation. --}}
         <div class="card-header bg-white">
-
-            <div class="d-flex justify-content-between align-items-center">
-
-                <h4 class="mb-0">
-
-                    <i class="bi bi-exclamation-octagon-fill text-danger me-2"></i>
-
-                    Violation Management
-
-                </h4>
-
-            </div>
 
             {{-- Main Navigation Tabs.
                  "Violation Confirmations" is deliberately FIRST: it is the queue
@@ -42,7 +33,7 @@
             @endphp
 
             <ul
-                class="nav nav-tabs mt-3"
+                class="nav nav-tabs"
                 id="violationTabs"
                 role="tablist">
 

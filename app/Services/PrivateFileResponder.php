@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -51,10 +52,15 @@ class PrivateFileResponder
      *
      * Single source of truth for the disk choice, so a view endpoint can never
      * read from a different disk than the upload wrote to.
+     *
+     * @return Filesystem
      */
     public static function disk(): Filesystem
     {
-        return Storage::disk((string) config('filesystems.evidence_disk', 'local'));
+        /** @var FilesystemAdapter $disk */
+        $disk = Storage::disk((string) config('filesystems.evidence_disk', 'local'));
+
+        return $disk;
     }
 
     /**

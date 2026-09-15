@@ -524,6 +524,7 @@ class StudentIdpLoginTest extends TestCase
                 $table->string('idp_email')->nullable();
                 $table->timestamp('idp_connected_at')->nullable();
                 $table->timestamp('idp_last_login_at')->nullable();
+                $table->timestamp('profile_completed_at')->nullable();
                 $table->unsignedBigInteger('gender_id')->nullable();
                 $table->unsignedBigInteger('status_id')->nullable();
                 $table->unsignedBigInteger('roles_id')->nullable();
