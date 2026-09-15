@@ -175,6 +175,50 @@
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
                 </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="section_id">
+                        Section <span class="required-asterisk" aria-hidden="true">*</span>
+                    </label>
+                    <select
+                        id="section_id"
+                        name="section_id"
+                        class="form-select @error('section_id') is-invalid @enderror"
+                        required>
+                        <option value="">Select Section</option>
+                        @foreach ($sections as $section)
+                            <option value="{{ $section->section_id }}"
+                                @selected((string) old('section_id') === (string) $section->section_id)>
+                                {{ $section->section_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('section_id')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="gender_id">
+                        Gender <span class="required-asterisk" aria-hidden="true">*</span>
+                    </label>
+                    <select
+                        id="gender_id"
+                        name="gender_id"
+                        class="form-select @error('gender_id') is-invalid @enderror"
+                        required>
+                        <option value="">Select Gender</option>
+                        @foreach ($genders as $gender)
+                            <option value="{{ $gender->gender_id }}"
+                                @selected((string) old('gender_id') === (string) $gender->gender_id)>
+                                {{ $gender->gender_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('gender_id')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                </div>
             </section>
 
             {{--

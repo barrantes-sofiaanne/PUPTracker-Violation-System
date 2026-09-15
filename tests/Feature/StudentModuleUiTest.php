@@ -922,6 +922,7 @@ class StudentModuleUiTest extends TestCase
                 $table->increments('notification_id');
                 $table->string('student_number')->nullable();
                 $table->string('recipient_type')->nullable();
+                $table->unsignedBigInteger('recipient_id')->nullable();
                 $table->string('type')->nullable();
                 $table->string('notification_type')->nullable();
                 $table->string('title')->nullable();

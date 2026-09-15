@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Announcement;
 use App\Models\Notification;
 use App\Models\SanctionRequest;
+use App\Models\User;
 use App\Models\Violation;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -21,6 +22,14 @@ class StudentNotificationService
 {
     /**
      * Create a student notification after the underlying action succeeded.
+     *
+     * The notification is stamped with the OWNING ACCOUNT id (`recipient_id`),
+     * resolved from users_tbl by student number. Authorisation later keys off
+     * that account id, so a student number typo can never deliver one student's
+     * private notification to another account.
+     *
+     * @param  int|null  $userId  Owner account id. Omit to let the service
+     *                            resolve it from $studentNumber.
      */
     public function create(
         string $studentNumber,
@@ -28,7 +37,8 @@ class StudentNotificationService
         string $title,
         string $message,
         string $targetType,
-        int $targetId
+        int $targetId,
+        ?int $userId = null
     ): Notification {
         $data = [
             'student_number' => $studentNumber,
@@ -38,6 +48,14 @@ class StudentNotificationService
             'recipient_type' => 'student',
             'created_at' => now(),
         ];
+
+        // Account ownership. Always stamped when resolvable so the row is
+        // protected by the account key from the moment it is written.
+        $ownerId = $userId ?? $this->resolveOwnerId($studentNumber);
+
+        if ($ownerId !== null && Schema::hasColumn('notifications_tbl', 'recipient_id')) {
+            $data['recipient_id'] = $ownerId;
+        }
 
         if (Schema::hasColumn('notifications_tbl', 'title')) {
             $data['title'] = $title;
@@ -50,6 +68,27 @@ class StudentNotificationService
         }
 
         return Notification::create($data);
+    }
+
+    /**
+     * Resolve the owning account id for a student number.
+     *
+     * Returns null when the account cannot be resolved (e.g. the number belongs
+     * to no registered account); the notification is then written without an
+     * ownership key and is only reachable through the bounded legacy fallback.
+     */
+    protected function resolveOwnerId(string $studentNumber): ?int
+    {
+        if (trim($studentNumber) === '') {
+            return null;
+        }
+
+        $userId = User::query()
+            ->where('student_number', $studentNumber)
+            ->orderBy('user_id')
+            ->value('user_id');
+
+        return $userId !== null ? (int) $userId : null;
     }
 
     /**

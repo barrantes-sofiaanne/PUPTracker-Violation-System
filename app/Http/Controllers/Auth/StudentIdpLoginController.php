@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Gender;
 use App\Models\Program;
+use App\Models\Section;
 use App\Models\User;
 use App\Models\Year;
 use Illuminate\Http\RedirectResponse;
@@ -251,8 +253,10 @@ class StudentIdpLoginController extends Controller
         $verifiedName = $this->displayName($profile);
         $verifiedEmail = trim((string) ($profile['email'] ?? ''));
 
-        // Program and year are chosen by the student: PUPTracker does not hold a
-        // pre-created student record that could supply them.
+        // Academic details are chosen by the student: PUPTracker does not hold a
+        // pre-created student record that could supply them. The dropdowns are
+        // the SAME reference tables the Admin student screens use, so there is
+        // no duplicate program/year/section/gender source.
         $programs = Program::query()
             ->orderBy('program_name')
             ->get(['program_id', 'program_name']);
@@ -261,12 +265,56 @@ class StudentIdpLoginController extends Controller
             ->orderBy('year_id')
             ->get(['year_id', 'year']);
 
+        $sections = $this->sectionsForRegistration();
+        $genders = $this->gendersForRegistration();
+
         return view('student.idp-link', compact(
             'verifiedName',
             'verifiedEmail',
             'programs',
-            'years'
+            'years',
+            'sections',
+            'genders'
         ));
+    }
+
+    /**
+     * Section options for the registration dropdown.
+     *
+     * Guarded because section_tbl is a LEGACY table in some environments and the
+     * registration page must still render (with a clear message) rather than 500.
+     *
+     * @return \Illuminate\Support\Collection<int, \App\Models\Section>
+     */
+    protected function sectionsForRegistration(): \Illuminate\Support\Collection
+    {
+        try {
+            if (! Schema::hasTable('section_tbl')) {
+                return collect();
+            }
+
+            return Section::query()->orderBy('section_name')->get(['section_id', 'section_name']);
+        } catch (\Throwable $e) {
+            return collect();
+        }
+    }
+
+    /**
+     * Gender options for the registration dropdown.
+     *
+     * @return \Illuminate\Support\Collection<int, \App\Models\Gender>
+     */
+    protected function gendersForRegistration(): \Illuminate\Support\Collection
+    {
+        try {
+            if (! Schema::hasTable('gender_tbl')) {
+                return collect();
+            }
+
+            return Gender::query()->orderBy('gender_name')->get(['gender_id', 'gender_name']);
+        } catch (\Throwable $e) {
+            return collect();
+        }
     }
 
     /**
@@ -279,7 +327,9 @@ class StudentIdpLoginController extends Controller
      *
      * Identity (name/email/idp_subject) is taken ONLY from the server-side IDP
      * session — never from the request. The request contributes academic data
-     * (student number, program, year) and the privacy-notice acknowledgement.
+     * (student number, program, year, section, gender) and the privacy-notice
+     * acknowledgement. Every academic value is validated against its reference
+     * table, so an arbitrary browser-supplied id is rejected.
      *
      * @return \Illuminate\Http\RedirectResponse
      */
@@ -300,6 +350,8 @@ class StudentIdpLoginController extends Controller
             'student_number' => ['required', 'string', 'max:50'],
             'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
             'year_id' => ['required', 'integer', 'exists:year_tbl,year_id'],
+            'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
+            'gender_id' => ['required', 'integer', 'exists:gender_tbl,gender_id'],
             // The student must acknowledge the Information Privacy Notice.
             'privacy_acknowledged' => ['accepted'],
         ], [
@@ -309,6 +361,10 @@ class StudentIdpLoginController extends Controller
             'program_id.exists' => 'Please select a valid program/course.',
             'year_id.required' => 'Please select your year level.',
             'year_id.exists' => 'Please select a valid year level.',
+            'section_id.required' => 'Please select your section.',
+            'section_id.exists' => 'Please select a valid section.',
+            'gender_id.required' => 'Please select your gender.',
+            'gender_id.exists' => 'Please select a valid gender.',
             'privacy_acknowledged.accepted' => 'Please read and acknowledge the Information Privacy Notice to continue.',
         ]);
 
@@ -357,7 +413,7 @@ class StudentIdpLoginController extends Controller
                     // Collected during registration.
                     'student_number' => trim((string) $validated['student_number']),
 
-                    'gender_id' => null,
+                    'gender_id' => (int) $validated['gender_id'],
                     'status_id' => $statusId,
                     'roles_id' => 2,           // student role
                     'password_hash' => '',     // authentication is IDP-only
@@ -371,8 +427,13 @@ class StudentIdpLoginController extends Controller
                     'profile_completed_at' => now(),
                 ]);
 
-                // Enrollment record (program / year). Created, not matched.
-                $this->createStudentInfo($student, (int) $validated['program_id'], (int) $validated['year_id']);
+                // Enrollment record (program / year / section). Created, not matched.
+                $this->createStudentInfo(
+                    $student,
+                    (int) $validated['program_id'],
+                    (int) $validated['year_id'],
+                    (int) $validated['section_id']
+                );
 
                 return $student;
             });
@@ -458,7 +519,7 @@ class StudentIdpLoginController extends Controller
      *
      * @throws \Throwable
      */
-    protected function createStudentInfo(User $student, int $programId, int $yearId): void
+    protected function createStudentInfo(User $student, int $programId, int $yearId, int $sectionId): void
     {
         $data = [
             'user_id' => $student->user_id,
@@ -467,8 +528,9 @@ class StudentIdpLoginController extends Controller
             'ladderized' => 0,
         ];
 
+        // Section is student-selected, never defaulted to N/A for a new student.
         if (Schema::hasColumn('student_info_tbl', 'section_id')) {
-            $data['section_id'] = null;
+            $data['section_id'] = $sectionId;
         }
 
         if (Schema::hasColumn('student_info_tbl', 'student_status_id')) {

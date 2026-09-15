@@ -354,6 +354,8 @@ class AdminIdpLinkingTest extends TestCase
             'student_number' => '2026-00003',
             'program_id' => 1,
             'year_id' => 1,
+            'section_id' => 1,
+            'gender_id' => 1,
             'privacy_acknowledged' => '1',
         ], $overrides);
     }
@@ -600,11 +602,80 @@ class AdminIdpLinkingTest extends TestCase
                 'student_number' => '2026-00003',
                 'program_id' => 1,
                 'year_id' => 1,
+                'section_id' => 1,
+                'gender_id' => 1,
                 // no privacy_acknowledged
             ])
             ->assertSessionHasErrors('privacy_acknowledged');
 
         $this->assertSame(0, User::count());
+    }
+
+    // ---- Section + Gender are required, validated, and persisted -----
+
+    public function test_registration_requires_section_and_gender(): void
+    {
+        $session = $this->pendingProfileSession();
+
+        $this->withSession($session)
+            ->post(route('student.idp.link.post'), [
+                'student_number' => '2026-00003',
+                'program_id' => 1,
+                'year_id' => 1,
+                'privacy_acknowledged' => '1',
+                // section_id + gender_id omitted
+            ])
+            ->assertSessionHasErrors(['section_id', 'gender_id']);
+
+        $this->assertSame(0, User::count());
+        $this->assertGuest('student');
+    }
+
+    public function test_registration_rejects_invalid_section_and_gender_ids(): void
+    {
+        $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'section_id' => 999,
+                'gender_id' => 999,
+            ]))
+            ->assertSessionHasErrors(['section_id', 'gender_id']);
+
+        $this->assertSame(0, User::count());
+    }
+
+    public function test_registration_persists_the_student_selected_section_and_gender(): void
+    {
+        $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'section_id' => 2,
+                'gender_id' => 2,
+            ]))
+            ->assertRedirect(route('student.dashboard'));
+
+        $student = User::where('student_number', '2026-00003')->firstOrFail();
+
+        // Gender lives on the account; section lives on the enrollment row.
+        $this->assertSame(2, (int) $student->gender_id);
+
+        $this->assertDatabaseHas('student_info_tbl', [
+            'user_id' => $student->user_id,
+            'section_id' => 2,
+        ]);
+    }
+
+    public function test_registration_page_renders_section_and_gender_dropdowns(): void
+    {
+        $page = $this->withSession($this->pendingProfileSession())
+            ->get(route('student.idp.link'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('name="section_id"', $page);
+        $this->assertStringContainsString('name="gender_id"', $page);
+
+        // The student's own choices are offered from the reference tables.
+        $this->assertStringContainsString('BSIT 1-A', $page);
+        $this->assertStringContainsString('Male', $page);
     }
 
     // ---- 17. CSRF ----------------------------------------------------
@@ -836,6 +907,28 @@ class AdminIdpLinkingTest extends TestCase
                 $table->unsignedBigInteger('student_status_id')->nullable();
                 $table->tinyInteger('ladderized')->default(0);
             });
+        }
+
+        if (! Schema::hasTable('section_tbl')) {
+            Schema::create('section_tbl', function (Blueprint $table): void {
+                $table->id('section_id');
+                $table->string('section_name')->nullable();
+            });
+            DB::table('section_tbl')->insert([
+                ['section_id' => 1, 'section_name' => 'BSIT 1-A'],
+                ['section_id' => 2, 'section_name' => 'BSIT 4-A'],
+            ]);
+        }
+
+        if (! Schema::hasTable('gender_tbl')) {
+            Schema::create('gender_tbl', function (Blueprint $table): void {
+                $table->id('gender_id');
+                $table->string('gender_name')->nullable();
+            });
+            DB::table('gender_tbl')->insert([
+                ['gender_id' => 1, 'gender_name' => 'Male'],
+                ['gender_id' => 2, 'gender_name' => 'Female'],
+            ]);
         }
 
         if (! Schema::hasTable('admins')) {

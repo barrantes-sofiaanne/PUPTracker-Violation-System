@@ -722,6 +722,7 @@ class AnnouncementAttachmentTest extends TestCase
             'notifications_tbl' => function (Blueprint $table): void {
                 $table->increments('notification_id');
                 $table->string('student_number')->nullable();
+                $table->unsignedBigInteger('recipient_id')->nullable();
                 $table->string('type')->nullable();
                 $table->string('title')->nullable();
                 $table->string('message')->nullable();

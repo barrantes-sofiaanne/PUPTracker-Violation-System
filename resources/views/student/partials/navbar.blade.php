@@ -23,7 +23,15 @@
                 $studentUnreadCount = 0;
                 try {
                     if (\Illuminate\Support\Facades\Schema::hasTable('notifications_tbl')) {
-                        $studentNotificationQuery = \App\Models\Notification::where('student_number', $studentUser->student_number ?? '');
+                        // ACCOUNT-scoped: the bell counts and lists only the
+                        // notifications owned by THIS account. Never scoped by
+                        // student number alone (that is self-asserted profile
+                        // data, not an identity).
+                        $studentNotificationQuery = \App\Models\Notification::query()
+                            ->ownedByStudent(
+                                $studentUser->user_id !== null ? (int) $studentUser->user_id : null,
+                                $studentUser->student_number
+                            );
                         $studentRecentNotifications = (clone $studentNotificationQuery)->latest('created_at')->take(5)->get();
                         $studentUnreadCount = (clone $studentNotificationQuery)->where('is_read', false)->count();
                     }

@@ -66,7 +66,10 @@
                             <i class="bi bi-envelope" aria-hidden="true"></i> Email
                         </div>
                         <div class="profile-info-value">
-                            {{ $user->email }}
+                            {{-- The verified IDP email is the authoritative institutional
+                                 address; `email` is the legacy local column and may be
+                                 empty for an account created by first-time registration. --}}
+                            {{ $user->email ?: ($user->idp_email ?: '—') }}
                         </div>
                     </div>
 

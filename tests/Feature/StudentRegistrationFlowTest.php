@@ -412,6 +412,8 @@ class StudentRegistrationFlowTest extends TestCase
             'student_number' => '2026-00003',
             'program_id' => 1,
             'year_id' => 1,
+            'section_id' => 1,
+            'gender_id' => 1,
             'privacy_acknowledged' => '1',
         ], $overrides);
     }
@@ -487,6 +489,7 @@ class StudentRegistrationFlowTest extends TestCase
             'program_tbl' => ['program_id', 'program_name'],
             'year_tbl' => ['year_id', 'year'],
             'section_tbl' => ['section_id', 'section_name'],
+            'gender_tbl' => ['gender_id', 'gender_name'],
             'student_status_tbl' => ['student_status_id', 'status_name'],
             'admins' => ['id', 'email'],
             'violation_tbl' => ['violation_id', 'status'],
@@ -507,6 +510,7 @@ class StudentRegistrationFlowTest extends TestCase
                 // `student_number` is the shared lookup column across these
                 // tables; `$extraCol` avoids adding it twice.
                 $b->string('student_number')->nullable();
+                $b->unsignedBigInteger('recipient_id')->nullable();
                 if ($extraCol !== 'student_number') {
                     $b->string($extraCol)->nullable();
                 }
@@ -514,8 +518,8 @@ class StudentRegistrationFlowTest extends TestCase
             });
         }
 
-        // Program / year dropdowns supply the student's choices, and the
-        // `exists:` validation rules need real rows.
+        // Program / year / section / gender dropdowns supply the student's
+        // choices, and the `exists:` validation rules need real rows.
         if (DB::table('program_tbl')->count() === 0) {
             DB::table('program_tbl')->insert([
                 ['program_id' => 1, 'program_name' => 'BSIT'],
@@ -526,6 +530,18 @@ class StudentRegistrationFlowTest extends TestCase
             DB::table('year_tbl')->insert([
                 ['year_id' => 1, 'year' => '1st Year'],
                 ['year_id' => 2, 'year' => '4th Year'],
+            ]);
+        }
+        if (DB::table('section_tbl')->count() === 0) {
+            DB::table('section_tbl')->insert([
+                ['section_id' => 1, 'section_name' => 'BSIT 1-A'],
+                ['section_id' => 2, 'section_name' => 'BSIT 4-A'],
+            ]);
+        }
+        if (DB::table('gender_tbl')->count() === 0) {
+            DB::table('gender_tbl')->insert([
+                ['gender_id' => 1, 'gender_name' => 'Male'],
+                ['gender_id' => 2, 'gender_name' => 'Female'],
             ]);
         }
 

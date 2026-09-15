@@ -1695,6 +1695,7 @@ class ViolationSanctionWorkflowTest extends TestCase
                 $table->string('title')->nullable();
                 $table->string('notification_type')->nullable();
                 $table->string('recipient_type')->nullable();
+                $table->unsignedBigInteger('recipient_id')->nullable();
                 $table->string('target_type')->nullable();
                 $table->unsignedBigInteger('target_id')->nullable();
                 $table->string('link')->nullable();
