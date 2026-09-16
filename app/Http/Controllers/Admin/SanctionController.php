@@ -182,7 +182,13 @@ class SanctionController extends Controller
                 'sanction_request' => 'This sanction request has already been processed.',
             ]);
         }
+    $student = $sanctionRequest->student;
 
+    if (! $student || ! $student->isActiveAccount()) {
+        return back()->withErrors([
+            'sanction_request' => 'This sanction cannot be approved because the student account is inactive.',
+        ]);
+    }
         // Resolve the sanction that will be assigned so we can decide whether
         // the Community Service / Campus Service assignment fields are needed.
         // The office + starting date are REQUIRED only for those two types;
@@ -226,14 +232,20 @@ class SanctionController extends Controller
             : null;
 
         DB::transaction(function () use ($sanctionRequest, $adminId, $scheduledDate, &$deadlineDate, $designatedOffice, $startingDate): void {
-            $student = $sanctionRequest->student;
-            $violationType = $sanctionRequest->violationType;
+           $student = $sanctionRequest->student;
+$violationType = $sanctionRequest->violationType;
 
-            if (!$student || !$violationType) {
-                throw ValidationException::withMessages([
-                    'sanction_request' => 'This request cannot be processed because student or violation details are missing.',
-                ]);
-            }
+if (!$student || !$violationType) {
+    throw ValidationException::withMessages([
+        'sanction_request' => 'This request cannot be processed because student or violation details are missing.',
+    ]);
+}
+
+if (! $student->isActiveAccount()) {
+    throw ValidationException::withMessages([
+        'sanction_request' => 'This sanction cannot be created because the student account is inactive.',
+    ]);
+}
 
             $latestViolation = Violation::where('student_number', $student->student_number)
                 ->where('violation_type', $violationType->violation_type_id)

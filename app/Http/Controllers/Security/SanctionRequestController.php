@@ -27,11 +27,19 @@ class SanctionRequestController extends Controller
     }
 
     public function approve(SanctionRequest $sanctionRequest): RedirectResponse
-    {
-        $this->finalizeRequest($sanctionRequest, 'approved');
+{
+    $student = $sanctionRequest->student;
 
-        return back()->with('success', 'Sanction request approved and forwarded for follow-up.');
+    if (! $student || ! $student->isActiveAccount()) {
+        return back()->withErrors([
+            'sanction_request' => 'This sanction cannot be approved because the student account is inactive.',
+        ]);
     }
+
+    $this->finalizeRequest($sanctionRequest, 'approved');
+
+    return back()->with('success', 'Sanction request approved and forwarded for follow-up.');
+}
 
     public function decline(SanctionRequest $sanctionRequest): RedirectResponse
     {
@@ -50,7 +58,11 @@ class SanctionRequestController extends Controller
 
             $student = $sanctionRequest->student;
             $violationType = $sanctionRequest->violationType;
-
+            if ($student && ! $student->isActiveAccount()) {
+    throw ValidationException::withMessages([
+        'sanction_request' => 'This sanction cannot be created because the student account is inactive.',
+    ]);
+}
             if ($student && $violationType) {
                 $latestViolation = Violation::where('student_number', $student->student_number)
                     ->where('violation_type', $violationType->violation_type_id)
