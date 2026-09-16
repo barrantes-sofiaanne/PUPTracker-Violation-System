@@ -148,7 +148,10 @@ function initializeCharts() {
                 },
             ],
         },
-        options: { responsive: true },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+        },
     });
 
     topViolationChart = new Chart(topViolationCanvas, {
@@ -165,7 +168,11 @@ function initializeCharts() {
                 },
             ],
         },
-        options: { responsive: true, indexAxis: "y" },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: "y",
+        },
     });
     programChart = new Chart(programCanvas, {
         type: "doughnut",
@@ -189,7 +196,10 @@ function initializeCharts() {
                 },
             ],
         },
-        options: { responsive: true },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+        },
     });
 }
 
