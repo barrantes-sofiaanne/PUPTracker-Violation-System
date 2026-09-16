@@ -281,13 +281,24 @@ class StudentIdpLoginController extends Controller
         $sections = $this->sectionsForRegistration();
         $genders = $this->gendersForRegistration();
 
+        // Which of these programs offer a Ladderized track. Computed here so the
+        // rendered page and the browser both use ONE rule — the same config key
+        // the Admin student screens and the graduating report read.
+        $ladderizedProgramIds = $programs
+            ->filter(fn ($program): bool => $this->programSupportsLadderized($program->program_name))
+            ->pluck('program_id')
+            ->map(static fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+
         return view('student.idp-link', compact(
             'verifiedName',
             'verifiedEmail',
             'programs',
             'years',
             'sections',
-            'genders'
+            'genders',
+            'ladderizedProgramIds'
         ));
     }
 
@@ -331,6 +342,77 @@ class StudentIdpLoginController extends Controller
     }
 
     /**
+     * Program names that offer a Ladderized track (BSOA / BSIT by default).
+     *
+     * Read from the SAME config key the Admin student screens and the graduating
+     * report filter use, so the three can never disagree about which programs
+     * qualify. An institution can change the list via
+     * GRADUATION_REVIEW_LADDERIZED_PROGRAMS without touching any code.
+     *
+     * @return array<int, string> upper-cased program names
+     */
+    protected function ladderizedProgramCodes(): array
+    {
+        $configured = (array) config(
+            'graduation_review.graduating.ladderized_programs',
+            ['BSOA', 'BSIT']
+        );
+
+        $codes = array_map(
+            static fn ($name): string => strtoupper(trim((string) $name)),
+            $configured
+        );
+
+        return array_values(array_filter(
+            $codes,
+            static fn (string $name): bool => $name !== ''
+        ));
+    }
+
+    /**
+     * Does this program offer the Ladderized option?
+     *
+     * Matched case-insensitively, and also accepted when the stored name merely
+     * CONTAINS the code — mirroring the Admin student screens. Program names are
+     * hand-entered there, so "BS Information Technology" and "BSIT" are the same
+     * program and both spellings exist in real data.
+     */
+    protected function programSupportsLadderized(?string $programName): bool
+    {
+        $name = strtoupper(trim((string) $programName));
+
+        if ($name === '') {
+            return false;
+        }
+
+        foreach ($this->ladderizedProgramCodes() as $code) {
+            if ($name === $code || str_contains($name, $code)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Resolve the ladderized value to store for the chosen program.
+     *
+     * Returns 0 whenever the program does not offer the option, so selecting a
+     * non-ladderized program can never persist a ladderized flag. The client is
+     * never trusted for this: a forged "ladderized=1" is discarded here.
+     *
+     * @param  mixed  $requested  the raw submitted value, if any
+     */
+    protected function resolveLadderizedSelection(int $programId, $requested): int
+    {
+        $programName = Program::query()->whereKey($programId)->value('program_name');
+
+        return $this->programSupportsLadderized($programName)
+            ? (int) ($requested ?? 0)
+            : 0;
+    }
+
+    /**
      * FIRST-TIME REGISTRATION — create the student's PUPTracker record.
      *
      * IMPORTANT: PUPTracker has NO pre-existing student-number roster. A
@@ -365,6 +447,9 @@ class StudentIdpLoginController extends Controller
             'year_id' => ['required', 'integer', 'exists:year_tbl,year_id'],
             'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
             'gender_id' => ['required', 'integer', 'exists:gender_tbl,gender_id'],
+            // Only submitted when the chosen program offers the option; the
+            // server re-checks the program before it is stored.
+            'ladderized' => ['nullable', 'in:0,1'],
             // The student must acknowledge the Information Privacy Notice.
             'privacy_acknowledged' => ['accepted'],
         ], [
@@ -378,6 +463,7 @@ class StudentIdpLoginController extends Controller
             'section_id.exists' => 'Please select a valid section.',
             'gender_id.required' => 'Please select your gender.',
             'gender_id.exists' => 'Please select a valid gender.',
+            'ladderized.in' => 'Please choose whether you are a ladderized student.',
             'privacy_acknowledged.accepted' => 'Please read and acknowledge the Information Privacy Notice to continue.',
         ]);
 
@@ -441,11 +527,18 @@ class StudentIdpLoginController extends Controller
                 ]);
 
                 // Enrollment record (program / year / section). Created, not matched.
+                // The Ladderized flag is resolved on the server: it is stored only
+                // for the programs that actually offer it, so hiding the field (or
+                // a forged POST) can never set it on a non-ladderized program.
                 $this->createStudentInfo(
                     $student,
                     (int) $validated['program_id'],
                     (int) $validated['year_id'],
-                    (int) $validated['section_id']
+                    (int) $validated['section_id'],
+                    $this->resolveLadderizedSelection(
+                        (int) $validated['program_id'],
+                        $validated['ladderized'] ?? null
+                    )
                 );
 
                 return $student;
@@ -533,16 +626,28 @@ class StudentIdpLoginController extends Controller
      * propagate: an account without its enrollment row would be a partial
      * registration, so the whole transaction must roll back instead.
      *
+     * @param  int  $ladderized  0/1 — only meaningful for a ladderized program
+     *
      * @throws \Throwable
      */
-    protected function createStudentInfo(User $student, int $programId, int $yearId, int $sectionId): void
-    {
+    protected function createStudentInfo(
+        User $student,
+        int $programId,
+        int $yearId,
+        int $sectionId,
+        int $ladderized = 0
+    ): void {
         $data = [
             'user_id' => $student->user_id,
             'program_id' => $programId,
             'year_id' => $yearId,
-            'ladderized' => 0,
         ];
+
+        // Guarded like the other optional columns: student_info_tbl is a LEGACY
+        // table, so a deployment without this column must still register.
+        if (Schema::hasColumn('student_info_tbl', 'ladderized')) {
+            $data['ladderized'] = $ladderized;
+        }
 
         // Section is student-selected, never defaulted to N/A for a new student.
         if (Schema::hasColumn('student_info_tbl', 'section_id')) {
