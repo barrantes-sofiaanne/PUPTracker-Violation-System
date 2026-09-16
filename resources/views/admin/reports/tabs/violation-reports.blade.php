@@ -54,57 +54,11 @@
 
     </div>
 
-    <div class="col-lg-3 col-md-6 mb-3">
-
-        <div class="card shadow-sm border-0">
-
-            <div class="card-body">
-
-                <small class="text-muted">
-
-                    Minor Violations
-
-                </small>
-
-                <h2
-                    class="fw-bold text-warning"
-                    id="minorViolations">
-
-                    {{ $statistics['minor'] }}
-
-                </h2>
-
-            </div>
-
-        </div>
-
-    </div>
-
-    <div class="col-lg-3 col-md-6 mb-3">
-
-        <div class="card shadow-sm border-0">
-
-            <div class="card-body">
-
-                <small class="text-muted">
-
-                    Major Violations
-
-                </small>
-
-                <h2
-                    class="fw-bold text-danger"
-                    id="majorViolations">
-
-                    {{ $statistics['major'] }}
-
-                </h2>
-
-            </div>
-
-        </div>
-
-    </div>
+    {{--
+        The Minor Violations and Major Violations cards were removed
+        deliberately. The summary is now Total Violations + Repeat Offenders
+        only; no replacement cards were added.
+    --}}
 
     <div class="col-lg-3 col-md-6 mb-3">
 

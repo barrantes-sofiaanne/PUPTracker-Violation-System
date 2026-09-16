@@ -37,20 +37,36 @@
 
             <div class="col-md-3">
 
+                <label class="admin-filter-label" for="history_from">
+
+                    Start Date
+
+                </label>
+
                 <input
                     type="date"
+                    id="history_from"
                     name="history_from"
                     class="form-control"
+                    placeholder="Start Date"
                     value="{{ request('history_from') }}">
 
             </div>
 
             <div class="col-md-3">
 
+                <label class="admin-filter-label" for="history_to">
+
+                    End Date
+
+                </label>
+
                 <input
                     type="date"
+                    id="history_to"
                     name="history_to"
                     class="form-control"
+                    placeholder="End Date"
                     value="{{ request('history_to') }}">
 
             </div>
@@ -93,9 +109,9 @@
 
                     <th>Student</th>
 
-                    <th>Violation Type</th>
+                    <th>Category</th>
 
-                    <th>Remarks</th>
+                    <th>Evidence</th>
 
                     <th>Recorded By</th>
 
@@ -135,11 +151,53 @@
 
                         <td>
 
-{{ optional($history->violationType)->violation_type ?? '-' }}
+{{-- Category only. The per-violation "Violation Type" column was removed
+     from this table by request; the type is still stored on the record and
+     remains visible in View / the Violation Summary. --}}
+{{ optional(optional($history->violationType)->violationCategory)->category_name
+    ?? optional($history->violationType)->violation_type
+    ?? '-' }}
                         </td>
 
                         <td>
-                            {{ $history->description ?: '-' }}
+
+                            {{-- EVIDENCE: links to the existing private, authorization-protected
+                                 evidence endpoint. Never a raw storage path. --}}
+                            @php $evidenceCount = $history->evidence->count(); @endphp
+
+                            @if($evidenceCount === 0)
+                                <span class="text-muted">-</span>
+                            @elseif($evidenceCount === 1)
+                                <a href="{{ route('admin.violations.evidence', $history->evidence->first()) }}"
+                                   class="admin-btn admin-btn-view admin-btn-sm"
+                                   target="_blank"
+                                   rel="noopener"
+                                   aria-label="View evidence for this violation">
+
+                                    <i class="bi bi-paperclip me-1"></i>
+                                    View Evidence
+
+                                </a>
+                            @else
+                                {{-- Multiple files: open the evidence list modal. The URLs are the
+                                     same authorized endpoint; each is re-checked server-side when
+                                     clicked, so the DOM cannot be used to bypass authorization. --}}
+                                <button
+                                    type="button"
+                                    class="admin-btn admin-btn-view admin-btn-sm viewViolationEvidence"
+                                    data-evidence="{{ $history->evidence->map(fn ($e) => [
+                                        'url' => route('admin.violations.evidence', $e),
+                                        'name' => $e->original_name,
+                                        'code' => $e->evidence_code,
+                                        'method' => $e->capture_method,
+                                    ])->values()->toJson() }}"
+                                    aria-label="View {{ $evidenceCount }} evidence files for this violation">
+
+                                    <i class="bi bi-paperclip me-1"></i>
+                                    View {{ $evidenceCount }} Evidence Files
+
+                                </button>
+                            @endif
 
                         </td>
 

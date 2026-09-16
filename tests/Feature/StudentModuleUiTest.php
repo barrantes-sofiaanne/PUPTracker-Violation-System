@@ -692,6 +692,10 @@ class StudentModuleUiTest extends TestCase
             'password_hash' => Hash::make('Password123!'),
             'roles_id' => 2,
             'status_id' => 1,
+            // These fixtures represent EXISTING registered students. The
+            // production migration backfills pre-existing linked accounts the
+            // same way, so the first-time-registration gate lets them through.
+            'profile_completed_at' => now()->subDay(),
         ]);
 
         if (Schema::hasTable('student_info_tbl')) {
@@ -786,6 +790,7 @@ class StudentModuleUiTest extends TestCase
                 $table->string('name_suffix')->nullable();
                 $table->string('email')->nullable();
                 $table->string('idp_email')->nullable();
+                $table->timestamp('profile_completed_at')->nullable();
                 $table->string('password_hash')->nullable();
                 $table->unsignedInteger('roles_id')->nullable();
                 $table->unsignedInteger('status_id')->nullable();
@@ -917,6 +922,7 @@ class StudentModuleUiTest extends TestCase
                 $table->increments('notification_id');
                 $table->string('student_number')->nullable();
                 $table->string('recipient_type')->nullable();
+                $table->unsignedBigInteger('recipient_id')->nullable();
                 $table->string('type')->nullable();
                 $table->string('notification_type')->nullable();
                 $table->string('title')->nullable();

@@ -68,7 +68,13 @@ class MfaService
             'stage' => $isAdminSecurityFlow ? 'select' : 'code',
             'backup_codes' => $hasBackupCodes ? $backupCodes : [],
             'backup_codes_used' => $hasBackupCodes ? $backupCodesUsed : [],
-            'remember' => $remember && $isAdminSecurityFlow,
+            // The Remember Me feature is currently DISABLED (config/auth.php
+            // `features`), so the pending challenge can never carry the flag —
+            // not even when a caller passes `$remember = true`. Re-enabling is a
+            // one-flag change.
+            'remember' => $remember
+                && $isAdminSecurityFlow
+                && (bool) config('auth.features.remember_device', false),
             'code_hash' => null,
             'expires_at' => null,
             'resend_available_at' => null,

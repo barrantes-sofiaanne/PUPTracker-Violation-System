@@ -800,43 +800,58 @@ class AdminModuleRestructureTest extends TestCase
     }
 
     /**
-     * REGRESSION GUARD — the AI Graduation Review sidebar entry.
+     * The duplicate "AI Graduation Review" sidebar entry is REMOVED.
      *
-     * Commit 235d56c ("Removed deprecated AI Graduation Review routes and related
-     * functionality") deleted both the routes and this sidebar entry as part of
-     * retiring the feature. The module is live again, so the entry must be back —
-     * otherwise the feature exists but is unreachable except by typing its URL.
+     * The Graduation AI feature is reached through Reports → Graduation AI
+     * Report, so the separate "AI Assistance" entry was duplicate navigation.
+     * The feature itself is untouched — only the redundant nav entry is gone.
      */
-    public function test_sidebar_restores_the_ai_graduation_review_entry(): void
+    public function test_sidebar_no_longer_duplicates_the_ai_graduation_entry(): void
     {
         $sidebar = file_get_contents(resource_path('views/admin/partials/sidebar.blade.php'));
 
-        $this->assertStringContainsString(
+        $this->assertStringNotContainsString(
             "route('admin.graduation-review.index')",
             $sidebar,
-            'The AI Graduation Review sidebar entry must be present.'
+            'The duplicate AI Graduation Review sidebar entry must be removed.'
         );
-        $this->assertStringContainsString('AI Graduation Review', $sidebar);
-        $this->assertStringContainsString('AI Assistance', $sidebar);
+        $this->assertStringNotContainsString('AI Graduation Review', $sidebar);
+        $this->assertStringNotContainsString('AI Assistance', $sidebar);
 
-        // It must highlight while anywhere in the module (index + per-student).
-        $this->assertStringContainsString("request()->routeIs('admin.graduation-review*')", $sidebar);
+        // Reports (which hosts the Graduation AI Report tab) stays.
+        $this->assertStringContainsString("route('admin.reports')", $sidebar);
     }
 
     /**
-     * The entry is rendered for an admin, and links straight to the module.
+     * The Graduation AI Report remains reachable via Reports, and its route
+     * still works — removing the nav entry must not remove the feature.
      */
-    public function test_ai_graduation_review_entry_is_rendered_and_links_to_the_module(): void
+    public function test_graduation_ai_feature_remains_reachable_after_nav_removal(): void
     {
         $admin = $this->createAdmin();
 
+        // The Reports page still offers the Graduation AI Report tab...
         $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports', ['tab' => 'graduation-ai']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Graduation AI Report', $html);
+        $this->assertStringContainsString('id="graduation-ai"', $html);
+        $this->assertStringContainsString('id="programReportForm"', $html);
+
+        // ...and the sidebar must not advertise it separately any more.
+        $dashboard = $this->actingAs($admin, 'admin')
             ->get(route('admin.dashboard'))
             ->assertOk()
             ->getContent();
 
-        $this->assertStringContainsString('AI Graduation Review', $html);
-        $this->assertStringContainsString(route('admin.graduation-review.index'), $html);
+        $this->assertStringNotContainsString('AI Graduation Review', $dashboard);
+
+        // The underlying feature/routes are untouched.
+        $this->actingAs($admin, 'admin')
+            ->get(route('admin.graduation-review.index'))
+            ->assertOk();
     }
 
     public function test_superseded_standalone_views_are_gone_and_the_tab_hosts_the_process(): void
@@ -861,6 +876,159 @@ class AdminModuleRestructureTest extends TestCase
     // ==================================================================
     // 7. Tab switching must never reveal a blank pane
     // ==================================================================
+
+    /**
+     * GRADUATING PREVIEW ORDER.
+     *
+     * The preview must list, in this group order:
+     *   1. Bachelor (non-ladderized),
+     *   2. Ladderized,
+     *   3. students added by hand ("Add a Specific Student"),
+     * and be alphabetical by FIRST name (starting at A) within each group.
+     *
+     * Added students must actually appear in the preview, not just be posted.
+     */
+    public function test_graduating_preview_groups_and_orders_students(): void
+    {
+        $admin = $this->createAdmin();
+        $program = $this->graduatesProgram();
+
+        // Non-ladderized automatic (deliberately created out of A-Z order, and
+        // with last names that would sort differently under a last-name sort).
+        $this->createGraduatingStudent('2026-1001', 'Zoe', 'Aaron', $program->program_id);
+        $this->createGraduatingStudent('2026-1002', 'Alice', 'Zulu', $program->program_id);
+        $this->createGraduatingStudent('2026-1003', 'Mia', 'Mendez', $program->program_id);
+
+        // Ladderized automatic.
+        $this->createLadderizedGraduatingStudent('2026-1004', 'Bianca', 'Ladder', $program->program_id);
+        $this->createLadderizedGraduatingStudent('2026-1005', 'Aaron', 'Ladder', $program->program_id);
+
+        // Added by hand. This student is NOT in the automatic cohort: 2nd Year.
+        $added = $this->createStudent('2026-1099', 'Yvonne', 'Added', $this->yearId('2nd Year'), $program->program_id);
+        $this->assertNotNull($added);
+
+        $response = $this->actingAs($admin, 'admin')->postJson(
+            route('admin.program-report.preview-graduating'),
+            [
+                'program_id' => $program->program_id,
+                'additional_students' => ['2026-1099'],
+            ]
+        );
+
+        $response->assertOk();
+
+        $students = collect($response->json('students'));
+
+        // The added student made it into the preview at all.
+        $this->assertContains(
+            '2026-1099',
+            $students->pluck('student_number')->all(),
+            'A student added by hand must appear in the preview.'
+        );
+        $this->assertSame(6, $response->json('total'));
+
+        // Group order: non-ladderized, then ladderized, then added.
+        $expected = [
+            '2026-1002', // Alice   — non-ladderized
+            '2026-1003', // Mia     — non-ladderized
+            '2026-1001', // Zoe     — non-ladderized
+            '2026-1005', // Aaron   — ladderized
+            '2026-1004', // Bianca  — ladderized
+            '2026-1099', // Yvonne  — added by hand
+        ];
+        $this->assertSame($expected, $students->pluck('student_number')->all());
+
+        // Alphabetical by FIRST name within each group, starting at A.
+        $this->assertStringStartsWith('Zulu,', $students[0]['name']);   // Alice Zulu
+        $this->assertStringStartsWith('Mendez,', $students[1]['name']); // Mia Mendez
+        $this->assertStringStartsWith('Aaron,', $students[2]['name']);  // Zoe Aaron
+        $this->assertStringStartsWith('Ladder,', $students[3]['name']); // Aaron Ladder
+        $this->assertStringStartsWith('Ladder,', $students[4]['name']); // Bianca Ladder
+        $this->assertStringStartsWith('Added,', $students[5]['name']);  // Yvonne Added
+
+        // The payload flags the groups so the preview can label them.
+        $this->assertFalse((bool) $students[0]['is_ladderized']);
+        $this->assertFalse((bool) $students[0]['is_added']);
+        $this->assertTrue((bool) $students[3]['is_ladderized']);
+        $this->assertTrue((bool) $students[5]['is_added']);
+    }
+
+    /**
+     * Added students are kept even when a ladderized filter is active, and they
+     * still form their own final group.
+     */
+    public function test_added_students_survive_the_ladderized_filter_and_stay_last(): void
+    {
+        $admin = $this->createAdmin();
+
+        // The ladderized FILTER is gated on supportsLadderized(), which only
+        // applies to the configured ladderized programs (BSOA/BSIT), so the
+        // program must be one of those for this test to exercise the filter.
+        $program = Program::create([
+            'program_name' => 'BSOA',
+            'degree_type' => 'Bachelor',
+        ]);
+
+        $this->createGraduatingStudent('2026-1101', 'NonLad', 'Only', $program->program_id);
+        $this->createLadderizedGraduatingStudent('2026-1102', 'Lad', 'Only', $program->program_id);
+
+        // Added student is non-ladderized and outside the automatic cohort.
+        $this->createStudent('2026-1199', 'Zed', 'Added', $this->yearId('2nd Year'), $program->program_id);
+
+        $response = $this->actingAs($admin, 'admin')->postJson(
+            route('admin.program-report.preview-graduating'),
+            [
+                'program_id' => $program->program_id,
+                'ladderized' => 1,                       // ladderized only...
+                'additional_students' => ['2026-1199'],  // ...but the added student is kept
+            ]
+        );
+
+        $response->assertOk();
+
+        // The filter really was applied (otherwise the assertion below is vacuous).
+        $this->assertSame(1, $response->json('ladderized_filter'));
+
+        $numbers = collect($response->json('students'))->pluck('student_number')->all();
+
+        // Only the ladderized automatic student + the added one.
+        $this->assertSame(['2026-1102', '2026-1199'], $numbers);
+
+        // The added student is still last, flagged as added (not ladderized).
+        $last = collect($response->json('students'))->last();
+        $this->assertSame('2026-1199', $last['student_number']);
+        $this->assertTrue((bool) $last['is_added']);
+        $this->assertFalse((bool) $last['is_ladderized']);
+    }
+
+    /**
+     * The generated report must use the same grouped cohort as the preview.
+     */
+    public function test_generated_report_uses_the_grouped_preview_cohort(): void
+    {
+        $admin = $this->createAdmin();
+        $program = $this->graduatesProgram();
+
+        $this->createGraduatingStudent('2026-1201', 'Auto', 'One', $program->program_id);
+        $this->createStudent('2026-1299', 'Manual', 'One', $this->yearId('2nd Year'), $program->program_id);
+
+        $this->actingAs($admin, 'admin')->post(route('admin.program-report.generate'), [
+            'program_id' => $program->program_id,
+            'report_mode' => 'graduating',
+            'report_type' => 'full',
+            'additional_students' => ['2026-1299'],
+        ])->assertRedirect();
+
+        $report = ProgramReport::latest('report_id')->first();
+        $this->assertNotNull($report);
+
+        // The manually added student is part of the persisted cohort.
+        $this->assertContains('2026-1299', (array) $report->additional_students);
+        $this->assertSame(2, (int) $report->statistics_json['cohort_total']);
+
+        // No record was created or modified by the ordering change.
+        $this->assertSame(2, User::whereIn('student_number', ['2026-1201', '2026-1299'])->count());
+    }
 
     /**
      * REGRESSION GUARD — the blank-tab bug.
@@ -1024,6 +1192,94 @@ class AdminModuleRestructureTest extends TestCase
     }
 
     // ==================================================================
+    // 9. Graduation AI Summary — PDF title and filename
+    // ==================================================================
+
+    /**
+     * The Graduation AI report's PDF must be titled
+     * "GRADUATING VIOLATION AI SUMMARY" — not the retired Program Sanction
+     * Report title.
+     */
+    public function test_graduation_ai_pdf_uses_the_renamed_title(): void
+    {
+        $admin = $this->createAdmin();
+        $program = $this->graduatesProgram();
+
+        $report = $this->createGraduationReport($admin, $program, ['academic_year' => '4th Year']);
+
+        // The PDF template is what mPDF renders, so assert on it directly — this
+        // avoids asserting against compressed PDF bytes.
+        $html = view('admin.program-report.pdf', ['report' => $report->fresh(['program', 'generatedBy'])])->render();
+
+        $this->assertStringContainsString('GRADUATING VIOLATION AI SUMMARY', $html);
+        $this->assertStringNotContainsString('PROGRAM SANCTION REPORT', $html);
+    }
+
+    /**
+     * The PDF download's filename is Graduation_Ai_Summary_<Program>_<YY>.pdf,
+     * sanitised so spaces/special characters cannot produce an invalid name.
+     */
+    public function test_graduation_ai_pdf_filename_follows_the_required_format(): void
+    {
+        $admin = $this->createAdmin();
+
+        // Deliberately awkward program name: spaces + an ampersand, which must be
+        // sanitised rather than producing an invalid filename.
+        $program = Program::create([
+            'program_name' => 'BS Info & Tech',
+            'degree_type' => 'Bachelor',
+        ]);
+
+        $report = $this->createGraduationReport($admin, $program, ['academic_year' => '2026']);
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.program-report.pdf', $report->report_id));
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
+
+        $disposition = (string) $response->headers->get('content-disposition');
+        $this->assertStringContainsString('attachment', $disposition);
+
+        // Exact shape: Graduation_Ai_Summary_<Program>_<YY>.pdf
+        $this->assertStringContainsString(
+            'Graduation_Ai_Summary_BS-Info---Tech_2026.pdf',
+            $disposition
+        );
+
+        // No character outside the sanitised set survives in the filename.
+        preg_match('/filename="([^"]+)"/', $disposition, $m);
+        $this->assertNotEmpty($m, 'The Content-Disposition must carry a filename.');
+        $this->assertMatchesRegularExpression('/^[A-Za-z0-9\-_.]+\.pdf$/', $m[1]);
+        $this->assertStringStartsWith('Graduation_Ai_Summary_', $m[1]);
+        $this->assertStringEndsWith('.pdf', $m[1]);
+
+        // A real PDF was produced.
+        $this->assertStringStartsWith('%PDF-', $response->getContent());
+    }
+
+    /**
+     * REPORT HISTORY behaviour is unchanged: the history filter keeps its
+     * Program Sanction Report option so legacy report_mode='regular' rows stay
+     * findable. That label is for HISTORY, not for the Graduation AI report.
+     */
+    public function test_program_sanction_label_survives_only_for_report_history(): void
+    {
+        $admin = $this->createAdmin();
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.reports', ['tab' => 'history']))
+            ->assertOk()
+            ->getContent();
+
+        $historyPane = substr($html, (int) strpos($html, 'id="history"'));
+
+        $this->assertStringContainsString('Program Sanction Report', $historyPane);
+        // ...but the AI feature itself must not carry the retired title.
+        $this->assertStringNotContainsString('PROGRAM SANCTION REPORT', $this->graduationAiPane($html));
+    }
+
+    // ==================================================================
     // Helpers
     // ==================================================================
 
@@ -1080,6 +1336,37 @@ class AdminModuleRestructureTest extends TestCase
         return $program;
     }
 
+    /**
+     * A persisted graduating report, as generation would have written it.
+     */
+    private function createGraduationReport(Admin $admin, Program $program, array $overrides = []): ProgramReport
+    {
+        return ProgramReport::create(array_merge([
+            'program_id' => $program->program_id,
+            'academic_year' => '4th Year',
+            'report_type' => 'full',
+            'report_mode' => 'graduating',
+            'degree_type' => 'Bachelor',
+            'graduating_year' => 4,
+            'admission_years' => [],
+            'ladderized' => null,
+            'additional_students' => [],
+            'excluded_students' => [],
+            'generated_by_admin_id' => $admin->id,
+            'generated_at' => now(),
+            'report_status' => 'generated',
+            'statistics_json' => [
+                'total_students' => 0,
+                'students_with_no_violations' => 0,
+                'students_with_completed_sanctions' => 0,
+                'students_with_outstanding_sanctions' => 0,
+                'violation_categories' => [],
+                'violation_types' => [],
+            ],
+            'ai_failed' => false,
+        ], $overrides));
+    }
+
     private function createGraduatingStudent(string $number, string $first, string $last, ?int $programId = null): User
     {
         return $this->createStudent(
@@ -1089,6 +1376,21 @@ class AdminModuleRestructureTest extends TestCase
             yearId: $this->yearId('4th Year'),
             programId: $programId
         );
+    }
+
+    /**
+     * Like createGraduatingStudent(), but sets the ladderized flag that the
+     * preview groups on.
+     */
+    private function createLadderizedGraduatingStudent(string $number, string $first, string $last, int $programId): User
+    {
+        $user = $this->createGraduatingStudent($number, $first, $last, $programId);
+
+        DB::table('student_info_tbl')
+            ->where('user_id', $user->user_id)
+            ->update(['ladderized' => 1]);
+
+        return $user;
     }
 
     private function createAdmin(): Admin

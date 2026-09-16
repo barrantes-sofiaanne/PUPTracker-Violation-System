@@ -142,7 +142,10 @@ $students = User::with([
     $violationHistory = Violation::with([
         'student.studentInfo.program',
         'violationType.violationCategory',
-        'recorder.adminInfo'
+        'recorder.adminInfo',
+        // Eager-loaded so the history table's Evidence column can render the
+        // per-violation count without an N+1 query per row.
+        'evidence',
     ])
     ->notDenied()
     ->latest('violation_date')
@@ -477,8 +480,37 @@ public function show(Request $request, string $student_number)
         ->filter(fn ($r) => strcasecmp((string) $r->status, 'Completed') === 0)
         ->count();
 
+    // Group by the RESOLVED violation type, not the raw column.
+    //
+    // `violation_tbl.violation_type` holds the type ID for records created by
+    // the app, but legacy rows can hold the type NAME. Grouping on the raw column
+    // therefore split one violation type into two rows (one keyed by "10", one by
+    // "No ID") and the table printed the bare number. Keying on the relationship's
+    // ID keeps one row per real type and lets every row print its human-readable
+    // name.
+    //
+    // A legacy name-valued row has no relationship match, so its raw value is
+    // resolved back to a type ID through the same violation_type_tbl data.
+    $typeIdByName = ViolationType::query()
+        ->pluck('violation_type_id', 'violation_type')
+        ->mapWithKeys(fn ($id, $name) => [mb_strtolower(trim((string) $name)) => $id])
+        ->all();
+
     $summary = $allViolations
-        ->groupBy('violation_type')
+        ->groupBy(function (Violation $violation) use ($typeIdByName) {
+            $resolvedId = optional($violation->violationType)->violation_type_id;
+
+            if ($resolvedId !== null) {
+                return 'type:' . $resolvedId;
+            }
+
+            $raw = mb_strtolower(trim((string) $violation->violation_type));
+
+            // Legacy row: map the stored NAME back to its type ID.
+            return isset($typeIdByName[$raw])
+                ? 'type:' . $typeIdByName[$raw]
+                : 'raw:' . $raw;
+        })
         ->map(function ($records) {
             $latest = $records->first();
             $offenseLevel = $this->formatOffenseLevel($records->count());
@@ -508,7 +540,10 @@ public function show(Request $request, string $student_number)
 
             return [
                 'category' => optional(optional($latest->violationType)->violationCategory)->category_name,
-                'violation_type' => $latest->violation_type,
+                // Human-readable type name. The `violation_type` column stores the
+                // TYPE ID, so printing it directly showed numbers like "10"/"24".
+                // The relationship is the source of truth; Security does the same.
+                'violation_type' => optional($latest->violationType)->violation_type ?? $latest->violation_type,
                 'offense_level' => $offenseLevel,
                 'status' => $sanctionRequest?->status ?? 'No Request',
                 'violation_status' => $violationStatus,
@@ -628,6 +663,11 @@ public function searchStudents(Request $request)
             'student_number' => $student->student_number,
             'first_name' => $student->first_name,
             'last_name' => $student->last_name,
+            // PUPTracker ACCOUNT status. The client uses this to warn/warn-off
+            // recording a violation for an inactive student BEFORE the wizard
+            // ends. It is a UI convenience only — the server re-checks the same
+            // rule in StoreViolationRequest and rejects the submission either way.
+            'account_active' => $student->isActiveAccount(),
             'program' => [
                 'program_name' => $student->studentInfo?->program?->program_name,
             ],
@@ -958,6 +998,12 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
         $capturedAts = (array) $request->input('captured_ats', []);
         $evidenceService = app(EvidenceSecurityService::class);
 
+        if ($evidenceFiles !== []) {
+            // Production guard: refuse to write confidential evidence to an
+            // ephemeral filesystem when object storage is misconfigured.
+            \App\Support\Storage\EvidenceDisk::assertWritable();
+        }
+
         foreach ($evidenceFiles as $index => $evidenceFile) {
             $evidenceCode = $evidenceService->nextEvidenceCode();
             $directory = 'violation-evidence/' . $violation->violation_id;
@@ -1007,12 +1053,23 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
 
             $storedPath = $store['path'];
             if ($storedPath === '' || ! $disk->exists($storedPath)) {
+                // The row was created moments ago inside the caller's
+                // transaction, so re-throwing rolls it back. Remove any object
+                // that did land so no unreferenced confidential file survives.
+                try {
+                    $disk->delete($storedPath);
+                } catch (\Throwable $ignored) {
+                    // Best-effort cleanup only.
+                }
+
                 throw new \RuntimeException('Unable to store evidence file.');
             }
 
+            $storedSize = \App\Support\Storage\EvidenceDisk::size($storedPath);
+
             $evidence->update([
                 'disk_path' => $storedPath,
-                'file_size' => $disk->size($storedPath),
+                'file_size' => $storedSize ?? $evidenceFile->getSize(),
                 'server_watermarked' => $store['server_watermarked'],
                 'watermarked' => $store['server_watermarked'] || $isCamera,
                 'sha256_hash' => $store['sha256'],
@@ -1132,11 +1189,16 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
 
         $adminId = (int) Auth::guard('admin')->id();
 
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = Storage::disk((string) config('filesystems.evidence_disk', 'local'));
-
-        if (! $evidence->disk_path || ! $disk->exists($evidence->disk_path)) {
-            abort(404);
+        // A present violation but an absent/older-format storage key is handled
+        // by the shared responder, which returns a controlled error rather than
+        // a raw 404 page. Storage stays private — the file is streamed.
+        if (! $evidence->disk_path) {
+            return \App\Services\PrivateFileResponder::stream(
+                'evidence',
+                null,
+                $evidence->original_name,
+                ['evidence_id' => $evidence->evidence_id ?? null]
+            );
         }
 
         // Audit the access + record an evidence security event.
@@ -1148,10 +1210,11 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
             $request,
         );
 
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        return $disk->response(
+        return \App\Services\PrivateFileResponder::stream(
+            'evidence',
             $evidence->disk_path,
-            $evidence->original_name ?: basename($evidence->disk_path)
+            $evidence->original_name,
+            ['evidence_id' => $evidence->evidence_id ?? null]
         );
     }
 

@@ -58,6 +58,11 @@ class ProgramReportService
             ->where('roles_id', 2)
             ->whereHas('studentInfo', fn ($q) => $q->where('program_id', $program->program_id));
 
+        // Declared OUTSIDE the branch below: `$explicit` is used after the
+        // if/else (the graduating sort), so defining it only inside
+        // `$reportMode === 'graduating'` left it undefined for regular reports.
+        $explicit = [];
+
         if ($reportMode === 'graduating') {
             $explicit = array_values(array_unique(array_filter(
                 array_map(fn ($v) => trim((string) $v), $additionalStudents),
@@ -121,7 +126,7 @@ class ProgramReportService
             });
         }
 
-        return $query
+        $students = $query
             ->when($excludedStudents !== [], function ($q) use ($excludedStudents) {
                 // Drop students the administrator removed from the PREVIEW.
                 // This only narrows the candidate set for THIS request — no
@@ -129,6 +134,57 @@ class ProgramReportService
                 $q->whereNotIn('student_number', $excludedStudents);
             })
             ->orderBy('last_name')->get();
+
+        if ($reportMode === 'graduating') {
+            $students = $this->sortGraduatingPreview($students, $explicit);
+        }
+
+        return $students;
+    }
+
+    /**
+     * Order the graduating preview for display.
+     *
+     * Groups, in this order:
+     *   1. automatically-eligible NON-ladderized students,
+     *   2. automatically-eligible LADDERIZED students,
+     *   3. students the administrator added by hand ("Add a Specific Student").
+     *
+     * Within each group the list is alphabetical by FIRST name, so reading down
+     * the column starts at "A".
+     *
+     * Note on the ladderized filter: when the administrator filters by
+     * Ladderized Yes/No, the other automatic group is simply absent from the
+     * collection, so the group order degrades naturally to the groups present.
+     *
+     * Group 3 is keyed off the explicit list rather than `ladderized === null`,
+     * because an added student is always kept even when a ladderized filter is
+     * active — so it must never be folded into an automatic group.
+     *
+     * @param  Collection<int, User>  $students
+     * @param  array<int, string>     $explicit  student numbers added by hand
+     * @return Collection<int, User>
+     */
+    protected function sortGraduatingPreview(Collection $students, array $explicit): Collection
+    {
+        $explicitSet = array_flip(array_map('strval', $explicit));
+
+        $rank = static function (User $student) use ($explicitSet): int {
+            if (isset($explicitSet[(string) $student->student_number])) {
+                return 2; // added by hand
+            }
+
+            // `ladderized` is cast to boolean by StudentInfo.
+            return $student->studentInfo?->ladderized ? 1 : 0;
+        };
+
+        $firstName = static fn (User $student) => mb_strtolower(trim((string) $student->first_name));
+
+        return $students
+            ->sortBy(static function (User $student) use ($rank, $firstName): string {
+                return $rank($student) . '|' . $firstName($student) . '|' . (string) $student->student_number;
+            })
+            ->values();
     }
 
     /**

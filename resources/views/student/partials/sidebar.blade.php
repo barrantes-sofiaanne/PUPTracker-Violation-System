@@ -1,6 +1,7 @@
 <aside class="portal-sidebar" id="portalSidebar">
-    <button type="button" class="btn btn-sm btn-light d-lg-none mb-2" id="portalSidebarClose">
-        <i class="bi bi-x-lg"></i>
+    {{-- Mobile-only sidebar close (×). See `.sidebar-close` in admin.css. --}}
+    <button type="button" class="sidebar-close" id="portalSidebarClose" aria-label="Close sidebar">
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
     </button>
 
     <div class="portal-logo-wrap">

@@ -10,21 +10,12 @@
 
 <div class="container-fluid">
     
-    {{-- Page Header --}}
-    <div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <div>
-            <h1 class="fw-bold mb-1">Dashboard</h1>
-            <p class="text-muted mb-0">Welcome back! Here's your system overview.</p>
-        </div>
-        <div class="dashboard-header-right">
-            <div class="dashboard-time-wrap">
-                <span id="phTimeDisplay" class="dashboard-time-value" title="Philippine Standard Time">
-                    <i class="bi bi-clock-history"></i>
-                    <span>Loading...</span>
-                </span>
-            </div>
-        </div>
-    </div>
+    {{-- Page Header — Security-style hero with the PHT clock on the RIGHT.
+         The clock is opt-in (:time="true") so other modules do not inherit it. --}}
+    <x-admin.page-header
+        title="Dashboard"
+        description="Welcome back! Here's your system overview."
+        :time="true" />
 
     {{-- Statistics Cards --}}
     <div class="row mb-4 g-3">
@@ -78,14 +69,14 @@
         </div>
 
         <div class="col-lg-3 col-md-6">
-            <div class="card stat-card shadow-sm bg-primary-light">
+            <div class="card stat-card shadow-sm bg-info-light">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="stat-label text-muted mb-2">Recorded Violation Today</p>
-                            <h2 class="stat-value text-primary mb-0">{{ $recordedViolationToday }}</h2>
+                            <p class="stat-label text-muted mb-2">Pending Confirmations</p>
+                            <h2 class="stat-value text-info mb-0">{{ $pendingConfirmations }}</h2>
                         </div>
-                        <div class="icon-badge primary">
+                        <div class="icon-badge info">
                             <i class="bi bi-clipboard2-check-fill"></i>
                         </div>
                     </div>

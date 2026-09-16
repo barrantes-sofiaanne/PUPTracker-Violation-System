@@ -3,12 +3,12 @@
 @section('title', 'Super Admin Dashboard')
 
 @section('content')
-<div class="page-header-modern d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-    <div>
-        <h2 class="fw-bold mb-1">Super Admin Dashboard</h2>
-        <p class="text-muted mb-0">Exclusive controls for the IT Administrator.</p>
-    </div>
-</div>
+{{-- Standardized header — same shared component as the Admin Dashboard, with
+     the PHT clock opt-in on the RIGHT of the hero. --}}
+<x-admin.page-header
+    title="Super Admin Dashboard"
+    description="Exclusive controls for the IT Administrator."
+    :time="true" />
 
 @php
     $maintenanceModeOff = ! $maintenanceStatus;

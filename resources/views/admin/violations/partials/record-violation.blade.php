@@ -50,13 +50,19 @@
     }
 
     /* ------------------------------------------------------------------
-       Wizard presentation — visually aligned with the Security module's
-       Record Violation modal.
+       Wizard presentation — the Security module's Record Violation modal is
+       the SOURCE OF TRUTH for this UI. Every visual value below mirrors it
+       exactly.
+
+       The admin layout does not load portal.css, so the Security-only tokens
+       (`--portal-radius-lg`, `--portal-shadow`) and classes (`portal-btn`)
+       are NOT available here; their literal values are reproduced instead.
+       Maroon/gold are admin.css tokens and are used via those.
 
        These classes are PRESENTATION ONLY: the Admin modal keeps its own ids
        (`studentStepIndicator`, `violationWizardProgress`, ...), its own form
-       submission, validation and controller. Only the visuals are shared so
-       the two modules' Record Violation interfaces look the same.
+       submission, validation and controller, so Admin authorization and
+       business rules are unchanged.
        ------------------------------------------------------------------ */
     .admin-record-modal .wizard-bubble {
         width: 52px;
@@ -66,27 +72,83 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 6px 12px rgba(128, 0, 0, 0.15);
+        box-shadow: 0 6px 12px rgba(122, 15, 30, 0.15);
+        border: 2px solid transparent;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    /* ------------------------------------------------------------------
+       Wizard step states — PUPTracker MAROON + GOLD ONLY.
+
+       The states previously used Bootstrap's bg-success (GREEN) and
+       bg-danger (Bootstrap red), neither of which belongs to the PUPTracker
+       palette. They are replaced by these three classes, which use only the
+       module's maroon and gold tokens. No other hue is introduced.
+       ------------------------------------------------------------------ */
+    .admin-record-modal .wizard-bubble.wizard-step-current {
+        background: #7a0f1e;
+        border-color: #7a0f1e;
+        color: #fff;
+        box-shadow: 0 6px 14px rgba(122, 15, 30, 0.3);
+    }
+
+    .admin-record-modal .wizard-bubble.wizard-step-completed {
+        background: #daa520;
+        border-color: #daa520;
+        color: #4a0209;
+    }
+
+    .admin-record-modal .wizard-bubble.wizard-step-upcoming {
+        background: #fff8e8;
+        border-color: rgba(122, 15, 30, 0.28);
+        color: #7a0f1e;
     }
 
     /* Step cards use the module's maroon/gold tone rather than a generic
        shadow, matching Security's `.wizard-card`. */
     .admin-record-modal .wizard-card {
-        border: 1px solid rgba(128, 0, 0, 0.12) !important;
-        border-radius: 0.95rem;
-        box-shadow: 0 8px 20px rgba(128, 0, 0, 0.08) !important;
+        border: 1px solid rgba(122, 15, 30, 0.12);
+        border-radius: 1rem;
+        box-shadow: 0 8px 24px rgba(128, 0, 0, 0.12);
         overflow: hidden;
     }
 
     .admin-record-modal .wizard-card .card-header {
-        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%) !important;
-        border-bottom: 1px solid rgba(128, 0, 0, 0.12);
-        color: #5f0000;
+        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
+        border-bottom: 1px solid rgba(122, 15, 30, 0.12);
+        color: #4a0209;
         padding: 0.9rem 1.1rem;
     }
 
     .admin-record-modal .wizard-card .card-header i {
-        color: #800000 !important;
+        color: #7a0f1e !important;
+    }
+
+    /* Preview/read-only summary panels (Review step). */
+    .admin-record-modal .preview-box {
+        border: 1px solid rgba(122, 15, 30, 0.1);
+        border-radius: 0.9rem;
+        background: #fffdf7;
+    }
+
+    .admin-record-modal .preview-box strong {
+        color: #4a0209;
+    }
+
+    /* Controlled camera capture — the live preview is obscured while the
+       video is interrupted, exactly as Security does. */
+    .admin-record-modal #cameraPreview {
+        filter: none;
+        transition: filter 0.15s ease;
+        background: #000;
+    }
+
+    .admin-record-modal #cameraPreview.camera-obscured {
+        filter: blur(18px) brightness(0.5);
+    }
+
+    .admin-record-modal #cameraWrap.video-interrupted #cameraPreview {
+        filter: blur(18px) brightness(0.5);
     }
 
     /* Disabled footer buttons stay readable — the maroon tone is preserved
@@ -98,16 +160,147 @@
         cursor: not-allowed;
     }
 
+    /* Mirrors Security's `.portal-btn:disabled` rule: the primary CTA keeps a
+       readable maroon fill when disabled. */
+    .admin-record-modal .modal-footer .admin-btn-primary:disabled,
+    .admin-record-modal .modal-footer .admin-btn-primary.disabled {
+        color: #fff;
+        background: linear-gradient(135deg, #a24a55 0%, #8a3a44 100%);
+        border-color: #a24a55;
+        box-shadow: none;
+    }
+
     .admin-record-modal .form-control,
     .admin-record-modal .form-select {
-        border-color: rgba(128, 0, 0, 0.2);
+        border-color: rgba(122, 15, 30, 0.2);
         border-radius: 0.72rem;
+    }
+
+    /* The BODY scrolls independently so a long wizard never pushes the header or
+       the footer off-screen — header and footer stay reachable at all times. */
+    .admin-record-modal .modal-body {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .admin-record-modal .modal-content {
+        /* Never taller than the viewport, so the footer can not be pushed out of
+           view by a tall step (the evidence step with a live camera is tall). */
+        max-height: calc(100vh - 1rem);
+    }
+
+    @media (max-width: 575.98px) {
+        .admin-record-modal .modal-dialog {
+            margin: 0.5rem;
+        }
+
+        .admin-record-modal .modal-content {
+            max-height: calc(100vh - 1rem);
+        }
     }
 
     .admin-record-modal .form-control:focus,
     .admin-record-modal .form-select:focus {
-        border-color: rgba(128, 0, 0, 0.5);
-        box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.12);
+        border-color: rgba(122, 15, 30, 0.5);
+        box-shadow: 0 0 0 0.2rem rgba(122, 15, 30, 0.12);
+    }
+
+    /* Header/footer chrome — literally the Security values (its radius token
+       is 1rem and its border tone is rgba(122, 15, 30, ...)). */
+    .admin-record-modal .modal-header {
+        background: linear-gradient(120deg, #7a0f1e 0%, #4a0209 65%, #c9981f 180%) !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        color: #fff;
+        padding: 1.1rem 1.25rem;
+        /* Layout: title block flexes, the × keeps a fixed touch target and can
+           never be pushed over the title or clipped on narrow screens. */
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: nowrap;
+    }
+
+    .admin-record-modal .modal-header > div {
+        min-width: 0; /* allows the title to wrap instead of overflowing */
+        flex: 1 1 auto;
+    }
+
+    .admin-record-modal .modal-header .modal-title {
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+    }
+
+    /* The × is a bare icon: NO white pill/card behind it. `background-color`
+       is forced transparent and the glyph is drawn from an explicit white SVG
+       (a CSS `filter` over the whole button is what produced the visible white
+       box on phones). 44px keeps the touch target adequate. */
+    .admin-record-modal .modal-header .btn-close {
+        flex: 0 0 auto;
+        width: 44px;
+        height: 44px;
+        margin: 0;
+        padding: 0;
+        background-color: transparent !important;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e") !important;
+        background-size: 1.1em auto;
+        background-position: center;
+        background-repeat: no-repeat;
+        border: 0;
+        border-radius: 999px;
+        opacity: 0.9;
+        box-shadow: none !important;
+        filter: none !important;
+    }
+
+    .admin-record-modal .modal-header .btn-close:hover,
+    .admin-record-modal .modal-header .btn-close:focus-visible {
+        opacity: 1;
+        background-color: rgba(255, 255, 255, 0.14) !important;
+        box-shadow: none !important;
+    }
+
+    .admin-record-modal .modal-footer {
+        background: #fffdf6;
+        border-top: 1px solid rgba(122, 15, 30, 0.12);
+        padding: 0.8rem 1rem;
+        /* Wrap rather than clip: on narrow screens the buttons stack instead of
+           overflowing or overlapping. */
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Small screens: the primary CTA takes its own full-width row so
+       Back / Cancel / Record Violation can never be cut off or overlap. */
+    @media (max-width: 575.98px) {
+        .admin-record-modal .modal-header {
+            padding: 0.9rem 1rem;
+        }
+
+        .admin-record-modal .modal-footer {
+            padding: 0.75rem 0.85rem;
+        }
+
+        .admin-record-modal .modal-footer > .ms-auto {
+            /* The wrapper holding Cancel + Continue/Record becomes full width. */
+            margin-left: 0 !important;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
+            flex: 1 1 auto;
+        }
+
+        .admin-record-modal .modal-footer #saveViolation {
+            /* Record Violation is the primary action → its own row. */
+            order: 3;
+            flex: 1 1 100%;
+        }
     }
 </style>
 
@@ -181,7 +374,7 @@
 
                             <div
                                 id="studentStepIndicator"
-                                class="wizard-bubble bg-danger text-white mx-auto">
+                                class="wizard-bubble wizard-step-current mx-auto">
 
                                 1
 
@@ -199,7 +392,7 @@
 
                             <div
                                 id="violationStepIndicator"
-                                class="wizard-bubble bg-goldenrod text-white mx-auto">
+                                class="wizard-bubble wizard-step-upcoming mx-auto">
 
                                 2
 
@@ -217,7 +410,7 @@
 
                             <div
                                 id="evidenceStepIndicator"
-                                class="wizard-bubble bg-goldenrod text-white mx-auto">
+                                class="wizard-bubble wizard-step-upcoming mx-auto">
 
                                 3
 
@@ -235,7 +428,7 @@
 
                             <div
                                 id="reviewStepIndicator"
-                                class="wizard-bubble bg-goldenrod text-white mx-auto">
+                                class="wizard-bubble wizard-step-upcoming mx-auto">
 
                                 4
 
@@ -251,17 +444,11 @@
 
                     </div>
 
-                    <div class="progress mb-4" style="height: 7px;">
-                        <div
-                            id="violationWizardProgress"
-                            class="progress-bar bg-danger"
-                            role="progressbar"
-                            style="width: 25%;"
-                            aria-valuenow="25"
-                            aria-valuemin="0"
-                            aria-valuemax="100">
-                        </div>
-                    </div>
+                    {{--
+                        The horizontal progress line was removed: the numbered
+                        circles ARE the progress indicator. `violationWizardProgress`
+                        is intentionally absent; the JS no longer looks it up.
+                    --}}
 
                     <!-- =========================================== -->
                     <!-- STEP 1 -->
@@ -484,7 +671,9 @@
 
     @foreach($categories as $category)
         <option value="{{ $category->violation_category_id }}">
-            {{ $category->category_name }} ({{ $category->violation_category_id }})
+            {{-- Human-readable label only. Security renders exactly this, so the
+                 admin dropdown must not append the raw category ID. --}}
+            {{ $category->category_name }}
         </option>
     @endforeach
 

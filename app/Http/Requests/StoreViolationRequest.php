@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -56,6 +58,56 @@ class StoreViolationRequest extends FormRequest
                 'max:5120',
             ],
         ];
+    }
+
+    /**
+     * ACTIVE-STUDENT RULE (server-side).
+     *
+     * A violation may only be recorded against an account whose PUPTracker
+     * status is Active. IDP authentication and the plain `exists` rule say
+     * nothing about whether the student may be acted upon, so the status is
+     * re-checked here — on the SERVER, not just in the UI.
+     *
+     * This closes the bypasses the rule is meant to prevent: a hand-crafted
+     * POST, an edited student number, a stale form left open after the account
+     * was deactivated, or a disabled button being re-enabled in devtools.
+     *
+     * Historically recorded violations are untouched; only NEW records are
+     * blocked.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $studentNumber = $this->input('student_number');
+
+            if (! is_string($studentNumber) || trim($studentNumber) === '') {
+                // The `required` rule already reports this.
+                return;
+            }
+
+            // Already failed the existence check -> no account to inspect.
+            if ($validator->errors()->has('student_number')) {
+                return;
+            }
+
+            $student = User::query()
+                ->where('student_number', $studentNumber)
+                ->first();
+
+            // Defensive: the exists rule passed but the row is gone (race).
+            if (! $student) {
+                $validator->errors()->add('student_number', 'The selected student does not exist.');
+
+                return;
+            }
+
+            if (! $student->isActiveAccount()) {
+                $validator->errors()->add(
+                    'student_number',
+                    'Violation cannot be recorded because this student account is inactive.'
+                );
+            }
+        });
     }
 
     public function messages(): array

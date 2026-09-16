@@ -317,7 +317,14 @@ class AdminIdpLinkingTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Secure self-linking flow (student never types their IDP id)
+    // ------------------------------------------------------------------
+    // FIRST-TIME STUDENT REGISTRATION (self-registration).
+    //
+    // PUPTracker has NO pre-created student-number roster. A successfully
+    // authenticated IDP identity is enough to register: the student number,
+    // program and year are COLLECTED from the student during registration.
+    // Identity (name / email / idp_subject) always comes from the verified
+    // server-side IDP session, never from the request.
     // ------------------------------------------------------------------
 
     private function pendingProfileSession(
@@ -340,10 +347,23 @@ class AdminIdpLinkingTest extends TestCase
         ];
     }
 
-    public function test_unlinked_student_is_redirected_to_self_link_form(): void
+    /** Valid registration payload with sensible defaults. */
+    private function registrationPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'student_number' => '2026-00003',
+            'program_id' => 1,
+            'year_id' => 1,
+            'section_id' => 1,
+            'gender_id' => 1,
+            'privacy_acknowledged' => '1',
+        ], $overrides);
+    }
+
+    public function test_unlinked_student_is_redirected_to_registration_form(): void
     {
         // Even when the local email matches, an unlinked IDP user is NOT
-        // auto-linked — they are always routed to the connect flow.
+        // auto-linked — they are always routed to first-time registration.
         $this->createStudent(['email' => 'student.idp@example.com']);
         $this->fakeIdp(idpSubject: 'user-new', email: 'student.idp@example.com');
 
@@ -352,225 +372,383 @@ class AdminIdpLinkingTest extends TestCase
         $this->assertGuest('student');
     }
 
-    public function test_self_link_requires_pending_idp_session(): void
+    // ---- 1. register page access -------------------------------------
+
+    public function test_registration_page_requires_pending_idp_session(): void
     {
-        // No pending session -> redirect back to IDP login.
+        // No pending session -> back to IDP login. Direct access cannot register.
         $response = $this->get(route('student.idp.link'));
         $response->assertRedirect(route('student.idp.login'));
+        $this->assertSame(0, User::count());
     }
 
-    public function test_student_can_connect_with_correct_student_number(): void
+    public function test_registration_page_renders_for_first_time_idp_user(): void
     {
-        $this->createStudent(['email' => 'student.idp@example.com']);
-        $this->fakeIdp(idpSubject: 'user-new', email: 'student.idp@example.com');
-
-        $this->hitCallback()->assertRedirect(route('student.idp.link'));
-
-        // Step: number entry -> verified -> staged preview (no link yet).
         $response = $this->withSession($this->pendingProfileSession())
-            ->post(route('student.idp.link.post'), [
-                'student_number' => '2026-00003',
-            ]);
+            ->get(route('student.idp.link'));
 
-        $response->assertRedirect(route('student.idp.link.preview'));
-        $this->assertGuest('student');
-        $this->assertSame(null, User::where('student_number', '2026-00003')->first()->fresh()->idp_subject);
+        $response->assertOk();
+        $response->assertSee('Complete Your PUPTracker Registration', false);
+        $response->assertSee('PUPTracker information', false);
+        $response->assertSee('Information Privacy Notice', false);
+    }
 
-        // Preview GET renders.
-        $preview = $this->withSession($this->pendingProfileSession())
-            ->withSession(['student.idp.pending_student_number' => '2026-00003'])
-            ->get(route('student.idp.link.preview'));
-        $preview->assertOk();
+    // ---- 2/3/4. IDP identity auto-populated -------------------------
 
-        // Final submit binds the IDP link and logs the student in.
-        $submit = $this->withSession($this->pendingProfileSession())
-            ->withSession(['student.idp.pending_student_number' => '2026-00003'])
-            ->post(route('student.idp.link.submit'));
+    public function test_registration_page_auto_populates_idp_name_and_email(): void
+    {
+        $response = $this->withSession($this->pendingProfileSession(
+            email: 'juan.delacruz@university.edu',
+            profileOverrides: ['first_name' => 'Juan', 'middle_name' => 'Dela', 'last_name' => 'Cruz'],
+        ))->get(route('student.idp.link'));
 
-        $submit->assertRedirect(route('student.dashboard'));
+        $response->assertOk();
+        $response->assertSee('Juan Dela Cruz', false);
+        $response->assertSee('juan.delacruz@university.edu', false);
+    }
+
+    public function test_registration_page_does_not_expose_idp_subject(): void
+    {
+        $response = $this->withSession($this->pendingProfileSession('secret-subject-xyz'))
+            ->get(route('student.idp.link'));
+
+        $response->assertOk();
+        $response->assertDontSee('secret-subject-xyz', false);
+    }
+
+    // ---- 10. student number need not pre-exist -----------------------
+
+    public function test_first_time_student_can_register_without_preexisting_record(): void
+    {
+        // NO student record exists for this number at all.
+        $this->assertSame(0, User::count());
+
+        $response = $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload());
+
+        $response->assertRedirect(route('student.dashboard'));
         $this->assertAuthenticated('student');
 
-        $this->assertDatabaseHas('users_tbl', [
-            'user_id' => User::where('student_number', '2026-00003')->first()->user_id,
-            'idp_subject' => 'user-new',
-            'idp_email' => 'student.idp@example.com',
-        ]);
-    }
-
-    public function test_self_link_rejects_unknown_student_number(): void
-    {
-        $this->createStudent(['email' => 'student.idp@example.com']);
-        $this->fakeIdp(idpSubject: 'user-new', email: 'student.idp@example.com');
-
-        $response = $this->withSession($this->pendingProfileSession())
-            ->post(route('student.idp.link.post'), [
-                'student_number' => 'NOPE-999',
-            ]);
-
-        $response->assertSessionHasErrors('student_number');
-        $this->assertGuest('student');
-    }
-
-    public function test_self_link_rejects_if_idp_id_already_bound_to_another(): void
-    {
-        $this->createStudent([
-            'student_number' => '2026-00001',
-            'idp_subject' => 'user-bound',
-            'email' => 'bound@example.com',
-        ]);
-        $other = $this->createStudent([
-            'student_number' => '2026-00002',
-            'email' => 'other@example.com',
-        ]);
-
-        $this->fakeIdp(idpSubject: 'user-bound', email: 'bound@example.com');
-
-        $response = $this->withSession($this->pendingProfileSession('user-bound', 'bound@example.com'))
-            ->post(route('student.idp.link.post'), [
-                'student_number' => '2026-00002',
-            ]);
-
-        $response->assertSessionHasErrors('login');
-        $this->assertSame(null, $other->fresh()->idp_subject);
-        $this->assertGuest('student');
-    }
-
-    public function test_self_link_rejects_inactive_student(): void
-    {
-        $this->createStudent(['status_id' => 2]);
-        $this->fakeIdp(idpSubject: 'user-new', email: 'student.idp@example.com');
-
-        $response = $this->withSession($this->pendingProfileSession())
-            ->post(route('student.idp.link.post'), [
-                'student_number' => '2026-00003',
-            ]);
-
-        $response->assertSessionHasErrors('student_number');
-        $this->assertGuest('student');
-    }
-
-    public function test_self_link_rejects_name_mismatch(): void
-    {
-        // Local name is "IDP Student" (from createStudent default); the IDP
-        // profile in the pending session carries a DIFFERENT name.
-        $student = $this->createStudent(['email' => 'student.idp@example.com']);
-        $this->fakeIdp(idpSubject: 'user-new', email: 'student.idp@example.com');
-
-        $session = $this->pendingProfileSession();
-        $session['student.idp.pending_profile']['first_name'] = 'Juan';
-        $session['student.idp.pending_profile']['last_name'] = 'Dela Cruz';
-
-        $response = $this->withSession($session)
-            ->post(route('student.idp.link.post'), [
-                'student_number' => '2026-00003',
-            ]);
-
-        $response->assertSessionHasErrors('student_number');
-        $this->assertSame(null, $student->fresh()->idp_subject);
-        $this->assertGuest('student');
-    }
-
-    public function test_student_can_update_program_year_before_submit(): void
-    {
-        $this->createStudent(['email' => 'student.idp@example.com']);
-        $this->fakeIdp(idpSubject: 'user-new', email: 'student.idp@example.com');
-
-        $this->withSession($this->pendingProfileSession())
-            ->post(route('student.idp.link.post'), ['student_number' => '2026-00003'])
-            ->assertRedirect(route('student.idp.link.preview'));
-
-        // Update program/year (staged only).
-        $this->withSession($this->pendingProfileSession())
-            ->withSession(['student.idp.pending_student_number' => '2026-00003'])
-            ->post(route('student.idp.link.program-year'), [
-                'program_id' => 2,
-                'year_id' => 2,
-            ])
-            ->assertRedirect(route('student.idp.link.preview'));
-
-        // Final submit applies the association.
-        $this->withSession($this->pendingProfileSession())
-            ->withSession([
-                'student.idp.pending_student_number' => '2026-00003',
-                'student.idp.pending_program_id' => 2,
-                'student.idp.pending_year_id' => 2,
-            ])
-            ->post(route('student.idp.link.submit'))
-            ->assertRedirect(route('student.dashboard'));
-
-        $this->assertAuthenticated('student');
         $this->assertDatabaseHas('users_tbl', [
             'student_number' => '2026-00003',
             'idp_subject' => 'user-new',
+            'idp_email' => 'student.idp@example.com',
+            'roles_id' => 2,
         ]);
     }
 
-    public function test_preview_requires_staged_student_number(): void
+    // ---- 5/6. identity cannot be forged via the request --------------
+
+    public function test_idp_name_cannot_be_changed_by_manipulating_request(): void
     {
-        $this->fakeIdp(idpSubject: 'user-new', email: 'student.idp@example.com');
-
-        // Pending profile exists but no staged student number yet.
-        $response = $this->withSession($this->pendingProfileSession())
-            ->get(route('student.idp.link.preview'));
-
-        $response->assertRedirect(route('student.idp.link'));
-    }
-
-    // ------------------------------------------------------------------
-    // Corrected architecture: IDP is authoritative for identity/name.
-    // Local name fields may be blank before first login and are populated
-    // (and refreshed on later logins) from the authenticated IDP profile.
-    // ------------------------------------------------------------------
-
-    public function test_blank_name_student_can_link_and_names_populated_from_idp(): void
-    {
-        // Local record exists with NO name yet (the pre-first-login state).
-        $this->createStudent([
-            'email' => 'student.idp@example.com',
-            'first_name' => null,
-            'middle_name' => null,
-            'last_name' => null,
-            'name_suffix' => null,
-        ]);
-        $this->fakeIdp(
-            idpSubject: 'user-new',
-            email: 'student.idp@example.com',
-            profileOverrides: [
-                'first_name' => 'Juan',
-                'middle_name' => 'Dela',
-                'last_name' => 'Cruz',
-                'name_suffix' => 'Jr.',
-            ]
-        );
-
-        $session = $this->pendingProfileSession(profileOverrides: [
-            'first_name' => 'Juan',
-            'middle_name' => 'Dela',
-            'last_name' => 'Cruz',
-            'suffix' => 'Jr.',
-        ]);
-
-        // Step: number entry → verified (blank local name is allowed).
-        $this->withSession($session)
-            ->post(route('student.idp.link.post'), ['student_number' => '2026-00003'])
-            ->assertRedirect(route('student.idp.link.preview'));
-
-        // Final submit links + populates names from the authoritative IDP.
-        $this->withSession($session)
-            ->withSession(['student.idp.pending_student_number' => '2026-00003'])
-            ->post(route('student.idp.link.submit'))
-            ->assertRedirect(route('student.dashboard'));
-
-        $this->assertAuthenticated('student');
+        $this->withSession($this->pendingProfileSession(profileOverrides: [
+            'first_name' => 'Juan', 'middle_name' => 'Dela', 'last_name' => 'Cruz', 'suffix' => '',
+        ]))->post(route('student.idp.link.post'), $this->registrationPayload([
+            // Attacker-supplied identity fields — must be ignored.
+            'first_name' => 'Impostor',
+            'last_name' => 'Hacker',
+            'name_suffix' => 'Sr.',
+        ]))->assertRedirect(route('student.dashboard'));
 
         $this->assertDatabaseHas('users_tbl', [
-            'user_id' => User::where('student_number', '2026-00003')->first()->user_id,
-            'idp_subject' => 'user-new',
+            'student_number' => '2026-00003',
             'first_name' => 'Juan',
             'middle_name' => 'Dela',
             'last_name' => 'Cruz',
-            'name_suffix' => 'Jr.',
         ]);
+        $this->assertDatabaseMissing('users_tbl', ['first_name' => 'Impostor']);
+    }
+
+    public function test_idp_email_cannot_be_changed_by_manipulating_request(): void
+    {
+        $this->withSession($this->pendingProfileSession(email: 'verified@university.edu'))
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'email' => 'attacker@evil.test',
+                'idp_email' => 'attacker@evil.test',
+                'idp_subject' => 'forged-subject',
+            ]))->assertRedirect(route('student.dashboard'));
+
+        $this->assertDatabaseHas('users_tbl', [
+            'student_number' => '2026-00003',
+            'idp_email' => 'verified@university.edu',
+            'idp_subject' => 'user-new',
+        ]);
+        $this->assertDatabaseMissing('users_tbl', ['idp_subject' => 'forged-subject']);
+    }
+
+    // ---- 7/8/9. student-provided academic fields ---------------------
+
+    public function test_student_provided_program_and_year_are_saved(): void
+    {
+        $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'program_id' => 2,
+                'year_id' => 2,
+            ]))->assertRedirect(route('student.dashboard'));
+
+        $student = User::where('student_number', '2026-00003')->firstOrFail();
+
+        $this->assertDatabaseHas('student_info_tbl', [
+            'user_id' => $student->user_id,
+            'program_id' => 2,
+            'year_id' => 2,
+        ]);
+    }
+
+    // ---- 14. duplicate IDP identity ---------------------------------
+
+    public function test_duplicate_idp_identity_does_not_create_second_account(): void
+    {
+        // The IDP identity already owns an account.
+        $existing = $this->createStudent([
+            'student_number' => '2026-00001',
+            'idp_subject' => 'user-bound',
+            'idp_email' => 'bound@example.com',
+        ]);
+
+        $this->withSession($this->pendingProfileSession('user-bound', 'bound@example.com'))
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'student_number' => '2026-00099',
+            ]));
+
+        // Still exactly one account, and the existing one was not rewritten.
+        $this->assertSame(1, User::count());
+        $this->assertSame('2026-00001', $existing->fresh()->student_number);
+        $this->assertDatabaseMissing('users_tbl', ['student_number' => '2026-00099']);
+    }
+
+    // ---- 15. duplicate student number --------------------------------
+
+    public function test_duplicate_student_number_is_handled(): void
+    {
+        // A DIFFERENT account already uses this number.
+        $this->createStudent([
+            'student_number' => '2026-00003',
+            'idp_subject' => 'someone-else',
+        ]);
+
+        $response = $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'student_number' => '2026-00003',
+            ]));
+
+        $response->assertSessionHasErrors('student_number');
+        $this->assertGuest('student');
+
+        // No second account, and the pre-existing account keeps its own IDP link.
+        $this->assertSame(1, User::count());
+        $this->assertSame(0, User::where('idp_subject', 'user-new')->count());
+        $this->assertSame('someone-else', User::where('student_number', '2026-00003')->firstOrFail()->idp_subject);
+    }
+
+    // ---- 16. double submission --------------------------------------
+
+    public function test_double_submission_creates_only_one_account(): void
+    {
+        $session = $this->pendingProfileSession();
+
+        $this->withSession($session)
+            ->post(route('student.idp.link.post'), $this->registrationPayload())
+            ->assertRedirect(route('student.dashboard'));
+
+        // Replay the exact same submission.
+        $this->withSession($session)
+            ->post(route('student.idp.link.post'), $this->registrationPayload())
+            ->assertRedirect(route('student.dashboard'));
+
+        $this->assertSame(1, User::count());
+        $this->assertSame(1, User::where('idp_subject', 'user-new')->count());
+    }
+
+    // ---- 13. missing IDP session cannot submit -----------------------
+
+    public function test_missing_idp_session_cannot_submit_registration(): void
+    {
+        $response = $this->post(route('student.idp.link.post'), $this->registrationPayload());
+
+        $response->assertRedirect(route('student.login'));
+        $response->assertSessionHasErrors('login');
+        $this->assertSame(0, User::count());
+        $this->assertGuest('student');
+    }
+
+    // ---- 18. invalid input ------------------------------------------
+
+    public function test_registration_rejects_invalid_input(): void
+    {
+        $session = $this->pendingProfileSession();
+
+        // All required fields missing / invalid.
+        $this->withSession($session)
+            ->post(route('student.idp.link.post'), [])
+            ->assertSessionHasErrors(['student_number', 'program_id', 'year_id', 'privacy_acknowledged']);
+
+        // Unknown program / year ids must fail validation.
+        $this->withSession($session)
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'program_id' => 999,
+                'year_id' => 999,
+            ]))
+            ->assertSessionHasErrors(['program_id', 'year_id']);
+
+        $this->assertSame(0, User::count());
+        $this->assertGuest('student');
+    }
+
+    public function test_registration_requires_privacy_notice_acknowledgement(): void
+    {
+        $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), [
+                'student_number' => '2026-00003',
+                'program_id' => 1,
+                'year_id' => 1,
+                'section_id' => 1,
+                'gender_id' => 1,
+                // no privacy_acknowledged
+            ])
+            ->assertSessionHasErrors('privacy_acknowledged');
+
+        $this->assertSame(0, User::count());
+    }
+
+    // ---- Section + Gender are required, validated, and persisted -----
+
+    public function test_registration_requires_section_and_gender(): void
+    {
+        $session = $this->pendingProfileSession();
+
+        $this->withSession($session)
+            ->post(route('student.idp.link.post'), [
+                'student_number' => '2026-00003',
+                'program_id' => 1,
+                'year_id' => 1,
+                'privacy_acknowledged' => '1',
+                // section_id + gender_id omitted
+            ])
+            ->assertSessionHasErrors(['section_id', 'gender_id']);
+
+        $this->assertSame(0, User::count());
+        $this->assertGuest('student');
+    }
+
+    public function test_registration_rejects_invalid_section_and_gender_ids(): void
+    {
+        $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'section_id' => 999,
+                'gender_id' => 999,
+            ]))
+            ->assertSessionHasErrors(['section_id', 'gender_id']);
+
+        $this->assertSame(0, User::count());
+    }
+
+    public function test_registration_persists_the_student_selected_section_and_gender(): void
+    {
+        $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'section_id' => 2,
+                'gender_id' => 2,
+            ]))
+            ->assertRedirect(route('student.dashboard'));
+
+        $student = User::where('student_number', '2026-00003')->firstOrFail();
+
+        // Gender lives on the account; section lives on the enrollment row.
+        $this->assertSame(2, (int) $student->gender_id);
+
+        $this->assertDatabaseHas('student_info_tbl', [
+            'user_id' => $student->user_id,
+            'section_id' => 2,
+        ]);
+    }
+
+    public function test_registration_page_renders_section_and_gender_dropdowns(): void
+    {
+        $page = $this->withSession($this->pendingProfileSession())
+            ->get(route('student.idp.link'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('name="section_id"', $page);
+        $this->assertStringContainsString('name="gender_id"', $page);
+
+        // The student's own choices are offered from the reference tables.
+        $this->assertStringContainsString('BSIT 1-A', $page);
+        $this->assertStringContainsString('Male', $page);
+    }
+
+    // ---- 17. CSRF ----------------------------------------------------
+
+    public function test_registration_submission_is_csrf_protected(): void
+    {
+        // The POST route must sit in the `web` group, which is what carries CSRF.
+        $route = app(\Illuminate\Routing\Router::class)->getRoutes()->getByName('student.idp.link.post');
+
+        $this->assertNotNull($route, 'The registration POST route must be registered.');
+        $this->assertContains('web', $route->gatherMiddleware());
+
+        // Boot the HTTP kernel so the framework's default middleware groups are
+        // registered, then confirm CSRF verification is part of `web`.
+        $this->app->make(\Illuminate\Contracts\Http\Kernel::class)->bootstrap();
+
+        $groups = app(\Illuminate\Routing\Router::class)->getMiddlewareGroups();
+
+        $this->assertContains(
+            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+            $groups['web'] ?? [],
+            'The web middleware group must keep ValidateCsrfToken so registration POSTs are CSRF-protected.'
+        );
+
+        // The rendered form carries a token.
+        $page = $this->withSession($this->pendingProfileSession())
+            ->get(route('student.idp.link'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression('/name="_token"\s+value="[^"]+"/', $page);
+    }
+
+    // ---- 19. rollback / no partial account ---------------------------
+
+    public function test_registration_rolls_back_when_info_creation_fails(): void
+    {
+        // Force the enrollment insert to fail AFTER the user row is created.
+        Schema::drop('student_info_tbl');
+        Schema::create('student_info_tbl', function (Blueprint $table): void {
+            $table->id('student_id');
+            $table->unsignedBigInteger('user_id')->nullable();
+            // `program_id` is deliberately absent -> the enrollment insert throws.
+            $table->unsignedBigInteger('year_id')->nullable();
+            $table->unsignedBigInteger('section_id')->nullable();
+            $table->unsignedBigInteger('student_status_id')->nullable();
+            $table->tinyInteger('ladderized')->default(0);
+        });
+
+        $response = $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload());
+
+        $response->assertSessionHasErrors('registration');
+        $this->assertSame(0, User::count(), 'A partial account must not survive a failed registration.');
+        $this->assertGuest('student');
+    }
+
+    // ---- 20. existing functionality ---------------------------------
+
+    public function test_existing_linked_student_bypasses_registration_entirely(): void
+    {
+        $this->createStudent([
+            'student_number' => '2026-00001',
+            'idp_subject' => 'user-linked',
+            'idp_email' => 'linked@example.com',
+        ]);
+
+        $this->fakeIdp(idpSubject: 'user-linked', email: 'linked@example.com');
+
+        // Straight to the dashboard — never through registration.
+        $this->hitCallback()->assertRedirect(route('student.dashboard'));
+        $this->assertAuthenticated('student');
+        $this->assertSame(1, User::count());
     }
 
     public function test_subsequent_login_refreshes_name_from_idp(): void
@@ -606,30 +784,6 @@ class AdminIdpLinkingTest extends TestCase
             'last_name' => 'Santos',
             'name_suffix' => 'III',
         ]);
-    }
-
-    public function test_name_mismatch_still_rejects_when_local_name_is_present(): void
-    {
-        // Local record ALREADY has a name that conflicts with the IDP.
-        $student = $this->createStudent(['email' => 'student.idp@example.com']);
-        $this->fakeIdp(idpSubject: 'user-new', email: 'student.idp@example.com');
-
-        $session = $this->pendingProfileSession(profileOverrides: [
-            'first_name' => 'Juan',
-            'middle_name' => 'Dela',
-            'last_name' => 'Cruz',
-            'suffix' => '',
-        ]);
-
-        $response = $this->withSession($session)
-            ->post(route('student.idp.link.post'), [
-                'student_number' => '2026-00003',
-            ]);
-
-        // Local record is "IDP Student" → conflict → rejected, nothing saved.
-        $response->assertSessionHasErrors('student_number');
-        $this->assertSame(null, $student->fresh()->idp_subject);
-        $this->assertGuest('student');
     }
 
     public function test_full_name_and_formal_name_accessors_include_suffix(): void
@@ -668,11 +822,6 @@ class AdminIdpLinkingTest extends TestCase
         $this->assertSame('', $blank->full_name);
         $this->assertSame('', $blank->formal_name);
     }
-
-    // ------------------------------------------------------------------
-    // Schema
-    // ------------------------------------------------------------------
-
     private function ensureTablesForTests(): void
     {
         if (! Schema::hasTable('roles_tbl')) {
@@ -711,6 +860,7 @@ class AdminIdpLinkingTest extends TestCase
                 $table->string('idp_email')->nullable();
                 $table->timestamp('idp_connected_at')->nullable();
                 $table->timestamp('idp_last_login_at')->nullable();
+                $table->timestamp('profile_completed_at')->nullable();
                 $table->unsignedBigInteger('gender_id')->nullable();
                 $table->unsignedBigInteger('status_id')->nullable();
                 $table->unsignedBigInteger('roles_id')->nullable();
@@ -757,6 +907,28 @@ class AdminIdpLinkingTest extends TestCase
                 $table->unsignedBigInteger('student_status_id')->nullable();
                 $table->tinyInteger('ladderized')->default(0);
             });
+        }
+
+        if (! Schema::hasTable('section_tbl')) {
+            Schema::create('section_tbl', function (Blueprint $table): void {
+                $table->id('section_id');
+                $table->string('section_name')->nullable();
+            });
+            DB::table('section_tbl')->insert([
+                ['section_id' => 1, 'section_name' => 'BSIT 1-A'],
+                ['section_id' => 2, 'section_name' => 'BSIT 4-A'],
+            ]);
+        }
+
+        if (! Schema::hasTable('gender_tbl')) {
+            Schema::create('gender_tbl', function (Blueprint $table): void {
+                $table->id('gender_id');
+                $table->string('gender_name')->nullable();
+            });
+            DB::table('gender_tbl')->insert([
+                ['gender_id' => 1, 'gender_name' => 'Male'],
+                ['gender_id' => 2, 'gender_name' => 'Female'],
+            ]);
         }
 
         if (! Schema::hasTable('admins')) {

@@ -12,20 +12,15 @@ class NotificationController extends Controller
 {
     public function index()
     {
+        /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        $notifications = Notification::where(
-                'student_number',
-                $user->student_number
-            )
+        $notifications = $this->ownedQuery()
             ->orderBy('is_read', 'asc')
             ->latest('created_at')
             ->paginate(10);
 
-        $unreadCount = Notification::where(
-                'student_number',
-                $user->student_number
-            )
+        $unreadCount = $this->ownedQuery()
             ->where('is_read', false)
             ->count();
 
@@ -36,6 +31,23 @@ class NotificationController extends Controller
                 'notifications',
                 'unreadCount'
             )
+        );
+    }
+
+    /**
+     * The ONLY query used for student notification reads.
+     *
+     * Authorisation is enforced by the database query itself (account
+     * ownership), never by filtering in the view/JavaScript.
+     */
+    private function ownedQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        return Notification::query()->ownedByStudent(
+            $user?->user_id !== null ? (int) $user->user_id : null,
+            $user?->student_number
         );
     }
 
@@ -65,15 +77,15 @@ class NotificationController extends Controller
 
     public function updateStatus(Request $request)
     {
-        $user = Auth::user();
-
         $validated = $request->validate([
             'action' => ['required', 'in:mark_all_read,mark_selected_read,mark_selected_unread'],
             'notification_ids' => ['nullable', 'array'],
             'notification_ids.*' => ['integer'],
         ]);
 
-        $query = Notification::where('student_number', $user->student_number);
+        // Scoped to the authenticated account, so an id belonging to another
+        // student simply does not match and cannot be modified.
+        $query = $this->ownedQuery();
         $action = $validated['action'];
 
         if ($action === 'mark_all_read') {
@@ -103,13 +115,24 @@ class NotificationController extends Controller
         return back()->with('success', "{$updatedRows} notification(s) marked as {$statusLabel}.");
     }
 
+    /**
+     * Authorise against ACCOUNT OWNERSHIP.
+     *
+     * A notification addressed to another account is reported as 404 (not 403)
+     * so the response cannot be used to probe whether a given notification id
+     * exists at all.
+     */
     private function authorizeNotification(Notification $notification): void
     {
+        /** @var \App\Models\User|null $user */
         $user = Auth::user();
 
         abort_unless(
-            (string) $notification->student_number === (string) $user->student_number,
-            403
+            $notification->isOwnedByStudent(
+                $user?->user_id !== null ? (int) $user->user_id : null,
+                $user?->student_number
+            ),
+            404
         );
     }
 }

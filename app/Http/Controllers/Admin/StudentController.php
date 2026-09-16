@@ -138,7 +138,7 @@ class StudentController extends Controller
         $genders = Gender::orderBy('gender_name')->get();
         $statuses = Status::orderBy('status_name')->get();
         $adminRoles = Role::query()
-            ->whereIn('roles_name', ['Admin', 'IT Administrator'])
+            ->whereIn('roles_name', ['Admin', 'IT Administrator', 'Admin Assistant'])
             ->orderBy('roles_name')
             ->get();
 
@@ -159,6 +159,14 @@ class StudentController extends Controller
     {
         $validated = $request->validate([
             'student_number' => 'required|string|max:50|unique:users_tbl,student_number',
+            // Identity fields the administrator enters manually. Email is
+            // deliberately NOT accepted here — it comes from the PUP IDP when
+            // the student links their account. Middle name and suffix are
+            // genuinely optional (nullable columns), so they are not required.
+            'first_name' => 'required|string|max:100',
+            'middle_name' => 'nullable|string|max:100',
+            'last_name' => 'required|string|max:100',
+            'name_suffix' => 'nullable|string|max:20',
             'program_id' => 'required|exists:program_tbl,program_id',
             'year_id' => 'required|exists:year_tbl,year_id',
             'section_id' => 'required|exists:section_tbl,section_id',
@@ -181,13 +189,16 @@ class StudentController extends Controller
             // Student passwords are managed by the PUP Identity Provider (IDP),
             // so no local password is configured for student accounts.
             //
-            // Identity fields (first_name, middle_name, last_name, name_suffix,
-            // email) are intentionally NOT set here. The PUP IDP is the
-            // authoritative source for identity, and they are populated when the
-            // student links their PUPTracker account to their PUP IDP account
-            // for the first time. The admin only creates the enrollment record.
+            // The NAME is entered by the administrator and stored here. Only
+            // `email` is left for the PUP IDP: it is the authoritative source
+            // for the student's institutional email, which is written when the
+            // student links their PUPTracker account to their PUP IDP account.
             $student = User::create([
                 'student_number' => $validated['student_number'],
+                'first_name' => trim((string) $validated['first_name']),
+                'middle_name' => $this->nullableTrim($validated['middle_name'] ?? null),
+                'last_name' => trim((string) $validated['last_name']),
+                'name_suffix' => $this->nullableTrim($validated['name_suffix'] ?? null),
                 'gender_id' => $validated['gender_id'],
                 'status_id' => $validated['status_id'],
                 'roles_id' => 2,
@@ -213,7 +224,22 @@ class StudentController extends Controller
         );
 
         return redirect()->route('admin.students', ['tab' => 'students'])
-            ->with('success', 'Student account created successfully. The student will connect their PUP IDP account to complete their profile.');
+            ->with('success', 'Student account created successfully. The student will connect their PUP IDP account to supply their institutional email.');
+    }
+
+    /**
+     * Trim a value, returning null when it is empty so optional columns stay
+     * NULL rather than becoming empty strings.
+     */
+    private function nullableTrim($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim((string) $value);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 
     public function storeAdmin(Request $request)
@@ -636,10 +662,10 @@ class StudentController extends Controller
                 '2024-00001-TG-0',
             ]],
             $validated['account_type'] === 'student' => [[
-                'student_number', 'first_name', 'middle_name', 'last_name', 'name_suffix', 'email',
+                'student_number', 'first_name', 'middle_name', 'last_name', 'name_suffix',
                 'program', 'year', 'section', 'gender', 'ladderized',
             ], [
-                '2024-00001-TG-0', 'Juan', 'Dela', 'Cruz', '', 'juan.delacruz@example.com',
+                '2024-00001-TG-0', 'Juan', 'Dela', 'Cruz', '',
                 'BSIT', '1', '1A', 'Male', 'No',
             ]],
             $validated['account_type'] === 'admin' => [[
@@ -1109,10 +1135,11 @@ class StudentController extends Controller
         // Student passwords are managed by the PUP Identity Provider (IDP), so
         // no local password is configured for imported student accounts.
         //
-        // Identity fields are managed by the IDP. Names/email are only stored
-        // here when the source file actually provides them (registrar bulk
-        // data); otherwise they stay null until the student links their PUP IDP
-        // account.
+        // NAME is part of the supported import columns and is stored directly on
+        // the student record. `email` is NOT an import column: it is supplied by
+        // the PUP IDP when the student links their account, so it stays NULL
+        // until then (the column is nullable). An `email` column is still
+        // tolerated if a legacy file happens to carry one.
         $identity = [];
         foreach ([
             'first_name' => 'first_name',

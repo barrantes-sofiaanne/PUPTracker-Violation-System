@@ -125,6 +125,12 @@ class ProgramReportController extends Controller
                 'year' => $s->studentInfo?->year?->year ?? '-',
                 'section' => $s->studentInfo?->section?->section_name ?? '-',
                 'status' => $s->studentInfo?->studentStatus?->status_name ?? '-',
+                // Lets the preview label the ladderized group. The server is the
+                // only place this flag is authoritative.
+                'is_ladderized' => (bool) ($s->studentInfo?->ladderized ?? false),
+                // True when the student is in the report because the
+                // administrator added them by hand rather than by eligibility.
+                'is_added' => in_array((string) $s->student_number, $additional, true),
             ]),
         ]);
     }
@@ -426,7 +432,21 @@ class ProgramReportController extends Controller
 
         $mpdf->WriteHTML($html);
 
-        $filename = 'program-report-' . $report->program?->program_name . '-' . $report->academic_year . '.pdf';
+        // Graduation AI reports use their own filename convention:
+        //   Graduation_Ai_Summary_<Program>_<Year>.pdf
+        // The year is the value the report already carries (for graduating
+        // reports that is the ordinal label, e.g. "4th Year"). The existing
+        // sanitisation is kept, so spaces/special characters cannot produce an
+        // invalid filename.
+        $appliedYear = $report->academic_year
+            ?: ((int) ($report->graduating_year ?? 0) > 0 ? $this->ordinalYearLabel((int) $report->graduating_year) : '');
+
+        if ($report->report_mode === 'graduating') {
+            $filename = 'Graduation_Ai_Summary_' . $report->program?->program_name . '_' . $appliedYear . '.pdf';
+        } else {
+            $filename = 'program-report-' . $report->program?->program_name . '-' . $report->academic_year . '.pdf';
+        }
+
         $filename = preg_replace('/[^A-Za-z0-9\-_.]/', '-', $filename);
 
         return response($mpdf->Output($filename, 'S'), 200, [

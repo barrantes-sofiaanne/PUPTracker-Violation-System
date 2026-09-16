@@ -795,6 +795,8 @@ class CommunityServiceAssignmentTest extends TestCase
             'password_hash' => Hash::make('Password123!'),
             'roles_id' => 2,
             'status_id' => 1,
+            // Existing registered student (see the migration backfill).
+            'profile_completed_at' => now()->subDay(),
         ]);
 
         if (Schema::hasTable('student_info_tbl')) {
@@ -848,6 +850,7 @@ class CommunityServiceAssignmentTest extends TestCase
                 $table->string('password_hash')->nullable();
                 $table->unsignedInteger('roles_id')->nullable();
                 $table->unsignedInteger('status_id')->nullable();
+                $table->timestamp('profile_completed_at')->nullable();
                 $table->timestamps();
             },
             'roles_tbl' => function (Blueprint $table): void {

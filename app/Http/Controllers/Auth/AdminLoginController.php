@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\AuditLog;
+use App\Support\Auth\LoginAttemptLimiter;
+use App\Support\Auth\SessionExpiryNotice;
 use App\Support\MfaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -13,6 +16,14 @@ use Illuminate\Support\Facades\Hash;
 
 class AdminLoginController extends Controller
 {
+    /**
+     * The module key used for the login-attempt limiter and its config.
+     *
+     * A lockout is scoped to this module, so an Administrator lockout does not
+     * block the Security login.
+     */
+    public const LOGIN_MODULE = 'admin';
+
     public function showLoginForm()
     {
         return view('auth.admin-login');
@@ -29,16 +40,59 @@ class AdminLoginController extends Controller
             $emailMask = $this->maskEmail((string) $request->input('email'));
             Log::info('Admin login attempt started', ['email_masked' => $emailMask]);
 
-            $admin = Admin::where('email', $request->email)->first();
+            // Failed credential attempts are bounded per account, using the
+            // SHARED rule in LoginAttemptLimiter so the Administrator and
+            // Security modules cannot drift apart.
+            //
+            // The route throttle (`throttle:5,1`) is a PER-IP network backstop;
+            // this is the per-ACCOUNT lock the brief requires, so rotating IPs
+            // cannot buy extra guesses. The limiter keys on the module plus the
+            // submitted email, so an Administrator lockout never blocks the
+            // Security login, and the counter lives in the server-side cache so
+            // refreshing the login page cannot reset it.
+            if (LoginAttemptLimiter::isLocked(self::LOGIN_MODULE, $request)) {
+                Log::warning('Admin login blocked: too many failed attempts', [
+                    'email_masked' => $emailMask,
+                    'retry_after_seconds' => LoginAttemptLimiter::secondsRemaining(self::LOGIN_MODULE, $request),
+                ]);
 
-            if (!$admin || !Hash::check($request->password, $admin->password)) {
-                Log::info('Admin login: invalid credentials');
+                AuditLog::create([
+                    'actor_type' => 'system',
+                    'actor_id' => null,
+                    'action' => 'Login Blocked',
+                    'module' => 'Authentication',
+                    'description' => 'Admin login blocked after ' . LoginAttemptLimiter::policy(self::LOGIN_MODULE)['max'] . ' failed attempts.',
+                    'created_at' => now(),
+                ]);
+
                 return back()
                     ->withErrors([
-                        'login' => 'Invalid email or password.'
+                        'login' => LoginAttemptLimiter::lockedMessage(self::LOGIN_MODULE, $request),
                     ])
                     ->withInput();
             }
+
+            $admin = Admin::where('email', $request->email)->first();
+
+            if (!$admin || !Hash::check($request->password, $admin->password)) {
+                // Count the failure BEFORE responding so the threshold cannot be
+                // slipped past by a concurrent request.
+                LoginAttemptLimiter::recordFailure(self::LOGIN_MODULE, $request);
+
+                Log::info('Admin login: invalid credentials', [
+                    'attempts_remaining' => LoginAttemptLimiter::remaining(self::LOGIN_MODULE, $request),
+                ]);
+
+                return back()
+                    ->withErrors([
+                        'login' => LoginAttemptLimiter::failureMessage(self::LOGIN_MODULE, $request),
+                    ])
+                    ->withInput();
+            }
+
+            // A SUCCESSFUL credential check clears the failed-attempt counter.
+            // "3 attempts" means three FAILURES, never three lifetime logins.
+            LoginAttemptLimiter::clear(self::LOGIN_MODULE, $request);
 
             Log::info('Admin login: credentials verified', ['admin_id' => $admin->id]);
 
@@ -83,7 +137,12 @@ class AdminLoginController extends Controller
                     (bool) $admin->mfa_totp_enabled,
                     $admin->mfa_backup_codes,
                     $admin->mfa_backup_codes_used,
-                    $request->boolean('remember')
+                    // PART 8 — Remember Me is chosen on the MFA verification
+                    // screen only, never at the credential stage, so the pending
+                    // challenge always starts with it OFF. Passing `false` rather
+                    // than reading the request keeps a hand-crafted POST from
+                    // pre-enabling a persistent credential before MFA.
+                    false
                 );
                 Log::info('Admin login: MFA challenge started successfully');
             } catch (\Illuminate\Contracts\Encryption\DecryptException $exception) {

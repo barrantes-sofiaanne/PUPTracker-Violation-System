@@ -26,6 +26,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $completion_reviewed_by_admin_id
  * @property \Illuminate\Support\Carbon|null $completion_reviewed_at
  * @property string|null $completion_remarks
+ * @property string|null $reopen_reason
+ * @property \Illuminate\Support\Carbon|null $reopened_at
+ * @property int|null $reopened_by_admin_id
  */
 class StudentSanctionRecord extends Model
 {
@@ -71,6 +74,10 @@ class StudentSanctionRecord extends Model
         'completion_reviewed_by_admin_id',
         'completion_reviewed_at',
         'completion_remarks',
+        // Why a completed sanction was reopened (required by validation).
+        'reopen_reason',
+        'reopened_at',
+        'reopened_by_admin_id',
     ];
 
     protected $casts = [
@@ -80,6 +87,7 @@ class StudentSanctionRecord extends Model
         'date_completed' => 'datetime',
         'proof_submitted_at' => 'datetime',
         'completion_reviewed_at' => 'datetime',
+        'reopened_at' => 'datetime',
     ];
 
     /*

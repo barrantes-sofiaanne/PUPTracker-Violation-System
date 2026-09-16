@@ -17,59 +17,25 @@
     // "Remember me" carried over from the login screen. Only the privileged
     // (admin/security) challenge can ever hold this flag — MfaService
     // normalizes it to false for student logins — so the checkbox is rendered
-    // solely for those guards. Laravel keeps the posted `remember` value in the
-    // session automatically when validation fails, so a failed verification
-    // re-renders this screen with the user's most recent choice intact.
+    // solely for those guards.
     $canRemember = in_array((string) ($pending['guard'] ?? ''), ['admin', 'security'], true);
     $rememberChecked = $canRemember
         && (bool) old('remember', $pending['remember'] ?? false);
+
+    // The whole feature is DISABLED (config/auth.php `features`). The markup
+    // below is kept so re-enabling it is a one-flag change; gating it here means
+    // the checkbox simply does not render. The BACKEND refuses it independently
+    // (MfaController + MfaService), so a crafted POST cannot re-enable it.
+    $rememberFeatureEnabled = (bool) config('auth.features.remember_device', false);
+
+    // The option belongs ONLY on the code-input stage. It is deliberately absent
+    // from the credential login page (a persistent credential must never be
+    // requested before MFA) and from the method-selection stage (nothing has
+    // been verified yet — the user has only chosen HOW they intend to verify).
+    // It appears once a code is being entered, and the server enforces that the
+    // value is only ever honoured from that step, after verification succeeds.
+    $showRememberOption = $rememberFeatureEnabled && $canRemember && $stage !== 'select';
 @endphp
-
-@if($canRemember)
-    {{--
-        Auto-submit guard for the Remember Me checkbox on the MFA screen.
-
-        A checkbox that is only posted when the user presses [Verify] cannot
-        persist a *changed* choice: if the next verification fails, the screen
-        re-renders and the box would silently revert. To let the toggle persist
-        immediately, the checkbox auto-submits a dedicated form that records the
-        choice and re-renders the SAME stage, without validating any code.
-
-        The visible checkbox lives inside an `aria-hidden` form that is its only
-        submit button, so `form.requestSubmit()` can never accidentally hit
-        [Verify and Continue] and burn a verification attempt.
-    --}}
-    <script>
-    (function () {
-        function wire() {
-            var checkbox = document.getElementById('mfaRememberMe');
-            var form = document.getElementById('mfaRememberForm');
-            if (!checkbox || !form || checkbox.dataset.bound === '1') {
-                return;
-            }
-            checkbox.dataset.bound = '1';
-            checkbox.addEventListener('change', function () {
-                // Keep the hidden mirror in step: a checkbox is not submitted
-                // when unchecked, so the mirror carries the explicit value.
-                var mirror = document.getElementById('mfaRememberMirror');
-                if (mirror) {
-                    mirror.value = checkbox.checked ? '1' : '0';
-                }
-                if (typeof form.requestSubmit === 'function') {
-                    form.requestSubmit();
-                } else {
-                    form.submit();
-                }
-            });
-        }
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', wire);
-        } else {
-            wire();
-        }
-    })();
-    </script>
-@endif
 
     @if($stage === 'select')
         <div>
@@ -90,9 +56,6 @@
                     @csrf
                     <input type="hidden" name="action" value="select">
                     <input type="hidden" name="method" value="email">
-                    @if($canRemember)
-                        <input type="hidden" name="remember" value="{{ $rememberChecked ? '1' : '0' }}">
-                    @endif
                     <button type="submit" class="btn btn-success w-100">Use Email OTP ({{ $pending['email_masked'] ?? 'masked email' }})</button>
                 </form>
 
@@ -101,9 +64,6 @@
                         @csrf
                         <input type="hidden" name="action" value="select">
                         <input type="hidden" name="method" value="totp">
-                        @if($canRemember)
-                            <input type="hidden" name="remember" value="{{ $rememberChecked ? '1' : '0' }}">
-                        @endif
                         <button type="submit" class="btn btn-outline-success w-100">Use Authenticator App (TOTP)</button>
                     </form>
                 @endif
@@ -113,48 +73,20 @@
                         @csrf
                         <input type="hidden" name="action" value="select">
                         <input type="hidden" name="method" value="backup">
-                        @if($canRemember)
-                            <input type="hidden" name="remember" value="{{ $rememberChecked ? '1' : '0' }}">
-                        @endif
                         <button type="submit" class="btn btn-outline-secondary w-100">Use Backup Code</button>
                     </form>
                 @endif
             </div>
 
-            @if($canRemember)
-                <div class="remember-row">
-                    <div class="form-check remember-check">
-                        <input
-                            type="checkbox"
-                            class="form-check-input"
-                            id="mfaRememberMe"
-                            name="remember"
-                            value="1"
-                            form="mfaRememberForm"
-                            @checked($rememberChecked)>
-                        <label class="form-check-label remember-label" for="mfaRememberMe">
-                            Remember me for 30 days
-                        </label>
-                    </div>
-                </div>
-            @endif
+            {{-- The "Remember this device" option is deliberately NOT rendered
+                 on this stage. Nothing has been verified yet, so no persistent
+                 device state may be requested. It is offered on the next step,
+                 once a verification code is being entered. --}}
 
             <form action="{{ route('mfa.verify.cancel') }}" method="POST" class="mt-3">
                 @csrf
                 <button type="submit" class="btn btn-outline-danger w-100">Cancel</button>
             </form>
-
-            @if($canRemember)
-                {{-- The checkbox visible above is associated with this form via
-                     the `form` attribute, so requestSubmit() targets the only
-                     button here and never [Verify and Continue]. --}}
-                <form id="mfaRememberForm" action="{{ route('mfa.verify.submit') }}" method="POST" aria-hidden="true">
-                    @csrf
-                    <input type="hidden" name="action" value="remember">
-                    <input type="hidden" name="stage_toggle" value="1">
-                    <button type="submit" tabindex="-1" hidden></button>
-                </form>
-            @endif
         </div>
     @else
         <div>
@@ -223,7 +155,13 @@
                         @enderror
                     </div>
 
-                    @if($canRemember)
+                    {{-- The option is offered HERE, on the code-input step: a
+                         method has been chosen and the user is now proving
+                         possession of the second factor. It is unchecked by
+                         default, and its value only takes effect after
+                         verification succeeds — MfaController reads it before
+                         establishing authentication, and only from this step. --}}
+                    @if($showRememberOption)
                         <div class="remember-row">
                             <div class="form-check remember-check">
                                 <input
@@ -234,7 +172,7 @@
                                     value="1"
                                     @checked($rememberChecked)>
                                 <label class="form-check-label remember-label" for="mfaRememberMe">
-                                    Remember me for 30 days
+                                    Remember this device for 12 hours
                                 </label>
                             </div>
                         </div>
@@ -246,21 +184,6 @@
                         Verify and Continue
                     </button>
                 </form>
-
-                @if($canRemember)
-                    {{-- Standalone toggle form. The checkbox above cannot live in
-                         it (it is inside the verification form), so a hidden
-                         mirror is kept in sync by the script below; a checkbox
-                         is not submitted when unchecked, which makes the mirror
-                         the reliable source for requestSubmit(). --}}
-                    <form id="mfaRememberForm" action="{{ route('mfa.verify.submit') }}" method="POST" aria-hidden="true">
-                        @csrf
-                        <input type="hidden" name="action" value="remember">
-                        <input type="hidden" name="stage_toggle" value="1">
-                        <input type="hidden" name="remember" id="mfaRememberMirror" value="{{ $rememberChecked ? '1' : '0' }}">
-                        <button type="submit" tabindex="-1" hidden></button>
-                    </form>
-                @endif
             @endif
 
             <div class="d-flex gap-2 flex-wrap mt-2">

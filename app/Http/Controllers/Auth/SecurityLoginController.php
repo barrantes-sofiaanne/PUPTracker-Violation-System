@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Security;
+use App\Support\Auth\LoginAttemptLimiter;
 use App\Support\MfaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +14,14 @@ use Illuminate\Support\Facades\Hash;
 
 class SecurityLoginController extends Controller
 {
+    /**
+     * The module key used for the login-attempt limiter and its config.
+     *
+     * A lockout is scoped to this module, so a Security lockout does not block
+     * the Administrator login.
+     */
+    public const LOGIN_MODULE = 'security';
+
     public function showLoginForm()
     {
         return view('auth.security-login');
@@ -24,15 +34,45 @@ class SecurityLoginController extends Controller
             'password' => 'required',
         ]);
 
-        $security = Security::where('email', $request->email)->first();
+        // Failed credential attempts are bounded per account using the SAME
+        // shared rule as the Administrator module. The limiter keys on the
+        // module name, so a Security lockout can never block the Administrator
+        // login (and vice versa). See AdminLoginController for the rationale.
+        if (LoginAttemptLimiter::isLocked(self::LOGIN_MODULE, $request)) {
+            Log::warning('Security login blocked: too many failed attempts', [
+                'retry_after_seconds' => LoginAttemptLimiter::secondsRemaining(self::LOGIN_MODULE, $request),
+            ]);
 
-        if (!$security || !Hash::check($request->password, $security->password)) {
+            AuditLog::create([
+                'actor_type' => 'system',
+                'actor_id' => null,
+                'action' => 'Login Blocked',
+                'module' => 'Authentication',
+                'description' => 'Security login blocked after ' . LoginAttemptLimiter::policy(self::LOGIN_MODULE)['max'] . ' failed attempts.',
+                'created_at' => now(),
+            ]);
+
             return back()
                 ->withErrors([
-                    'login' => 'Invalid email or password.'
+                    'login' => LoginAttemptLimiter::lockedMessage(self::LOGIN_MODULE, $request),
                 ])
                 ->withInput();
         }
+
+        $security = Security::where('email', $request->email)->first();
+
+        if (!$security || !Hash::check($request->password, $security->password)) {
+            LoginAttemptLimiter::recordFailure(self::LOGIN_MODULE, $request);
+
+            return back()
+                ->withErrors([
+                    'login' => LoginAttemptLimiter::failureMessage(self::LOGIN_MODULE, $request),
+                ])
+                ->withInput();
+        }
+
+        // A SUCCESSFUL credential check clears the failed-attempt counter.
+        LoginAttemptLimiter::clear(self::LOGIN_MODULE, $request);
 
         if (empty($security->email)) {
             return back()
@@ -72,7 +112,10 @@ class SecurityLoginController extends Controller
                 (bool) $security->mfa_totp_enabled,
                 $security->mfa_backup_codes,
                 $security->mfa_backup_codes_used,
-                $request->boolean('remember')
+                // PART 8 — Remember Me is chosen on the MFA verification screen
+                // only. The pending challenge always starts OFF so a crafted POST
+                // cannot pre-enable a persistent credential before MFA.
+                false
             );
         } catch (\Illuminate\Contracts\Encryption\DecryptException $exception) {
             Log::error('Security MFA challenge: decryption failure during initialization.', [

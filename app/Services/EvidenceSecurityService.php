@@ -29,10 +29,13 @@ class EvidenceSecurityService
      * Disk used for evidence. Local = storage/app/private (private, served
      * behind auth). On Railway set EVIDENCE_STORAGE_DISK=s3 and the AWS_*
      * variables to use a private S3-compatible bucket instead.
+     *
+     * Delegates to {@see \App\Support\Storage\EvidenceDisk} so uploads and
+     * reads can never resolve a different disk from one another.
      */
     public function evidenceDisk(): \Illuminate\Contracts\Filesystem\Filesystem
     {
-        return Storage::disk((string) config('filesystems.evidence_disk', 'local'));
+        return \App\Support\Storage\EvidenceDisk::disk();
     }
 
     /**

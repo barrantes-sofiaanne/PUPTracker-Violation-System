@@ -293,6 +293,7 @@ class NotificationRoleScopingTest extends TestCase
                 $table->unsignedBigInteger('status_id')->nullable();
                 $table->unsignedBigInteger('roles_id')->nullable();
                 $table->string('password_hash')->nullable();
+                $table->timestamp('profile_completed_at')->nullable();
                 $table->rememberToken();
                 $table->text('mfa_totp_secret')->nullable();
                 $table->boolean('mfa_totp_enabled')->default(false);
@@ -420,6 +421,228 @@ class NotificationRoleScopingTest extends TestCase
         }
     }
 
+    // ==================================================================
+    // ACCOUNT-OWNED STUDENT NOTIFICATIONS (ownership = account, not role)
+    // ==================================================================
+
+    /**
+     * The notification the app writes must carry the OWNING ACCOUNT id, so
+     * authorisation can key off the account rather than the student number.
+     */
+    public function test_student_notification_is_stamped_with_the_owner_account_id(): void
+    {
+        $admin = $this->createAdmin('admin@example.com');
+        $officer = $this->createSecurity('officer@example.com', 'Officer', 'Alpha');
+        $student = $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        $this->actingAs($officer, 'security')
+            ->postJson(route('security.violations.store'), [
+                'student_number' => '2024-0001',
+                'violation_type_id' => 1,
+                'violation_date' => now()->format('Y-m-d H:i:s'),
+                'description' => 'Caught using a phone.',
+            ])->assertOk();
+
+        $violation = Violation::where('student_number', '2024-0001')->firstOrFail();
+
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.violations.confirm', $violation->violation_id));
+
+        $notification = Notification::where('recipient_type', 'student')
+            ->where('notification_type', 'violation')
+            ->firstOrFail();
+
+        $this->assertSame(
+            (int) $student->user_id,
+            (int) $notification->recipient_id,
+            'A student notification must be owned by the account id, not scoped by student number alone.'
+        );
+    }
+
+    /**
+     * The notification LIST must be filtered by the database query, so another
+     * student's notification is never even sent to the browser.
+     */
+    public function test_student_notification_list_is_scoped_by_account(): void
+    {
+        $mine = Notification::create([
+            'student_number' => '2024-0001',
+            'recipient_type' => 'student',
+            'notification_type' => 'violation',
+            'message' => 'MINE-ONLY-MESSAGE',
+            'is_read' => false,
+            'created_at' => now(),
+        ]);
+
+        $theirs = Notification::create([
+            'student_number' => '2024-0002',
+            'recipient_type' => 'student',
+            'notification_type' => 'violation',
+            'message' => 'THEIRS-SECRET-MESSAGE',
+            'is_read' => false,
+            'created_at' => now(),
+        ]);
+
+        $studentOne = $this->createStudent('2024-0001');
+
+        // Point each notification at its own account.
+        DB::table('notifications_tbl')->where('notification_id', $mine->notification_id)
+            ->update(['recipient_id' => $studentOne->user_id]);
+        $studentTwo = $this->createStudent('2024-0002');
+        DB::table('notifications_tbl')->where('notification_id', $theirs->notification_id)
+            ->update(['recipient_id' => $studentTwo->user_id]);
+
+        $this->actingAs($studentOne, 'student')
+            ->get(route('student.notifications'))
+            ->assertOk()
+            ->assertSee('MINE-ONLY-MESSAGE', false)
+            ->assertDontSee('THEIRS-SECRET-MESSAGE', false);
+    }
+
+    /**
+     * IDOR: opening another account's notification by ID must not be possible.
+     *
+     * 404 (not 403) is returned so the response cannot be used to probe whether
+     * a given notification id exists.
+     */
+    public function test_student_cannot_open_another_students_notification(): void
+    {
+        $studentOne = $this->createStudent('2024-0001');
+        $studentTwo = $this->createStudent('2024-0002');
+
+        $victim = Notification::create([
+            'student_number' => '2024-0001',
+            'recipient_id' => $studentOne->user_id,
+            'recipient_type' => 'student',
+            'notification_type' => 'violation',
+            'message' => 'Victim private notification',
+            'is_read' => false,
+            'created_at' => now(),
+        ]);
+
+        // The owner CAN open it.
+        $this->actingAs($studentOne, 'student')
+            ->get(route('student.notifications.open', $victim))
+            ->assertRedirect();
+
+        // The other account CANNOT.
+        $this->actingAs($studentTwo, 'student')
+            ->get(route('student.notifications.open', $victim))
+            ->assertNotFound();
+
+        // And it was not marked read by the failed attempt.
+        $victim->refresh();
+        $this->assertTrue((bool) $victim->is_read, 'Owner read it, which set is_read.');
+    }
+
+    /**
+     * IDOR via the bulk endpoint: submitting another account's notification id
+     * must not modify it, because the update query is account-scoped.
+     */
+    public function test_student_cannot_mark_another_students_notification_read(): void
+    {
+        $studentOne = $this->createStudent('2024-0001');
+        $studentTwo = $this->createStudent('2024-0002');
+
+        $victim = Notification::create([
+            'student_number' => '2024-0001',
+            'recipient_id' => $studentOne->user_id,
+            'recipient_type' => 'student',
+            'notification_type' => 'violation',
+            'message' => 'Victim private notification',
+            'is_read' => false,
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($studentTwo, 'student')
+            ->post(route('student.notifications.status'), [
+                'action' => 'mark_selected_read',
+                'notification_ids' => [$victim->notification_id],
+            ]);
+
+        $victim->refresh();
+        $this->assertFalse((bool) $victim->is_read, 'Another account must not be able to modify this notification.');
+    }
+
+    /**
+     * The unread badge is per ACCOUNT, not a global count.
+     */
+    public function test_student_unread_count_is_account_specific(): void
+    {
+        $studentOne = $this->createStudent('2024-0001');
+        $studentTwo = $this->createStudent('2024-0002');
+
+        // Account 1: two unread.
+        foreach (['a', 'b'] as $tag) {
+            Notification::create([
+                'student_number' => '2024-0001',
+                'recipient_id' => $studentOne->user_id,
+                'recipient_type' => 'student',
+                'notification_type' => 'violation',
+                'message' => 'Unread ' . $tag,
+                'is_read' => false,
+                'created_at' => now(),
+            ]);
+        }
+
+        // Account 2: one unread.
+        Notification::create([
+            'student_number' => '2024-0002',
+            'recipient_id' => $studentTwo->user_id,
+            'recipient_type' => 'student',
+            'notification_type' => 'violation',
+            'message' => 'Other account unread',
+            'is_read' => false,
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($studentOne, 'student')
+            ->get(route('student.notifications'))
+            ->assertOk()
+            ->assertSee('2 unread', false);
+
+        $this->actingAs($studentTwo, 'student')
+            ->get(route('student.notifications'))
+            ->assertOk()
+            ->assertSee('1 unread', false);
+    }
+
+    /**
+     * A notification already owned by another account must NOT become visible
+     * through the student-number fallback, even if the numbers match.
+     *
+     * This is the regression guard for the weak-by-design `student_number`
+     * scoping that this change replaces.
+     */
+    public function test_notification_owned_by_another_account_is_not_exposed_by_student_number(): void
+    {
+        $studentOne = $this->createStudent('2024-0001');
+        $studentTwo = $this->createStudent('2024-0002');
+
+        // A row that claims account 2's id but carries account 1's number —
+        // the account key must win.
+        Notification::create([
+            'student_number' => '2024-0001',
+            'recipient_id' => $studentTwo->user_id,
+            'recipient_type' => 'student',
+            'notification_type' => 'violation',
+            'message' => 'ACCOUNT-TWO-OWNS-THIS',
+            'is_read' => false,
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($studentOne, 'student')
+            ->get(route('student.notifications'))
+            ->assertOk()
+            ->assertDontSee('ACCOUNT-TWO-OWNS-THIS', false);
+
+        $this->actingAs($studentTwo, 'student')
+            ->get(route('student.notifications'))
+            ->assertOk()
+            ->assertSee('ACCOUNT-TWO-OWNS-THIS', false);
+    }
+
     private function createAdmin(string $email): Admin
     {
         return Admin::create([
@@ -463,6 +686,8 @@ class NotificationRoleScopingTest extends TestCase
             'password_hash' => Hash::make('Password123!'),
             'roles_id' => 2,
             'status_id' => 1,
+            // Existing registered student (see the migration backfill).
+            'profile_completed_at' => now()->subDay(),
         ]);
     }
 

@@ -12,6 +12,22 @@ use Illuminate\Support\Facades\Schema;
 
 class AdminNotificationService
 {
+    /**
+     * Create an admin notification.
+     *
+     * AUDIENCE IS NOT DERIVED FROM ROLE. The caller states who the notification
+     * is FOR:
+     *   - default            -> AUDIENCE_ADMIN (operational admins). Super Admins
+     *                           are excluded, so they never inherit student or
+     *                           personnel notifications.
+     *   - AUDIENCE_SUPER_ADMIN -> the Super Admin inbox (system-level only).
+     *
+     * Pass `$recipientId` to address one specific account instead of the whole
+     * audience.
+     *
+     * @param  string  $recipientType  AdminNotification::AUDIENCE_* constant.
+     * @param  string  $priority       AdminNotification::PRIORITY_* constant.
+     */
     public function create(
         string $type,
         string $title,
@@ -19,7 +35,8 @@ class AdminNotificationService
         string $targetType,
         int $targetId,
         ?int $recipientId = null,
-        ?string $recipientType = 'admin'
+        ?string $recipientType = AdminNotification::AUDIENCE_ADMIN,
+        string $priority = AdminNotification::PRIORITY_INFO
     ): AdminNotification {
         $data = [
             'message' => $message,
@@ -28,8 +45,16 @@ class AdminNotificationService
             'created_at' => now(),
         ];
 
+        // Never let a missing/blank audience silently broaden the recipient set.
+        $audience = ($recipientType === null || trim($recipientType) === '')
+            ? AdminNotification::AUDIENCE_ADMIN
+            : $recipientType;
+
         if (Schema::hasColumn('admin_notifications_tbl', 'title')) {
             $data['title'] = $title;
+        }
+        if (Schema::hasColumn('admin_notifications_tbl', 'priority')) {
+            $data['priority'] = $priority;
         }
         if (Schema::hasColumn('admin_notifications_tbl', 'target_type')) {
             $data['target_type'] = $targetType;
@@ -38,7 +63,7 @@ class AdminNotificationService
             $data['target_id'] = $targetId;
         }
         if (Schema::hasColumn('admin_notifications_tbl', 'recipient_type')) {
-            $data['recipient_type'] = $recipientType;
+            $data['recipient_type'] = $audience;
         }
         if (Schema::hasColumn('admin_notifications_tbl', 'recipient_id')) {
             $data['recipient_id'] = $recipientId;
@@ -47,12 +72,41 @@ class AdminNotificationService
         return AdminNotification::create($data);
     }
 
+    /**
+     * Create a SYSTEM-LEVEL notification for the Super Admin (§3/§5).
+     *
+     * Only backup / infrastructure / storage / critical-security events belong
+     * here. Student-specific and personnel-specific events must NOT use this
+     * method — they go through create() with the default admin audience.
+     */
+    public function createSystemAlert(
+        string $type,
+        string $title,
+        string $message,
+        string $targetType,
+        int $targetId,
+        string $priority = AdminNotification::PRIORITY_CRITICAL,
+        ?int $recipientId = null
+    ): AdminNotification {
+        return $this->create(
+            type: $type,
+            title: $title,
+            message: $message,
+            targetType: $targetType,
+            targetId: $targetId,
+            recipientId: $recipientId,
+            recipientType: AdminNotification::AUDIENCE_SUPER_ADMIN,
+            priority: $priority,
+        );
+    }
+
     public function openUrl(AdminNotification $notification): ?string
     {
         return match ($notification->target_type) {
             'sanction_request' => $this->sanctionRequestUrl((int) $notification->target_id),
             'email_incident' => $this->emailIncidentUrl((int) $notification->target_id),
             'violation' => $this->violationUrl((int) $notification->target_id),
+            'backup' => $this->backupUrl((int) $notification->target_id),
             'sanction_record' => $this->sanctionRecordUrl((int) $notification->target_id),
             default => null,
         };
@@ -78,6 +132,32 @@ class AdminNotificationService
             'sanctions_tab' => 'student-sanctions',
             'record_id' => $record->record_id,
         ]);
+    }
+
+    /**
+     * Resolve a backup alert to the Backup Management page (§6/§7).
+     *
+     * Lands on the specific backup record when it still exists so the Super
+     * Admin sees the failure reason immediately; otherwise falls back to the
+     * backup history list.
+     */
+    private function backupUrl(int $targetId): ?string
+    {
+        if (! Route::has('admin.super-admin.backups.show')) {
+            return Route::has('admin.super-admin.backups.index')
+                ? route('admin.super-admin.backups.index')
+                : null;
+        }
+
+        $backup = \App\Models\BackupHistory::query()->find($targetId);
+
+        if (! $backup) {
+            return Route::has('admin.super-admin.backups.index')
+                ? route('admin.super-admin.backups.index')
+                : null;
+        }
+
+        return route('admin.super-admin.backups.show', $backup->id);
     }
 
     /**

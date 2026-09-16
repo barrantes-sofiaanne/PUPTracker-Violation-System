@@ -108,24 +108,56 @@ class BackupHistory extends Model
 
     /**
      * Cache-aware column existence check that never throws on a missing table.
+     *
+     * CACHE SCOPE — important
+     * -----------------------
+     * The memo is keyed by CONNECTION + DATABASE, not just by column name. A
+     * bare `static $columns` used to persist for the whole PHP process, so once
+     * any code path touched a schema without the column (e.g. a lean test
+     * fixture), the `false` answer was replayed against every LATER schema in
+     * that process — even one that really had the column. In the test suite that
+     * silently dropped `base_backup_name` / `backup_type` from later tests and
+     * broke backup reporting with `Undefined array key "backup_type"`.
+     *
+     * Scoping the memo to the active connection removes the leak in-process
+     * (a fresh connection = a fresh cache) while keeping the per-request benefit.
      */
     public static function hasColumn(string $column): bool
     {
-        static $columns = [];
-
         try {
             if (! \Illuminate\Support\Facades\Schema::hasTable('backup_history')) {
                 return false;
             }
-            if (! array_key_exists($column, $columns)) {
-                $columns[$column] = \Illuminate\Support\Facades\Schema::hasColumn('backup_history', $column);
+
+            $connection = \Illuminate\Support\Facades\Schema::getConnection()->getName()
+                . '|' . \Illuminate\Support\Facades\Schema::getConnection()->getDatabaseName();
+
+            $key = $connection . '|' . $column;
+
+            if (! array_key_exists($key, self::$columnCache)) {
+                self::$columnCache[$key] = \Illuminate\Support\Facades\Schema::hasColumn('backup_history', $column);
             }
 
-            return $columns[$column];
+            return self::$columnCache[$key];
         } catch (\Throwable $e) {
             return false;
         }
     }
+
+    /**
+     * Forget the memoised column list.
+     *
+     * Called by the test suite between tests (see Tests\TestCase), and usable by
+     * any long-running process — a queue worker, for example — that must observe
+     * a schema change without being restarted.
+     */
+    public static function forgetColumnCache(): void
+    {
+        self::$columnCache = [];
+    }
+
+    /** Backing store for hasColumn(); keyed by connection + database + column. */
+    private static array $columnCache = [];
 
     public function parent(): BelongsTo
     {

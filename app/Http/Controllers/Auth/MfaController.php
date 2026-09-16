@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Security;
 use App\Models\User;
+use App\Support\Auth\SessionExpiryNotice;
 use App\Support\MfaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,29 +29,11 @@ class MfaController extends Controller
     {
         $action = (string) $request->input('action', 'verify');
 
-        // "Remember me" may be (re)chosen on the MFA screen. The final selection
-        // made here takes precedence over whatever was ticked on the login form.
-        // We persist it into the pending challenge and re-render the SAME stage,
-        // so toggling the checkbox stays a non-destructive navigation step: no
-        // code is validated and no authentication is established.
-        if ($action === 'remember') {
-            $pending = $mfaService->getPending($request);
-
-            if (!$pending) {
-                return redirect()->route('home');
-            }
-
-            // Guard allow-list: only the privileged (admin/security) challenge may
-            // ever hold the remember flag. This mirrors the normalization applied
-            // in MfaService::beginChallenge(), so a hand-crafted request cannot
-            // enable "Remember me" on a student login.
-            if (in_array((string) ($pending['guard'] ?? ''), ['admin', 'security'], true)) {
-                $pending['remember'] = $request->boolean('remember');
-                $request->session()->put(MfaService::SESSION_KEY, $pending);
-            }
-
-            return redirect()->route('mfa.verify.show');
-        }
+        // NOTE: there is deliberately no standalone "remember" action. A
+        // dedicated endpoint that stored the flag WITHOUT verifying a code would
+        // let a crafted request request a persistent device outside the MFA
+        // verification step. The flag is therefore read only from the
+        // verification POST, immediately before authentication is applied.
 
         if ($action === 'back') {
             $mfaService->returnToMethodSelection($request);
@@ -62,10 +45,6 @@ class MfaController extends Controller
             $validated = $request->validate([
                 'method' => ['required', 'in:email,totp,backup'],
             ]);
-
-            // Carry the login screen's Remember Me choice across the method
-            // selection step so it is not lost before the code is entered.
-            $this->applyRememberSelection($request, $mfaService);
 
             $result = $mfaService->selectMethod($request, $validated['method']);
 
@@ -117,13 +96,17 @@ class MfaController extends Controller
         }
 
         // Apply persistent authentication ONLY now — after MFA has been verified
-        // successfully. `$remember` is the final decision made on the MFA screen
-        // (falling back to the login-screen choice when the MFA screen did not
-        // post one). Laravel's session guard writes its recaller cookie here, so
-        // Remember Me can never run ahead of, or bypass, MFA.
+        // successfully. An unchecked box is simply absent from the payload, so
+        // `$remember` is false by default and no trusted device is created.
+        // Laravel's session guard writes its recaller cookie here, so Remember Me
+        // can never run ahead of, or bypass, MFA.
         Auth::guard($guard)->login($user, $remember);
         $request->session()->regenerate();
         $mfaService->clear($request);
+
+        // Drop any pending expiry notice: it describes a PAST session, and the
+        // user is authenticated again now, so it must never surface later.
+        SessionExpiryNotice::clear($request);
 
         // Show the privacy/terms consent modal first on every login.
         $request->session()->put('show_privacy_consent_modal', true);
@@ -164,56 +147,34 @@ class MfaController extends Controller
     }
 
     /**
-     * Resolve the "Remember me" decision that must be applied after MFA.
+     * Resolve the "Remember me" decision applied after a SUCCESSFUL MFA.
      *
-     * The MFA checkbox is the final authority: when the verification form posts
-     * an explicit `remember` value, that value wins. When the MFA screen renders
-     * no checkbox (e.g. a short password-only flow) we fall back to the choice
-     * captured on the login screen, which MfaService stored in `remember`.
+     * This is the ONLY place the flag is read, and it is called only on the
+     * verification path — so a remembered device can never be created before a
+     * code has actually been verified. An unchecked box does not appear in the
+     * submitted payload at all, which reads as false; that is the required
+     * default.
      *
-     * Only the privileged admin/security challenges can ever remember; this
-     * mirrors the normalization in MfaService::beginChallenge() so a crafted
-     * request cannot enable remembering on a non-privileged guard.
+     * Only the privileged admin/security challenges may ever remember. The
+     * allow-list mirrors the normalization in MfaService::beginChallenge(), so a
+     * crafted request cannot enable remembering on a non-privileged guard.
+     *
+     * The feature is currently DISABLED: this returns false unconditionally, so
+     * a hand-crafted POST carrying `remember=1` cannot create a persistent
+     * credential even though the checkbox is not rendered. Hiding the input in
+     * the view is therefore not the only control.
      */
     private function resolveRememberSelection(Request $request, array $pending): bool
     {
+        if (! (bool) config('auth.features.remember_device', false)) {
+            return false;
+        }
+
         if (!in_array((string) ($pending['guard'] ?? ''), ['admin', 'security'], true)) {
             return false;
         }
 
-        if ($request->has('remember')) {
-            return $request->boolean('remember');
-        }
-
-        return (bool) ($pending['remember'] ?? false);
-    }
-
-    /**
-     * Periodically (once every 10 minutes) carry the login screen's Remember Me
-     * choice forward through the method-selection step. Storing it every time
-     * would needlessly force a session write on each MFA page render.
-     */
-    private function applyRememberSelection(Request $request, MfaService $mfaService): void
-    {
-        $pending = $mfaService->getPending($request);
-
-        if (!$pending || !in_array((string) ($pending['guard'] ?? ''), ['admin', 'security'], true)) {
-            return;
-        }
-
-        $desired = $request->has('remember') ? $request->boolean('remember') : null;
-
-        if ($desired === null || $desired === (bool) ($pending['remember'] ?? false)) {
-            return;
-        }
-
-        if (($pending['remember_refreshed_at'] ?? 0) > now()->timestamp - 600) {
-            return;
-        }
-
-        $pending['remember'] = $desired;
-        $pending['remember_refreshed_at'] = now()->timestamp;
-        $request->session()->put(MfaService::SESSION_KEY, $pending);
+        return $request->boolean('remember');
     }
 
     private function resolveUserForGuard(string $guard, string $identifier): Admin|Security|User|null

@@ -24,6 +24,21 @@
                 </div>
             @endif
 
+            {{-- Inactivity expiry notice.
+                 PULLED rather than read: pulling consumes the value, so the
+                 message can be displayed at most once and can never reappear on
+                 a later visit to this page. It is only ever recorded by the
+                 inactivity middleware, after a genuinely AUTHENTICATED session
+                 expired — so a first-time unauthenticated visitor, or someone
+                 who simply opened the login page, sees nothing here. --}}
+            @php($expiredReason = \App\Support\Auth\SessionExpiryNotice::pullFromCurrentRequest())
+            @if($expiredReason)
+                <div class="login-error" role="alert">
+                    <i class="bi bi-clock-history" aria-hidden="true"></i>
+                    <span>{{ $expiredReason }}</span>
+                </div>
+            @endif
+
             <div class="mb-3">
 
                 <label class="form-label" for="email">
@@ -87,20 +102,12 @@
 
             </div>
 
-            <div class="remember-row">
-                <div class="form-check remember-check">
-                    <input
-                        type="checkbox"
-                        class="form-check-input"
-                        id="rememberMe"
-                        name="remember"
-                        value="1"
-                        @checked(old('remember'))>
-                    <label class="form-check-label remember-label" for="rememberMe">
-                        Remember me for 30 days
-                    </label>
-                </div>
-            </div>
+            {{--
+                PART 8 — the "Remember Me" option intentionally does NOT appear
+                here. It is offered ONLY on the selected MFA verification screen
+                (PART 10), so a persistent credential can never be requested
+                before MFA has been satisfied.
+            --}}
 
             <button
                 type="submit"
