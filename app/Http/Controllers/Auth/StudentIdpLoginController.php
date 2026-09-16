@@ -370,6 +370,7 @@ class StudentIdpLoginController extends Controller
         // Any program/year the student picked during a prior Apply is remembered.
         $pendingProgramId = $request->session()->get('student.idp.pending_program_id');
         $pendingYearId = $request->session()->get('student.idp.pending_year_id');
+        $pendingLadderized = $request->session()->get('student.idp.pending_ladderized');
 
         return view('student.idp-link-preview', compact(
             'profile',
@@ -377,8 +378,56 @@ class StudentIdpLoginController extends Controller
             'programs',
             'years',
             'pendingProgramId',
-            'pendingYearId'
+            'pendingYearId',
+            'pendingLadderized'
         ));
+    }
+
+    /**
+     * Programs that offer a Ladderized track (BSOA / BSIT).
+     *
+     * Shared with the Admin screens and the graduating-report filter through the
+     * SAME config key, so the three can never disagree about which programs are
+     * ladderizable.
+     *
+     * @return array<int, string> upper-cased program names
+     */
+    protected function ladderizedPrograms(): array
+    {
+        $configured = (array) config(
+            'graduation_review.graduating.ladderized_programs',
+            ['BSOA', 'BSIT']
+        );
+
+        return array_values(array_filter(array_map(
+            static fn ($name): string => strtoupper(trim((string) $name)),
+            $configured
+        )));
+    }
+
+    /**
+     * Does this program offer the Ladderized option?
+     *
+     * Matched case-insensitively against the configured list, and ALSO accepted
+     * when the stored name merely CONTAINS the code ("BS Information
+     * Technology" still counts as BSIT), because program names are entered by
+     * hand on the Admin screens and both spellings exist in the data.
+     */
+    protected function programSupportsLadderized(?string $programName): bool
+    {
+        $name = strtoupper(trim((string) $programName));
+
+        if ($name === '') {
+            return false;
+        }
+
+        foreach ($this->ladderizedPrograms() as $code) {
+            if ($name === $code || str_contains($name, $code)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -401,6 +450,7 @@ class StudentIdpLoginController extends Controller
         $validated = $request->validate([
             'program_id' => ['nullable', 'integer'],
             'year_id' => ['nullable', 'integer'],
+            'ladderized' => ['nullable', 'in:0,1'],
         ]);
 
         if ($request->filled('program_id')) {
@@ -410,7 +460,37 @@ class StudentIdpLoginController extends Controller
             $request->session()->put('student.idp.pending_year_id', (int) $validated['year_id']);
         }
 
+        // Ladderized is only meaningful for the ladderizable programs (BSOA /
+        // BSIT). For any other program the choice is CLEARED rather than kept,
+        // so switching from BSIT to a non-ladderized program cannot leave a
+        // stale "ladderized" flag that would later appear in the graduating
+        // report filter.
+        $effectiveProgramId = $request->filled('program_id')
+            ? (int) $validated['program_id']
+            : $request->session()->get('student.idp.pending_program_id');
+
+        if ($this->programSupportsLadderized($this->programNameFor($effectiveProgramId))) {
+            $request->session()->put(
+                'student.idp.pending_ladderized',
+                (int) ($validated['ladderized'] ?? 0)
+            );
+        } else {
+            $request->session()->forget('student.idp.pending_ladderized');
+        }
+
         return redirect()->route('student.idp.link.preview');
+    }
+
+    /**
+     * The stored program name for an id, or null when the id is empty/unknown.
+     */
+    protected function programNameFor($programId): ?string
+    {
+        if ($programId === null || $programId === '') {
+            return null;
+        }
+
+        return \App\Models\Program::query()->whereKey((int) $programId)->value('program_name');
     }
 
     /**
@@ -494,7 +574,8 @@ class StudentIdpLoginController extends Controller
         // in every environment, and a bad id must never be written).
         $programId = $request->session()->get('student.idp.pending_program_id');
         $yearId = $request->session()->get('student.idp.pending_year_id');
-        $this->applyProgramYearCorrections($student->fresh(), $programId, $yearId);
+        $ladderized = $request->session()->get('student.idp.pending_ladderized');
+        $this->applyProgramYearCorrections($student->fresh(), $programId, $yearId, $ladderized);
 
         // Clear the pending flow and log the student in.
         $request->session()->forget([
@@ -504,6 +585,7 @@ class StudentIdpLoginController extends Controller
             'student.idp.pending_student_number',
             'student.idp.pending_program_id',
             'student.idp.pending_year_id',
+            'student.idp.pending_ladderized',
         ]);
 
         Auth::guard('student')->login($student);
@@ -658,13 +740,20 @@ class StudentIdpLoginController extends Controller
     }
 
     /**
-     * Apply the student's chosen program/year corrections, if valid.
+     * Apply the student's chosen program/year/ladderized corrections, if valid.
+     *
+     * The Ladderized flag is written ONLY when the (effective) program actually
+     * offers it, so a forged request cannot mark a non-ladderized program as
+     * ladderized. When the program does offer it, the flag is always written
+     * (1 or 0) so the student's explicit "No" is persisted rather than the
+     * column silently keeping an old value.
      *
      * @param  \App\Models\User  $student
      * @param  int|null  $programId
      * @param  int|null  $yearId
+     * @param  int|null  $ladderized  null = not chosen
      */
-    protected function applyProgramYearCorrections(User $student, $programId, $yearId): void
+    protected function applyProgramYearCorrections(User $student, $programId, $yearId, $ladderized = null): void
     {
         try {
             $studentInfo = $student->studentInfo;
@@ -685,6 +774,16 @@ class StudentIdpLoginController extends Controller
             }
             if ($yearValid) {
                 $changes['year_id'] = (int) $yearId;
+            }
+
+            // Ladderized is keyed off the EFFECTIVE program — the one being
+            // applied, or the one already on the record when none was chosen.
+            $effectiveProgramId = $changes['program_id'] ?? $studentInfo->program_id;
+            $effectiveProgramName = $this->programNameFor($effectiveProgramId);
+
+            if ($this->programSupportsLadderized($effectiveProgramName)
+                && \Illuminate\Support\Facades\Schema::hasColumn('student_info_tbl', 'ladderized')) {
+                $changes['ladderized'] = (int) ($ladderized ?? 0);
             }
 
             if ($changes !== []) {

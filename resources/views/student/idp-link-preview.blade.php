@@ -23,6 +23,34 @@
 
             $hasPendingChoices = $pendingProgramId !== null || $pendingYearId !== null;
             $reviewMode = $hasPendingChoices;
+
+            // Ladderized (BSIT / BSOA only). The option is offered when the
+            // EFFECTIVE program supports it, and the value shown is the
+            // student's pending choice if they made one, otherwise whatever is
+            // already on their record.
+            $ladderizedPrograms = $ladderizedPrograms ?? (array) config(
+                'graduation_review.graduating.ladderized_programs',
+                ['BSOA', 'BSIT']
+            );
+            $ladderizedPrograms = array_values(array_filter(array_map(
+                static fn ($name): string => strtoupper(trim((string) $name)),
+                $ladderizedPrograms
+            )));
+
+            $effectiveProgramName = strtoupper(trim((string) ($effectiveProgram ?? '')));
+
+            $ladderizedAvailable = false;
+            foreach ($ladderizedPrograms as $code) {
+                if ($code !== '' && $effectiveProgramName !== ''
+                    && ($effectiveProgramName === $code || str_contains($effectiveProgramName, $code))) {
+                    $ladderizedAvailable = true;
+                    break;
+                }
+            }
+
+            $effectiveLadderized = $pendingLadderized !== null
+                ? (int) $pendingLadderized
+                : (int) ($student->studentInfo?->ladderized ?? 0);
         @endphp
 
         @if ($reviewMode)
@@ -105,6 +133,17 @@
                             <span class="fw-semibold">{{ $effectiveYear ?: '—' }} <i class="bi bi-lock-fill text-muted small" title="Locked — click Update Information to change"></i></span>
                         @endif
                     </div>
+
+                    @if ($ladderizedAvailable)
+                        <div class="col-12 d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Ladderized</span>
+                            @if ($reviewMode)
+                                <span class="fw-semibold">{{ $effectiveLadderized === 1 ? 'Yes' : 'No' }}</span>
+                            @else
+                                <span class="fw-semibold">{{ $effectiveLadderized === 1 ? 'Yes' : 'No' }} <i class="bi bi-lock-fill text-muted small" title="Locked — click Update Information to change"></i></span>
+                            @endif
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -171,7 +210,9 @@
                             <p class="text-muted small">Only Program and Year may be corrected. Everything else stays locked.</p>
                             <div class="mb-3">
                                 <label class="form-label" for="program_id">Program</label>
-                                <select name="program_id" id="program_id" class="form-select">
+                                <select name="program_id" id="program_id" class="form-select"
+                                        data-ladderized-programs='@json($ladderizedPrograms ?? [])'
+                                        onchange="toggleLadderizedField(this)">
                                     <option value="">Select Program</option>
                                     @foreach ($programs as $program)
                                         <option value="{{ $program->program_id }}" @selected((string) $effectiveProgramId === (string) $program->program_id)>
@@ -190,6 +231,24 @@
                                         </option>
                                     @endforeach
                                 </select>
+                            </div>
+
+                            {{-- Ladderized — shown ONLY for BSIT / BSOA, matching the
+                                 Admin student screens. The server re-checks the
+                                 program, so this control cannot mark a
+                                 non-ladderized program. --}}
+                            <div class="mb-2 {{ $ladderizedAvailable ? '' : 'd-none' }}" id="ladderizedWrap">
+                                <label class="form-label d-block">Ladderized</label>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="ladderized" id="ladderizedYes" value="1"
+                                           @checked((int) ($effectiveLadderized ?? 0) === 1)>
+                                    <label class="form-check-label" for="ladderizedYes">Yes</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="ladderized" id="ladderizedNo" value="0"
+                                           @checked((int) ($effectiveLadderized ?? 0) === 0)>
+                                    <label class="form-check-label" for="ladderizedNo">No</label>
+                                </div>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -226,5 +285,35 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.show();
     });
 });
+
+// Show the Ladderized choice only for programs that offer it (BSIT / BSOA).
+// The list comes from the server (config-driven); the regex is only a fallback.
+function toggleLadderizedField(selectEl) {
+    if (!selectEl) {
+        return;
+    }
+
+    const wrap = document.getElementById('ladderizedWrap');
+    if (!wrap) {
+        return;
+    }
+
+    const selected = selectEl.options[selectEl.selectedIndex];
+    const label = selected ? (selected.textContent || '') : '';
+
+    let programs = [];
+    try {
+        programs = JSON.parse(selectEl.dataset.ladderizedPrograms || '[]');
+    } catch (e) {
+        programs = [];
+    }
+
+    const supports = programs.some(function (code) {
+        const needle = String(code || '').trim();
+        return needle !== '' && new RegExp(needle, 'i').test(label);
+    });
+
+    wrap.classList.toggle('d-none', !supports);
+}
 </script>
 @endpush
