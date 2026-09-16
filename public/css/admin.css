@@ -1222,6 +1222,7 @@ h6 {
 }
 
 .violation-history-modal-header {
+    position: relative;
     background: linear-gradient(
         120deg,
         rgba(128, 0, 0, 0.95) 0%,
@@ -1230,6 +1231,7 @@ h6 {
     ) !important;
     color: #fff !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+    padding-right: 4.5rem;
 }
 
 .violation-history-modal-title {
@@ -1239,8 +1241,20 @@ h6 {
 }
 
 .violation-history-modal-header .btn-close {
-    filter: invert(1) grayscale(1) brightness(200%);
-    opacity: 0.85;
+    position: absolute;
+    top: 50%;
+    right: 1.25rem;
+    transform: translateY(-50%);
+    margin: 0 !important;
+
+    width: 44px;
+    height: 44px;
+    padding: 0;
+
+    background-color: transparent !important;
+    filter: none !important;
+    opacity: 1;
+    z-index: 2;
 }
 
 .violation-history-modal-body {
@@ -1615,4 +1629,40 @@ thead.secondary-light th,
 
 .announcement-rendered-content a {
     color: #0d5aa7;
+}
+
+.evidence-capture-modal-header {
+    position: relative;
+    background: linear-gradient(
+        120deg,
+        rgba(128, 0, 0, 0.95) 0%,
+        rgba(92, 0, 0, 0.95) 62%,
+        rgba(218, 165, 32, 0.95) 180%
+    ) !important;
+    color: #fff !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+    padding-right: 4.5rem;
+}
+
+.evidence-capture-modal-header .modal-title {
+    color: #fff !important;
+    font-weight: 800;
+}
+
+.evidence-capture-modal-close {
+    position: absolute;
+    top: 50%;
+    right: 1.25rem;
+    transform: translateY(-50%);
+
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    margin: 0 !important;
+
+    background-color: transparent !important;
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 1 !important;
+
+    z-index: 2;
 }

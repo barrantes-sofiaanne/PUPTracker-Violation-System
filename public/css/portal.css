@@ -933,6 +933,10 @@ body {
     height: 44px;
     padding: 0;
     z-index: 2;
+
+    /* White X */
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 1;
 }
 
 .announcement-modal-title {

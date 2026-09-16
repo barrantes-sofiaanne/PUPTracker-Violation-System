@@ -85,42 +85,46 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Date</th>
-                    <th>Violation</th>
-                    <th>Category</th>
-                    <th>Offense Level</th>
-                    <th>Sanction</th>
-                    <th>Status</th>
-                    <th>Recorded By</th>
-                </tr>
+    <th>Date</th>
+    <th>Category</th>
+    <th>Violation Type</th>
+    <th>Remarks</th>
+    <th>Recorded By</th>
+    <th>Position</th>
+</tr>
             </thead>
             <tbody>
                 @forelse($individualViolations as $violation)
                     <tr>
-                        <td>{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y') : '-' }}</td>
-                        <td>{{ $violation->violation_type }}</td>
-                        <td>{{ optional($violation->violationType?->violationCategory)->category_name ?? '-' }}</td>
-                        <td><span class="admin-badge admin-badge-gold">{{ \App\Http\Controllers\Admin\ViolationController::formatOffenseLevelStatic($violation->violations_count ?? 1) }}</span></td>
-                        <td>{{ optional($violation->sanction)->disciplinary_sanction ?? '-' }}</td>
-                        <td>
-                            @php
-                                $recordStatus = optional(\App\Models\SanctionRequest::where('student_number', $student->student_number)->where('violation_type_id', optional($violation->violationType)->violation_type_id)->latest('request_date')->first())->status ?? 'No Request';
-                            @endphp
-                            @if(strtolower($recordStatus) === 'approved')
-                                <x-admin.badge status="approved" />
-                            @elseif(strtolower($recordStatus) === 'pending')
-                                <x-admin.badge status="pending" />
-                            @elseif(strtolower($recordStatus) === 'declined')
-                                <x-admin.badge status="rejected" />
-                            @else
-                                <x-admin.badge status="gray" :label="$recordStatus" />
-                            @endif
-                        </td>
-                        <td>{{ $violation->recorded_by_display }}</td>
-                    </tr>
+    <td>
+        {{ $violation->violation_date
+            ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y')
+            : '-' }}
+    </td>
+
+    <td>
+        {{ optional($violation->violationType?->violationCategory)->category_name ?? '-' }}
+    </td>
+
+    <td>
+        {{ $violation->violation_type ?? '-' }}
+    </td>
+
+    <td>
+        {{ $violation->description ?? '-' }}
+    </td>
+
+    <td>
+        {{ $violation->recorded_by_display ?? '-' }}
+    </td>
+
+    <td>
+        {{ optional($violation->recorder?->adminInfo)->position ?? '-' }}
+    </td>
+</tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center py-4 text-muted">No violation records found.</td>
+                        <td colspan="6" class="text-center py-4 text-muted">No violation records found.</td>
                     </tr>
                 @endforelse
             </tbody>
