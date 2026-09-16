@@ -5,15 +5,23 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Security;
+use App\Support\Auth\LoginAttemptLimiter;
 use App\Support\MfaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\RateLimiter;
 
 class SecurityLoginController extends Controller
 {
+    /**
+     * The module key used for the login-attempt limiter and its config.
+     *
+     * A lockout is scoped to this module, so a Security lockout does not block
+     * the Administrator login.
+     */
+    public const LOGIN_MODULE = 'security';
+
     public function showLoginForm()
     {
         return view('auth.security-login');
@@ -26,18 +34,13 @@ class SecurityLoginController extends Controller
             'password' => 'required',
         ]);
 
-        // PART 17 — 3 failed credential attempts, enforced per account
-        // (see AdminLoginController for the rationale; the rule and the
-        // threshold are the same for both privileged guards).
-        $throttleKey = 'security-login:' . sha1(
-            strtolower(trim((string) $request->input('email'))) . '|' . $request->ip()
-        );
-
-        if (RateLimiter::tooManyAttempts($throttleKey, AdminLoginController::MAX_LOGIN_ATTEMPTS)) {
-            $seconds = RateLimiter::availableIn($throttleKey);
-
+        // Failed credential attempts are bounded per account using the SAME
+        // shared rule as the Administrator module. The limiter keys on the
+        // module name, so a Security lockout can never block the Administrator
+        // login (and vice versa). See AdminLoginController for the rationale.
+        if (LoginAttemptLimiter::isLocked(self::LOGIN_MODULE, $request)) {
             Log::warning('Security login blocked: too many failed attempts', [
-                'retry_after_seconds' => $seconds,
+                'retry_after_seconds' => LoginAttemptLimiter::secondsRemaining(self::LOGIN_MODULE, $request),
             ]);
 
             AuditLog::create([
@@ -45,13 +48,13 @@ class SecurityLoginController extends Controller
                 'actor_id' => null,
                 'action' => 'Login Blocked',
                 'module' => 'Authentication',
-                'description' => 'Security login blocked after ' . AdminLoginController::MAX_LOGIN_ATTEMPTS . ' failed attempts.',
+                'description' => 'Security login blocked after ' . LoginAttemptLimiter::policy(self::LOGIN_MODULE)['max'] . ' failed attempts.',
                 'created_at' => now(),
             ]);
 
             return back()
                 ->withErrors([
-                    'login' => 'Too many failed login attempts. Please try again in ' . (int) ceil($seconds / 60) . ' minute(s).',
+                    'login' => LoginAttemptLimiter::lockedMessage(self::LOGIN_MODULE, $request),
                 ])
                 ->withInput();
         }
@@ -59,21 +62,17 @@ class SecurityLoginController extends Controller
         $security = Security::where('email', $request->email)->first();
 
         if (!$security || !Hash::check($request->password, $security->password)) {
-            RateLimiter::hit($throttleKey, AdminLoginController::LOGIN_LOCKOUT_SECONDS);
-
-            $remaining = max(0, AdminLoginController::MAX_LOGIN_ATTEMPTS - RateLimiter::attempts($throttleKey));
+            LoginAttemptLimiter::recordFailure(self::LOGIN_MODULE, $request);
 
             return back()
                 ->withErrors([
-                    'login' => $remaining > 0
-                        ? 'Invalid email or password. ' . $remaining . ' attempt(s) remaining.'
-                        : 'Too many failed login attempts. Please try again in ' . (int) ceil(AdminLoginController::LOGIN_LOCKOUT_SECONDS / 60) . ' minute(s).',
+                    'login' => LoginAttemptLimiter::failureMessage(self::LOGIN_MODULE, $request),
                 ])
                 ->withInput();
         }
 
-        // PART 17 — success clears the failed-attempt counter.
-        RateLimiter::clear($throttleKey);
+        // A SUCCESSFUL credential check clears the failed-attempt counter.
+        LoginAttemptLimiter::clear(self::LOGIN_MODULE, $request);
 
         if (empty($security->email)) {
             return back()

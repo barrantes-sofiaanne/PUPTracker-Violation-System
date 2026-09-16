@@ -30,19 +30,69 @@ return [
         'driver' => 'session',
         'provider' => 'admins',
         // "Remember me" cookie lifetime for the Administrator module: 12 HOURS.
-        // AuthManager::createSessionDriver() reads this and calls
-        // SessionGuard::setRememberDuration() (minutes). After this window the
-        // recaller cookie expires and the user must log in again (password + MFA).
-        'remember' => 43200,
+        //
+        // UNIT: MINUTES. AuthManager::createSessionDriver() passes this to
+        // SessionGuard::setRememberDuration(), whose own docblock reads "the
+        // number of minutes that the remember me cookie should be valid for",
+        // and the cookie jar then multiplies it by 60.
+        //
+        // 12 hours = 720 minutes. The value here used to be 43200, which is
+        // 43200 MINUTES = 30 DAYS — a remembered device survived a month
+        // instead of half a day. After this window the recaller cookie expires
+        // and the user must log in again (password + MFA).
+        'remember' => 720,
     ],
 
     'security' => [
         'driver' => 'session',
         'provider' => 'security',
         // "Remember me" cookie lifetime for the Security module: 12 HOURS.
-        'remember' => 43200,
+        // UNIT: MINUTES — see the administrator guard above. 12 hours = 720.
+        'remember' => 720,
     ],
 ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Login Attempt Lockout
+    |--------------------------------------------------------------------------
+    |
+    | The maximum number of FAILED credential attempts allowed per module before
+    | that module's login is temporarily blocked, and how long the block lasts.
+    |
+    | Enforced by App\Support\Auth\LoginAttemptLimiter, which is shared by the
+    | Administrator and Security login controllers so the rule cannot drift
+    | between them. The limiter keys on the SUBMITTED email plus the client IP,
+    | so a failure against one module never blocks another, and rotating IPs
+    | cannot buy extra guesses against a known account.
+    |
+    | Counters live in the application cache (server-side), so refreshing the
+    | login page cannot reset them, and they are unaffected by session lifetime
+    | and by the 15-minute inactivity timeout.
+    |
+    */
+
+    'login_attempts' => [
+
+        // Applied to any module without its own entry below.
+        'default' => [
+            'max' => (int) env('LOGIN_MAX_ATTEMPTS', 3),
+            'lockout_seconds' => (int) env('LOGIN_LOCKOUT_SECONDS', 900),
+        ],
+
+        // Per-module overrides. Add a key named after the module to give that
+        // module its own budget without touching the others.
+        'admin' => [
+            'max' => (int) env('ADMIN_LOGIN_MAX_ATTEMPTS', env('LOGIN_MAX_ATTEMPTS', 3)),
+            'lockout_seconds' => (int) env('ADMIN_LOGIN_LOCKOUT_SECONDS', env('LOGIN_LOCKOUT_SECONDS', 900)),
+        ],
+
+        'security' => [
+            'max' => (int) env('SECURITY_LOGIN_MAX_ATTEMPTS', env('LOGIN_MAX_ATTEMPTS', 3)),
+            'lockout_seconds' => (int) env('SECURITY_LOGIN_LOCKOUT_SECONDS', env('LOGIN_LOCKOUT_SECONDS', 900)),
+        ],
+
+    ],
     /*
     |--------------------------------------------------------------------------
     | Authentication Guards

@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use Illuminate\Contracts\Filesystem\Filesystem;
+use App\Support\Storage\EvidenceDisk;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -50,15 +50,22 @@ class PrivateFileResponder
     /**
      * Resolve the configured private disk for evidence/proof storage.
      *
-     * Single source of truth for the disk choice, so a view endpoint can never
-     * read from a different disk than the upload wrote to.
+     * Delegates to {@see EvidenceDisk}, the single source of truth, so a view
+     * endpoint can never read from a different disk than the upload wrote to —
+     * including when a production deployment is misconfigured.
      *
-     * @return Filesystem
+     * The return type is the CONCRETE adapter, not the `Filesystem` contract:
+     * `response()` (used to stream the file) is declared only on the adapter, so
+     * narrowing here is what makes the streaming call type-safe. The cast is
+     * safe because every Laravel filesystem driver this project configures
+     * (local, s3) resolves to a FilesystemAdapter.
+     *
+     * @return FilesystemAdapter
      */
-    public static function disk(): Filesystem
+    public static function disk(): FilesystemAdapter
     {
         /** @var FilesystemAdapter $disk */
-        $disk = Storage::disk((string) config('filesystems.evidence_disk', 'local'));
+        $disk = EvidenceDisk::disk();
 
         return $disk;
     }
@@ -66,49 +73,19 @@ class PrivateFileResponder
     /**
      * Normalise a stored path/key.
      *
-     * Uploads write keys shaped `violation-evidence/<id>/<file>`, but a stored
-     * value may arrive with a leading slash, a duplicated separator, or a
-     * leading `storage/`/`/storage/` segment from an older format. Each of those
-     * would MISS on the disk while looking correct in the database, so they are
-     * stripped here. The database row itself is never rewritten.
+     * Delegates to {@see EvidenceDisk::candidateKeys()} so every caller applies
+     * identical normalisation. Uploads write keys shaped
+     * `violation-evidence/<id>/<file>`, but a stored value may arrive with a
+     * leading slash, a duplicated separator, or a leading `storage/` segment
+     * from an older format. Each of those would MISS on the disk while looking
+     * correct in the database, so they are stripped here. The database row
+     * itself is never rewritten.
      *
      * @return array<int, string> candidate keys, most-likely first
      */
     public static function candidateKeys(?string $storedPath): array
     {
-        $raw = trim((string) $storedPath);
-
-        if ($raw === '') {
-            return [];
-        }
-
-        // Decode percent-encoding in case the key was stored URL-encoded.
-        $decoded = rawurldecode($raw);
-
-        // Tolerate backslashes from Windows-era rows.
-        $decoded = str_replace('\\', '/', $decoded);
-
-        $variants = [];
-
-        foreach ([$raw, $decoded] as $value) {
-            $value = trim($value);
-
-            // Strip an accidental scheme/host, keeping only the object key.
-            $value = preg_replace('#^https?://[^/]+/#i', '', $value);
-
-            // Strip a leading `storage/` or `/storage/` prefix (public-URL shape).
-            $value = preg_replace('#^/?storage/#i', '', $value);
-
-            // Collapse duplicate slashes and drop any leading slash.
-            $value = preg_replace('#/+#', '/', $value);
-            $value = ltrim($value, '/');
-
-            if ($value !== '') {
-                $variants[] = $value;
-            }
-        }
-
-        return array_values(array_unique($variants));
+        return EvidenceDisk::candidateKeys($storedPath);
     }
 
     /**
@@ -118,23 +95,7 @@ class PrivateFileResponder
      */
     public static function resolveExistingKey(?string $storedPath): ?string
     {
-        $disk = self::disk();
-
-        foreach (self::candidateKeys($storedPath) as $key) {
-            try {
-                if ($disk->exists($key)) {
-                    return $key;
-                }
-            } catch (Throwable $e) {
-                // A disk-level failure is reported by the caller, not here.
-                Log::warning('Private file existence check failed.', [
-                    'key_hash' => hash('sha256', $key),
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        return null;
+        return EvidenceDisk::resolveExistingKey($storedPath);
     }
 
     /**
@@ -167,19 +128,46 @@ class PrivateFileResponder
         $key = self::resolveExistingKey($storedPath);
 
         if ($key === null) {
+            // Distinguish the failure modes so an operator can tell a missing
+            // object from a wrong-disk configuration without seeing the key.
+            $diagnosis = EvidenceDisk::diagnose($storedPath);
+
             Log::warning('Private file object is missing from storage.', $logContext + [
                 'kind' => $kind,
-                // Log a HASH, never the key itself — the key is an internal
+                'case' => $diagnosis['case'],
+                'meaning' => $diagnosis['meaning'],
+                'configured_disk' => $diagnosis['configured_disk'],
+                'driver' => $diagnosis['driver'],
+                'disk_usable' => $diagnosis['disk_usable'],
+                'found_on' => $diagnosis['found_on'],
+                // Log a HASH, never the key itself - the key is an internal
                 // storage detail and must not leak into logs.
-                'key_hash' => hash('sha256', (string) $storedPath),
+                'key_hash' => $diagnosis['key_hash'],
             ]);
 
             throw new HttpException(404, $messages['missing']);
         }
 
         // 3. Stream. A disk failure becomes a controlled error, not a stack trace.
+        $disk = self::disk();
+
+        // `response()` lives on the concrete adapter, not on the `Filesystem`
+        // contract, so a custom/third-party disk that does not implement it would
+        // be a fatal error here. Fail with the controlled 503 instead, so the
+        // user sees the friendly message and the operator gets a clear log line.
+        if (! method_exists($disk, 'response')) {
+            Log::error('Private file could not be streamed: the disk cannot produce a response.', $logContext + [
+                'kind' => $kind,
+                'disk' => EvidenceDisk::name(),
+                'driver' => EvidenceDisk::driverOf(EvidenceDisk::name()),
+                'key_hash' => hash('sha256', $key),
+            ]);
+
+            throw new HttpException(503, $messages['unavailable']);
+        }
+
         try {
-            return self::disk()->response(
+            return $disk->response(
                 $key,
                 $downloadName ?: basename($key)
             );

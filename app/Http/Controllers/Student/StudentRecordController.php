@@ -522,7 +522,12 @@ public function requestSanction(Request $request)
 
         try {
             $file = $request->file('proof_file');
-            $disk = \Illuminate\Support\Facades\Storage::disk((string) config('filesystems.evidence_disk', 'local'));
+
+            // Production guard FIRST: never write confidential proof to an
+            // ephemeral filesystem just because R2 is misconfigured.
+            \App\Support\Storage\EvidenceDisk::assertWritable();
+
+            $disk = \App\Support\Storage\EvidenceDisk::disk();
             $directory = 'sanction-proofs/' . $record->record_id;
 
             // Official uploaded document — ALWAYS preserved byte-for-byte.
@@ -533,14 +538,30 @@ public function requestSanction(Request $request)
 
             $extension = strtolower($file->getClientOriginalExtension());
             // Server-side filename derived from the unique proof code — the
-            // original filename is never trusted or used on disk.
+            // original filename is never trusted or used on disk. Because the
+            // code is unique per submission, a RESUBMISSION writes a NEW object
+            // and can never overwrite the previous proof.
             $filename = $proofCode . '.' . ($extension !== '' ? $extension : 'bin');
 
-            if (! $disk->put($directory . '/' . $filename, $originalBytes)) {
+            $storedPath = $directory . '/' . $filename;
+
+            if (! $disk->put($storedPath, $originalBytes)) {
                 throw new \RuntimeException('Unable to store proof file.');
             }
 
-            $storedPath = $directory . '/' . $filename;
+            // Step 3 of the required flow: CONFIRM the object really exists on
+            // the configured disk before any database row references it. A
+            // misleading record pointing at a missing object is worse than a
+            // failed upload, because it looks like data loss to the student.
+            if (! $disk->exists($storedPath)) {
+                try {
+                    $disk->delete($storedPath);
+                } catch (\Throwable $ignored) {
+                    // Best-effort cleanup only.
+                }
+
+                throw new \RuntimeException('Stored proof could not be verified on the configured disk.');
+            }
 
             $notes = trim((string) $request->input('proof_notes', ''));
 
@@ -550,36 +571,67 @@ public function requestSanction(Request $request)
                 $record->status = \App\Models\StudentSanctionRecord::STATUS_IN_PROGRESS;
             }
 
-            $record->update([
-                'status' => $record->status,
-                'proof_path' => $storedPath,
-                'proof_original_name' => $file->getClientOriginalName(),
-                'proof_submitted_at' => now(),
-                'proof_notes' => $notes,
-                'completion_reviewed_by_admin_id' => null,
-                'completion_reviewed_at' => null,
-                'completion_remarks' => null,
-            ]);
-
-            // Preserve per-submission proof history. Each submission is a new
-            // auditable row with its own PROOF code + SHA-256; the uploaded
-            // original is never modified. Never overwrites previous proof.
+            // Steps 4-6 of the required flow run inside ONE transaction so the
+            // "current proof" pointer and the historical audit row are written
+            // together. A pointer that claims a proof was submitted, with no
+            // matching history row, would break the audit trail the brief
+            // requires to stay intact.
             try {
-                \App\Models\SanctionProof::create([
-                    'proof_code' => $proofCode,
-                    'record_id' => $record->record_id,
-                    'student_number' => $record->student_number,
-                    'disk_path' => $storedPath,
-                    'original_name' => $file->getClientOriginalName(),
-                    'mime_type' => $file->getMimeType(),
-                    'file_size' => $file->getSize(),
-                    'sha256_hash' => $sha256,
-                    'notes' => $notes,
-                    'status' => \App\Models\SanctionProof::STATUS_SUBMITTED,
-                    'submitted_at' => now(),
-                ]);
-            } catch (\Throwable $e) {
-                // A proof-history write failure must not fail the submission.
+                DB::transaction(function () use (
+                    $record,
+                    $storedPath,
+                    $file,
+                    $notes,
+                    $proofCode,
+                    $sha256
+                ): void {
+                    $record->update([
+                        'status' => $record->status,
+                        'proof_path' => $storedPath,
+                        'proof_original_name' => $file->getClientOriginalName(),
+                        'proof_submitted_at' => now(),
+                        'proof_notes' => $notes,
+                        'completion_reviewed_by_admin_id' => null,
+                        'completion_reviewed_at' => null,
+                        'completion_remarks' => null,
+                    ]);
+
+                    // Preserve per-submission proof history. Each submission is a
+                    // new auditable row with its own PROOF code + SHA-256; the
+                    // uploaded original is never modified, so a resubmission
+                    // cannot overwrite the previous proof object.
+                    \App\Models\SanctionProof::create([
+                        'proof_code' => $proofCode,
+                        'record_id' => $record->record_id,
+                        'student_number' => $record->student_number,
+                        'disk_path' => $storedPath,
+                        'original_name' => $file->getClientOriginalName(),
+                        'mime_type' => $file->getMimeType(),
+                        'file_size' => $file->getSize(),
+                        'sha256_hash' => $sha256,
+                        'notes' => $notes,
+                        'status' => \App\Models\SanctionProof::STATUS_SUBMITTED,
+                        'submitted_at' => now(),
+                    ]);
+                });
+            } catch (\Throwable $dbFailure) {
+                // The object is already on the configured disk but nothing in the
+                // database points at it. Remove it so we do not accumulate
+                // orphaned confidential files, then surface the failure.
+                try {
+                    $disk->delete($storedPath);
+                } catch (\Throwable $cleanup) {
+                    \Illuminate\Support\Facades\Log::error(
+                        'Orphaned proof object could not be removed after a database failure.',
+                        [
+                            'record_id' => $record->record_id,
+                            'key_hash' => hash('sha256', $storedPath),
+                            'error' => $cleanup->getMessage(),
+                        ]
+                    );
+                }
+
+                throw $dbFailure;
             }
 
             // Record an evidence security event for the proof submission.

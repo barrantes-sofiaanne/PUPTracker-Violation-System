@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use App\Support\Auth\SessionExpiryNotice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
@@ -47,8 +48,13 @@ class EnforceInactivityTimeout
     /** Session key holding the last qualifying activity timestamp. */
     public const SESSION_KEY = 'auth.last_activity_at';
 
-    /** Session key used to carry the expiry message across the redirect. */
-    public const REASON_KEY = 'auth.expired_reason';
+    /**
+     * Session key used to carry the one-time expiry notice across the redirect.
+     *
+     * Kept as an alias of {@see SessionExpiryNotice::KEY} so the middleware and
+     * the login view can never disagree about the key name.
+     */
+    public const REASON_KEY = SessionExpiryNotice::KEY;
 
     /** Landing route per guard, used by the post-timeout bounce. */
     public const LANDING_ROUTES = [
@@ -124,9 +130,13 @@ class EnforceInactivityTimeout
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        $request->session()->put(
-            self::REASON_KEY,
-            'Your session has expired due to ' . self::TIMEOUT_MINUTES . ' minutes of inactivity. Please log in again.'
+
+        // Record the notice on the FRESH session. It is consumed by the login
+        // page on display, so it can be shown at most once and cannot reappear
+        // on a later visit. Written AFTER invalidate(), which discards data.
+        SessionExpiryNotice::record(
+            $request,
+            SessionExpiryNotice::inactivityReason(self::TIMEOUT_MINUTES)
         );
 
         $landing = self::LANDING_ROUTES[$guard] ?? 'student.dashboard';
@@ -197,10 +207,11 @@ class EnforceInactivityTimeout
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Re-seed only the non-sensitive reason string on the new session.
-        $request->session()->put(
-            self::REASON_KEY,
-            'Your session has expired due to ' . self::TIMEOUT_MINUTES . ' minutes of inactivity. Please log in again.'
+        // One-time notice for the login page (see record() for why this is
+        // stored and pulled rather than flashed).
+        SessionExpiryNotice::record(
+            $request,
+            SessionExpiryNotice::inactivityReason(self::TIMEOUT_MINUTES)
         );
 
         return redirect()->route($this->loginRoute($guard));

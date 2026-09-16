@@ -5,52 +5,24 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AuditLog;
+use App\Support\Auth\LoginAttemptLimiter;
+use App\Support\Auth\SessionExpiryNotice;
 use App\Support\MfaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\RateLimiter;
 
 class AdminLoginController extends Controller
 {
-    /** PART 17 — failed credential attempts allowed before a temporary lock. */
-    public const MAX_LOGIN_ATTEMPTS = 3;
-
     /**
-     * PART 17 — how long the account-level lock lasts once the threshold is hit.
-     * Short enough that a genuine user is not locked out for the day, long
-     * enough to make guessing impractical at this attempt budget.
-     */
-    public const LOGIN_LOCKOUT_SECONDS = 900;
-
-    /**
-     * Per-account throttle key for the login attempts limiter.
+     * The module key used for the login-attempt limiter and its config.
      *
-     * Keyed on the SUBMITTED email, lower-cased, plus the client IP. The
-     * submitted value is used deliberately: keying on the resolved account would
-     * either let an unknown email bypass counting, or leak (via differing
-     * responses) whether an account exists.
+     * A lockout is scoped to this module, so an Administrator lockout does not
+     * block the Security login.
      */
-    private function loginThrottleKey(Request $request): string
-    {
-        return 'admin-login:' . sha1(
-            strtolower(trim((string) $request->input('email'))) . '|' . $request->ip()
-        );
-    }
-
-    /** Render a lockout duration for the user without leaking internals. */
-    private function humaniseSeconds(int $seconds): string
-    {
-        if ($seconds >= 60) {
-            $minutes = (int) ceil($seconds / 60);
-
-            return $minutes . ' minute(s)';
-        }
-
-        return max(1, $seconds) . ' second(s)';
-    }
+    public const LOGIN_MODULE = 'admin';
 
     public function showLoginForm()
     {
@@ -68,21 +40,20 @@ class AdminLoginController extends Controller
             $emailMask = $this->maskEmail((string) $request->input('email'));
             Log::info('Admin login attempt started', ['email_masked' => $emailMask]);
 
-            // PART 17 — 3 failed credential attempts.
+            // Failed credential attempts are bounded per account, using the
+            // SHARED rule in LoginAttemptLimiter so the Administrator and
+            // Security modules cannot drift apart.
             //
             // The route throttle (`throttle:5,1`) is a PER-IP network backstop;
             // this is the per-ACCOUNT lock the brief requires, so rotating IPs
-            // cannot buy extra guesses. Keyed on the submitted email (not the
-            // resolved account) so a wrong email still counts and the check
-            // cannot be used to enumerate accounts.
-            $throttleKey = $this->loginThrottleKey($request);
-
-            if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_LOGIN_ATTEMPTS)) {
-                $seconds = RateLimiter::availableIn($throttleKey);
-
+            // cannot buy extra guesses. The limiter keys on the module plus the
+            // submitted email, so an Administrator lockout never blocks the
+            // Security login, and the counter lives in the server-side cache so
+            // refreshing the login page cannot reset it.
+            if (LoginAttemptLimiter::isLocked(self::LOGIN_MODULE, $request)) {
                 Log::warning('Admin login blocked: too many failed attempts', [
                     'email_masked' => $emailMask,
-                    'retry_after_seconds' => $seconds,
+                    'retry_after_seconds' => LoginAttemptLimiter::secondsRemaining(self::LOGIN_MODULE, $request),
                 ]);
 
                 AuditLog::create([
@@ -90,13 +61,13 @@ class AdminLoginController extends Controller
                     'actor_id' => null,
                     'action' => 'Login Blocked',
                     'module' => 'Authentication',
-                    'description' => 'Admin login blocked after ' . self::MAX_LOGIN_ATTEMPTS . ' failed attempts.',
+                    'description' => 'Admin login blocked after ' . LoginAttemptLimiter::policy(self::LOGIN_MODULE)['max'] . ' failed attempts.',
                     'created_at' => now(),
                 ]);
 
                 return back()
                     ->withErrors([
-                        'login' => 'Too many failed login attempts. Please try again in ' . $this->humaniseSeconds($seconds) . '.',
+                        'login' => LoginAttemptLimiter::lockedMessage(self::LOGIN_MODULE, $request),
                     ])
                     ->withInput();
             }
@@ -106,24 +77,22 @@ class AdminLoginController extends Controller
             if (!$admin || !Hash::check($request->password, $admin->password)) {
                 // Count the failure BEFORE responding so the threshold cannot be
                 // slipped past by a concurrent request.
-                RateLimiter::hit($throttleKey, self::LOGIN_LOCKOUT_SECONDS);
+                LoginAttemptLimiter::recordFailure(self::LOGIN_MODULE, $request);
 
-                $remaining = max(0, self::MAX_LOGIN_ATTEMPTS - RateLimiter::attempts($throttleKey));
-
-                Log::info('Admin login: invalid credentials', ['attempts_remaining' => $remaining]);
+                Log::info('Admin login: invalid credentials', [
+                    'attempts_remaining' => LoginAttemptLimiter::remaining(self::LOGIN_MODULE, $request),
+                ]);
 
                 return back()
                     ->withErrors([
-                        'login' => $remaining > 0
-                            ? 'Invalid email or password. ' . $remaining . ' attempt(s) remaining.'
-                            : 'Too many failed login attempts. Please try again in ' . $this->humaniseSeconds(self::LOGIN_LOCKOUT_SECONDS) . '.',
+                        'login' => LoginAttemptLimiter::failureMessage(self::LOGIN_MODULE, $request),
                     ])
                     ->withInput();
             }
 
-            // PART 17 — a SUCCESSFUL login clears the failed-attempt counter.
+            // A SUCCESSFUL credential check clears the failed-attempt counter.
             // "3 attempts" means three FAILURES, never three lifetime logins.
-            RateLimiter::clear($throttleKey);
+            LoginAttemptLimiter::clear(self::LOGIN_MODULE, $request);
 
             Log::info('Admin login: credentials verified', ['admin_id' => $admin->id]);
 

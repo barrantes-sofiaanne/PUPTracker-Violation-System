@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -33,6 +34,17 @@ class EnsureStudentProfileComplete
         // to the route's own auth middleware to decide.
         if (! $student) {
             return $next($request);
+        }
+
+        // The guard returns the Authenticatable CONTRACT, which does not declare
+        // the PUPTracker account methods. Narrowing to User is purely for static
+        // analysis: this middleware only runs behind `auth:student` with the
+        // `students` provider (App\Models\User), so any other type here would
+        // already have been a fatal error on the next line. The `instanceof`
+        // form is used rather than a docblock because it also fails SAFE — an
+        // unexpected model is denied rather than allowed.
+        if (! $student instanceof User) {
+            return $this->denyInactive($request);
         }
 
         // PUPTracker ACCOUNT STATUS is checked on EVERY request, not only at

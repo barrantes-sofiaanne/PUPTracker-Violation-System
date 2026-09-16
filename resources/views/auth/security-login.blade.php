@@ -24,6 +24,20 @@
                 </div>
             @endif
 
+            {{-- Inactivity expiry notice.
+                 PULLED rather than read: pulling consumes the value, so the
+                 message can be displayed at most once and can never reappear on
+                 a later visit. This page previously had no expiry notice at all,
+                 so a timed-out Security user was bounced to the login form with
+                 no explanation; it now matches the Administrator login. --}}
+            @php($expiredReason = \App\Support\Auth\SessionExpiryNotice::pullFromCurrentRequest())
+            @if($expiredReason)
+                <div class="login-error" role="alert">
+                    <i class="bi bi-clock-history" aria-hidden="true"></i>
+                    <span>{{ $expiredReason }}</span>
+                </div>
+            @endif
+
             <div class="mb-3">
 
                 <label class="form-label" for="email">

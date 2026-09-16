@@ -55,10 +55,18 @@ class RememberMeTest extends TestCase
             ->assertDontSee('Remember this device for 12 hours');
     }
 
-    public function test_admin_remember_duration_is_30_days(): void
+    public function test_remember_duration_is_twelve_hours_in_minutes(): void
     {
-        $this->assertSame(43200, config('auth.guards.admin.remember'));
-        $this->assertSame(43200, config('auth.guards.security.remember'));
+        // 12 HOURS, expressed in the unit Laravel actually expects. Laravel's
+        // SessionGuard::setRememberDuration() takes MINUTES (its own docblock
+        // says so) and the cookie jar then multiplies by 60. The value used to
+        // be 43200, which is 43200 minutes = 30 DAYS — a device stayed trusted
+        // for a month instead of half a day.
+        $this->assertSame(720, config('auth.guards.admin.remember'));
+        $this->assertSame(720, config('auth.guards.security.remember'));
+
+        // Guard against the regression directly: it must NOT be the old value.
+        $this->assertNotSame(43200, config('auth.guards.admin.remember'));
     }
 
     public function test_admin_login_with_remember_stores_flag_in_pending_mfa(): void
@@ -122,9 +130,10 @@ class RememberMeTest extends TestCase
         $rememberCookie = $this->findRememberCookie($verify);
         $this->assertNotNull($rememberCookie, 'A remember (recaller) cookie must be set after a remember-me login.');
 
-        // PART 6/14 — the recaller cookie must live ~12 hours (43200 minutes),
-        // NOT 30 days. A 30-day window would survive overnight.
-        $this->assertGreaterThanOrEqual(time() + (43200 - 1) * 60, $rememberCookie->getExpiresTime());
+        // The recaller cookie must live ~12 HOURS (720 minutes), NOT 30 days.
+        // Laravel treats the configured value as minutes and multiplies by 60.
+        $this->assertGreaterThanOrEqual(time() + (720 - 1) * 60, $rememberCookie->getExpiresTime());
+        $this->assertLessThanOrEqual(time() + (720 + 1) * 60, $rememberCookie->getExpiresTime());
 
         // The DB remember token must have been written and rotated.
         $admin->refresh();
@@ -145,12 +154,23 @@ class RememberMeTest extends TestCase
             'remember' => '1',
         ])->assertRedirect(route('mfa.verify.show'));
 
-        // The MFA screen must offer the Remember Me option. It starts UNticked
-        // because PART 8 removed the credential-stage choice it used to mirror.
+        // The METHOD-SELECTION stage must NOT offer the option: nothing has been
+        // verified yet, so no persistent device may be requested.
+        $this->get(route('mfa.verify.show'))
+            ->assertOk()
+            ->assertDontSee('Remember this device for 12 hours')
+            ->assertDontSee('id="mfaRememberMe"', false);
+
+        // After choosing a method the user reaches the code-input stage, where
+        // the option IS offered. It starts UNticked.
+        $this->post(route('mfa.verify.submit'), ['action' => 'select', 'method' => 'email'])
+            ->assertRedirect(route('mfa.verify.show'));
+
         $this->get(route('mfa.verify.show'))
             ->assertOk()
             ->assertSee('Remember this device for 12 hours')
-            ->assertSee('id="mfaRememberMe"', false);
+            ->assertSee('id="mfaRememberMe"', false)
+            ->assertDontSee('id="mfaRememberMe" checked', false);
     }
 
     public function test_mfa_verify_screen_does_not_show_remember_me_for_student_flow(): void
@@ -174,7 +194,7 @@ class RememberMeTest extends TestCase
             ->assertDontSee('mfaRememberMe', false);
     }
 
-    public function test_remember_action_updates_pending_flag_without_verifying(): void
+    public function test_remember_action_endpoint_no_longer_exists(): void
     {
         $this->createAdmin('toggle-admin@example.com');
 
@@ -185,17 +205,46 @@ class RememberMeTest extends TestCase
 
         $this->assertFalse(session('mfa.pending')['remember']);
 
-        // Toggling the checkbox on the MFA screen re-renders the same stage and
-        // records the choice — it must NOT authenticate or consume an attempt.
-        $toggle = $this->post(route('mfa.verify.submit'), [
+        // A dedicated "remember" action that recorded the flag WITHOUT verifying
+        // a code was a side channel: it let a persistent device be requested
+        // outside the verification step. The action is gone, so posting it must
+        // fall through to the ordinary verify path and fail validation rather
+        // than silently flipping the flag.
+        $this->post(route('mfa.verify.submit'), [
             'action' => 'remember',
             'remember' => '1',
-        ]);
+        ])->assertSessionHasErrors('code');
 
-        $toggle->assertRedirect(route('mfa.verify.show'));
-        $this->assertTrue(session('mfa.pending')['remember']);
-        $this->assertSame(0, session('mfa.pending')['attempts'] ?? 0);
+        $this->assertFalse(
+            session('mfa.pending')['remember'],
+            'The remember flag must not be settable outside the verification step.'
+        );
         $this->assertGuest('admin');
+    }
+
+    /**
+     * A crafted `remember` on the method-SELECTION step must not be honoured
+     * either: the flag is only read from the verification POST.
+     */
+    public function test_remember_cannot_be_enabled_from_the_method_selection_step(): void
+    {
+        $this->createAdmin('select-remember@example.com');
+
+        $this->post(route('admin.login.post'), [
+            'email' => 'select-remember@example.com',
+            'password' => 'adminpass',
+        ])->assertRedirect(route('mfa.verify.show'));
+
+        $this->post(route('mfa.verify.submit'), [
+            'action' => 'select',
+            'method' => 'email',
+            'remember' => '1',
+        ])->assertRedirect(route('mfa.verify.show'));
+
+        $this->assertFalse(
+            session('mfa.pending')['remember'],
+            'Selecting a method must not record a remember decision.'
+        );
     }
 
     public function test_remember_action_cannot_enable_remember_for_student_guard(): void
@@ -212,12 +261,14 @@ class RememberMeTest extends TestCase
             'attempts' => 0,
         ];
 
+        // The removed "remember" action must not be able to reach the pending
+        // challenge at all; it falls through to verification and fails.
         $this->withSession(['mfa.pending' => $pending])
             ->post(route('mfa.verify.submit'), [
                 'action' => 'remember',
                 'remember' => '1',
             ])
-            ->assertRedirect(route('mfa.verify.show'));
+            ->assertSessionHasErrors('code');
 
         $this->assertFalse(session('mfa.pending')['remember'], 'A student challenge must never hold the remember flag.');
     }
@@ -337,6 +388,14 @@ class RememberMeTest extends TestCase
             'password' => 'securitypass',
             'remember' => '1',
         ])->assertRedirect(route('mfa.verify.show'));
+
+        // Method selection: absent. Code input: present.
+        $this->get(route('mfa.verify.show'))
+            ->assertOk()
+            ->assertDontSee('Remember this device for 12 hours');
+
+        $this->post(route('mfa.verify.submit'), ['action' => 'select', 'method' => 'email'])
+            ->assertRedirect(route('mfa.verify.show'));
 
         $this->get(route('mfa.verify.show'))
             ->assertOk()

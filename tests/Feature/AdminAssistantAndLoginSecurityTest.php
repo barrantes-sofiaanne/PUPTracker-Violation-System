@@ -6,11 +6,12 @@ use App\Models\Admin;
 use App\Models\AuditLog;
 use App\Models\Security;
 use App\Support\Access\SecurityAccess;
+use App\Support\Auth\LoginAttemptLimiter;
 use App\Support\MfaService;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -29,7 +30,20 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
         parent::setUp();
 
         $this->createTables();
-        RateLimiter::clear('admin-login:' . sha1('admin@example.com|127.0.0.1'));
+        $this->clearLoginAttempts();
+    }
+
+    /**
+     * Reset the module counters between tests.
+     *
+     * The limiter uses the cache, so a leftover entry from a previous test would
+     * leak a lockout into the next one.
+     */
+    private function clearLoginAttempts(string $email = 'admin@example.com'): void
+    {
+        foreach (['admin', 'security'] as $module) {
+            LoginAttemptLimiter::clear($module, Request::create('/login', 'POST', ['email' => $email]));
+        }
     }
 
     // ==================================================================
@@ -192,8 +206,11 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
         );
     }
 
-    /** The MFA screen still offers it (PART 10) for privileged guards. */
-    public function test_mfa_verification_stage_still_offers_remember(): void
+    /**
+     * The method-SELECTION stage must not offer the option; the CODE-INPUT stage
+     * must. This is the placement the brief requires.
+     */
+    public function test_mfa_code_stage_offers_remember_but_selection_does_not(): void
     {
         $admin = $this->createAdmin('admin@example.com', 'Admin', withMfa: true);
 
@@ -202,10 +219,17 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
             'password' => 'password',
         ]);
 
-        $page = $this->get(route('mfa.verify.show'))->assertOk()->getContent();
+        // Stage 1 — choose a method: the checkbox must NOT be present.
+        $selection = $this->get(route('mfa.verify.show'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('mfaRememberMe', $selection);
+        $this->assertStringNotContainsString('Remember this device for 12 hours', $selection);
 
-        $this->assertStringContainsString('mfaRememberMe', $page);
-        $this->assertStringContainsString('Remember this device for 12 hours', $page);
+        // Stage 2 — enter the code: the checkbox IS present.
+        $this->post(route('mfa.verify.submit'), ['action' => 'select', 'method' => 'email']);
+
+        $codeStage = $this->get(route('mfa.verify.show'))->assertOk()->getContent();
+        $this->assertStringContainsString('mfaRememberMe', $codeStage);
+        $this->assertStringContainsString('Remember this device for 12 hours', $codeStage);
     }
 
     public function test_remember_me_label_states_the_12_hour_window(): void
@@ -217,9 +241,12 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
             'password' => 'password',
         ]);
 
+        // Move to the code-input stage, where the label is rendered.
+        $this->post(route('mfa.verify.submit'), ['action' => 'select', 'method' => 'email']);
+
         $page = $this->get(route('mfa.verify.show'))->assertOk()->getContent();
 
-        // The configured window is 43200 minutes = 12 hours, not 30 days.
+        // The configured window is 720 minutes = 12 hours, not 30 days.
         $this->assertStringNotContainsString('30 days', $page);
         $this->assertStringContainsString('12 hours', $page);
     }
@@ -274,11 +301,14 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
             'password' => 'password',
         ]);
 
-        $key = 'admin-login:' . sha1('admin@example.com|127.0.0.1');
-        $this->assertSame(0, RateLimiter::attempts($key), 'A successful login must clear the counter.');
+        $request = Request::create('/login', 'POST', ['email' => 'admin@example.com']);
 
-        // The user can keep logging in indefinitely (never "3 logins total").
-        $this->assertGreaterThanOrEqual(0, RateLimiter::attempts($key));
+        $this->assertSame(
+            0,
+            LoginAttemptLimiter::attempts('admin', $request),
+            'A successful credential check must clear the counter.'
+        );
+        $this->assertFalse(LoginAttemptLimiter::isLocked('admin', $request));
     }
 
     /** The counter is per account+IP, so failures do not leak across accounts. */
@@ -365,6 +395,166 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
         $this->assertStringNotContainsString('wrong-password-value', $message);
         $this->assertStringNotContainsString('password', strtolower($message));
         $this->assertStringNotContainsString('$2y$', $message);
+    }
+
+    // ==================================================================
+    // Login lockout — module isolation, persistence, expiry
+    // ==================================================================
+
+    /**
+     * A lockout on one module must NOT block a different module.
+     *
+     * This is the brief's explicit requirement that a lockout applies "only to
+     * the affected authentication module/account".
+     */
+    public function test_admin_lockout_does_not_block_the_security_module(): void
+    {
+        $this->createAdmin('admin@example.com', 'Admin');
+        $this->createSecurity('officer@example.com');
+
+        // Exhaust the ADMIN budget.
+        for ($i = 1; $i <= 3; $i++) {
+            $this->post(route('admin.login.post'), [
+                'email' => 'admin@example.com',
+                'password' => 'wrong',
+            ]);
+        }
+
+        $this->assertTrue(
+            LoginAttemptLimiter::isLocked('admin', Request::create('/l', 'POST', ['email' => 'admin@example.com'])),
+            'The Administrator module should be locked.'
+        );
+
+        // The Security module must still accept valid credentials.
+        $this->post(route('security.login.post'), [
+            'email' => 'officer@example.com',
+            'password' => 'password',
+        ])->assertRedirect(route('mfa.verify.show'));
+
+        $this->assertFalse(
+            LoginAttemptLimiter::isLocked('security', Request::create('/l', 'POST', ['email' => 'officer@example.com'])),
+            'The Security module must not inherit the Administrator lockout.'
+        );
+    }
+
+    /** A blocked module reports how long the user must wait. */
+    public function test_lockout_message_states_the_wait_duration(): void
+    {
+        $this->createAdmin('admin@example.com', 'Admin');
+
+        for ($i = 1; $i <= 3; $i++) {
+            $this->post(route('admin.login.post'), [
+                'email' => 'admin@example.com',
+                'password' => 'wrong',
+            ]);
+        }
+
+        $this->post(route('admin.login.post'), [
+            'email' => 'admin@example.com',
+            'password' => 'password',
+        ])->assertSessionHasErrors('login');
+
+        $message = (string) session('errors')->first('login');
+
+        // It must say the module is blocked and give a concrete wait.
+        $this->assertStringContainsString('temporarily blocked', $message);
+        $this->assertMatchesRegularExpression('/minute\(s\)|second\(s\)|hour\(s\)/', $message);
+    }
+
+    /**
+     * Refreshing the login page must NOT reset the counter.
+     *
+     * The counter lives in the server-side cache, so a GET of the login form (the
+     * "refresh") must leave it untouched.
+     */
+    public function test_refreshing_the_login_page_does_not_reset_the_counter(): void
+    {
+        $this->createAdmin('admin@example.com', 'Admin');
+
+        for ($i = 1; $i <= 2; $i++) {
+            $this->post(route('admin.login.post'), [
+                'email' => 'admin@example.com',
+                'password' => 'wrong',
+            ]);
+        }
+
+        $request = Request::create('/l', 'POST', ['email' => 'admin@example.com']);
+        $before = LoginAttemptLimiter::attempts('admin', $request);
+        $this->assertSame(2, $before);
+
+        // Refresh the login page several times.
+        $this->get(route('admin.login'))->assertOk();
+        $this->get(route('admin.login'))->assertOk();
+
+        $this->assertSame(
+            $before,
+            LoginAttemptLimiter::attempts('admin', $request),
+            'Refreshing the login page must not clear the failed-attempt counter.'
+        );
+    }
+
+    /** Once the lockout window lapses, login works again. */
+    public function test_login_becomes_available_after_the_lockout_window_lapses(): void
+    {
+        $this->createAdmin('admin@example.com', 'Admin', withMfa: true);
+
+        for ($i = 1; $i <= 3; $i++) {
+            $this->post(route('admin.login.post'), [
+                'email' => 'admin@example.com',
+                'password' => 'wrong',
+            ]);
+        }
+
+        // Blocked with the correct password.
+        $this->post(route('admin.login.post'), [
+            'email' => 'admin@example.com',
+            'password' => 'password',
+        ])->assertSessionHasErrors('login');
+
+        // Simulate the window elapsing.
+        $this->travel(16)->minutes();
+
+        $this->post(route('admin.login.post'), [
+            'email' => 'admin@example.com',
+            'password' => 'password',
+        ])->assertRedirect(route('mfa.verify.show'));
+
+        $request = Request::create('/l', 'POST', ['email' => 'admin@example.com']);
+        $this->assertFalse(LoginAttemptLimiter::isLocked('admin', $request));
+    }
+
+    /** Wrong password once: the module stays usable. */
+    public function test_a_single_wrong_password_leaves_login_available(): void
+    {
+        $this->createAdmin('admin@example.com', 'Admin', withMfa: true);
+
+        $this->post(route('admin.login.post'), [
+            'email' => 'admin@example.com',
+            'password' => 'wrong',
+        ])->assertSessionHasErrors('login');
+
+        $this->assertStringContainsString(
+            '2 attempt(s) remaining',
+            (string) session('errors')->first('login'),
+            'The user should be told how many attempts remain.'
+        );
+
+        // The correct password still works.
+        $this->post(route('admin.login.post'), [
+            'email' => 'admin@example.com',
+            'password' => 'password',
+        ])->assertRedirect(route('mfa.verify.show'));
+    }
+
+    /** The configured threshold and lockout come from config, not hard-coding. */
+    public function test_lockout_policy_is_configurable_per_module(): void
+    {
+        $this->assertSame(3, LoginAttemptLimiter::policy('admin')['max']);
+        $this->assertSame(900, LoginAttemptLimiter::policy('admin')['lockout_seconds']);
+
+        // An unknown module falls back to the shared default.
+        $this->assertSame(3, LoginAttemptLimiter::policy('some-future-module')['max']);
+        $this->assertSame(900, LoginAttemptLimiter::policy('some-future-module')['lockout_seconds']);
     }
 
     // ==================================================================

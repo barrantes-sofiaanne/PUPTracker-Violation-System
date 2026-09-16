@@ -29,11 +29,14 @@ class StudentViolationController extends Controller
 
     /**
      * Resolve the configured evidence storage disk (S3-ready on Railway).
+     *
+     * Delegates to the central resolver so this controller cannot diverge from
+     * the disk used for uploads and from the one used to serve files back.
      */
     private function evidenceDisk(): \Illuminate\Filesystem\FilesystemAdapter
     {
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = Storage::disk((string) config('filesystems.evidence_disk', 'local'));
+        $disk = \App\Support\Storage\EvidenceDisk::disk();
 
         return $disk;
     }
@@ -570,6 +573,12 @@ class StudentViolationController extends Controller
         $capturedAts = (array) $request->input('captured_ats', []);
         $evidenceService = app(EvidenceSecurityService::class);
 
+        if ($evidenceFiles !== []) {
+            // Production guard: refuse to write confidential evidence to an
+            // ephemeral filesystem when object storage is misconfigured.
+            \App\Support\Storage\EvidenceDisk::assertWritable();
+        }
+
         foreach ($evidenceFiles as $index => $evidenceFile) {
             $evidenceCode = $evidenceService->nextEvidenceCode();
             $directory = 'violation-evidence/' . $violation->violation_id;
@@ -620,12 +629,23 @@ class StudentViolationController extends Controller
 
             $storedPath = $store['path'];
             if ($storedPath === '' || ! $disk->exists($storedPath)) {
+                // The row was created moments ago inside the caller's
+                // transaction, so re-throwing rolls it back. Remove any object
+                // that did land so no unreferenced confidential file survives.
+                try {
+                    $disk->delete($storedPath);
+                } catch (\Throwable $ignored) {
+                    // Best-effort cleanup only.
+                }
+
                 throw new \RuntimeException('Unable to store evidence file.');
             }
 
+            $storedSize = \App\Support\Storage\EvidenceDisk::size($storedPath);
+
             $evidence->update([
                 'disk_path' => $storedPath,
-                'file_size' => $disk->size($storedPath),
+                'file_size' => $storedSize ?? $evidenceFile->getSize(),
                 'server_watermarked' => $store['server_watermarked'],
                 'watermarked' => $store['server_watermarked'] || $isCamera,
                 'sha256_hash' => $store['sha256'],

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ViolationEvidence;
+use App\Support\Storage\EvidenceDisk;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -137,7 +138,11 @@ class EvidenceWatermarkService
             'created_at' => now()->toIso8601String(),
         ], JSON_UNESCAPED_SLASHES);
 
-        $disk = Storage::disk((string) config('filesystems.evidence_disk', 'local'));
+        // Marker goes to the SAME disk as the image. Resolving it independently
+        // is what previously allowed the image to be written to R2 while the
+        // marker landed on the local disk (or vice versa), so a marker could
+        // exist for an image that was never stored.
+        $disk = EvidenceDisk::disk();
         $markerPath = $diskPath . '.marker.json';
         $disk->put($markerPath, $marker);
 
@@ -198,7 +203,12 @@ class EvidenceWatermarkService
         string $studentNumber,
         ?string $capturedAt = null,
     ): array {
-        $disk = Storage::disk((string) config('filesystems.evidence_disk', 'local'));
+        // Centralised disk resolution + production guard: a misconfigured
+        // deployment must fail loudly here rather than quietly writing
+        // confidential evidence to an ephemeral filesystem.
+        EvidenceDisk::assertWritable();
+
+        $disk = EvidenceDisk::disk();
 
         $originalBytes = method_exists($file, 'getContent')
             ? (string) $file->getContent()

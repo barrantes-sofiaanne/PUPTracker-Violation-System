@@ -998,6 +998,12 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
         $capturedAts = (array) $request->input('captured_ats', []);
         $evidenceService = app(EvidenceSecurityService::class);
 
+        if ($evidenceFiles !== []) {
+            // Production guard: refuse to write confidential evidence to an
+            // ephemeral filesystem when object storage is misconfigured.
+            \App\Support\Storage\EvidenceDisk::assertWritable();
+        }
+
         foreach ($evidenceFiles as $index => $evidenceFile) {
             $evidenceCode = $evidenceService->nextEvidenceCode();
             $directory = 'violation-evidence/' . $violation->violation_id;
@@ -1047,12 +1053,23 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
 
             $storedPath = $store['path'];
             if ($storedPath === '' || ! $disk->exists($storedPath)) {
+                // The row was created moments ago inside the caller's
+                // transaction, so re-throwing rolls it back. Remove any object
+                // that did land so no unreferenced confidential file survives.
+                try {
+                    $disk->delete($storedPath);
+                } catch (\Throwable $ignored) {
+                    // Best-effort cleanup only.
+                }
+
                 throw new \RuntimeException('Unable to store evidence file.');
             }
 
+            $storedSize = \App\Support\Storage\EvidenceDisk::size($storedPath);
+
             $evidence->update([
                 'disk_path' => $storedPath,
-                'file_size' => $disk->size($storedPath),
+                'file_size' => $storedSize ?? $evidenceFile->getSize(),
                 'server_watermarked' => $store['server_watermarked'],
                 'watermarked' => $store['server_watermarked'] || $isCamera,
                 'sha256_hash' => $store['sha256'],

@@ -24,12 +24,18 @@
                 </div>
             @endif
 
-            {{-- PART 5 — inactivity expiry notice. Carried on the fresh session
-                 by EnforceInactivityTimeout; contains no session details. --}}
-            @if(session('auth.expired_reason'))
+            {{-- Inactivity expiry notice.
+                 PULLED rather than read: pulling consumes the value, so the
+                 message can be displayed at most once and can never reappear on
+                 a later visit to this page. It is only ever recorded by the
+                 inactivity middleware, after a genuinely AUTHENTICATED session
+                 expired — so a first-time unauthenticated visitor, or someone
+                 who simply opened the login page, sees nothing here. --}}
+            @php($expiredReason = \App\Support\Auth\SessionExpiryNotice::pullFromCurrentRequest())
+            @if($expiredReason)
                 <div class="login-error" role="alert">
                     <i class="bi bi-clock-history" aria-hidden="true"></i>
-                    <span>{{ session('auth.expired_reason') }}</span>
+                    <span>{{ $expiredReason }}</span>
                 </div>
             @endif
 
