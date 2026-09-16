@@ -74,7 +74,7 @@ class AnnouncementController extends Controller
         $admin = Auth::guard('admin')->user();
         /** @var Admin|null $admin */
         $admin = $admin instanceof Admin ? $admin : null;
-        $canPublishLoginModal = $admin?->isItAdministrator() ?? false;
+       $canPublishLoginModal = $admin instanceof Admin;
 
         $showOnLogin = $canPublishLoginModal && $request->boolean('show_on_login');
 
@@ -165,7 +165,7 @@ class AnnouncementController extends Controller
         $admin = Auth::guard('admin')->user();
         /** @var Admin|null $admin */
         $admin = $admin instanceof Admin ? $admin : null;
-        $canPublishLoginModal = $admin?->isItAdministrator() ?? false;
+       $canPublishLoginModal = $admin instanceof Admin;
 
         $showOnLogin = $canPublishLoginModal && $request->boolean('show_on_login');
 

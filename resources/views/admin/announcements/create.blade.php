@@ -45,7 +45,7 @@
                 </div>
             </div>
 
-            @if(Auth::guard('admin')->user()?->isItAdministrator())
+            @if(Auth::guard('admin')->check())
                 <div class="mb-4 form-check">
                     <input
                         class="form-check-input"

@@ -11,6 +11,7 @@
 
 let monthlyChart;
 let categoryChart;
+let programChart;
 let topViolationChart;
 const filterForm = document.getElementById("reportFilterForm");
 const reportTable = document.getElementById("reportTable");
@@ -94,9 +95,16 @@ function updateTable(html) {
 function initializeCharts() {
     const monthlyCanvas = document.getElementById("monthlyTrendChart");
     const categoryCanvas = document.getElementById("categoryChart");
+    const programCanvas = document.getElementById("programChart");
     const topViolationCanvas = document.getElementById("topViolationChart");
+    x;
 
-    if (!monthlyCanvas || !categoryCanvas || !topViolationCanvas) {
+    if (
+        !monthlyCanvas ||
+        !categoryCanvas ||
+        !programCanvas ||
+        !topViolationCanvas
+    ) {
         return;
     }
 
@@ -160,10 +168,39 @@ function initializeCharts() {
         },
         options: { responsive: true, indexAxis: "y" },
     });
+    programChart = new Chart(programCanvas, {
+        type: "doughnut",
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    data: [],
+                    backgroundColor: [
+                        "#800000",
+                        "#a31515",
+                        "#daa520",
+                        "#f0c447",
+                        "#5f0000",
+                        "#c9981f",
+                        "#7a0f1e",
+                        "#e6c36a",
+                    ],
+                    borderColor: "#ffffff",
+                    borderWidth: 2,
+                },
+            ],
+        },
+        options: { responsive: true },
+    });
 }
 
 function updateCharts(charts) {
-    if (!monthlyChart || !categoryChart || !topViolationChart) {
+    if (
+        !monthlyChart ||
+        !categoryChart ||
+        !programChart ||
+        !topViolationChart
+    ) {
         return;
     }
 
@@ -174,6 +211,10 @@ function updateCharts(charts) {
     categoryChart.data.labels = charts.categories.labels;
     categoryChart.data.datasets[0].data = charts.categories.data;
     categoryChart.update();
+
+    programChart.data.labels = charts.programs.labels;
+    programChart.data.datasets[0].data = charts.programs.data;
+    programChart.update();
 
     topViolationChart.data.labels = charts.topViolations.labels;
     topViolationChart.data.datasets[0].data = charts.topViolations.data;

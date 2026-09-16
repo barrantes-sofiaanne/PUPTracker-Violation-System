@@ -360,6 +360,31 @@
         </div>
 
     </div>
+        {{-- Violations by Program --}}
+    <div class="col-lg-4 mb-4">
+
+        <div class="card border-0 shadow-sm h-100">
+
+            <div class="card-header bg-white">
+
+                <h5 class="fw-bold mb-0">
+                    Violations by Program
+                </h5>
+
+            </div>
+
+            <div class="card-body">
+
+                <canvas
+                    id="programChart"
+                    height="240">
+                </canvas>
+
+            </div>
+
+        </div>
+
+    </div>
 
 </div>
 <div class="card border-0 shadow-sm mb-4">
