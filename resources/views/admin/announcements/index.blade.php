@@ -211,8 +211,8 @@
                                             @endif
                                             data-show-on-login="{{ $announcement->show_on_login ? '1' : '0' }}"
 data-login-duration="{{ $announcement->login_modal_expires_at ? 'custom' : '1_week' }}"
-data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateString() }}"
-                                            <i class="bi bi-pencil me-1"></i>Edit
+data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateString() }}">
+    <i class="bi bi-pencil me-1"></i>Edit
                                         </button>
                                         <form action="{{ route('admin.announcements.destroy', $announcement) }}" method="POST" class="d-inline-block" data-confirm="This will permanently delete the announcement. This action cannot be undone."
                                               data-confirm-title="Delete Announcement?" data-confirm-confirm-label="Delete">
@@ -263,6 +263,12 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
                     <div class="mb-3">
                         <label for="announcementEditTitle" class="form-label fw-semibold">Title</label>
                         <input type="text" class="form-control" id="announcementEditTitle" name="title" required maxlength="255">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Content</label>
+                        <input type="hidden" id="announcementEditContent" name="content">
+                        <div id="announcementQuillEditor" class="announcement-quill-editor"></div>
                     </div>
                     @if($isItAdmin)
     <div class="mb-4">
@@ -324,12 +330,6 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
         </div>
     </div>
 @endif
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Content</label>
-                        <input type="hidden" id="announcementEditContent" name="content">
-                        <div id="announcementQuillEditor" class="announcement-quill-editor"></div>
-                    </div>
-
                     <div class="mb-3">
                         <label for="announcementEditFile" class="form-label fw-semibold">Attach File (Image or PDF, max 5MB)</label>
                         <input type="file" class="form-control" id="announcementEditFile" name="attachment" accept=".jpg,.jpeg,.png,.gif,.pdf">
@@ -419,347 +419,188 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
         line-height: 1.6;
     }
 
-@media (max-width: 767.98px) {
+    /* =========================================================
+       Announcement Edit Modal
+       ========================================================= */
+
     .admin-announcement-edit-modal .modal-dialog {
-        width: auto;
-        max-width: none;
-        margin: 0.5rem;
+        width: calc(100% - 2rem);
+        max-width: 960px;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     .admin-announcement-edit-modal .modal-content {
+        width: 100%;
+        max-width: 100%;
         border-radius: 0.85rem;
         overflow: hidden;
     }
 
-    .admin-announcement-edit-modal .modal-header {
-        padding: 0.9rem 1rem;
-    }
-
-    .admin-announcement-edit-modal .modal-title {
-        font-size: 1.15rem;
-        line-height: 1.3;
-        padding-right: 2.5rem;
-    }
-
     .admin-announcement-edit-modal .modal-body {
-        padding: 1rem;
-        overflow-x: hidden;
-    }
-
-    .admin-announcement-edit-modal .modal-footer {
-        padding: 0.85rem 1rem;
-        flex-wrap: wrap;
-    }
-
-    .admin-announcement-edit-modal .form-control,
-    .admin-announcement-edit-modal .form-select {
-        width: 100%;
-        max-width: 100%;
-    }
-
-    .admin-announcement-edit-modal input[type="file"] {
-        max-width: 100%;
-        font-size: 0.9rem;
-    }
-
-    .admin-announcement-edit-modal .announcement-quill-editor {
-        width: 100%;
-        max-width: 100%;
-        overflow: hidden;
-    }
-
-    .admin-announcement-edit-modal .announcement-quill-editor .ql-toolbar {
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-
-    .admin-announcement-edit-modal .announcement-quill-editor .ql-container {
-        max-width: 100%;
-    }
-
-    .admin-announcement-edit-modal .announcement-quill-editor .ql-editor {
-        min-height: 160px;
-        overflow-wrap: anywhere;
-    }
-
-    .admin-announcement-edit-modal .admin-modal-footer {
-        gap: 0.5rem !important;
-    }
-}
-
-@media (max-width: 767.98px) {
-    .admin-announcement-edit-modal .modal-dialog {
-        width: auto;
-        max-width: none;
-        margin: 0.5rem;
-    }
-
-    .admin-announcement-edit-modal .modal-content {
-        border-radius: 0.85rem;
-        overflow: hidden;
-    }
-
-    .admin-announcement-edit-modal .modal-header {
-        padding: 0.9rem 1rem;
-    }
-
-    .admin-announcement-edit-modal .modal-title {
-        font-size: 1.15rem;
-        line-height: 1.3;
-        padding-right: 2.5rem;
-    }
-
-    .admin-announcement-edit-modal .modal-body {
-        padding: 1rem;
-        overflow-x: hidden;
-    }
-
-    .admin-announcement-edit-modal .modal-footer {
-        padding: 0.85rem 1rem;
-        flex-wrap: wrap;
-    }
-
-    .admin-announcement-edit-modal .form-control,
-    .admin-announcement-edit-modal .form-select {
-        width: 100%;
-        max-width: 100%;
-    }
-
-    .admin-announcement-edit-modal input[type="file"] {
-        max-width: 100%;
-        font-size: 0.9rem;
-    }
-
-    .admin-announcement-edit-modal .announcement-quill-editor {
-        width: 100%;
-        max-width: 100%;
-        overflow: hidden;
-    }
-
-    .admin-announcement-edit-modal .announcement-quill-editor .ql-toolbar {
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-
-    .admin-announcement-edit-modal .announcement-quill-editor .ql-container {
-        max-width: 100%;
-    }
-
-    .admin-announcement-edit-modal .announcement-quill-editor .ql-editor {
-        min-height: 160px;
-        overflow-wrap: anywhere;
-    }
-}
-
-@media (max-width: 575.98px) {
-    .admin-announcement-view-title {
-        font-size: 1.25rem;
-    }
-
-    .admin-announcement-view-modal .modal-dialog {
-        margin: 0.25rem;
-    }
-
-    .admin-announcement-edit-modal .modal-dialog {
-        margin: 0.25rem;
-    }
-
-    .admin-announcement-edit-modal .modal-header {
-        padding: 0.8rem 0.9rem;
-    }
-
-    .admin-announcement-edit-modal .modal-title {
-        font-size: 1rem;
-    }
-
-    .admin-announcement-edit-modal .modal-body {
-        padding: 0.85rem;
-    }
-
-    .admin-announcement-edit-modal .modal-footer {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .admin-announcement-edit-modal .modal-footer .admin-btn {
-        width: 100%;
-    }
-
-    .admin-announcement-edit-modal .announcement-quill-editor .ql-editor {
-        min-height: 150px;
-    }
-}
-
-/* =========================================================
-   Announcement Edit Modal - Mobile Override
-   ========================================================= */
-
-@media (max-width: 767.98px) {
-
-    /* Force the announcement modal to use the available viewport */
-    .main-content .admin-announcement-edit-modal .modal-dialog {
-        width: calc(100vw - 1rem) !important;
-        max-width: none !important;
-        margin: 0.5rem auto !important;
-        height: calc(100vh - 1rem);
-    }
-
-    .main-content .admin-announcement-edit-modal .modal-content {
-        width: 100% !important;
-        max-width: 100% !important;
-        height: 100%;
-        max-height: calc(100vh - 1rem);
-        border-radius: 0.85rem;
-        overflow: hidden;
-    }
-
-    /* Header */
-    .main-content .admin-announcement-edit-modal .modal-header {
-        flex: 0 0 auto;
-        padding: 0.85rem 1rem;
-        gap: 0.5rem;
-    }
-
-    .main-content .admin-announcement-edit-modal .modal-title {
         min-width: 0;
-        max-width: calc(100% - 50px);
-        font-size: 1.1rem;
-        line-height: 1.25;
-        white-space: normal;
-        overflow-wrap: anywhere;
-    }
-
-    .main-content .admin-announcement-edit-modal .admin-modal-close {
-        flex: 0 0 44px;
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-        min-height: 44px;
-        margin-left: auto !important;
-    }
-
-    /* Body becomes the scrollable area */
-    .main-content .admin-announcement-edit-modal .modal-body {
-        flex: 1 1 auto;
-        min-height: 0;
-        padding: 1rem;
         overflow-x: hidden;
-        overflow-y: auto;
     }
 
-    /* Prevent every form element from overflowing */
-    .main-content .admin-announcement-edit-modal .form-control,
-    .main-content .admin-announcement-edit-modal .form-select {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
+    .admin-announcement-edit-modal .form-control,
+    .admin-announcement-edit-modal .form-select {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
     }
 
-    /* File input */
-    .main-content .admin-announcement-edit-modal input[type="file"] {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        font-size: 0.85rem;
-    }
-
-    /* Quill */
-    .main-content .admin-announcement-edit-modal .announcement-quill-editor {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
+    .admin-announcement-edit-modal .announcement-quill-editor {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
         overflow: hidden;
     }
 
-    .main-content .admin-announcement-edit-modal .ql-toolbar {
-        width: 100%;
+    .admin-announcement-edit-modal .announcement-quill-editor .ql-toolbar {
         max-width: 100%;
         overflow-x: auto;
         overflow-y: hidden;
         white-space: nowrap;
     }
 
-    .main-content .admin-announcement-edit-modal .ql-container {
+    .admin-announcement-edit-modal .announcement-quill-editor .ql-container {
         width: 100%;
         max-width: 100%;
         min-width: 0;
     }
 
-    .main-content .admin-announcement-edit-modal .ql-editor {
-        min-height: 150px;
+    .admin-announcement-edit-modal .announcement-quill-editor .ql-editor {
         max-width: 100%;
         overflow-x: hidden;
         overflow-wrap: anywhere;
     }
 
-    /* Current attachment */
-    .main-content .admin-announcement-edit-modal
+    .admin-announcement-edit-modal
     #announcementEditCurrentAttachmentWrap {
-        width: 100%;
         max-width: 100%;
         overflow: hidden;
     }
 
-    .main-content .admin-announcement-edit-modal
+    .admin-announcement-edit-modal
     #announcementEditCurrentAttachmentName {
-        max-width: calc(100% - 80px) !important;
+        max-width: 100% !important;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
-    /* Footer */
-    .main-content .admin-announcement-edit-modal .modal-footer {
-        flex: 0 0 auto;
-        padding: 0.75rem 1rem;
-        gap: 0.5rem !important;
-    }
-}
+    /* =========================================================
+       Tablet
+       ========================================================= */
 
-@media (max-width: 575.98px) {
-
-    .main-content .admin-announcement-edit-modal .modal-dialog {
-        width: calc(100vw - 0.5rem) !important;
-        height: calc(100vh - 0.5rem);
-        margin: 0.25rem auto !important;
+    @media (max-width: 991.98px) {
+        .admin-announcement-edit-modal .modal-dialog {
+            width: calc(100% - 1rem);
+            max-width: none;
+            margin: 0.5rem auto;
+        }
     }
 
-    .main-content .admin-announcement-edit-modal .modal-content {
-        max-height: calc(100vh - 0.5rem);
-        border-radius: 0.75rem;
-    }
+    /* =========================================================
+       Mobile
+       ========================================================= */
 
-    .main-content .admin-announcement-edit-modal .modal-header {
-        padding: 0.7rem 0.85rem;
-    }
+    @media (max-width: 767.98px) {
 
-    .main-content .admin-announcement-edit-modal .modal-title {
-        font-size: 1rem;
-    }
+        .admin-announcement-edit-modal .modal-dialog {
+            width: calc(100% - 0.5rem) !important;
+            max-width: none !important;
+            margin: 0.25rem auto !important;
+        }
 
-    .main-content .admin-announcement-edit-modal .modal-body {
-        padding: 0.85rem;
-    }
+        .admin-announcement-edit-modal .modal-content {
+            width: 100% !important;
+            max-width: 100% !important;
+            border-radius: 0.75rem;
+        }
 
-    .main-content .admin-announcement-edit-modal .modal-footer {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 0.7rem 0.85rem;
-    }
+        .admin-announcement-edit-modal .modal-header {
+            padding: 0.8rem 0.9rem;
+        }
 
-    .main-content .admin-announcement-edit-modal .modal-footer .admin-btn {
-        width: 100%;
-        min-height: 42px;
-    }
+        .admin-announcement-edit-modal .modal-title {
+            min-width: 0;
+            max-width: calc(100% - 50px);
+            font-size: 1rem;
+            line-height: 1.3;
+            padding-right: 2.5rem;
+            overflow-wrap: anywhere;
+        }
 
-    .main-content .admin-announcement-edit-modal .ql-toolbar {
-        font-size: 0.85rem;
-    }
+        .admin-announcement-edit-modal .admin-modal-close {
+            flex-shrink: 0;
+            width: 44px;
+            height: 44px;
+            margin-left: auto !important;
+        }
 
-    .main-content .admin-announcement-edit-modal .ql-editor {
-        min-height: 140px;
+        .admin-announcement-edit-modal .modal-body {
+            padding: 0.85rem;
+            min-width: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .admin-announcement-edit-modal .modal-footer {
+            padding: 0.7rem 0.85rem;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.5rem !important;
+        }
+
+        .admin-announcement-edit-modal .modal-footer .admin-btn {
+            width: 100%;
+            min-height: 42px;
+        }
+
+        .admin-announcement-edit-modal input[type="file"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            font-size: 0.85rem;
+        }
+
+        .admin-announcement-edit-modal .announcement-quill-editor {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+        }
+
+        .admin-announcement-edit-modal
+        .announcement-quill-editor .ql-toolbar {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            white-space: nowrap;
+        }
+
+        .admin-announcement-edit-modal
+        .announcement-quill-editor .ql-container {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+        }
+
+        .admin-announcement-edit-modal
+        .announcement-quill-editor .ql-editor {
+            min-height: 140px;
+            max-width: 100%;
+            overflow-x: hidden;
+            overflow-wrap: anywhere;
+        }
+
+        .admin-announcement-edit-modal
+        #announcementEditCurrentAttachmentName {
+            max-width: calc(100% - 80px) !important;
+        }
     }
-}
+</style>
 
 </style>
 @endpush
@@ -861,19 +702,21 @@ toggleLoginModalSettings();
         // Switching files replaces the current legacy attachment via the
         // existing server-side single-file handling; leaving the input empty
         // keeps the existing file untouched unless "Remove this file" is ticked.
-        if (editFile) {
-            editFile.addEventListener('change', function () {
-                if (showOnLogin) {
-    showOnLogin.addEventListener('change', toggleLoginModalSettings);
-}
+if (editFile) {
+    editFile.addEventListener('change', function () {
+        if (editFile.files && editFile.files.length) {
+            if (removeCheck) {
+                removeCheck.checked = false;
+            }
+        }
+    });
+} // Show/hide login modal settings based on checkbox and duration selection.
+        if (showOnLogin) {
+            showOnLogin.addEventListener('change', toggleLoginModalSettings);
+        }
 
-if (loginDuration) {
-    loginDuration.addEventListener('change', toggleCustomLoginDate);
-}
-                if (editFile.files && editFile.files.length) {
-                    if (removeCheck) { removeCheck.checked = false; }
-                }
-            });
+        if (loginDuration) {
+            loginDuration.addEventListener('change', toggleCustomLoginDate);
         }
     }
 });
