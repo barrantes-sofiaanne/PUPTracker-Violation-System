@@ -36,6 +36,23 @@ use Symfony\Component\HttpFoundation\Response;
 class EnforceInactivityTimeout
 {
     /**
+     * Is the inactivity timeout switched on?
+     *
+     * The feature is currently DISABLED (see config/auth.php `features`). The
+     * implementation below is kept intact so re-enabling it is a one-flag change
+     * rather than a code restore.
+     *
+     * When disabled the middleware is a pass-through: it writes no activity
+     * stamp, expires nothing, and produces no "session expired" notice. The
+     * ordinary `session.lifetime` still applies, so sessions do not live
+     * forever — only the per-guard 15-minute rule is off.
+     */
+    public static function enabled(): bool
+    {
+        return (bool) config('auth.features.inactivity_timeout', false);
+    }
+
+    /**
      * Guards this rule applies to. Students are included: PART 3 says the
      * timeout applies to all authenticated users unless the architecture
      * excludes a system/service account, and there is no such account here.
@@ -65,6 +82,13 @@ class EnforceInactivityTimeout
 
     public function handle(Request $request, Closure $next): Response
     {
+        // Feature switched off: do nothing at all. Returning before the guard
+        // check also means the recaller-cookie purge below cannot run, so a
+        // remembered session is not rejected either.
+        if (! self::enabled()) {
+            return $next($request);
+        }
+
         [$guard, $user] = $this->activeGuard($request);
 
         // Nobody authenticated on a known guard: nothing to expire here. The

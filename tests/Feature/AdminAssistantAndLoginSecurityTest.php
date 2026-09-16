@@ -208,10 +208,16 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
 
     /**
      * The method-SELECTION stage must not offer the option; the CODE-INPUT stage
-     * must. This is the placement the brief requires.
+     * must. This is the placement the brief requires WHEN the feature is on.
+     *
+     * The feature is disabled by default, so this test opts in explicitly. The
+     * default-off behaviour (no checkbox anywhere, backend refusal) is covered
+     * by RememberDeviceToggleTest.
      */
     public function test_mfa_code_stage_offers_remember_but_selection_does_not(): void
     {
+        config()->set('auth.features.remember_device', true);
+
         $admin = $this->createAdmin('admin@example.com', 'Admin', withMfa: true);
 
         $this->post(route('admin.login.post'), [
@@ -234,6 +240,8 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
 
     public function test_remember_me_label_states_the_12_hour_window(): void
     {
+        config()->set('auth.features.remember_device', true);
+
         $admin = $this->createAdmin('admin@example.com', 'Admin', withMfa: true);
 
         $this->post(route('admin.login.post'), [

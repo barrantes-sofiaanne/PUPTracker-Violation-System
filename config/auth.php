@@ -19,6 +19,40 @@ return [
     'guard' => 'student',
     'passwords' => 'students',
 ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Feature switches — auth/security controls
+    |--------------------------------------------------------------------------
+    |
+    | These two controls are DISABLED for now.
+    |
+    | The implementation is left fully intact underneath so the features can be
+    | re-enabled by flipping a single flag — no code has to be restored. Both
+    | default to false, and the env variables let a deployment turn them back
+    | on without a code change.
+    |
+    |  remember_device
+    |      The "Remember this device for 12 hours" checkbox on the MFA screen.
+    |      While disabled the checkbox is not rendered AND the backend refuses to
+    |      honour a remember request, so a crafted POST cannot create a
+    |      persistent credential. The recaller cookie lifetime
+    |      (auth.guards.*.remember) is left configured for when it is re-enabled.
+    |
+    |  inactivity_timeout
+    |      The 15-minute inactivity expiry (EnforceInactivityTimeout). While
+    |      disabled the middleware passes every request straight through: no
+    |      activity stamp is written, no session is invalidated for idleness, and
+    |      no "session expired" notice is produced. Ordinary session.lifetime
+    |      still applies, so sessions do not live forever.
+    |
+    */
+
+    'features' => [
+        'remember_device' => (bool) env('AUTH_REMEMBER_DEVICE_ENABLED', false),
+        'inactivity_timeout' => (bool) env('AUTH_INACTIVITY_TIMEOUT_ENABLED', false),
+    ],
+
 'guards' => [
 
     'student' => [

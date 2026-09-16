@@ -158,9 +158,18 @@ class MfaController extends Controller
      * Only the privileged admin/security challenges may ever remember. The
      * allow-list mirrors the normalization in MfaService::beginChallenge(), so a
      * crafted request cannot enable remembering on a non-privileged guard.
+     *
+     * The feature is currently DISABLED: this returns false unconditionally, so
+     * a hand-crafted POST carrying `remember=1` cannot create a persistent
+     * credential even though the checkbox is not rendered. Hiding the input in
+     * the view is therefore not the only control.
      */
     private function resolveRememberSelection(Request $request, array $pending): bool
     {
+        if (! (bool) config('auth.features.remember_device', false)) {
+            return false;
+        }
+
         if (!in_array((string) ($pending['guard'] ?? ''), ['admin', 'security'], true)) {
             return false;
         }

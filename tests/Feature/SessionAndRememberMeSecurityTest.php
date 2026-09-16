@@ -32,6 +32,13 @@ class SessionAndRememberMeSecurityTest extends TestCase
     {
         parent::setUp();
 
+        // Both controls are DISABLED by default (config/auth.php `features`).
+        // This suite covers their implementation, so it opts in explicitly;
+        // the default-off behaviour is asserted by RememberDeviceToggleTest
+        // and the dedicated inactivity tests.
+        config()->set('auth.features.remember_device', true);
+        config()->set('auth.features.inactivity_timeout', true);
+
         $this->createTables();
     }
 

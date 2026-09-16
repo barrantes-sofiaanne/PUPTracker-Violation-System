@@ -22,13 +22,19 @@
     $rememberChecked = $canRemember
         && (bool) old('remember', $pending['remember'] ?? false);
 
+    // The whole feature is DISABLED (config/auth.php `features`). The markup
+    // below is kept so re-enabling it is a one-flag change; gating it here means
+    // the checkbox simply does not render. The BACKEND refuses it independently
+    // (MfaController + MfaService), so a crafted POST cannot re-enable it.
+    $rememberFeatureEnabled = (bool) config('auth.features.remember_device', false);
+
     // The option belongs ONLY on the code-input stage. It is deliberately absent
     // from the credential login page (a persistent credential must never be
     // requested before MFA) and from the method-selection stage (nothing has
     // been verified yet — the user has only chosen HOW they intend to verify).
     // It appears once a code is being entered, and the server enforces that the
     // value is only ever honoured from that step, after verification succeeds.
-    $showRememberOption = $canRemember && $stage !== 'select';
+    $showRememberOption = $rememberFeatureEnabled && $canRemember && $stage !== 'select';
 @endphp
 
     @if($stage === 'select')

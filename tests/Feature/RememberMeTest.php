@@ -34,6 +34,13 @@ class RememberMeTest extends TestCase
     {
         parent::setUp();
 
+        // The Remember-Me feature is DISABLED by default (config/auth.php
+        // `features`). This suite tests the implementation itself, so it opts
+        // in explicitly — that way the control stays fully covered and the
+        // default-off behaviour is asserted separately by
+        // RememberDeviceToggleTest.
+        config()->set('auth.features.remember_device', true);
+
         $this->ensureAuthTablesForTests();
     }
 
