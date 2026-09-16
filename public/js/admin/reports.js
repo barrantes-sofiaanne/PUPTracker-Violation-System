@@ -97,7 +97,6 @@ function initializeCharts() {
     const categoryCanvas = document.getElementById("categoryChart");
     const programCanvas = document.getElementById("programChart");
     const topViolationCanvas = document.getElementById("topViolationChart");
-    x;
 
     if (
         !monthlyCanvas ||
