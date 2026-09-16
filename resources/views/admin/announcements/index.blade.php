@@ -209,11 +209,9 @@
                                             data-current-name="{{ $announcement->attachments->first()->original_filename }}"
                                             data-current-view="{{ route('announcements.attachments.show', $announcement->attachments->first()) }}"
                                             @endif
-                                            @if($announcement->show_on_login)
-                                            data-show-on-login="1"
-                                            data-login-duration="{{ $announcement->login_modal_expires_at ? 'custom' : '1_week' }}"
-                                            data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateString() }}"
-                                            @endif>
+                                            data-show-on-login="{{ $announcement->show_on_login ? '1' : '0' }}"
+data-login-duration="{{ $announcement->login_modal_expires_at ? 'custom' : '1_week' }}"
+data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateString() }}"
                                             <i class="bi bi-pencil me-1"></i>Edit
                                         </button>
                                         <form action="{{ route('admin.announcements.destroy', $announcement) }}" method="POST" class="d-inline-block" data-confirm="This will permanently delete the announcement. This action cannot be undone."
@@ -266,6 +264,66 @@
                         <label for="announcementEditTitle" class="form-label fw-semibold">Title</label>
                         <input type="text" class="form-control" id="announcementEditTitle" name="title" required maxlength="255">
                     </div>
+                    @if($isItAdmin)
+    <div class="mb-4">
+        <div class="form-check">
+            <input
+                class="form-check-input"
+                type="checkbox"
+                value="1"
+                id="announcementEditShowOnLogin"
+                name="show_on_login">
+
+            <label
+                class="form-check-label fw-semibold"
+                for="announcementEditShowOnLogin">
+                Show this announcement as a login modal across modules
+            </label>
+        </div>
+
+        <div class="form-text">
+            When enabled, this announcement will appear on the login page until the selected expiry date.
+        </div>
+    </div>
+
+    <div class="mb-4 d-none" id="announcementEditLoginModalDurationWrap">
+        <label
+            for="announcementEditLoginModalDuration"
+            class="form-label fw-semibold">
+            Duration shown as login modal
+        </label>
+
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <select
+                    class="form-select"
+                    id="announcementEditLoginModalDuration"
+                    name="login_modal_duration">
+
+                    <option value="1_week">1 Week</option>
+                    <option value="1_month">1 Month</option>
+                    <option value="custom">Custom Date</option>
+                </select>
+            </div>
+
+            <div
+                class="col-12 col-md-4 d-none"
+                id="announcementEditLoginModalCustomDateWrap">
+
+                <input
+                    type="date"
+                    class="form-control"
+                    id="announcementEditLoginModalExpiresAt"
+                    name="login_modal_expires_at"
+                    min="{{ now()->toDateString() }}">
+
+                <div class="form-text">
+                    Select the date until this login modal is shown.
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Content</label>
                         <input type="hidden" id="announcementEditContent" name="content">
@@ -361,16 +419,177 @@
         line-height: 1.6;
     }
 
-    @media (max-width: 575.98px) {
-        .admin-announcement-view-title {
-            font-size: 1.25rem;
-        }
-
-        .admin-announcement-view-modal .modal-dialog,
-        .admin-announcement-edit-modal .modal-dialog {
-            margin: 0.25rem;
-        }
+@media (max-width: 767.98px) {
+    .admin-announcement-edit-modal .modal-dialog {
+        width: auto;
+        max-width: none;
+        margin: 0.5rem;
     }
+
+    .admin-announcement-edit-modal .modal-content {
+        border-radius: 0.85rem;
+        overflow: hidden;
+    }
+
+    .admin-announcement-edit-modal .modal-header {
+        padding: 0.9rem 1rem;
+    }
+
+    .admin-announcement-edit-modal .modal-title {
+        font-size: 1.15rem;
+        line-height: 1.3;
+        padding-right: 2.5rem;
+    }
+
+    .admin-announcement-edit-modal .modal-body {
+        padding: 1rem;
+        overflow-x: hidden;
+    }
+
+    .admin-announcement-edit-modal .modal-footer {
+        padding: 0.85rem 1rem;
+        flex-wrap: wrap;
+    }
+
+    .admin-announcement-edit-modal .form-control,
+    .admin-announcement-edit-modal .form-select {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .admin-announcement-edit-modal input[type="file"] {
+        max-width: 100%;
+        font-size: 0.9rem;
+    }
+
+    .admin-announcement-edit-modal .announcement-quill-editor {
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .admin-announcement-edit-modal .announcement-quill-editor .ql-toolbar {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .admin-announcement-edit-modal .announcement-quill-editor .ql-container {
+        max-width: 100%;
+    }
+
+    .admin-announcement-edit-modal .announcement-quill-editor .ql-editor {
+        min-height: 160px;
+        overflow-wrap: anywhere;
+    }
+
+    .admin-announcement-edit-modal .admin-modal-footer {
+        gap: 0.5rem !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .admin-announcement-edit-modal .modal-dialog {
+        width: auto;
+        max-width: none;
+        margin: 0.5rem;
+    }
+
+    .admin-announcement-edit-modal .modal-content {
+        border-radius: 0.85rem;
+        overflow: hidden;
+    }
+
+    .admin-announcement-edit-modal .modal-header {
+        padding: 0.9rem 1rem;
+    }
+
+    .admin-announcement-edit-modal .modal-title {
+        font-size: 1.15rem;
+        line-height: 1.3;
+        padding-right: 2.5rem;
+    }
+
+    .admin-announcement-edit-modal .modal-body {
+        padding: 1rem;
+        overflow-x: hidden;
+    }
+
+    .admin-announcement-edit-modal .modal-footer {
+        padding: 0.85rem 1rem;
+        flex-wrap: wrap;
+    }
+
+    .admin-announcement-edit-modal .form-control,
+    .admin-announcement-edit-modal .form-select {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .admin-announcement-edit-modal input[type="file"] {
+        max-width: 100%;
+        font-size: 0.9rem;
+    }
+
+    .admin-announcement-edit-modal .announcement-quill-editor {
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .admin-announcement-edit-modal .announcement-quill-editor .ql-toolbar {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .admin-announcement-edit-modal .announcement-quill-editor .ql-container {
+        max-width: 100%;
+    }
+
+    .admin-announcement-edit-modal .announcement-quill-editor .ql-editor {
+        min-height: 160px;
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .admin-announcement-view-title {
+        font-size: 1.25rem;
+    }
+
+    .admin-announcement-view-modal .modal-dialog {
+        margin: 0.25rem;
+    }
+
+    .admin-announcement-edit-modal .modal-dialog {
+        margin: 0.25rem;
+    }
+
+    .admin-announcement-edit-modal .modal-header {
+        padding: 0.8rem 0.9rem;
+    }
+
+    .admin-announcement-edit-modal .modal-title {
+        font-size: 1rem;
+    }
+
+    .admin-announcement-edit-modal .modal-body {
+        padding: 0.85rem;
+    }
+
+    .admin-announcement-edit-modal .modal-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-announcement-edit-modal .modal-footer .admin-btn {
+        width: 100%;
+    }
+
+    .admin-announcement-edit-modal .announcement-quill-editor .ql-editor {
+        min-height: 150px;
+    }
+}
+
 </style>
 @endpush
 
@@ -393,13 +612,52 @@ document.addEventListener('DOMContentLoaded', function () {
         const currentName = document.getElementById('announcementEditCurrentAttachmentName');
         const currentLink = document.getElementById('announcementEditCurrentAttachmentLink');
         const removeCheck = document.getElementById('announcementEditRemoveAttachment');
+        const showOnLogin = document.getElementById('announcementEditShowOnLogin');
+const loginDurationWrap = document.getElementById('announcementEditLoginModalDurationWrap');
+const loginDuration = document.getElementById('announcementEditLoginModalDuration');
+const loginCustomDateWrap = document.getElementById('announcementEditLoginModalCustomDateWrap');
+const loginExpiry = document.getElementById('announcementEditLoginModalExpiresAt');
 
         let activeQuill = null;
+
+        function toggleLoginModalSettings() {
+    if (!showOnLogin || !loginDurationWrap) {
+        return;
+    }
+
+    loginDurationWrap.classList.toggle('d-none', !showOnLogin.checked);
+    toggleCustomLoginDate();
+}
+
+function toggleCustomLoginDate() {
+    if (!loginCustomDateWrap || !loginDuration) {
+        return;
+    }
+
+    loginCustomDateWrap.classList.toggle(
+        'd-none',
+        loginDuration.value !== 'custom'
+    );
+}
 
         document.querySelectorAll('.admin-announcement-edit-trigger').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 editForm.action = btn.dataset.action || '';
                 editTitle.value = btn.dataset.title || '';
+                // Load login modal settings.
+if (showOnLogin) {
+    showOnLogin.checked = btn.dataset.showOnLogin === '1';
+}
+
+if (loginDuration) {
+    loginDuration.value = btn.dataset.loginDuration || '1_week';
+}
+
+if (loginExpiry) {
+    loginExpiry.value = btn.dataset.loginExpiry || '';
+}
+
+toggleLoginModalSettings();
 
                 // Load existing content into Quill (sanitized HTML or text).
                 const rawContent = btn.dataset.content || '';
@@ -434,6 +692,13 @@ document.addEventListener('DOMContentLoaded', function () {
         // keeps the existing file untouched unless "Remove this file" is ticked.
         if (editFile) {
             editFile.addEventListener('change', function () {
+                if (showOnLogin) {
+    showOnLogin.addEventListener('change', toggleLoginModalSettings);
+}
+
+if (loginDuration) {
+    loginDuration.addEventListener('change', toggleCustomLoginDate);
+}
                 if (editFile.files && editFile.files.length) {
                     if (removeCheck) { removeCheck.checked = false; }
                 }

@@ -392,28 +392,6 @@
 
 </div>
 
-<div class="card border-0 shadow-sm mb-4">
-
-    <div class="card-header bg-white">
-
-        <h5 class="fw-bold mb-0">
-
-            Top 10 Most Common Violations
-
-        </h5>
-
-    </div>
-
-    <div class="card-body">
-
-        <canvas
-            id="topViolationChart"
-            height="100">
-        </canvas>
-
-    </div>
-
-</div>
 <div class="card border-0 shadow-sm">
 
     <div class="card-header bg-white">
