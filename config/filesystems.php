@@ -60,13 +60,18 @@ return [
             'report' => false,
         ],
 
-        'evidence' => [
-            'driver' => 'local',
-            'root' => storage_path('app/private'),
-            'serve' => true,
-            'throw' => false,
-            'report' => false,
-        ],
+'evidence' => [
+    'driver' => 's3',
+    'key' => env('EVIDENCE_AWS_ACCESS_KEY_ID'),
+    'secret' => env('EVIDENCE_AWS_SECRET_ACCESS_KEY'),
+    'region' => env('EVIDENCE_AWS_DEFAULT_REGION', 'auto'),
+    'bucket' => env('EVIDENCE_AWS_BUCKET'),
+    'url' => env('EVIDENCE_AWS_URL'),
+    'endpoint' => env('EVIDENCE_AWS_ENDPOINT'),
+    'use_path_style_endpoint' => env('EVIDENCE_AWS_USE_PATH_STYLE_ENDPOINT', false),
+    'throw' => false,
+    'report' => false,
+],
 
         'announcements' => [
             'driver' => 'local',
