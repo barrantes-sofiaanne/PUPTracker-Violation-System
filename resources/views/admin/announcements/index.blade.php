@@ -363,6 +363,7 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
 
 @push('styles')
 <style>
+
     /* =========================================================
        ANNOUNCEMENT QUILL EDITOR
        ========================================================= */
@@ -395,7 +396,7 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
 
 
     /* =========================================================
-       ANNOUNCEMENT VIEW MODAL
+       ANNOUNCEMENT VIEW
        ========================================================= */
 
     .admin-announcement-view-title {
@@ -420,7 +421,7 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
 
 
     /* =========================================================
-       ANNOUNCEMENT EDIT MODAL - BASE
+       EDIT ANNOUNCEMENT - DESKTOP
        ========================================================= */
 
     .admin-announcement-edit-modal textarea,
@@ -466,7 +467,7 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
 
 
     /* =========================================================
-       QUILL - EDIT MODAL
+       QUILL
        ========================================================= */
 
     .admin-announcement-edit-modal .announcement-quill-editor {
@@ -531,26 +532,24 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
 
     /* =========================================================
        MOBILE
+       Follow the layout of the Announcement View modal:
+       - almost full screen
+       - header stays visible
+       - content scrolls
+       - footer stays visible
        ========================================================= */
 
     @media (max-width: 767.98px) {
 
         /* -----------------------------------------------------
-           MODAL WRAPPER
+           MODAL
            ----------------------------------------------------- */
 
         #announcementEditModal {
-            padding-left: 0 !important;
-            padding-right: 0 !important;
+            padding: 0 !important;
         }
 
-
-        /* -----------------------------------------------------
-           MODAL DIALOG
-           ----------------------------------------------------- */
-
-        #announcementEditModal .modal-dialog,
-        #announcementEditModal .modal-dialog.modal-dialog-scrollable {
+        #announcementEditModal .modal-dialog {
             width: calc(100vw - 0.5rem) !important;
             max-width: none !important;
 
@@ -583,14 +582,9 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
 
         /* -----------------------------------------------------
            FORM
-           
-           IMPORTANT:
-           The form is between .modal-content and .modal-body.
-           Therefore the form must also participate in the
-           flex layout.
            ----------------------------------------------------- */
 
-        #announcementEditModal > .modal-dialog > .modal-content > form {
+        #announcementEditModal .modal-content > form {
             display: flex !important;
             flex-direction: column !important;
 
@@ -614,14 +608,15 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
         #announcementEditModal .modal-header {
             flex: 0 0 auto !important;
 
-            padding: 0.8rem 0.9rem !important;
+            padding: 0.85rem 1rem !important;
         }
 
         #announcementEditModal .modal-title {
             min-width: 0 !important;
+
             max-width: calc(100% - 55px) !important;
 
-            font-size: 1rem !important;
+            font-size: 1.05rem !important;
             line-height: 1.3 !important;
 
             overflow-wrap: anywhere !important;
@@ -638,7 +633,7 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
 
 
         /* -----------------------------------------------------
-           SCROLLABLE BODY
+           BODY
            ----------------------------------------------------- */
 
         #announcementEditModal .modal-body {
@@ -654,7 +649,7 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
             height: auto !important;
             max-height: none !important;
 
-            padding: 0.85rem !important;
+            padding: 1rem !important;
 
             overflow-x: hidden !important;
             overflow-y: auto !important;
@@ -675,19 +670,20 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
 
             align-items: stretch !important;
 
-            padding: 0.7rem 0.85rem !important;
+            padding: 0.75rem 1rem !important;
 
             gap: 0.5rem !important;
         }
 
         #announcementEditModal .modal-footer .admin-btn {
             width: 100% !important;
-            min-height: 42px !important;
+
+            min-height: 44px !important;
         }
 
 
         /* -----------------------------------------------------
-           FORM CONTROLS
+           INPUTS
            ----------------------------------------------------- */
 
         #announcementEditModal .form-control,
@@ -705,7 +701,7 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
 
 
         /* -----------------------------------------------------
-           QUILL EDITOR
+           QUILL
            ----------------------------------------------------- */
 
         #announcementEditModal .announcement-quill-editor {
@@ -746,7 +742,7 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
 
 
         /* -----------------------------------------------------
-           CURRENT ATTACHMENT
+           ATTACHMENT
            ----------------------------------------------------- */
 
         #announcementEditModal #announcementEditCurrentAttachmentWrap {
@@ -788,19 +784,19 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
         }
 
         #announcementEditModal .modal-header {
-            padding: 0.65rem 0.7rem !important;
+            padding: 0.7rem 0.75rem !important;
         }
 
         #announcementEditModal .modal-body {
-            padding: 0.7rem !important;
+            padding: 0.75rem !important;
         }
 
         #announcementEditModal .modal-footer {
-            padding: 0.6rem 0.7rem !important;
+            padding: 0.65rem 0.75rem !important;
         }
 
         #announcementEditModal .modal-title {
-            font-size: 0.95rem !important;
+            font-size: 1rem !important;
         }
 
     }
@@ -854,47 +850,123 @@ function toggleCustomLoginDate() {
     );
 }
 
-        document.querySelectorAll('.admin-announcement-edit-trigger').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                editForm.action = btn.dataset.action || '';
-                editTitle.value = btn.dataset.title || '';
-                // Load login modal settings.
-if (showOnLogin) {
-    showOnLogin.checked = btn.dataset.showOnLogin === '1';
-}
+ document.querySelectorAll('.admin-announcement-edit-trigger').forEach(function (btn) {
 
-if (loginDuration) {
-    loginDuration.value = btn.dataset.loginDuration || '1_week';
-}
+    btn.addEventListener('click', function () {
 
-if (loginExpiry) {
-    loginExpiry.value = btn.dataset.loginExpiry || '';
-}
+        editForm.action = btn.dataset.action || '';
 
-toggleLoginModalSettings();
+        editTitle.value = btn.dataset.title || '';
 
-                // Load existing content into Quill (sanitized HTML or text).
-                const rawContent = btn.dataset.content || '';
-                if (activeQuill) {
-                    activeQuill.clipboard.dangerouslyPasteHTML(0, rawContent || '');
-                } else {
-                    editContent.value = rawContent;
-                }
 
-                editFile.value = '';
-                if (removeCheck) { removeCheck.checked = false; }
+        /* =====================================================
+           LOGIN MODAL SETTINGS
+           ===================================================== */
 
-                if (currentWrap && btn.dataset.currentName && btn.dataset.currentView) {
-                    currentName.textContent = btn.dataset.currentName;
-                    currentLink.href = btn.dataset.currentView;
-                    currentWrap.style.display = '';
-                } else if (currentWrap) {
-                    currentWrap.style.display = 'none';
-                }
+        if (showOnLogin) {
+            showOnLogin.checked = btn.dataset.showOnLogin === '1';
+        }
 
-                editModal.show();
-            });
-        });
+        if (loginDuration) {
+            loginDuration.value = btn.dataset.loginDuration || '1_week';
+        }
+
+        if (loginExpiry) {
+            loginExpiry.value = btn.dataset.loginExpiry || '';
+        }
+
+        toggleLoginModalSettings();
+
+
+        /* =====================================================
+           ANNOUNCEMENT CONTENT
+           ===================================================== */
+
+        let rawContent = btn.dataset.content || '';
+
+        // Fix escaped closing HTML tags such as <\/p>
+        rawContent = rawContent.replace(
+            /<\\\/([a-zA-Z0-9]+)>/g,
+            '</$1>'
+        );
+
+        // Remove accidental wrapping quotes
+        if (
+            rawContent.length >= 2 &&
+            rawContent.startsWith('"') &&
+            rawContent.endsWith('"')
+        ) {
+            rawContent = rawContent.slice(1, -1);
+        }
+
+
+        if (activeQuill) {
+
+            /*
+             * VERY IMPORTANT:
+             * Completely remove the previous announcement.
+             */
+            activeQuill.setContents([]);
+
+            /*
+             * Load only the selected announcement.
+             */
+            if (rawContent.trim()) {
+                activeQuill.clipboard.dangerouslyPasteHTML(
+                    rawContent
+                );
+            }
+
+        } else {
+
+            editContent.value = rawContent;
+
+        }
+
+
+        /* =====================================================
+           FILE
+           ===================================================== */
+
+        editFile.value = '';
+
+        if (removeCheck) {
+            removeCheck.checked = false;
+        }
+
+
+        /* =====================================================
+           CURRENT ATTACHMENT
+           ===================================================== */
+
+        if (
+            currentWrap &&
+            btn.dataset.currentName &&
+            btn.dataset.currentView
+        ) {
+
+            currentName.textContent = btn.dataset.currentName;
+
+            currentLink.href = btn.dataset.currentView;
+
+            currentWrap.style.display = '';
+
+        } else if (currentWrap) {
+
+            currentWrap.style.display = 'none';
+
+        }
+
+
+        /* =====================================================
+           SHOW MODAL
+           ===================================================== */
+
+        editModal.show();
+
+    });
+
+});
 
         // Initialize Quill once the modal exists on the page.
         if (typeof window.initAnnouncementQuill === 'function') {
