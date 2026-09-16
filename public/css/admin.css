@@ -1661,8 +1661,10 @@ thead.secondary-light th,
     margin: 0 !important;
 
     background-color: transparent !important;
-    filter: invert(1) grayscale(100%) brightness(200%);
-    opacity: 1 !important;
 
+    /* Make the X white */
+    filter: invert(1) grayscale(100%) brightness(200%) !important;
+
+    opacity: 1 !important;
     z-index: 2;
 }

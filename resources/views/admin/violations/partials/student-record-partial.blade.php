@@ -56,7 +56,7 @@
                 @forelse($summary as $item)
                     <tr>
                         <td>{{ $item['category'] ?? '-' }}</td>
-                        <td>{{ $item['violation_type'] }}</td>
+                       <td>{{ $violation->violationType?->violation_type ?? $violation->violation_type_display }}</td>
                         <td><span class="admin-badge admin-badge-gold">{{ $item['offense_level'] }}</span></td>
                         <td>
                             @php $status = strtolower((string) ($item['violation_status'] ?? 'unknown')); @endphp
@@ -119,8 +119,14 @@
     </td>
 
     <td>
-        {{ optional($violation->recorder?->adminInfo)->position ?? '-' }}
-    </td>
+    @if($violation->recorded_by_security_id)
+        Security Personnel
+    @elseif($violation->recorder_id)
+        Administrator
+    @else
+        -
+    @endif
+</td>
 </tr>
                 @empty
                     <tr>

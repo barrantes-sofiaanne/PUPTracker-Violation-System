@@ -451,10 +451,12 @@ public function show(Request $request, string $student_number)
     ->latest('violation_date')
     ->get();
 
-    $individualViolations = Violation::with([
-        'violationType.violationCategory',
-        'recorder.adminInfo'
-    ])
+$individualViolations = Violation::with([
+    'violationType.violationCategory',
+    'recorder.adminInfo',
+    'recordingSecurity.securityInfo',
+    'recordingSecurity.securityProfile',
+])
     ->where('student_number', $student_number)
     ->effective()
     ->latest('violation_date')
