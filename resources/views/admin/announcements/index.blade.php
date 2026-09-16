@@ -363,6 +363,10 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
 
 @push('styles')
 <style>
+    /* =========================================================
+       ANNOUNCEMENT QUILL EDITOR
+       ========================================================= */
+
     .announcement-quill-editor {
         background: #fff;
         border-radius: 0.6rem;
@@ -389,6 +393,11 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
         line-height: 1.7;
     }
 
+
+    /* =========================================================
+       ANNOUNCEMENT VIEW MODAL
+       ========================================================= */
+
     .admin-announcement-view-title {
         color: #7f0000;
         font-weight: 800;
@@ -409,6 +418,11 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
         overflow-y: auto;
     }
 
+
+    /* =========================================================
+       ANNOUNCEMENT EDIT MODAL - BASE
+       ========================================================= */
+
     .admin-announcement-edit-modal textarea,
     .admin-announcement-edit-modal input[type="text"],
     .admin-announcement-edit-modal input[type="file"] {
@@ -418,10 +432,6 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
     .admin-announcement-edit-modal textarea {
         line-height: 1.6;
     }
-
-    /* =========================================================
-       Announcement Edit Modal
-       ========================================================= */
 
     .admin-announcement-edit-modal .modal-dialog {
         width: calc(100% - 2rem);
@@ -442,12 +452,22 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
         overflow-x: hidden;
     }
 
+
+    /* =========================================================
+       FORM CONTROLS
+       ========================================================= */
+
     .admin-announcement-edit-modal .form-control,
     .admin-announcement-edit-modal .form-select {
         width: 100%;
         max-width: 100%;
         min-width: 0;
     }
+
+
+    /* =========================================================
+       QUILL - EDIT MODAL
+       ========================================================= */
 
     .admin-announcement-edit-modal .announcement-quill-editor {
         width: 100%;
@@ -475,216 +495,315 @@ data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateStr
         overflow-wrap: anywhere;
     }
 
-    .admin-announcement-edit-modal
-    #announcementEditCurrentAttachmentWrap {
+
+    /* =========================================================
+       CURRENT ATTACHMENT
+       ========================================================= */
+
+    .admin-announcement-edit-modal #announcementEditCurrentAttachmentWrap {
         max-width: 100%;
         overflow: hidden;
     }
 
-    .admin-announcement-edit-modal
-    #announcementEditCurrentAttachmentName {
+    .admin-announcement-edit-modal #announcementEditCurrentAttachmentName {
+        display: block;
         max-width: 100% !important;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
+
     /* =========================================================
-       Tablet
+       TABLET
        ========================================================= */
 
     @media (max-width: 991.98px) {
+
         .admin-announcement-edit-modal .modal-dialog {
             width: calc(100% - 1rem);
             max-width: none;
             margin: 0.5rem auto;
         }
+
     }
+
 
     /* =========================================================
-       Mobile
+       MOBILE
        ========================================================= */
-/* =========================================================
-   Mobile - Announcement Edit Modal
-   ========================================================= */
 
-@media (max-width: 767.98px) {
+    @media (max-width: 767.98px) {
 
-    /* Let the modal use the full mobile viewport */
-    #announcementEditModal {
-        padding-left: 0 !important;
-        padding-right: 0 !important;
+        /* -----------------------------------------------------
+           MODAL WRAPPER
+           ----------------------------------------------------- */
+
+        #announcementEditModal {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+
+        /* -----------------------------------------------------
+           MODAL DIALOG
+           ----------------------------------------------------- */
+
+        #announcementEditModal .modal-dialog,
+        #announcementEditModal .modal-dialog.modal-dialog-scrollable {
+            width: calc(100vw - 0.5rem) !important;
+            max-width: none !important;
+
+            height: calc(100dvh - 0.5rem) !important;
+            max-height: calc(100dvh - 0.5rem) !important;
+
+            margin: 0.25rem auto !important;
+        }
+
+
+        /* -----------------------------------------------------
+           MODAL CONTENT
+           ----------------------------------------------------- */
+
+        #announcementEditModal .modal-content {
+            display: flex !important;
+            flex-direction: column !important;
+
+            width: 100% !important;
+            height: 100% !important;
+
+            min-height: 0 !important;
+            max-height: 100% !important;
+
+            overflow: hidden !important;
+
+            border-radius: 0.75rem !important;
+        }
+
+
+        /* -----------------------------------------------------
+           FORM
+           
+           IMPORTANT:
+           The form is between .modal-content and .modal-body.
+           Therefore the form must also participate in the
+           flex layout.
+           ----------------------------------------------------- */
+
+        #announcementEditModal > .modal-dialog > .modal-content > form {
+            display: flex !important;
+            flex-direction: column !important;
+
+            flex: 1 1 auto !important;
+
+            width: 100% !important;
+
+            min-width: 0 !important;
+            min-height: 0 !important;
+
+            height: auto !important;
+
+            overflow: hidden !important;
+        }
+
+
+        /* -----------------------------------------------------
+           HEADER
+           ----------------------------------------------------- */
+
+        #announcementEditModal .modal-header {
+            flex: 0 0 auto !important;
+
+            padding: 0.8rem 0.9rem !important;
+        }
+
+        #announcementEditModal .modal-title {
+            min-width: 0 !important;
+            max-width: calc(100% - 55px) !important;
+
+            font-size: 1rem !important;
+            line-height: 1.3 !important;
+
+            overflow-wrap: anywhere !important;
+        }
+
+        #announcementEditModal .admin-modal-close {
+            flex: 0 0 44px !important;
+
+            width: 44px !important;
+            height: 44px !important;
+
+            margin-left: auto !important;
+        }
+
+
+        /* -----------------------------------------------------
+           SCROLLABLE BODY
+           ----------------------------------------------------- */
+
+        #announcementEditModal .modal-body {
+            flex: 1 1 auto !important;
+
+            display: block !important;
+
+            width: 100% !important;
+
+            min-width: 0 !important;
+            min-height: 0 !important;
+
+            height: auto !important;
+            max-height: none !important;
+
+            padding: 0.85rem !important;
+
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+
+            -webkit-overflow-scrolling: touch !important;
+        }
+
+
+        /* -----------------------------------------------------
+           FOOTER
+           ----------------------------------------------------- */
+
+        #announcementEditModal .modal-footer {
+            flex: 0 0 auto !important;
+
+            display: flex !important;
+            flex-direction: column !important;
+
+            align-items: stretch !important;
+
+            padding: 0.7rem 0.85rem !important;
+
+            gap: 0.5rem !important;
+        }
+
+        #announcementEditModal .modal-footer .admin-btn {
+            width: 100% !important;
+            min-height: 42px !important;
+        }
+
+
+        /* -----------------------------------------------------
+           FORM CONTROLS
+           ----------------------------------------------------- */
+
+        #announcementEditModal .form-control,
+        #announcementEditModal .form-select,
+        #announcementEditModal input[type="file"] {
+            width: 100% !important;
+
+            max-width: 100% !important;
+            min-width: 0 !important;
+        }
+
+        #announcementEditModal input[type="file"] {
+            font-size: 0.85rem !important;
+        }
+
+
+        /* -----------------------------------------------------
+           QUILL EDITOR
+           ----------------------------------------------------- */
+
+        #announcementEditModal .announcement-quill-editor {
+            width: 100% !important;
+
+            max-width: 100% !important;
+            min-width: 0 !important;
+
+            overflow: hidden !important;
+        }
+
+        #announcementEditModal .announcement-quill-editor .ql-toolbar {
+            width: 100% !important;
+
+            max-width: 100% !important;
+
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+
+            white-space: nowrap !important;
+        }
+
+        #announcementEditModal .announcement-quill-editor .ql-container {
+            width: 100% !important;
+
+            max-width: 100% !important;
+            min-width: 0 !important;
+        }
+
+        #announcementEditModal .announcement-quill-editor .ql-editor {
+            min-height: 140px !important;
+
+            max-width: 100% !important;
+
+            overflow-x: hidden !important;
+            overflow-wrap: anywhere !important;
+        }
+
+
+        /* -----------------------------------------------------
+           CURRENT ATTACHMENT
+           ----------------------------------------------------- */
+
+        #announcementEditModal #announcementEditCurrentAttachmentWrap {
+            width: 100% !important;
+
+            max-width: 100% !important;
+
+            overflow: hidden !important;
+        }
+
+        #announcementEditModal #announcementEditCurrentAttachmentName {
+            display: block !important;
+
+            max-width: calc(100% - 80px) !important;
+
+            overflow: hidden !important;
+
+            text-overflow: ellipsis !important;
+
+            white-space: nowrap !important;
+        }
+
     }
 
-    /*
-     * IMPORTANT:
-     * Override Bootstrap's modal-dialog-scrollable sizing.
-     */
-    #announcementEditModal .modal-dialog,
-    #announcementEditModal .modal-dialog.modal-dialog-scrollable {
-        width: calc(100vw - 0.5rem) !important;
-        max-width: none !important;
 
-        height: calc(100dvh - 0.5rem) !important;
-        max-height: calc(100dvh - 0.5rem) !important;
+    /* =========================================================
+       VERY SMALL PHONES
+       ========================================================= */
 
-        margin: 0.25rem auto !important;
+    @media (max-width: 400px) {
+
+        #announcementEditModal .modal-dialog {
+            width: calc(100vw - 0.25rem) !important;
+
+            height: calc(100dvh - 0.25rem) !important;
+            max-height: calc(100dvh - 0.25rem) !important;
+
+            margin: 0.125rem auto !important;
+        }
+
+        #announcementEditModal .modal-header {
+            padding: 0.65rem 0.7rem !important;
+        }
+
+        #announcementEditModal .modal-body {
+            padding: 0.7rem !important;
+        }
+
+        #announcementEditModal .modal-footer {
+            padding: 0.6rem 0.7rem !important;
+        }
+
+        #announcementEditModal .modal-title {
+            font-size: 0.95rem !important;
+        }
+
     }
-
-    /*
-     * Modal becomes a fixed-height flex container.
-     */
-    #announcementEditModal .modal-content {
-        display: flex !important;
-        flex-direction: column !important;
-
-        width: 100% !important;
-        height: 100% !important;
-        min-height: 0 !important;
-        max-height: 100% !important;
-
-        overflow: hidden !important;
-        border-radius: 0.75rem !important;
-    }
-
-    /*
-     * HEADER
-     */
-    #announcementEditModal .modal-header {
-        flex: 0 0 auto !important;
-        padding: 0.8rem 0.9rem !important;
-    }
-
-    #announcementEditModal .modal-title {
-        min-width: 0 !important;
-        max-width: calc(100% - 55px) !important;
-
-        font-size: 1rem !important;
-        line-height: 1.3 !important;
-
-        overflow-wrap: anywhere !important;
-    }
-
-    #announcementEditModal .admin-modal-close {
-        flex: 0 0 44px !important;
-        width: 44px !important;
-        height: 44px !important;
-        margin-left: auto !important;
-    }
-
-    /*
-     * BODY
-     *
-     * This is the ONLY scrolling section.
-     */
-    #announcementEditModal .modal-body {
-        flex: 1 1 auto !important;
-
-        width: 100% !important;
-        min-width: 0 !important;
-        min-height: 0 !important;
-
-        height: auto !important;
-        max-height: none !important;
-
-        padding: 0.85rem !important;
-
-        overflow-x: hidden !important;
-        overflow-y: auto !important;
-
-        -webkit-overflow-scrolling: touch;
-    }
-
-    /*
-     * FOOTER
-     */
-    #announcementEditModal .modal-footer {
-        flex: 0 0 auto !important;
-
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: stretch !important;
-
-        padding: 0.7rem 0.85rem !important;
-        gap: 0.5rem !important;
-    }
-
-    #announcementEditModal .modal-footer .admin-btn {
-        width: 100% !important;
-        min-height: 42px !important;
-    }
-
-    /*
-     * FORM CONTROLS
-     */
-    #announcementEditModal .form-control,
-    #announcementEditModal .form-select,
-    #announcementEditModal input[type="file"] {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-    }
-
-    #announcementEditModal input[type="file"] {
-        font-size: 0.85rem !important;
-    }
-
-    /*
-     * QUILL
-     */
-    #announcementEditModal .announcement-quill-editor {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-
-        overflow: hidden !important;
-    }
-
-    #announcementEditModal .announcement-quill-editor .ql-toolbar {
-        width: 100% !important;
-        max-width: 100% !important;
-
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
-
-        white-space: nowrap !important;
-    }
-
-    #announcementEditModal .announcement-quill-editor .ql-container {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-    }
-
-    #announcementEditModal .announcement-quill-editor .ql-editor {
-        min-height: 140px !important;
-        max-width: 100% !important;
-
-        overflow-x: hidden !important;
-        overflow-wrap: anywhere !important;
-    }
-
-    /*
-     * CURRENT ATTACHMENT
-     */
-    #announcementEditModal #announcementEditCurrentAttachmentWrap {
-        width: 100% !important;
-        max-width: 100% !important;
-
-        overflow: hidden !important;
-    }
-
-    #announcementEditModal #announcementEditCurrentAttachmentName {
-        display: block !important;
-
-        max-width: calc(100% - 80px) !important;
-
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-    }
-}
-
 </style>
 @endpush
 
