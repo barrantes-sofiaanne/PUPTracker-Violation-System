@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Services\Backup;
-
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -131,7 +130,7 @@ class BinaryLogSupportService
         }
 
         try {
-            $rows = DB::select('SHOW MASTER STATUS');
+            $rows = DB::select('SHOW BINARY LOG STATUS');
             if (! $rows) {
                 return null;
             }
