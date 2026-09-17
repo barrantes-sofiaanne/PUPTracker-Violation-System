@@ -147,18 +147,18 @@ class BinaryLogSupportService
         }
     }
 
-    protected function variable(string $name): ?string
-    {
-        $rows = DB::select("SHOW VARIABLES LIKE ?", [$name]);
-        if (! $rows) {
-            return null;
-        }
-        $row = (array) $rows[0];
-
-        $value = $row['Value'] ?? $row['value'] ?? null;
-
-        return $value === null ? null : (string) $value;
+   protected function variable(string $name): ?string
+{
+    $rows = DB::select("SHOW VARIABLES LIKE ?", [$name]);
+    if (! $rows) {
+        return null;
     }
+
+    $row = (array) $rows[0];
+    $value = $row['Value'] ?? $row['value'] ?? null;
+
+    return $value === null ? null : (string) $value;
+}
 
     /**
      * @return array<int, string>|null
