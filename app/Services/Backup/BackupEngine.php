@@ -117,25 +117,25 @@ class BackupEngine
      * @return array{0: string, 1: array<string, mixed>}  [tempFile, metadata]
      */
     protected function runLogicalDump(string $type, $startedAt): array
-    {
-        $result = $this->dumpService->dumpDatabase();
+{
+    $result = $this->dumpService->dumpDatabase();
 
-        if (! $result['success']) {
-            throw new \RuntimeException($result['error'] ?? 'Database dump failed.');
-        }
-
-        return [
-            $result['temp_file'],
-            [
-                'type' => $type,
-                'checksum' => $result['checksum'],
-                'checksum_algorithm' => 'SHA-256',
-                'size' => $result['compressed_size'],
-                'file_count' => 1,
-                'started_at' => $startedAt,
-            ],
-        ];
+    if (! $result['success']) {
+        throw new \RuntimeException($result['error'] ?? 'Database dump failed.');
     }
+
+    return [
+        $result['temp_file'],
+        [
+            'type' => $type,
+            'checksum' => $result['checksum'],
+            'checksum_algorithm' => 'SHA-256',
+            'size' => $result['compressed_size'],
+            'file_count' => 1,
+            'started_at' => $startedAt,
+        ],
+    ];
+}
 
     /**
      * @return array{0: string, 1: array<string, mixed>}  [tempFile, metadata]
