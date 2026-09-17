@@ -10,6 +10,7 @@ use App\Support\Auth\AuthDestination;
 use App\Support\Auth\PortalLoginRedirect;
 use App\Support\Auth\SessionExpiryNotice;
 use App\Support\MfaService;
+use App\Support\MfaTrustedDeviceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,7 +28,11 @@ class MfaController extends Controller
         return view('auth.mfa-verify', compact('pending'));
     }
 
-    public function verify(Request $request, MfaService $mfaService): RedirectResponse
+   public function verify(
+    Request $request,
+    MfaService $mfaService,
+    MfaTrustedDeviceService $trustedDeviceService
+): RedirectResponse
     {
         $action = (string) $request->input('action', 'verify');
 
@@ -96,16 +101,25 @@ class MfaController extends Controller
 
             return redirect()->route('home')->with('error', 'Unable to complete verification. Please login again.');
         }
-
-        // Apply persistent authentication ONLY now — after MFA has been verified
-        // successfully. An unchecked box is simply absent from the payload, so
-        // `$remember` is false by default and no trusted device is created.
-        // Laravel's session guard writes its recaller cookie here, so Remember Me
-        // can never run ahead of, or bypass, MFA.
-        Auth::guard($guard)->login($user, $remember);
+        // MFA has been verified successfully. Always create a normal Laravel
+        // authenticated session — never use Laravel's persistent "remember me"
+        // recaller cookie for this feature.
+        //
+        // Our Remember Me feature is specifically an MFA trusted-device
+        // mechanism: credentials are still required on the next login, but MFA
+        // can be skipped for up to 12 hours when this device was explicitly
+        // trusted.
+        Auth::guard($guard)->login($user, false);
         $request->session()->regenerate();
-        $mfaService->clear($request);
 
+        if ($remember) {
+            $trustedDeviceService->trust(
+                $guard,
+                (int) $user->getAuthIdentifier()
+            );
+        }
+
+        $mfaService->clear($request);
         // Drop any pending expiry notice: it describes a PAST session, and the
         // user is authenticated again now, so it must never surface later.
         SessionExpiryNotice::clear($request);
