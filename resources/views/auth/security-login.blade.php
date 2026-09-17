@@ -1,13 +1,18 @@
-@extends('layouts.auth-portal', ['title' => 'Security Login', 'portal' => 'security'])
+@extends('layouts.auth-portal', ['title' => 'Security and OSS Staff Portal', 'portal' => 'security'])
 
 @section('auth-content')
 
-        <p class="module-chip">Security Module</p>
+        {{-- SHARED PORTAL. This ONE page is the sign-in entry point for BOTH
+             Security Personnel and OSS Staff. They remain different account
+             types on different guards (security vs admin) and land in their own
+             modules after MFA — only the login page is shared. --}}
+        <p class="module-chip">Security &amp; OSS Staff Portal</p>
 
-        <h2>Security Login</h2>
+        <h2>Security and OSS Staff Portal</h2>
 
         <p class="subtitle">
-            Sign in using your Email.
+            Sign in using your Email. This portal is for <strong>Security Personnel</strong>
+            and <strong>OSS Staff</strong> accounts.
         </p>
 
         <form

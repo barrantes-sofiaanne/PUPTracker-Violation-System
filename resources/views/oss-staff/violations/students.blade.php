@@ -1,0 +1,599 @@
+@extends('layouts.oss-staff')
+
+@section('title', 'Students with Violations')
+
+@push('styles')
+<style>
+    .student-card {
+        border: 1px solid rgba(122, 15, 30, 0.12);
+        border-radius: 0.95rem;
+        transition: all 0.2s ease;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.15rem 1.25rem;
+        margin-bottom: 1rem;
+        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
+        box-shadow: 0 8px 20px rgba(122, 15, 30, 0.08);
+    }
+
+    .student-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(122, 15, 30, 0.12);
+    }
+
+    .violation-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #7a0f1e 0%, #4a0209 100%);
+        color: white;
+        font-weight: 700;
+        font-size: 1.3rem;
+    }
+
+    .student-name {
+        font-weight: 800;
+        color: #4a0209;
+        margin-bottom: 0.25rem;
+    }
+
+    .student-meta {
+        font-size: 0.85rem;
+        color: #67585c;
+    }
+
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .search-container {
+        margin-bottom: 1.5rem;
+    }
+
+    .action-btn-static {
+        border-radius: 0.8rem;
+        font-weight: 700;
+        transition: none !important;
+    }
+
+    .action-btn-static-primary,
+    .action-btn-static-primary:hover,
+    .action-btn-static-primary:focus,
+    .action-btn-static-primary:active {
+        background: #7a0f1e !important;
+        border: 1px solid #7a0f1e !important;
+        color: #fff !important;
+        box-shadow: none !important;
+    }
+
+    .action-btn-static-outline,
+    .action-btn-static-outline:hover,
+    .action-btn-static-outline:focus,
+    .action-btn-static-outline:active {
+        background: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.35) !important;
+        color: #fff !important;
+        box-shadow: none !important;
+    }
+
+    .report-option {
+        border: 1px solid rgba(122, 15, 30, 0.15);
+        border-radius: 0.8rem;
+        padding: 0.75rem 0.9rem;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+        cursor: pointer;
+    }
+
+    .report-option input[type="radio"] {
+        margin-top: 0.2rem;
+    }
+
+    .report-option.active {
+        border-color: #7a0f1e;
+        background: rgba(122, 15, 30, 0.06);
+    }
+
+    .report-modal-header {
+        background: linear-gradient(135deg, #7a0f1e 0%, #4a0209 100%);
+        color: #fff;
+    }
+
+    .report-modal-header .modal-title,
+    .report-modal-header .modal-title i {
+        color: #fff !important;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr 1fr auto auto;
+        gap: 0.75rem;
+        align-items: end;
+    }
+
+    @media (max-width: 991.98px) {
+        .filter-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* ------------------------------------------------------------------
+       Violations page header
+       ------------------------------------------------------------------
+       ONE header serves both tabs: its title, subtitle and the visibility
+       of the action buttons follow the active tab. The layout is spelled out
+       explicitly so the buttons sit on a SINGLE row on the right at desktop
+       widths instead of wrapping into a stack. Scoped to this page only, so
+       no other module is affected. */
+    .violations-header-row {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .violations-header-text {
+        min-width: 0;
+    }
+
+    .violations-header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .violations-header-actions .btn {
+        white-space: nowrap;
+    }
+
+    /* The element carries its own `display: flex`, which would otherwise
+       beat Bootstrap's `[hidden]` rule, so hide it explicitly. */
+    .violations-header-actions[hidden] {
+        display: none !important;
+    }
+
+    @media (min-width: 992px) {
+        .violations-header-row {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+        }
+
+        /* Title block absorbs the spare width; the buttons keep their natural
+           size and never wrap while there is room for them. */
+        .violations-header-text {
+            flex: 1 1 auto;
+        }
+
+        .violations-header-actions {
+            flex: 0 0 auto;
+            flex-wrap: nowrap;
+        }
+    }
+
+    /* ------------------------------------------------------------------
+       Violations tabs
+       ------------------------------------------------------------------
+       Active tab: cream/gold background with maroon text and icon.
+       Inactive tab: no active background, grey text and icon (the icon
+       inherits `currentColor`, so it follows the text automatically). */
+    .violations-tabs .nav-link {
+        color: #6b5d61;
+        border-radius: 0.6rem;
+        font-weight: 700;
+    }
+
+    .violations-tabs .nav-link i {
+        color: currentColor;
+    }
+
+    .violations-tabs .nav-link.active {
+        color: #7a0f1e !important;
+        background-color: rgba(255, 223, 0, 0.33) !important;
+        border-color: rgba(128, 0, 0, 0.18) !important;
+    }
+</style>
+@endpush
+
+@section('content')
+
+<div class="container-fluid py-4">
+
+    {{-- Page Header. ONE header serves both tabs; only its title, subtitle
+         and the visibility of the action buttons change with the active tab.
+         The state is rendered server-side for the current tab (so deep links
+         and the no-JavaScript fallback are correct) and the script at the
+         bottom of this view keeps it in sync when the tab is switched in
+         place. The buttons themselves are untouched: same markup, same
+         modals, same behaviour — only their placement/visibility changes. --}}
+    @php
+        $violationsActiveTab = $activeViolationsTab ?? 'students';
+
+        $violationsHeaderText = [
+            'students' => [
+                'title' => 'Students with Violations',
+                'subtitle' => 'View detailed violation records for students.',
+            ],
+            'submitted' => [
+                'title' => 'Submitted Violations',
+                'subtitle' => 'View and manage the violations you have submitted.',
+            ],
+        ];
+
+        $violationsHeader = $violationsHeaderText[$violationsActiveTab] ?? $violationsHeaderText['students'];
+
+        // Only the Student Record header carries actions.
+        $violationsShowActions = $violationsActiveTab === 'students';
+    @endphp
+
+    <div class="portal-hero page-header-modern"
+         id="violationsPageHeader"
+         data-title-students="Students with Violations"
+         data-subtitle-students="View detailed violation records for students."
+         data-title-submitted="Submitted Violations"
+         data-subtitle-submitted="View and manage the violations you have submitted.">
+        <div class="violations-header-row">
+            <div class="violations-header-text">
+                <h1 class="fw-bold mb-1" id="violationsHeaderTitle">{{ $violationsHeader['title'] }}</h1>
+                <p class="mb-0" id="violationsHeaderSubtitle">{{ $violationsHeader['subtitle'] }}</p>
+            </div>
+
+            {{-- Student Record actions. Hidden (not removed) on the
+                 Submitted Violations tab, so the modals and their logic stay
+                 intact and simply reappear when Student Record is active. --}}
+            <div class="violations-header-actions"
+                 id="violationsHeaderActions"
+                 @if(! $violationsShowActions) hidden @endif>
+                <button class="btn action-btn-static action-btn-static-primary" type="button" data-bs-toggle="modal" data-bs-target="#recordViolationModal">
+                    <i class="bi bi-plus-circle me-2"></i>Record Violation
+                </button>
+
+                <button class="btn action-btn-static action-btn-static-primary" type="button" data-bs-toggle="modal" data-bs-target="#reportOptionsModal">
+                    <i class="bi bi-file-earmark-pdf me-2"></i>Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Violations tabs: Student Record (default) / Submitted Violations (in-page) --}}
+    @include('oss-staff.violations.partials.tabs', ['activeViolationsTab' => $activeViolationsTab ?? 'students'])
+
+    <div class="tab-content" id="ossStaffViolationsTabContent">
+    {{-- Panel 1: Student Record --}}
+    <div class="tab-pane fade {{ ($activeViolationsTab ?? 'students') === 'students' ? 'show active' : '' }}"
+         id="studentRecord" role="tabpanel" aria-labelledby="studentRecordTab" tabindex="0">
+
+    {{-- Search and Filters --}}
+    <div class="search-container">
+        <div class="card portal-card">
+            <div class="card-body">
+                <form method="GET" action="{{ route('oss-staff.violations.students') }}" class="filter-grid">
+                    <div>
+                        <label for="search" class="form-label mb-1">Search</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input
+                                type="text"
+                                class="form-control border-0 bg-light"
+                                id="search"
+                                name="search"
+                                value="{{ $search }}"
+                                placeholder="Search by student number or name...">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="program_id" class="form-label mb-1">Program</label>
+                        <select class="form-select" id="program_id" name="program_id">
+                            <option value="">All Programs</option>
+                            @foreach($programs as $program)
+                                <option value="{{ $program->program_id }}" {{ (string) $programId === (string) $program->program_id ? 'selected' : '' }}>
+                                    {{ $program->program_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="year_id" class="form-label mb-1">Year</label>
+                        <select class="form-select" id="year_id" name="year_id">
+                            <option value="">All Years</option>
+                            @foreach($years as $year)
+                                <option value="{{ $year->year_id }}" {{ (string) $yearId === (string) $year->year_id ? 'selected' : '' }}>
+                                    Year {{ $year->year }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="btn portal-btn w-100">Apply</button>
+                    </div>
+
+                    <div>
+                        <a href="{{ route('oss-staff.violations.students') }}" class="btn portal-btn-outline w-100">Reset</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- Students List --}}
+    <div id="managementTableContainer" class="card portal-card">
+        <div class="card-body p-0">
+            @forelse($students as $student)
+            <a href="{{ route('oss-staff.violations.show', $student->student_number) }}" class="text-decoration-none text-dark">
+                <div class="student-card">
+                    <div class="violation-badge">
+                        {{ $student->violations_count }}
+                    </div>
+                    <div class="student-info">
+                        <div class="student-name">
+                            {{ $student->student_number }} - {{ $student->last_name }}, {{ $student->first_name }}
+                        </div>
+                        <div class="student-meta">
+                            <i class="bi bi-building"></i> {{ optional(optional($student->studentInfo)->program)->program_name ?? 'N/A' }}
+                            @if(optional($student->studentInfo)->year)
+                            | <i class="bi bi-calendar"></i> Year {{ optional(optional($student->studentInfo)->year)->year }}
+                            @endif
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="portal-badge danger">
+                            {{ $student->violations_count }} violation{{ $student->violations_count !== 1 ? 's' : '' }}
+                        </span>
+                        <div style="font-size: 0.8rem; color: #67585c; margin-top: 0.5rem;">
+                            Latest: {{ $student->violations->first()?->violation_date?->format('M d, Y') ?? 'N/A' }}
+                        </div>
+                    </div>
+                </div>
+            </a>
+            @empty
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-4" style="color: var(--portal-goldenrod);"></i>
+                <p class="mt-3" style="color: #67585c;">No students with violations found.</p>
+            </div>
+            @endforelse
+        </div>
+    </div>
+
+    {{-- Pagination --}}
+    @if($students->hasPages())
+    <div class="mt-4">
+        {{ $students->links() }}
+    </div>
+    @endif
+
+    </div>{{-- /#studentRecord --}}
+
+    {{-- Panel 2: Submitted Violations.
+         The table, status chips, filters, pagination and row highlighting are
+         the verbatim content of the former standalone Submitted Violations
+         page; it now lives inside this tab. --}}
+    <div class="tab-pane fade {{ ($activeViolationsTab ?? 'students') === 'submitted' ? 'show active' : '' }}"
+         id="submittedViolations" role="tabpanel" aria-labelledby="submittedViolationsTab" tabindex="0">
+        @include('oss-staff.violations.partials.submitted-violations')
+    </div>{{-- /#submittedViolations --}}
+    </div>{{-- /#ossStaffViolationsTabContent --}}
+
+</div>
+
+<div class="modal fade" id="reportOptionsModal" tabindex="-1" aria-labelledby="reportOptionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header report-modal-header">
+                <h5 class="modal-title fw-bold" id="reportOptionsModalLabel">
+                    <i class="bi bi-file-earmark-bar-graph me-2"></i>Generate Violation Report
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form method="GET" action="{{ route('oss-staff.violations.report') }}">
+                {{-- Generate Report downloads a PDF. The report is filtered ONLY
+                     by the range selected below — the student-list filters
+                     (search / program / year) belong to the Student Record tab
+                     and are deliberately not part of this report. --}}
+                <input type="hidden" name="format" value="pdf">
+
+                <div class="modal-body">
+                    <p class="mb-3 text-muted">Select the report range you want to generate.</p>
+
+                    <div class="d-grid gap-2 mb-3">
+                        <label class="report-option active" data-option="today">
+                            <div class="d-flex align-items-start gap-2">
+                                <input class="form-check-input" type="radio" name="period" value="today" checked>
+                                <div>
+                                    <div class="fw-semibold">Today (PHT)</div>
+                                    <small class="text-muted">Uses current Philippine time (Asia/Manila).</small>
+                                </div>
+                            </div>
+                        </label>
+
+                        <label class="report-option" data-option="last7">
+                            <div class="d-flex align-items-start gap-2">
+                                <input class="form-check-input" type="radio" name="period" value="last7">
+                                <div>
+                                    <div class="fw-semibold">Last 7 Days</div>
+                                    <small class="text-muted">Only records created within the last week.</small>
+                                </div>
+                            </div>
+                        </label>
+
+                        <label class="report-option" data-option="last30">
+                            <div class="d-flex align-items-start gap-2">
+                                <input class="form-check-input" type="radio" name="period" value="last30">
+                                <div>
+                                    <div class="fw-semibold">Last 30 Days</div>
+                                    <small class="text-muted">Monthly report snapshot.</small>
+                                </div>
+                            </div>
+                        </label>
+
+                        <label class="report-option" data-option="all">
+                            <div class="d-flex align-items-start gap-2">
+                                <input class="form-check-input" type="radio" name="period" value="all">
+                                <div>
+                                    <div class="fw-semibold">All My Recorded Violations</div>
+                                    <small class="text-muted">Complete report of your encoded records.</small>
+                                </div>
+                            </div>
+                        </label>
+
+                        <label class="report-option" data-option="custom">
+                            <div class="d-flex align-items-start gap-2">
+                                <input class="form-check-input" type="radio" name="period" value="custom">
+                                <div>
+                                    <div class="fw-semibold">Custom Date Range</div>
+                                    <small class="text-muted">Generate report for specific start and end dates.</small>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div id="customDateRangeFields" class="row g-2 d-none">
+                        <div class="col-6">
+                            <label class="form-label mb-1" for="reportDateFrom">From</label>
+                            <input type="date" id="reportDateFrom" name="date_from" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label mb-1" for="reportDateTo">To</label>
+                            <input type="date" id="reportDateTo" name="date_to" class="form-control">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn portal-btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn action-btn-static action-btn-static-primary">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Generate PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@include('oss-staff.violations.partials.record-violation')
+
+{{-- Kept at document level (NOT inside the tab pane): Bootstrap hides an
+     inactive `.tab-pane` with `display:none`, which would hide the modal. --}}
+@include('oss-staff.violations.partials.resubmit-violation-modal')
+
+@push('scripts')
+<script>
+window.ViolationRoutes = {
+    searchStudent: "{{ route('oss-staff.search.student') }}",
+    violationTypes: "{{ route('oss-staff.violations.types') }}",
+    previewViolation: "{{ route('oss-staff.violations.preview') }}",
+    store: "{{ route('oss-staff.violations.store') }}",
+    securityEvent: "{{ route('oss-staff.violations.evidence-security-event') }}",
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+    /* ------------------------------------------------------------------
+       Keep the page header in sync with the active Violations tab.
+       ------------------------------------------------------------------
+       The header is server-rendered for the tab in the URL. When the OSS Staff member
+       switches tabs in place (Bootstrap fires `shown.bs.tab`) the header must
+       follow: a different title/subtitle, and the Student Record action
+       buttons hidden on Submitted Violations. The buttons are only hidden —
+       never removed — so their modals and behaviour are untouched. */
+    const header = document.getElementById('violationsPageHeader');
+
+    if (header) {
+        const title = document.getElementById('violationsHeaderTitle');
+        const subtitle = document.getElementById('violationsHeaderSubtitle');
+        const actions = document.getElementById('violationsHeaderActions');
+        const tabsRoot = document.getElementById('ossStaffViolationsTabs');
+
+        const applyHeaderForTab = function (tabKey) {
+            const isStudents = tabKey !== 'submitted';
+
+            if (title) {
+                title.textContent = header.dataset[
+                    isStudents ? 'titleStudents' : 'titleSubmitted'
+                ] || title.textContent;
+            }
+
+            if (subtitle) {
+                subtitle.textContent = header.dataset[
+                    isStudents ? 'subtitleStudents' : 'subtitleSubmitted'
+                ] || subtitle.textContent;
+            }
+
+            if (actions) {
+                actions.hidden = !isStudents;
+            }
+        };
+
+        if (tabsRoot) {
+            // `shown.bs.tab` fires for the newly activated tab element.
+            tabsRoot.addEventListener('shown.bs.tab', function (event) {
+                const trigger = event.target;
+                if (!trigger) {
+                    return;
+                }
+
+                const target = trigger.getAttribute('data-bs-target') || '';
+                applyHeaderForTab(target === '#submittedViolations' ? 'submitted' : 'students');
+            });
+        }
+    }
+
+    const options = document.querySelectorAll('.report-option');
+    const customFields = document.getElementById('customDateRangeFields');
+    const dateFrom = document.getElementById('reportDateFrom');
+    const dateTo = document.getElementById('reportDateTo');
+
+    const applyOptionState = function () {
+        let selected = 'last7';
+
+        options.forEach(function (option) {
+            const radio = option.querySelector('input[type="radio"]');
+            const isChecked = !!radio && radio.checked;
+            option.classList.toggle('active', isChecked);
+
+            if (isChecked) {
+                selected = option.getAttribute('data-option') || selected;
+            }
+        });
+
+        const isCustom = selected === 'custom';
+        if (customFields) {
+            customFields.classList.toggle('d-none', !isCustom);
+        }
+
+        if (dateFrom) {
+            dateFrom.required = isCustom;
+        }
+
+        if (dateTo) {
+            dateTo.required = isCustom;
+        }
+    };
+
+    options.forEach(function (option) {
+        option.addEventListener('click', function () {
+            const radio = option.querySelector('input[type="radio"]');
+            if (radio) {
+                radio.checked = true;
+            }
+
+            applyOptionState();
+        });
+    });
+
+    applyOptionState();
+});
+</script>
+<script src="{{ asset('js/oss-staff/record-violation.js') }}"></script>
+@endpush
+
+@endsection

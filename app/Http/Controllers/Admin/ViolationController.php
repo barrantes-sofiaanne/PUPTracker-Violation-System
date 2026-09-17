@@ -366,11 +366,28 @@ $students = User::with([
             ?? 'the recorded violation';
         $reason = trim((string) $violation->review_remarks);
 
-        // The security officer who recorded this violation. New recordings carry
-        // recorded_by_security_id; legacy rows (null) keep the notification a
-        // broadcast so no officer is silently missed.
+        // The officer/admin who recorded this violation. Security recordings
+        // carry recorded_by_security_id and are notified through the SECURITY
+        // inbox; an OSS Staff recording is an ADMIN-actor row (recorder_type =
+        // 'admin' with recorder_id set) and is notified through the ADMIN
+        // inbox addressed to that exact OSS Staff account, under its own target
+        // type so the notification opens inside the OSS Staff module.
         $recordingSecurityId = (int) ($violation->recorded_by_security_id ?? 0);
         $recordingSecurityId = $recordingSecurityId > 0 ? $recordingSecurityId : null;
+
+        // An OSS Staff recording: an admin-actor row recorded by a SPECIFIC
+        // admin account. Rows recorded directly by a plain administrator from
+        // the admin module are also admin-actor; the OSS Staff rows are the
+        // ones whose recorder is an OSS Staff account.
+        $recordingOssStaffId = null;
+        if ($recordingSecurityId === null
+            && (string) $violation->recorder_type === 'admin'
+            && (int) ($violation->recorder_id ?? 0) > 0) {
+            $recorder = $violation->recorder;
+            if ($recorder instanceof \App\Models\Admin && $recorder->isOssStaff()) {
+                $recordingOssStaffId = (int) $violation->recorder_id;
+            }
+        }
 
         if ($decision === 'confirmed') {
             // Notify the student their violation is now on their record.
@@ -387,7 +404,7 @@ $students = User::with([
                 // Notification must never break the confirmation.
             }
 
-            // Notify the recording security officer of the confirmation.
+            // Notify the recording SECURITY officer of the confirmation.
             try {
                 app(\App\Services\SecurityNotificationService::class)->create(
                     type: 'violation',
@@ -400,6 +417,8 @@ $students = User::with([
             } catch (\Throwable $e) {
                 // Notification must never break the confirmation.
             }
+
+            $this->notifyOssStaffRecorder($violation, $recordingOssStaffId, 'confirmed', $studentName, $violationLabel, $reason);
         } else {
             // Notify the student their violation was denied with the reason.
             try {
@@ -415,7 +434,7 @@ $students = User::with([
                 // Notification must never break the denial.
             }
 
-            // Notify the recording security officer of the denial + reason.
+            // Notify the recording SECURITY officer of the denial + reason.
             try {
                 app(\App\Services\SecurityNotificationService::class)->create(
                     type: 'violation',
@@ -428,6 +447,50 @@ $students = User::with([
             } catch (\Throwable $e) {
                 // Notification must never break the denial.
             }
+
+            $this->notifyOssStaffRecorder($violation, $recordingOssStaffId, 'denied', $studentName, $violationLabel, $reason);
+        }
+    }
+
+    /**
+     * Notify the OSS Staff member who recorded this violation about the
+     * administrator's decision.
+     *
+     * The notification is an ADMIN notification addressed to that exact OSS
+     * Staff account, tagged `oss_staff_violation` so opening it returns the
+     * member to the OSS Staff module (their tracker, or the student record for
+     * a confirmed row) rather than the Admin confirmation queue.
+     *
+     * No-op for rows that were not recorded by an OSS Staff account.
+     */
+    private function notifyOssStaffRecorder(
+        Violation $violation,
+        ?int $ossStaffId,
+        string $decision,
+        string $studentName,
+        string $violationLabel,
+        string $reason
+    ): void {
+        if ($ossStaffId === null) {
+            return;
+        }
+
+        try {
+            $confirmed = $decision === 'confirmed';
+
+            app(\App\Services\AdminNotificationService::class)->create(
+                type: 'violation',
+                title: $confirmed ? 'Violation Confirmed' : 'Violation Rejected',
+                message: $confirmed
+                    ? 'The violation you recorded for ' . $studentName . ' (' . ($violation->student_number ?? '') . ') has been confirmed by the administrator.'
+                    : 'The violation you recorded for ' . $studentName . ' (' . ($violation->student_number ?? '') . ') was denied by the administrator. Reason: ' . ($reason !== '' ? $reason : 'No reason provided.'),
+                targetType: 'oss_staff_violation',
+                targetId: (int) $violation->violation_id,
+                recipientId: $ossStaffId,
+                recipientType: \App\Models\AdminNotification::AUDIENCE_ADMIN,
+            );
+        } catch (\Throwable $e) {
+            // Notification must never break the decision.
         }
     }
 

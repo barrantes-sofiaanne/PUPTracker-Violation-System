@@ -106,10 +106,45 @@ class AdminNotificationService
             'sanction_request' => $this->sanctionRequestUrl((int) $notification->target_id),
             'email_incident' => $this->emailIncidentUrl((int) $notification->target_id),
             'violation' => $this->violationUrl((int) $notification->target_id),
+            'oss_staff_violation' => $this->ossStaffViolationUrl((int) $notification->target_id),
             'backup' => $this->backupUrl((int) $notification->target_id),
             'sanction_record' => $this->sanctionRecordUrl((int) $notification->target_id),
             default => null,
         };
+    }
+
+    /**
+     * Resolve an OSS-Staff violation target to the OSS Staff module.
+     *
+     * An OSS Staff member who recorded a violation must land inside THEIR OWN
+     * module (never the Admin confirmation queue or the Security tracker):
+     *   - CONFIRMED -> the student record page, highlighting the violation.
+     *   - otherwise -> their Submitted Violations tracker, same highlight.
+     */
+    private function ossStaffViolationUrl(int $targetId): ?string
+    {
+        if (! Route::has('oss-staff.violations.students')) {
+            return null;
+        }
+
+        $violation = Violation::query()->find($targetId);
+
+        if (! $violation) {
+            return null;
+        }
+
+        if (strtolower((string) $violation->status) === Violation::STATUS_CONFIRMED
+            && Route::has('oss-staff.violations.show')) {
+            return route('oss-staff.violations.show', [
+                'student_number' => $violation->student_number,
+                'highlight_violation' => $violation->violation_id,
+            ]);
+        }
+
+        return route('oss-staff.violations.students', [
+            'tab' => 'submitted',
+            'highlight_violation' => $violation->violation_id,
+        ]);
     }
 
     /**

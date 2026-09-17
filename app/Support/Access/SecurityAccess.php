@@ -2,62 +2,52 @@
 
 namespace App\Support\Access;
 
-use App\Models\Admin;
 use Illuminate\Contracts\Auth\Authenticatable;
 
 /**
- * PART 1 / PART 2 — the security-operational access rule.
+ * The security-operational access rule — STRICT MODULE ISOLATION.
  *
- * The Security module is gated by `auth:security`. The Admin Assistant is an
- * ADMIN account that must reach the SAME operational surfaces, so the
- * `security` route groups accept the `admin` guard as well and then defer the
- * actual decision to this class.
+ * The Security module belongs to Security Personnel ONLY. The `security` route
+ * groups still accept the `admin` guard, but that is purely so an `admins` row
+ * can be IDENTIFIED and then explicitly REFUSED here: the guard alone is never
+ * proof of operational rights.
  *
- * WHY NOT JUST TRUST THE GUARD
- * ----------------------------
- * Accepting `auth:admin` on those routes would let EVERY administrator —
- * including a plain Administrator and an IT Administrator — record violations
- * through the security-operational endpoints. That would GRANT access, which
- * the brief forbids. So the guard swap is paired with this explicit,
- * server-side check: only an Admin Assistant may proceed.
+ * WHY THE ADMIN GUARD IS STILL ACCEPTED BY `auth`
+ * -----------------------------------------------
+ * OSS Staff accounts are `admins` rows. If the Security routes only accepted
+ * `auth:security`, an OSS Staff member would be bounced to the login page
+ * rather than told they are not authorized — a confusing, misleading outcome
+ * for an account that IS authenticated. Accepting the guard and then refusing
+ * the account produces an honest 403.
  *
- * "Same features as Security" is deliberately scoped to OPERATIONAL
- * functionality. This class grants nothing beyond what Security Personnel can
- * already do, and never implies Super Admin capability.
+ * WHO IS REFUSED
+ * --------------
+ *   - OSS Staff          -> owns the SEPARATE `/oss-staff/...` module. Its
+ *                           activity must never be recorded as Security.
+ *   - Regular Admin      -> owns the Admin module.
+ *   - IT Administrator   -> owns the Admin/IT (Super Admin) module.
+ *   - Anything else      -> fail closed.
+ *
+ * A DENIED account is not merely redirected elsewhere; the Security module is
+ * simply not theirs.
  */
 final class SecurityAccess
 {
     /**
      * May this account use the security-operational surfaces?
      *
-     * - Security Personnel: yes (they ARE the reference role).
-     * - Admin Assistant:    yes (the whole point of the role).
-     * - Anyone else:        no.
+     * Security Personnel only. Every other account — including an OSS Staff
+     * admin — is refused.
      */
     public static function allowed(?Authenticatable $user): bool
     {
-        if ($user === null) {
-            return false;
-        }
-
-        // A Security Personnel account always may.
-        if ($user instanceof \App\Models\Security) {
-            return true;
-        }
-
-        // An ADMIN account may only when it holds the Admin Assistant role.
-        if ($user instanceof Admin) {
-            return $user->isAdminAssistant();
-        }
-
-        return false;
+        // Fail closed: an absent identity can never be authorized, and no
+        // non-Security account type is granted access here.
+        return $user instanceof \App\Models\Security;
     }
 
     /**
      * The route group a permitted account should be sent to.
-     *
-     * Both roles share the same operational pages, so this is currently a single
-     * destination; it exists so a caller never has to re-derive the rule.
      */
     public static function landingRoute(?Authenticatable $user): string
     {

@@ -8,16 +8,21 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * PART 1 / PART 2 — restrict the security-operational surfaces to the accounts
- * that are ALLOWED to use them.
+ * Restrict the security-operational surfaces to Security Personnel ONLY
+ * (strict module isolation).
  *
  * WHY THIS IS NEEDED
  * ------------------
- * The security route groups now also accept `auth:admin` so the Admin Assistant
- * (an admin account) can reach them. Without this gate that would widen access
- * to EVERY administrator — a plain Administrator or an IT Administrator could
- * record violations through the security endpoints. This middleware narrows it
- * back down to Security Personnel + Admin Assistant only.
+ * The security route groups also accept the `admin` guard. Without this gate
+ * that would widen access to EVERY administrator — an OSS Staff member, a plain
+ * Administrator and an IT Administrator could all reach the security endpoints.
+ * This middleware narrows it back down to the accounts the access rule permits.
+ *
+ * Accepting the `admin` guard only so the account can be IDENTIFIED and then
+ * explicitly refused is deliberate: an OSS Staff member is authenticated, and
+ * bouncing them to a login page would be misleading. They get an honest 403 and
+ * keep using their own `/oss-staff/...` module, which has its own `oss.staff`
+ * gate and its own ADMIN audit identity.
  *
  * It runs AFTER the auth middleware, so an unauthenticated visitor is still
  * handed to the auth guard first (and redirected to a login page).
@@ -30,7 +35,9 @@ class EnsureSecurityOperationalAccess
 {
     public function handle(Request $request, Closure $next): Response
     {
-        // Whichever guard authenticated this request holds the account.
+        // Whichever guard authenticated this request holds the account. The
+        // admin branch exists so an admin-guard account is refused explicitly
+        // rather than treated as a guest.
         $user = $request->user('security')
             ?? $request->user('admin')
             ?? $request->user();

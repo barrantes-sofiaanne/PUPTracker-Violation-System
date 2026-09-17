@@ -914,6 +914,108 @@ Route::middleware(['auth:security,admin', 'security.operational', 'session.inact
 
     });
 
+/*
+|--------------------------------------------------------------------------
+| OSS Staff Module
+|--------------------------------------------------------------------------
+|
+| OSS Staff is a SEPARATE module from Security. The role was formerly called
+| "Admin Assistant"; it is an ADMIN account (the `admin` guard, an `admins`
+| row) whose assigned role is OSS Staff.
+|
+| Authorization requires ALL THREE middlewares:
+|   - auth:admin          the account is an administrator
+|   - oss.staff           ...that specifically holds the OSS Staff role
+|   - session.inactivity  the standard idle expiry
+|
+| A plain Administrator or an IT Administrator holds the admin guard but fails
+| `oss.staff`, so they are refused (403) here. Security personnel authenticate
+| on a DIFFERENT guard and never reach these routes either — the Security module
+| keeps its own `/security/...` group and its `security.operational` gate.
+|
+| OSS Staff work is recorded as an ADMIN actor (recorder_type/uploader_type =
+| 'admin' with the OSS Staff admin id), never as a Security account.
+*/
+
+Route::middleware(['auth:admin', 'oss.staff', 'session.inactivity'])
+    ->prefix('oss-staff')
+    ->name('oss-staff.')
+    ->group(function () {
+
+        Route::get('/dashboard', [App\Http\Controllers\OssStaff\DashboardController::class, 'index'])
+            ->name('dashboard');
+
+        Route::get('/dashboard/chart-data', [App\Http\Controllers\OssStaff\DashboardController::class, 'chartData'])
+            ->name('dashboard.chart-data');
+
+        // Student violations routes
+        Route::get('/violations/students', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'index'])
+            ->name('violations.students');
+
+        Route::get('/violations/report', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'report'])
+            ->name('violations.report');
+
+        Route::get('/violations/submitted', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'submitted'])
+            ->name('violations.submitted');
+
+        Route::get('/violations/student/{student_number}', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'show'])
+            ->name('violations.show');
+
+        Route::post('/violations/store', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'store'])
+            ->name('violations.store');
+
+        Route::post('/violations/{violation}/resubmit', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'resubmitViolation'])
+            ->whereNumber('violation')
+            ->name('violations.resubmit');
+
+        Route::get('/violations/types', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'getViolationTypes'])
+            ->name('violations.types');
+
+        Route::post('/violations/preview', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'previewViolation'])
+            ->name('violations.preview');
+
+        Route::get('/violations/evidence/{evidence}', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'downloadEvidence'])
+            ->name('violations.evidence');
+
+        Route::post('/evidence/security-event', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'logSecurityEvent'])
+            ->name('violations.evidence-security-event');
+
+        // Search routes
+        Route::get('/search/student', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'search'])
+            ->name('search.student');
+
+        Route::get('/sanction-requests', [App\Http\Controllers\OssStaff\SanctionRequestController::class, 'index'])
+            ->name('sanction-requests');
+
+        Route::post('/sanction-requests/{sanctionRequest}/approve', [App\Http\Controllers\OssStaff\SanctionRequestController::class, 'approve'])
+            ->name('sanction-requests.approve');
+
+        Route::post('/sanction-requests/{sanctionRequest}/decline', [App\Http\Controllers\OssStaff\SanctionRequestController::class, 'decline'])
+            ->name('sanction-requests.decline');
+
+        Route::get('/announcements', [App\Http\Controllers\OssStaff\AnnouncementController::class, 'index'])
+            ->name('announcements');
+
+        Route::get('/notifications', [App\Http\Controllers\OssStaff\NotificationController::class, 'index'])
+            ->name('notifications');
+
+        Route::get('/notifications/unread-count', [App\Http\Controllers\OssStaff\NotificationController::class, 'unreadCount'])
+            ->name('notifications.unread-count');
+
+        Route::get('/notifications/{notification}/open', [App\Http\Controllers\OssStaff\NotificationController::class, 'open'])
+            ->name('notifications.open');
+
+        Route::post('/notifications/{notification}/read', [App\Http\Controllers\OssStaff\NotificationController::class, 'markAsRead'])
+            ->name('notifications.read');
+
+        Route::post('/notifications/mark-all-read', [App\Http\Controllers\OssStaff\NotificationController::class, 'markAllRead'])
+            ->name('notifications.mark-all-read');
+
+        Route::get('/profile', [App\Http\Controllers\OssStaff\OssStaffProfileController::class, 'index'])
+            ->name('profile');
+
+    });
+
 // TEMPORARY DEBUG ROUTE - DELETE AFTER USE
 // Route::get('/debug/reset-admin-password', [App\Http\Controllers\Admin\DebugPasswordResetController::class, 'resetAdminPassword'])
 //     ->withoutMiddleware(['web'])

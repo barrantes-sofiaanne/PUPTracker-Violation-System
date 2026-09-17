@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Support\Auth\LoginAttemptLimiter;
 use App\Support\Auth\SessionExpiryNotice;
 use App\Support\MfaService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -96,84 +97,7 @@ class AdminLoginController extends Controller
 
             Log::info('Admin login: credentials verified', ['admin_id' => $admin->id]);
 
-            if (empty($admin->email)) {
-                return back()
-                    ->withErrors([
-                        'login' => 'Your account has no email address configured. Please contact an administrator.'
-                    ])
-                    ->withInput();
-            }
-
-            Log::info('Admin login: starting MFA challenge', ['admin_id' => $admin->id]);
-
-            // Read the TOTP secret through the encrypted cast. If the stored
-            // value is legacy plaintext or was encrypted with a different
-            // APP_KEY, the cast throws a DecryptException here — BEFORE any
-            // challenge/email work. We categorize it separately so the real
-            // cause is visible in logs without ever exposing the secret.
-            try {
-                $totpSecret = $admin->mfa_totp_secret;
-            } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
-                Log::error('Admin login: MFA secret decryption FAILED (cast read)', [
-                    'admin_id' => $admin->getKey(),
-                    'hint' => 'Stored mfa_totp_secret is not decryptable with the current APP_KEY (legacy plaintext or key mismatch). Run mfa:diagnose-totp, then mfa:encrypt-totp-secrets once if the key is stable.',
-                    'exception' => get_class($e),
-                ]);
-
-                return back()
-                    ->withErrors([
-                        'login' => 'Unable to initialize multi-factor verification. Please contact the administrator.'
-                    ])
-                    ->withInput();
-            }
-
-            try {
-                $mfaService->beginChallenge(
-                    $request,
-                    'admin',
-                    (string) $admin->getKey(),
-                    (string) $admin->email,
-                    $totpSecret,
-                    (bool) $admin->mfa_totp_enabled,
-                    $admin->mfa_backup_codes,
-                    $admin->mfa_backup_codes_used,
-                    // PART 8 — Remember Me is chosen on the MFA verification
-                    // screen only, never at the credential stage, so the pending
-                    // challenge always starts with it OFF. Passing `false` rather
-                    // than reading the request keeps a hand-crafted POST from
-                    // pre-enabling a persistent credential before MFA.
-                    false
-                );
-                Log::info('Admin login: MFA challenge started successfully');
-            } catch (\Illuminate\Contracts\Encryption\DecryptException $exception) {
-                Log::error('Admin MFA challenge: decryption failure during initialization.', [
-                    'admin_id' => $admin->getKey(),
-                    'hint' => 'TOTP secret or backup codes not decryptable with the current APP_KEY.',
-                    'exception' => get_class($exception),
-                ]);
-
-                return back()
-                    ->withErrors([
-                        'login' => 'Unable to initialize multi-factor verification. Please contact the administrator.'
-                    ])
-                    ->withInput();
-            } catch (\Throwable $exception) {
-                Log::error('Admin MFA challenge initialization failed (non-decryption).', [
-                    'admin_id' => $admin->getKey(),
-                    'stage' => 'challenge-init',
-                    'error' => $exception->getMessage(),
-                    'exception' => get_class($exception),
-                ]);
-
-                return back()
-                    ->withErrors([
-                        'login' => 'Unable to send verification code right now. Please try again later.'
-                    ])
-                    ->withInput();
-            }
-
-            return redirect()->route('mfa.verify.show')
-                ->with('success', 'Continue with multi-factor verification.');
+            return $this->beginMfaForVerifiedAdmin($request, $mfaService, $admin);
         } catch (\Throwable $exception) {
             Log::error('Admin login controller error - UNCAUGHT', [
                 'admin_id' => $admin->id ?? null,
@@ -186,6 +110,99 @@ class AdminLoginController extends Controller
                 ])
                 ->withInput();
         }
+    }
+
+    /**
+     * Start the MFA challenge for an Administrator whose PASSWORD IS ALREADY
+     * VERIFIED.
+     *
+     * This is the ONE place the Administrator MFA challenge is started, so the
+     * Administrator login page and the SHARED Security + OSS Staff portal cannot
+     * drift apart: OSS Staff accounts are admins, so they must run this exact
+     * challenge and then be routed by their role in MfaController.
+     *
+     * Precondition: the caller has already checked the password.
+     */
+    public function beginMfaForVerifiedAdmin(Request $request, MfaService $mfaService, Admin $admin): RedirectResponse
+    {
+        if (empty($admin->email)) {
+            return back()
+                ->withErrors([
+                    'login' => 'Your account has no email address configured. Please contact an administrator.'
+                ])
+                ->withInput();
+        }
+
+        Log::info('Admin login: starting MFA challenge', ['admin_id' => $admin->id]);
+
+        // Read the TOTP secret through the encrypted cast. If the stored
+        // value is legacy plaintext or was encrypted with a different
+        // APP_KEY, the cast throws a DecryptException here — BEFORE any
+        // challenge/email work. We categorize it separately so the real
+        // cause is visible in logs without ever exposing the secret.
+        try {
+            $totpSecret = $admin->mfa_totp_secret;
+        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+            Log::error('Admin login: MFA secret decryption FAILED (cast read)', [
+                'admin_id' => $admin->getKey(),
+                'hint' => 'Stored mfa_totp_secret is not decryptable with the current APP_KEY (legacy plaintext or key mismatch). Run mfa:diagnose-totp, then mfa:encrypt-totp-secrets once if the key is stable.',
+                'exception' => get_class($e),
+            ]);
+
+            return back()
+                ->withErrors([
+                    'login' => 'Unable to initialize multi-factor verification. Please contact the administrator.'
+                ])
+                ->withInput();
+        }
+
+        try {
+            $mfaService->beginChallenge(
+                $request,
+                'admin',
+                (string) $admin->getKey(),
+                (string) $admin->email,
+                $totpSecret,
+                (bool) $admin->mfa_totp_enabled,
+                $admin->mfa_backup_codes,
+                $admin->mfa_backup_codes_used,
+                // PART 8 — Remember Me is chosen on the MFA verification
+                // screen only, never at the credential stage, so the pending
+                // challenge always starts with it OFF. Passing `false` rather
+                // than reading the request keeps a hand-crafted POST from
+                // pre-enabling a persistent credential before MFA.
+                false
+            );
+            Log::info('Admin login: MFA challenge started successfully');
+        } catch (\Illuminate\Contracts\Encryption\DecryptException $exception) {
+            Log::error('Admin MFA challenge: decryption failure during initialization.', [
+                'admin_id' => $admin->getKey(),
+                'hint' => 'TOTP secret or backup codes not decryptable with the current APP_KEY.',
+                'exception' => get_class($exception),
+            ]);
+
+            return back()
+                ->withErrors([
+                    'login' => 'Unable to initialize multi-factor verification. Please contact the administrator.'
+                ])
+                ->withInput();
+        } catch (\Throwable $exception) {
+            Log::error('Admin MFA challenge initialization failed (non-decryption).', [
+                'admin_id' => $admin->getKey(),
+                'stage' => 'challenge-init',
+                'error' => $exception->getMessage(),
+                'exception' => get_class($exception),
+            ]);
+
+            return back()
+                ->withErrors([
+                    'login' => 'Unable to send verification code right now. Please try again later.'
+                ])
+                ->withInput();
+        }
+
+        return redirect()->route('mfa.verify.show')
+            ->with('success', 'Continue with multi-factor verification.');
     }
 
     public function logout(Request $request)

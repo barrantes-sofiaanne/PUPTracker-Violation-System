@@ -140,7 +140,7 @@ class StudentController extends Controller
         $genders = Gender::orderBy('gender_name')->get();
         $statuses = Status::orderBy('status_name')->get();
         $adminRoles = Role::query()
-            ->whereIn('roles_name', ['Admin', 'IT Administrator', 'Admin Assistant'])
+            ->whereIn('roles_name', ['Admin', 'IT Administrator', 'OSS Staff'])
             ->orderBy('roles_name')
             ->get();
 
