@@ -116,7 +116,7 @@ class BackupEngine
     /**
      * @return array{0: string, 1: array<string, mixed>}  [tempFile, metadata]
      */
-    protected function runLogicalDump(string $type, $startedAt): array
+protected function runLogicalDump(string $type, $startedAt): array
 {
     $result = $this->dumpService->dumpDatabase();
 
@@ -124,16 +124,38 @@ class BackupEngine
         throw new \RuntimeException($result['error'] ?? 'Database dump failed.');
     }
 
+    $metadata = [
+        'type' => $type,
+        'checksum' => $result['checksum'],
+        'checksum_algorithm' => 'SHA-256',
+        'size' => $result['compressed_size'],
+        'file_count' => 1,
+        'started_at' => $startedAt,
+    ];
+
+    /*
+     * Capture the binary-log boundary immediately after the logical dump.
+     * This becomes the recovery-chain anchor for subsequent incrementals.
+     *
+     * Only FULL backups need to establish the initial anchor. Daily
+     * snapshots retain their existing behavior.
+     */
+    if ($type === BackupHistory::TYPE_FULL) {
+        $position = $this->binaryLogSupport->currentPosition();
+
+        if ($position === null) {
+            throw new \RuntimeException(
+                'FULL backup completed, but the current MySQL binary-log position could not be captured.'
+            );
+        }
+
+        $metadata['binlog_file_end'] = $position['file'];
+        $metadata['binlog_position_end'] = $position['position'];
+    }
+
     return [
         $result['temp_file'],
-        [
-            'type' => $type,
-            'checksum' => $result['checksum'],
-            'checksum_algorithm' => 'SHA-256',
-            'size' => $result['compressed_size'],
-            'file_count' => 1,
-            'started_at' => $startedAt,
-        ],
+        $metadata,
     ];
 }
 
