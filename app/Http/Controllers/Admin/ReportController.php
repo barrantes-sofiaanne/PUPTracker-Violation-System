@@ -496,8 +496,17 @@ class ReportController extends Controller
             ->get();
 
         $monthly = $reports->groupBy(fn ($report) => Carbon::parse($report->violation_date)->format('M Y'));
-        $categoryCounts = $reports->groupBy(fn ($report) => optional($report->violationType?->violationCategory)->category_name ?? 'Uncategorized');
-        $violationCounts = $reports->groupBy(fn ($report) => optional($report->violationType)->violation_type ?? 'Unspecified');
+       $categoryCounts = $reports->groupBy(
+    fn ($report) => optional($report->violationType?->violationCategory)->category_name ?? 'Uncategorized'
+);
+
+$programCounts = $reports->groupBy(
+    fn ($report) => optional($report->student?->studentInfo?->program)->program_name ?? 'Unassigned'
+);
+
+$violationCounts = $reports->groupBy(
+    fn ($report) => optional($report->violationType)->violation_type ?? 'Unspecified'
+);
 
         // Most common first, then keep only the top N. Ties are broken by label so
         // the order is deterministic between requests. When fewer than N types
@@ -516,6 +525,10 @@ class ReportController extends Controller
                 'labels' => $categoryCounts->keys()->values()->all(),
                 'data' => $categoryCounts->map(fn ($items) => $items->count())->values()->all(),
             ],
+            'programs' => [
+    'labels' => $programCounts->keys()->values()->all(),
+    'data' => $programCounts->map(fn ($items) => $items->count())->values()->all(),
+],
             'topViolations' => [
                 'labels' => $topViolations->keys()->values()->all(),
                 'data' => $topViolations->values()->all(),

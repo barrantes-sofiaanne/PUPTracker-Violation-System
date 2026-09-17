@@ -16,12 +16,16 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * PART 1/2 — Admin Assistant role, and the security-operational access rule.
+ * PART 1/2 — the OSS Staff role, and the security-operational access rule.
+ * (The role was formerly named "Admin Assistant"; the live role name is OSS Staff.)
  * PART 17 — 3 failed credential attempts.
  * PART 8  — no Remember Me on the credential login screen.
  *
- * The important cases here are the NEGATIVE ones: widening the security routes
- * to accept the admin guard must not hand those surfaces to every administrator.
+ * STRICT MODULE ISOLATION: the Security module belongs to Security Personnel
+ * ONLY. Accepting the `admin` guard on the security routes exists solely so an
+ * admin-guard account can be identified and then REFUSED — every admin role
+ * (OSS Staff, plain Administrator, IT Administrator) is denied, and only a
+ * Security account is admitted.
  */
 class AdminAssistantAndLoginSecurityTest extends TestCase
 {
@@ -47,43 +51,57 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
     }
 
     // ==================================================================
-    // PART 1 — Admin Assistant role
+    // PART 1 — OSS Staff role
     // ==================================================================
 
-    /** The role is created by the migration and is idempotent. */
+    /**
+     * The role-creation migration and the rename migration are both idempotent.
+     *
+     * Start from the PRE-migration state (no Admin Assistant / OSS Staff row) so
+     * the assertion describes the real deployment order: the creation migration
+     * ran once historically, then the rename migration moved the row to the
+     * CURRENT name. Re-running either must not add a second role.
+     */
     public function test_admin_assistant_role_migration_is_idempotent(): void
     {
         $migration = require base_path('database/migrations/2026_09_16_000004_add_admin_assistant_role.php');
+        $rename = require base_path('database/migrations/2026_09_17_042228_rename_admin_assistant_role_to_oss_staff.php');
+
+        DB::table('roles_tbl')
+            ->whereIn(DB::raw('LOWER(roles_name)'), ['admin assistant', 'oss staff'])
+            ->delete();
 
         $migration->up();
         $migration->up();
+        $rename->up();
+        $rename->up();
 
         $this->assertSame(
             1,
-            DB::table('roles_tbl')->where('roles_name', 'Admin Assistant')->count(),
-            'Running the migration twice must not duplicate the role.'
+            DB::table('roles_tbl')->where('roles_name', Admin::ROLE_OSS_STAFF)->count(),
+            'Running the migrations twice must not duplicate the role.'
         );
     }
 
-    public function test_admin_assistant_role_is_recognised_case_insensitively(): void
+    public function test_oss_staff_role_is_recognised_case_insensitively(): void
     {
-        $assistant = $this->createAdmin('asst@example.com', Admin::ROLE_ADMIN_ASSISTANT);
+        $assistant = $this->createAdmin('asst@example.com', Admin::ROLE_OSS_STAFF);
 
-        $this->assertTrue($assistant->isAdminAssistant());
-        $this->assertSame(Admin::ROLE_ADMIN_ASSISTANT, $assistant->roleName());
+        $this->assertTrue($assistant->isOssStaff());
+        $this->assertSame(Admin::ROLE_OSS_STAFF, $assistant->roleName());
     }
 
-    public function test_other_admin_roles_are_not_treated_as_admin_assistant(): void
+    public function test_other_admin_roles_are_not_treated_as_oss_staff(): void
     {
         $plain = $this->createAdmin('plain@example.com', 'Admin');
         $it = $this->createAdmin('it@example.com', 'IT Administrator');
 
-        $this->assertFalse($plain->isAdminAssistant());
-        $this->assertFalse($it->isAdminAssistant());
+        $this->assertFalse($plain->isOssStaff());
+        $this->assertFalse($it->isOssStaff());
     }
 
     /** An unknown/absent role must fail CLOSED. */
-    public function test_unknown_role_is_not_an_admin_assistant(): void
+    public function test_unknown_role_is_not_oss_staff(): void
     {
         $admin = Admin::create(['email' => 'unknown@example.com', 'password' => Hash::make('x')]);
 
@@ -95,18 +113,26 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
             'lastname' => 'U',
         ]);
 
-        $this->assertFalse($admin->fresh()->isAdminAssistant());
+        $this->assertFalse($admin->fresh()->isOssStaff());
     }
 
     // ==================================================================
     // PART 1/2 — the access rule (the security-relevant part)
+    //
+    // STRICT MODULE ISOLATION: the Security module belongs to Security
+    // Personnel ONLY. An OSS Staff account owns its OWN `/oss-staff/...`
+    // module, so it must be refused here even though it authenticates on the
+    // `admin` guard that these routes also accept.
     // ==================================================================
 
-    public function test_admin_assistant_is_allowed_on_security_operational_surfaces(): void
+    public function test_oss_staff_is_denied_security_operational_surfaces(): void
     {
-        $assistant = $this->createAdmin('asst@example.com', Admin::ROLE_ADMIN_ASSISTANT);
+        $assistant = $this->createAdmin('asst@example.com', Admin::ROLE_OSS_STAFF);
 
-        $this->assertTrue(SecurityAccess::allowed($assistant));
+        $this->assertFalse(
+            SecurityAccess::allowed($assistant),
+            'An OSS Staff account must not reach the Security module.'
+        );
     }
 
     public function test_security_personnel_remain_allowed(): void
@@ -117,16 +143,18 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
     }
 
     /**
-     * THE critical negative case: widening the guards must not give every
-     * administrator the security-operational surfaces.
+     * THE critical negative case: an `admin`-guard account must never reach the
+     * security-operational surfaces — no matter which role it holds.
      */
-    public function test_plain_admin_is_denied_security_operational_surfaces(): void
+    public function test_no_admin_role_reaches_security_operational_surfaces(): void
     {
         $plain = $this->createAdmin('plain@example.com', 'Admin');
         $it = $this->createAdmin('it@example.com', 'IT Administrator');
+        $ossStaff = $this->createAdmin('oss@example.com', Admin::ROLE_OSS_STAFF);
 
         $this->assertFalse(SecurityAccess::allowed($plain), 'A plain Administrator must not reach security operations.');
-        $this->assertFalse(SecurityAccess::allowed($it), 'An IT Administrator must not reach security operations by default.');
+        $this->assertFalse(SecurityAccess::allowed($it), 'An IT Administrator must not reach security operations.');
+        $this->assertFalse(SecurityAccess::allowed($ossStaff), 'An OSS Staff account must not reach security operations.');
     }
 
     public function test_guest_is_denied_security_operational_surfaces(): void
@@ -144,14 +172,29 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
             ->assertForbidden();
     }
 
-    /** ...and the Admin Assistant must be let through. */
-    public function test_admin_assistant_reaches_the_security_dashboard(): void
+    /**
+     * ...and an OSS Staff account must ALSO be blocked (403, not a redirect:
+     * the account is authenticated but simply not authorized here).
+     */
+    public function test_oss_staff_gets_403_from_a_security_route(): void
     {
-        $assistant = $this->createAdmin('asst@example.com', Admin::ROLE_ADMIN_ASSISTANT);
+        $assistant = $this->createAdmin('asst@example.com', Admin::ROLE_OSS_STAFF);
 
         $this->actingAs($assistant, 'admin')
             ->get(route('security.dashboard'))
-            ->assertOk();
+            ->assertForbidden();
+    }
+
+    /**
+     * ...and an IT Administrator must be blocked too.
+     */
+    public function test_it_administrator_gets_403_from_a_security_route(): void
+    {
+        $it = $this->createAdmin('it@example.com', 'IT Administrator');
+
+        $this->actingAs($it, 'admin')
+            ->get(route('security.dashboard'))
+            ->assertForbidden();
     }
 
     public function test_security_personnel_still_reach_the_security_dashboard(): void
@@ -759,8 +802,13 @@ class AdminAssistantAndLoginSecurityTest extends TestCase
             ['roles_id' => 2, 'roles_name' => 'IT Administrator'],
         ]);
 
-        // Apply the real migration so the role exists exactly as in production.
+        // Apply the real migrations so the role exists exactly as in
+        // production: the historical creation, then the rename that made
+        // the live role name 'OSS Staff'.
         $migration = require base_path('database/migrations/2026_09_16_000004_add_admin_assistant_role.php');
         $migration->up();
+
+        $rename = require base_path('database/migrations/2026_09_17_042228_rename_admin_assistant_role_to_oss_staff.php');
+        $rename->up();
     }
 }

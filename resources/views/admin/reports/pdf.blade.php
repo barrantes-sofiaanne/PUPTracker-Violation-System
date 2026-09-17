@@ -59,24 +59,17 @@
     <p class="filters">Filters Applied: {{ $filtersApplied ?? 'None' }}</p>
 
     {{-- Summary Cards --}}
-    <div class="summary-grid">
-        <div class="summary-card">
-            <div class="label">Total Violations</div>
-            <div class="value">{{ $statistics['total'] ?? $reports->count() }}</div>
-        </div>
-        <div class="summary-card">
-            <div class="label">Minor</div>
-            <div class="value">{{ $statistics['minor'] ?? 0 }}</div>
-        </div>
-        <div class="summary-card">
-            <div class="label">Major</div>
-            <div class="value">{{ $statistics['major'] ?? 0 }}</div>
-        </div>
-        <div class="summary-card">
-            <div class="label">Repeat Offenders</div>
-            <div class="value">{{ $statistics['repeat_offenders'] ?? 0 }}</div>
-        </div>
+<div class="summary-grid">
+    <div class="summary-card">
+        <div class="label">Total Violations</div>
+        <div class="value">{{ $statistics['total'] ?? $reports->count() }}</div>
     </div>
+
+    <div class="summary-card">
+        <div class="label">Repeat Offenders</div>
+        <div class="value">{{ $statistics['repeat_offenders'] ?? 0 }}</div>
+    </div>
+</div>
 
     {{-- Monthly Trend --}}
     @if(!empty($charts['monthly']['labels']))
@@ -123,6 +116,31 @@
             </table>
         </div>
     @endif
+
+    {{-- Program Distribution --}}
+@if(!empty($charts['programs']['labels']))
+    <div class="chart-section">
+        <h3 class="chart-title">Violations by Program</h3>
+
+        <table class="chart-table">
+            <thead>
+                <tr>
+                    <th>Program</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach($charts['programs']['labels'] as $i => $label)
+                    <tr>
+                        <td>{{ $label }}</td>
+                        <td>{{ $charts['programs']['data'][$i] ?? 0 }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+@endif
 
     {{-- Top Violations --}}
     @if(!empty($charts['topViolations']['labels']))

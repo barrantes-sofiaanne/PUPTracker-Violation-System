@@ -1540,19 +1540,25 @@
 
         <div class="modal-content shadow-lg border-0 rounded-4">
 
-            <div class="modal-header bg-danger text-white">
+<div class="modal-header evidence-capture-modal-header">
 
-                <h5
-                    class="modal-title fw-bold"
-                    id="securityNoticeModalLabel">
+    <h5
+        class="modal-title fw-bold"
+        id="securityNoticeModalLabel">
 
-                    <i class="bi bi-shield-lock me-2"></i>
+        <i class="bi bi-shield-lock me-2"></i>
+        Evidence Capture Notice
 
-                    Evidence Capture Notice
+    </h5>
 
-                </h5>
+    <button
+        type="button"
+        class="btn-close evidence-capture-modal-close"
+        data-bs-dismiss="modal"
+        aria-label="Close">
+    </button>
 
-            </div>
+</div>
 
             <div class="modal-body">
 

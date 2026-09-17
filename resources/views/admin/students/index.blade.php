@@ -531,7 +531,6 @@
                 <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" class="form-control" required></div>
                 <div class="col-md-6"><label class="form-label">Role</label><select name="role_id" class="form-select" required>@foreach($adminRoles as $role)<option value="{{ $role->roles_id }}">{{ $role->roles_name }}</option>@endforeach</select></div>
                 <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" class="form-select" required>@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
-                <div class="col-md-6"><label class="form-label">Password</label><input name="password" type="password" class="form-control" required></div>
             </div></div>
             <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Create Admin</button></div>
         </form>
@@ -549,7 +548,6 @@
                 <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" class="form-control"></div>
                 <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" class="form-control" required></div>
                 <div class="col-md-6"><label class="form-label">Position</label><input name="position" id="create_security_position" class="form-control" value="Security Personnel" readonly tabindex="-1"></div>
-                <div class="col-md-6"><label class="form-label">Password</label><input name="password" type="password" class="form-control" required></div>
             </div></div>
             <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Create Security</button></div>
         </form>

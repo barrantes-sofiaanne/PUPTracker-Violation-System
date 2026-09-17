@@ -419,28 +419,34 @@ class SessionAndRememberMeSecurityTest extends TestCase
     }
 
     // ==================================================================
-    // PART 1/2 — Admin Assistant (TEST 1-4)
+    // PART 1/2 — OSS Staff (TEST 1-4).
+    // The role was formerly "Admin Assistant"; the live name is OSS Staff.
     // ==================================================================
 
     /** TEST 1 — the role exists with the right mapping. */
-    public function test_admin_assistant_role_exists(): void
+    public function test_oss_staff_role_exists(): void
     {
-        $this->assertDatabaseHas('roles_tbl', ['roles_name' => 'Admin Assistant']);
+        $this->assertDatabaseHas('roles_tbl', ['roles_name' => 'OSS Staff']);
     }
 
-    /** TEST 2 — an Admin Assistant reaches the security-operational surface. */
-    public function test_admin_assistant_reaches_security_functionality(): void
+    /** TEST 2 — an OSS Staff account must NOT reach the security-operational surface.
+     *
+     * STRICT MODULE ISOLATION: OSS Staff owns `/oss-staff/...` instead. The
+     * account is authenticated on the admin guard, so it is refused with a 403
+     * rather than bounced to a login page.
+     */
+    public function test_oss_staff_is_denied_security_functionality(): void
     {
-        $assistant = $this->createAdmin('asst@example.com', 'Admin Assistant');
+        $assistant = $this->createAdmin('asst@example.com', 'OSS Staff');
 
-        $this->assertTrue(SecurityAccess::allowed($assistant));
-        $this->actingAs($assistant, 'admin')->get(route('security.dashboard'))->assertOk();
+        $this->assertFalse(SecurityAccess::allowed($assistant));
+        $this->actingAs($assistant, 'admin')->get(route('security.dashboard'))->assertForbidden();
     }
 
-    /** TEST 3 — an Admin Assistant must NOT reach Super Admin routes. */
-    public function test_admin_assistant_is_denied_super_admin_routes(): void
+    /** TEST 3 — an OSS Staff account must NOT reach Super Admin routes. */
+    public function test_oss_staff_is_denied_super_admin_routes(): void
     {
-        $assistant = $this->createAdmin('asst2@example.com', 'Admin Assistant');
+        $assistant = $this->createAdmin('asst2@example.com', 'OSS Staff');
 
         $this->actingAs($assistant, 'admin')
             ->get(route('admin.super-admin.dashboard'))
@@ -752,5 +758,10 @@ class SessionAndRememberMeSecurityTest extends TestCase
 
         $migration = require base_path('database/migrations/2026_09_16_000004_add_admin_assistant_role.php');
         $migration->up();
+
+        // The live role name is 'OSS Staff' (the rename migration has been
+        // deployed), so apply it too.
+        $rename = require base_path('database/migrations/2026_09_17_042228_rename_admin_assistant_role_to_oss_staff.php');
+        $rename->up();
     }
 }

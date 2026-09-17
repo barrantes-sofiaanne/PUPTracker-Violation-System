@@ -136,10 +136,22 @@
                     <label class="form-label" for="program_id">
                         Program/Course <span class="required-asterisk" aria-hidden="true">*</span>
                     </label>
+                    @php
+                        // The Ladderized question is offered ONLY for the programs that
+                        // actually run a ladderized curriculum (BSIT / BSOA). The list is
+                        // computed server-side from config so this page and the Admin
+                        // student screens can never disagree. Program ids travel with the
+                        // select, so the script depends on no hard-coded ids.
+                        $ladderizedProgramIds = (array) ($ladderizedProgramIds ?? []);
+                        $selectedProgramId = (string) old('program_id');
+                        $ladderizedOffered = $selectedProgramId !== ''
+                            && in_array((int) $selectedProgramId, array_map('intval', $ladderizedProgramIds), true);
+                    @endphp
                     <select
                         id="program_id"
                         name="program_id"
                         class="form-select @error('program_id') is-invalid @enderror"
+                        data-ladderized-programs='@json(array_values($ladderizedProgramIds))'
                         required>
                         <option value="">Select Program/Course</option>
                         @foreach ($programs as $program)
@@ -150,6 +162,47 @@
                         @endforeach
                     </select>
                     @error('program_id')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                {{--
+                    LADDERIZED — shown only when the selected Program/Course is BSIT
+                    or BSOA (strictly those two). The script reveals and hides it on
+                    program change; it starts revealed after a validation error so a
+                    repopulated form does not silently lose the student's answer.
+                    The server independently re-checks the program, so hiding this
+                    field can never set the flag on a non-ladderized program.
+                --}}
+                <div class="mb-3 {{ $ladderizedOffered ? '' : 'd-none' }}" id="ladderizedWrap">
+                    <label class="form-label d-block">
+                        Ladderized
+                    </label>
+                    <div class="form-check form-check-inline">
+                        <input
+                            class="form-check-input @error('ladderized') is-invalid @enderror"
+                            type="radio"
+                            name="ladderized"
+                            id="ladderizedYes"
+                            value="1"
+                            @checked((string) old('ladderized') === '1')>
+                        <label class="form-check-label" for="ladderizedYes">Yes</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input
+                            class="form-check-input @error('ladderized') is-invalid @enderror"
+                            type="radio"
+                            name="ladderized"
+                            id="ladderizedNo"
+                            value="0"
+                            @checked((string) old('ladderized') === '0' || old('ladderized') === null)>
+                        <label class="form-check-label" for="ladderizedNo">No</label>
+                    </div>
+                    <small class="form-text text-muted d-block">
+                        Choose <strong>Yes</strong> if you are enrolled under the ladderized
+                        curriculum of this program.
+                    </small>
+                    @error('ladderized')
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
                 </div>
@@ -297,6 +350,42 @@ document.addEventListener('DOMContentLoaded', function () {
         if (label) { label.textContent = 'Submitting…'; }
         if (spinner) { spinner.classList.remove('d-none'); }
     });
+});
+
+// LADDERIZED visibility — the question appears ONLY for BSIT / BSOA.
+//
+// The ladderizable program ids are rendered onto the select by the server, so
+// this never hard-codes an id and automatically follows any change to
+// GRADUATION_REVIEW_LADDERIZED_PROGRAMS. The server re-checks the program
+// before storing the flag, so this is presentation only.
+document.addEventListener('DOMContentLoaded', function () {
+    const programSelect = document.getElementById('program_id');
+    const wrap = document.getElementById('ladderizedWrap');
+    if (!programSelect || !wrap) {
+        return;
+    }
+
+    let ladderizedIds = [];
+    try {
+        ladderizedIds = JSON.parse(programSelect.dataset.ladderizedPrograms || '[]').map(Number);
+    } catch (e) {
+        ladderizedIds = [];
+    }
+
+    function syncLadderizedVisibility() {
+        const offered = ladderizedIds.indexOf(Number(programSelect.value)) !== -1;
+        wrap.classList.toggle('d-none', !offered);
+
+        // Leaving a ladderizable program must also drop the answer, so the
+        // "No" default applies if a non-ladderized program is then submitted.
+        if (!offered) {
+            const no = document.getElementById('ladderizedNo');
+            if (no) { no.checked = true; }
+        }
+    }
+
+    programSelect.addEventListener('change', syncLadderizedVisibility);
+    syncLadderizedVisibility();
 });
 </script>
 @endpush

@@ -238,7 +238,7 @@ class EnforceInactivityTimeout
             SessionExpiryNotice::inactivityReason(self::TIMEOUT_MINUTES)
         );
 
-        return redirect()->route($this->loginRoute($guard));
+        return redirect()->route($this->loginRoute($guard, $guardUser));
     }
 
     /**
@@ -246,9 +246,18 @@ class EnforceInactivityTimeout
      *
      * Uses the guard's own login route so the user is returned to the correct
      * flow (admin / security / student) rather than a generic one.
+     *
+     * An OSS Staff admin signed in through the SHARED Security + OSS Staff
+     * portal, so it is returned there instead of the Administrator login it
+     * never used. Regular Administrators and IT Administrators keep
+     * `admin.login`.
      */
-    private function loginRoute(string $guard): string
+    private function loginRoute(string $guard, ?\Illuminate\Contracts\Auth\Authenticatable $user = null): string
     {
+        if ($guard === 'admin') {
+            return \App\Support\Auth\PortalLoginRedirect::forGuard('admin', $user);
+        }
+
         $candidate = $guard . '.login';
 
         return \Illuminate\Support\Facades\Route::has($candidate)

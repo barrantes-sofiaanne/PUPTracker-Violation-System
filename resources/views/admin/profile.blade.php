@@ -11,13 +11,12 @@
 @php
     $adminFirstName = optional($admin->adminInfo)->firstname ?? '';
     $adminLastName = optional($admin->adminInfo)->lastname ?? '';
-    $adminFullName = trim($adminFirstName . ' ' . $adminLastName)
-        ?: ($admin->name ?? ($admin->username ?? 'Administrator'));
+   $adminFullName = trim($adminFirstName . ' ' . $adminLastName)
+    ?: ($admin->name ?? 'Administrator');
     $adminPosition = optional($admin->adminInfo)->Position
         ?? optional($admin->adminInfo)->position
         ?? optional($admin->adminInfo)->designation
         ?? 'Administrator';
-    $adminUsername = $admin->username ?? '—';
 @endphp
 
 <div class="container-fluid py-4">
@@ -40,10 +39,7 @@
                         <i class="bi bi-person-gear" aria-hidden="true"></i>
                         {{ $adminPosition }}
                     </span>
-                    <span class="profile-hero-badge">
-                        <i class="bi bi-person-badge" aria-hidden="true"></i>
-                        {{ $adminUsername }}
-                    </span>
+                    
                 </div>
             </div>
 
@@ -66,15 +62,6 @@
                         </div>
                         <div class="profile-info-value">
                             {{ $admin->email }}
-                        </div>
-                    </div>
-
-                    <div class="profile-info-item">
-                        <div class="profile-info-label">
-                            <i class="bi bi-person-badge" aria-hidden="true"></i> Username
-                        </div>
-                        <div class="profile-info-value">
-                            {{ $adminUsername }}
                         </div>
                     </div>
 

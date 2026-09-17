@@ -209,12 +209,10 @@
                                             data-current-name="{{ $announcement->attachments->first()->original_filename }}"
                                             data-current-view="{{ route('announcements.attachments.show', $announcement->attachments->first()) }}"
                                             @endif
-                                            @if($announcement->show_on_login)
-                                            data-show-on-login="1"
-                                            data-login-duration="{{ $announcement->login_modal_expires_at ? 'custom' : '1_week' }}"
-                                            data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateString() }}"
-                                            @endif>
-                                            <i class="bi bi-pencil me-1"></i>Edit
+                                            data-show-on-login="{{ $announcement->show_on_login ? '1' : '0' }}"
+data-login-duration="{{ $announcement->login_modal_expires_at ? 'custom' : '1_week' }}"
+data-login-expiry="{{ optional($announcement->login_modal_expires_at)->toDateString() }}">
+    <i class="bi bi-pencil me-1"></i>Edit
                                         </button>
                                         <form action="{{ route('admin.announcements.destroy', $announcement) }}" method="POST" class="d-inline-block" data-confirm="This will permanently delete the announcement. This action cannot be undone."
                                               data-confirm-title="Delete Announcement?" data-confirm-confirm-label="Delete">
@@ -252,7 +250,7 @@
 
 {{-- Edit Announcement modal --}}
 <div class="modal fade admin-modal admin-announcement-edit-modal" id="announcementEditModal" tabindex="-1" aria-labelledby="announcementEditModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header admin-modal-header">
                 <h5 class="modal-title admin-modal-title" id="announcementEditModalLabel">Edit Announcement</h5>
@@ -266,12 +264,72 @@
                         <label for="announcementEditTitle" class="form-label fw-semibold">Title</label>
                         <input type="text" class="form-control" id="announcementEditTitle" name="title" required maxlength="255">
                     </div>
+
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Content</label>
                         <input type="hidden" id="announcementEditContent" name="content">
                         <div id="announcementQuillEditor" class="announcement-quill-editor"></div>
                     </div>
+                    @if($isItAdmin)
+    <div class="mb-4">
+        <div class="form-check">
+            <input
+                class="form-check-input"
+                type="checkbox"
+                value="1"
+                id="announcementEditShowOnLogin"
+                name="show_on_login">
 
+            <label
+                class="form-check-label fw-semibold"
+                for="announcementEditShowOnLogin">
+                Show this announcement as a login modal across modules
+            </label>
+        </div>
+
+        <div class="form-text">
+            When enabled, this announcement will appear on the login page until the selected expiry date.
+        </div>
+    </div>
+
+    <div class="mb-4 d-none" id="announcementEditLoginModalDurationWrap">
+        <label
+            for="announcementEditLoginModalDuration"
+            class="form-label fw-semibold">
+            Duration shown as login modal
+        </label>
+
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <select
+                    class="form-select"
+                    id="announcementEditLoginModalDuration"
+                    name="login_modal_duration">
+
+                    <option value="1_week">1 Week</option>
+                    <option value="1_month">1 Month</option>
+                    <option value="custom">Custom Date</option>
+                </select>
+            </div>
+
+            <div
+                class="col-12 col-md-4 d-none"
+                id="announcementEditLoginModalCustomDateWrap">
+
+                <input
+                    type="date"
+                    class="form-control"
+                    id="announcementEditLoginModalExpiresAt"
+                    name="login_modal_expires_at"
+                    min="{{ now()->toDateString() }}">
+
+                <div class="form-text">
+                    Select the date until this login modal is shown.
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
                     <div class="mb-3">
                         <label for="announcementEditFile" class="form-label fw-semibold">Attach File (Image or PDF, max 5MB)</label>
                         <input type="file" class="form-control" id="announcementEditFile" name="attachment" accept=".jpg,.jpeg,.png,.gif,.pdf">
@@ -305,72 +363,457 @@
 
 @push('styles')
 <style>
-    .announcement-quill-editor {
-        background: #fff;
-        border-radius: 0.6rem;
-        min-height: 180px;
+/* =========================================================
+   ANNOUNCEMENT QUILL EDITOR
+   ========================================================= */
+
+.announcement-quill-editor {
+    background: #fff;
+    border-radius: 0.6rem;
+    min-height: 180px;
+}
+
+.announcement-quill-editor .ql-toolbar {
+    border-radius: 0.6rem 0.6rem 0 0;
+    border: 1px solid #d8cdd1;
+}
+
+.announcement-quill-editor .ql-container {
+    min-height: 140px;
+    border-radius: 0 0 0.6rem 0.6rem;
+    border: 1px solid #d8cdd1;
+    border-top: 0;
+    font-size: 0.98rem;
+    font-family: inherit;
+}
+
+.announcement-quill-editor .ql-editor {
+    min-height: 140px;
+    color: #3c3134;
+    line-height: 1.7;
+}
+
+
+/* =========================================================
+   ANNOUNCEMENT VIEW
+   ========================================================= */
+
+.admin-announcement-view-title {
+    color: #7f0000;
+    font-weight: 800;
+    margin: 0 0 0.25rem;
+    font-size: 1.6rem;
+    line-height: 1.3;
+}
+
+.admin-announcement-view-content {
+    color: #444;
+    line-height: 1.7;
+    font-size: 0.98rem;
+    overflow-wrap: anywhere;
+}
+
+.admin-announcement-view-modal .modal-body {
+    max-height: min(72vh, 70rem);
+    overflow-y: auto;
+}
+
+
+/* =========================================================
+   ANNOUNCEMENT EDIT MODAL
+   ========================================================= */
+
+.admin-announcement-edit-modal textarea,
+.admin-announcement-edit-modal input[type="text"],
+.admin-announcement-edit-modal input[type="file"] {
+    min-height: 42px;
+}
+
+.admin-announcement-edit-modal textarea {
+    line-height: 1.6;
+}
+
+
+/* =========================================================
+   DESKTOP
+   ========================================================= */
+
+.admin-announcement-edit-modal .modal-dialog {
+    width: calc(100% - 2rem);
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.admin-announcement-edit-modal .modal-content {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0.85rem;
+    overflow: hidden;
+}
+
+.admin-announcement-edit-modal .modal-body {
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+
+/* =========================================================
+   FORM CONTROLS
+   ========================================================= */
+
+.admin-announcement-edit-modal .form-control,
+.admin-announcement-edit-modal .form-select {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+
+/* =========================================================
+   QUILL
+   ========================================================= */
+
+.admin-announcement-edit-modal .announcement-quill-editor {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.admin-announcement-edit-modal .announcement-quill-editor .ql-toolbar {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+}
+
+.admin-announcement-edit-modal .announcement-quill-editor .ql-container {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.admin-announcement-edit-modal .announcement-quill-editor .ql-editor {
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-wrap: anywhere;
+}
+
+
+/* =========================================================
+   CURRENT ATTACHMENT
+   ========================================================= */
+
+.admin-announcement-edit-modal #announcementEditCurrentAttachmentWrap {
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.admin-announcement-edit-modal #announcementEditCurrentAttachmentName {
+    display: block;
+    max-width: 100% !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 991.98px) {
+
+    .admin-announcement-edit-modal .modal-dialog {
+        width: calc(100% - 1rem);
+        max-width: none;
+        margin: 0.5rem auto;
     }
 
-    .announcement-quill-editor .ql-toolbar {
-        border-radius: 0.6rem 0.6rem 0 0;
-        border: 1px solid #d8cdd1;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 767.98px) {
+
+    /* Full mobile viewport */
+    #announcementEditModal {
+        padding: 0 !important;
     }
 
-    .announcement-quill-editor .ql-container {
-        min-height: 140px;
-        border-radius: 0 0 0.6rem 0.6rem;
-        border: 1px solid #d8cdd1;
-        border-top: 0;
-        font-size: 0.98rem;
-        font-family: inherit;
+    /*
+     * The modal itself controls its height.
+     * Do not use Bootstrap's modal-dialog-scrollable
+     * class on this modal.
+     */
+    #announcementEditModal .modal-dialog {
+        width: calc(100vw - 16px) !important;
+        max-width: none !important;
+
+        height: calc(100dvh - 16px) !important;
+        max-height: calc(100dvh - 16px) !important;
+
+        margin: 8px auto !important;
     }
 
-    .announcement-quill-editor .ql-editor {
-        min-height: 140px;
-        color: #3c3134;
-        line-height: 1.7;
+
+    /* ---------------------------------------------------------
+       MODAL CONTENT
+       --------------------------------------------------------- */
+
+    #announcementEditModal .modal-content {
+        display: flex !important;
+        flex-direction: column !important;
+
+        width: 100% !important;
+        height: 100% !important;
+
+        min-width: 0 !important;
+        min-height: 0 !important;
+        max-height: 100% !important;
+
+        overflow: hidden !important;
+
+        border-radius: 0.75rem !important;
     }
 
-    .admin-announcement-view-title {
-        color: #7f0000;
-        font-weight: 800;
-        margin: 0 0 0.25rem;
-        font-size: 1.6rem;
-        line-height: 1.3;
+
+    /* ---------------------------------------------------------
+       FORM
+       --------------------------------------------------------- */
+
+    /*
+     * The form is between .modal-content and .modal-body,
+     * so it must also participate in the flex layout.
+     */
+    #announcementEditModal .modal-content > form {
+        display: flex !important;
+        flex-direction: column !important;
+
+        flex: 1 1 auto !important;
+
+        width: 100% !important;
+
+        min-width: 0 !important;
+        min-height: 0 !important;
+
+        height: 100% !important;
+
+        overflow: hidden !important;
     }
 
-    .admin-announcement-view-content {
-        color: #444;
-        line-height: 1.7;
-        font-size: 0.98rem;
-        overflow-wrap: anywhere;
+
+    /* ---------------------------------------------------------
+       HEADER
+       --------------------------------------------------------- */
+
+    #announcementEditModal .modal-header {
+        flex: 0 0 auto !important;
+
+        padding: 0.75rem 0.9rem !important;
     }
 
-    .admin-announcement-view-modal .modal-body {
-        max-height: min(72vh, 70rem);
-        overflow-y: auto;
+    #announcementEditModal .modal-title {
+        min-width: 0 !important;
+
+        max-width: calc(100% - 50px) !important;
+
+        font-size: 1rem !important;
+        line-height: 1.25 !important;
+
+        overflow-wrap: anywhere !important;
     }
 
-    .admin-announcement-edit-modal textarea,
-    .admin-announcement-edit-modal input[type="text"],
-    .admin-announcement-edit-modal input[type="file"] {
-        min-height: 42px;
+    #announcementEditModal .admin-modal-close {
+        flex: 0 0 42px !important;
+
+        width: 42px !important;
+        height: 42px !important;
+
+        margin-left: auto !important;
     }
 
-    .admin-announcement-edit-modal textarea {
-        line-height: 1.6;
+
+    /* ---------------------------------------------------------
+       BODY - SCROLLABLE
+       --------------------------------------------------------- */
+
+    #announcementEditModal .modal-content > form > .modal-body {
+        flex: 1 1 auto !important;
+
+        display: block !important;
+
+        width: 100% !important;
+
+        min-width: 0 !important;
+        min-height: 0 !important;
+
+        height: auto !important;
+        max-height: none !important;
+
+        padding: 0.85rem !important;
+
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+
+        -webkit-overflow-scrolling: touch !important;
     }
 
-    @media (max-width: 575.98px) {
-        .admin-announcement-view-title {
-            font-size: 1.25rem;
-        }
 
-        .admin-announcement-view-modal .modal-dialog,
-        .admin-announcement-edit-modal .modal-dialog {
-            margin: 0.25rem;
-        }
+    /* ---------------------------------------------------------
+       FOOTER - ALWAYS VISIBLE
+       --------------------------------------------------------- */
+
+    #announcementEditModal .modal-content > form > .modal-footer {
+        flex: 0 0 auto !important;
+
+        display: flex !important;
+        flex-direction: column !important;
+
+        align-items: stretch !important;
+
+        width: 100% !important;
+
+        padding: 0.65rem 0.85rem !important;
+
+        gap: 0.45rem !important;
+
+        background: #fff !important;
+
+        border-top: 1px solid #ddd !important;
     }
+
+    #announcementEditModal .modal-content > form > .modal-footer .admin-btn {
+        width: 100% !important;
+        min-height: 42px !important;
+    }
+
+
+    /* ---------------------------------------------------------
+       INPUTS
+       --------------------------------------------------------- */
+
+    #announcementEditModal .form-control,
+    #announcementEditModal .form-select,
+    #announcementEditModal input[type="file"] {
+        width: 100% !important;
+
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    #announcementEditModal input[type="file"] {
+        font-size: 0.82rem !important;
+    }
+
+
+    /* ---------------------------------------------------------
+       QUILL EDITOR
+       --------------------------------------------------------- */
+
+    #announcementEditModal .announcement-quill-editor {
+        width: 100% !important;
+
+        max-width: 100% !important;
+        min-width: 0 !important;
+
+        overflow: hidden !important;
+    }
+
+    #announcementEditModal .announcement-quill-editor .ql-toolbar {
+        width: 100% !important;
+
+        max-width: 100% !important;
+
+        /*
+         * Allow the toolbar to wrap naturally on phones.
+         */
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+
+        white-space: normal !important;
+    }
+
+    #announcementEditModal .announcement-quill-editor .ql-container {
+        width: 100% !important;
+
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    #announcementEditModal .announcement-quill-editor .ql-editor {
+        min-height: 140px !important;
+
+        max-width: 100% !important;
+
+        overflow-x: hidden !important;
+        overflow-wrap: anywhere !important;
+    }
+
+
+    /* ---------------------------------------------------------
+       CURRENT ATTACHMENT
+       --------------------------------------------------------- */
+
+    #announcementEditModal #announcementEditCurrentAttachmentWrap {
+        width: 100% !important;
+
+        max-width: 100% !important;
+
+        overflow: hidden !important;
+    }
+
+    #announcementEditModal #announcementEditCurrentAttachmentName {
+        display: block !important;
+
+        max-width: calc(100% - 80px) !important;
+
+        overflow: hidden !important;
+
+        text-overflow: ellipsis !important;
+
+        white-space: nowrap !important;
+    }
+
+}
+
+
+/* =========================================================
+   VERY SMALL PHONES
+   ========================================================= */
+
+@media (max-width: 400px) {
+
+    #announcementEditModal .modal-dialog {
+        width: calc(100vw - 8px) !important;
+
+        height: calc(100dvh - 8px) !important;
+        max-height: calc(100dvh - 8px) !important;
+
+        margin: 4px auto !important;
+    }
+
+    #announcementEditModal .modal-header {
+        padding: 0.65rem 0.75rem !important;
+    }
+
+    #announcementEditModal .modal-body {
+        padding: 0.75rem !important;
+    }
+
+    #announcementEditModal .modal-footer {
+        padding: 0.6rem 0.75rem !important;
+    }
+
+    #announcementEditModal .modal-title {
+        font-size: 1rem !important;
+    }
+
+}
 </style>
 @endpush
 
@@ -393,36 +836,151 @@ document.addEventListener('DOMContentLoaded', function () {
         const currentName = document.getElementById('announcementEditCurrentAttachmentName');
         const currentLink = document.getElementById('announcementEditCurrentAttachmentLink');
         const removeCheck = document.getElementById('announcementEditRemoveAttachment');
+        const showOnLogin = document.getElementById('announcementEditShowOnLogin');
+const loginDurationWrap = document.getElementById('announcementEditLoginModalDurationWrap');
+const loginDuration = document.getElementById('announcementEditLoginModalDuration');
+const loginCustomDateWrap = document.getElementById('announcementEditLoginModalCustomDateWrap');
+const loginExpiry = document.getElementById('announcementEditLoginModalExpiresAt');
 
         let activeQuill = null;
 
-        document.querySelectorAll('.admin-announcement-edit-trigger').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                editForm.action = btn.dataset.action || '';
-                editTitle.value = btn.dataset.title || '';
+        function toggleLoginModalSettings() {
+    if (!showOnLogin || !loginDurationWrap) {
+        return;
+    }
 
-                // Load existing content into Quill (sanitized HTML or text).
-                const rawContent = btn.dataset.content || '';
-                if (activeQuill) {
-                    activeQuill.clipboard.dangerouslyPasteHTML(0, rawContent || '');
-                } else {
-                    editContent.value = rawContent;
-                }
+    loginDurationWrap.classList.toggle('d-none', !showOnLogin.checked);
+    toggleCustomLoginDate();
+}
 
-                editFile.value = '';
-                if (removeCheck) { removeCheck.checked = false; }
+function toggleCustomLoginDate() {
+    if (!loginCustomDateWrap || !loginDuration) {
+        return;
+    }
 
-                if (currentWrap && btn.dataset.currentName && btn.dataset.currentView) {
-                    currentName.textContent = btn.dataset.currentName;
-                    currentLink.href = btn.dataset.currentView;
-                    currentWrap.style.display = '';
-                } else if (currentWrap) {
-                    currentWrap.style.display = 'none';
-                }
+    loginCustomDateWrap.classList.toggle(
+        'd-none',
+        loginDuration.value !== 'custom'
+    );
+}
 
-                editModal.show();
-            });
-        });
+ document.querySelectorAll('.admin-announcement-edit-trigger').forEach(function (btn) {
+
+    btn.addEventListener('click', function () {
+
+        editForm.action = btn.dataset.action || '';
+
+        editTitle.value = btn.dataset.title || '';
+
+
+        /* =====================================================
+           LOGIN MODAL SETTINGS
+           ===================================================== */
+
+        if (showOnLogin) {
+            showOnLogin.checked = btn.dataset.showOnLogin === '1';
+        }
+
+        if (loginDuration) {
+            loginDuration.value = btn.dataset.loginDuration || '1_week';
+        }
+
+        if (loginExpiry) {
+            loginExpiry.value = btn.dataset.loginExpiry || '';
+        }
+
+        toggleLoginModalSettings();
+
+
+        /* =====================================================
+           ANNOUNCEMENT CONTENT
+           ===================================================== */
+
+        let rawContent = btn.dataset.content || '';
+
+        // Fix escaped closing HTML tags such as <\/p>
+        rawContent = rawContent.replace(
+            /<\\\/([a-zA-Z0-9]+)>/g,
+            '</$1>'
+        );
+
+        // Remove accidental wrapping quotes
+        if (
+            rawContent.length >= 2 &&
+            rawContent.startsWith('"') &&
+            rawContent.endsWith('"')
+        ) {
+            rawContent = rawContent.slice(1, -1);
+        }
+
+
+        if (activeQuill) {
+
+            /*
+             * VERY IMPORTANT:
+             * Completely remove the previous announcement.
+             */
+            activeQuill.setContents([]);
+
+            /*
+             * Load only the selected announcement.
+             */
+            if (rawContent.trim()) {
+                activeQuill.clipboard.dangerouslyPasteHTML(
+                    rawContent
+                );
+            }
+
+        } else {
+
+            editContent.value = rawContent;
+
+        }
+
+
+        /* =====================================================
+           FILE
+           ===================================================== */
+
+        editFile.value = '';
+
+        if (removeCheck) {
+            removeCheck.checked = false;
+        }
+
+
+        /* =====================================================
+           CURRENT ATTACHMENT
+           ===================================================== */
+
+        if (
+            currentWrap &&
+            btn.dataset.currentName &&
+            btn.dataset.currentView
+        ) {
+
+            currentName.textContent = btn.dataset.currentName;
+
+            currentLink.href = btn.dataset.currentView;
+
+            currentWrap.style.display = '';
+
+        } else if (currentWrap) {
+
+            currentWrap.style.display = 'none';
+
+        }
+
+
+        /* =====================================================
+           SHOW MODAL
+           ===================================================== */
+
+        editModal.show();
+
+    });
+
+});
 
         // Initialize Quill once the modal exists on the page.
         if (typeof window.initAnnouncementQuill === 'function') {
@@ -432,12 +990,21 @@ document.addEventListener('DOMContentLoaded', function () {
         // Switching files replaces the current legacy attachment via the
         // existing server-side single-file handling; leaving the input empty
         // keeps the existing file untouched unless "Remove this file" is ticked.
-        if (editFile) {
-            editFile.addEventListener('change', function () {
-                if (editFile.files && editFile.files.length) {
-                    if (removeCheck) { removeCheck.checked = false; }
-                }
-            });
+if (editFile) {
+    editFile.addEventListener('change', function () {
+        if (editFile.files && editFile.files.length) {
+            if (removeCheck) {
+                removeCheck.checked = false;
+            }
+        }
+    });
+} // Show/hide login modal settings based on checkbox and duration selection.
+        if (showOnLogin) {
+            showOnLogin.addEventListener('change', toggleLoginModalSettings);
+        }
+
+        if (loginDuration) {
+            loginDuration.addEventListener('change', toggleCustomLoginDate);
         }
     }
 });

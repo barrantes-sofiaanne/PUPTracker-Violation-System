@@ -908,6 +908,7 @@ body {
 }
 
 .announcement-modal-header {
+    position: relative;
     background: linear-gradient(
         120deg,
         rgba(128, 0, 0, 0.97) 0%,
@@ -916,6 +917,26 @@ body {
     );
     border-bottom: none;
     padding: 1rem 1.25rem;
+}
+
+.announcement-modal-header .announcement-modal-title {
+    padding-right: 3.5rem;
+}
+
+.announcement-modal-header .btn-close {
+    position: absolute;
+    top: 50%;
+    right: 1.25rem;
+    transform: translateY(-50%);
+    margin: 0 !important;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    z-index: 2;
+
+    /* White X */
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 1;
 }
 
 .announcement-modal-title {

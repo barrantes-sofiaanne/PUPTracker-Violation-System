@@ -353,8 +353,194 @@ class StudentRegistrationFlowTest extends TestCase
     }
 
     // ==================================================================
+    // 8. LADDERIZED — offered ONLY for BSIT / BSOA
+    // ==================================================================
+
+    /**
+     * The Ladderized question is hidden until a ladderizable program is chosen.
+     *
+     * The wrapper is always rendered (so the script can reveal it) but carries
+     * `d-none`; the program ids the client needs come from the server, so no
+     * program id is hard-coded in the view.
+     */
+    public function test_registration_page_hides_ladderized_until_a_ladderized_program_is_chosen(): void
+    {
+        $page = $this->registrationPageHtml();
+
+        // Present but hidden on first render (no program chosen yet).
+        $this->assertStringContainsString('id="ladderizedWrap"', $page);
+        $this->assertStringContainsString('d-none" id="ladderizedWrap"', $page);
+
+        // "No" is the default so an unanswered field still submits a definite value.
+        $this->assertMatchesRegularExpression('/id="ladderizedNo"[^>]*\bchecked\b/s', $page);
+        $this->assertDoesNotMatchRegularExpression('/id="ladderizedYes"[^>]*\bchecked\b/s', $page);
+
+        // Only the ladderizable programs are advertised to the client: BSIT (1)
+        // qualifies, BSCS (2) does not.
+        $this->assertMatchesRegularExpression(
+            "/data-ladderized-programs='\[\s*1\s*\]'/",
+            $page
+        );
+
+        // The reveal is real, not just markup: the toggle script is actually
+        // rendered. If the layout ever loses @stack('scripts') the field would
+        // become unreachable, so pin it here.
+        $this->assertStringContainsString('syncLadderizedVisibility', $page);
+        $this->assertStringContainsString('data-ladderized-programs', $page);
+    }
+
+    /**
+     * Choosing BSIT reveals the question, and a repopulated form keeps it
+     * revealed so a validation error cannot silently drop the answer.
+     */
+    public function test_registration_page_offers_ladderized_for_bsit(): void
+    {
+        $page = $this->registrationPageHtml(['program_id' => '1']);
+
+        $this->assertStringContainsString('id="ladderizedWrap"', $page);
+        $this->assertStringNotContainsString('d-none" id="ladderizedWrap"', $page);
+
+        // Both options are offered, bound to the field name the server validates.
+        $this->assertStringContainsString('name="ladderized"', $page);
+        $this->assertStringContainsString('id="ladderizedYes"', $page);
+        $this->assertStringContainsString('id="ladderizedNo"', $page);
+    }
+
+    /** BSOA is the other ladderized program and is offered the same question. */
+    public function test_registration_page_offers_ladderized_for_bsoa(): void
+    {
+        DB::table('program_tbl')->insert(['program_id' => 3, 'program_name' => 'BSOA']);
+
+        $page = $this->registrationPageHtml(['program_id' => '3']);
+
+        $this->assertStringNotContainsString('d-none" id="ladderizedWrap"', $page);
+        $this->assertStringContainsString('id="ladderizedYes"', $page);
+    }
+
+    /**
+     * A program outside the configured list must NOT be offered the question —
+     * this is the "strictly BSIT and BSOA" requirement.
+     */
+    public function test_registration_page_keeps_ladderized_hidden_for_a_non_ladderized_program(): void
+    {
+        $page = $this->registrationPageHtml(['program_id' => '2']); // BSCS
+
+        $this->assertStringContainsString('d-none" id="ladderizedWrap"', $page);
+    }
+
+    /** The browser test must be one of equals, so the list and BSOA are stable. */
+    public function test_registration_page_lists_exactly_the_configured_ladderized_programs(): void
+    {
+        $page = $this->registrationPageHtml();
+
+        // BSIT is listed; BSCS is not.
+        $this->assertMatchesRegularExpression("/data-ladderized-programs='\[\s*1\s*\]'/", $page);
+
+        // The rule comes from config, not from a duplicated literal.
+        $expected = config('graduation_review.graduating.ladderized_programs', ['BSOA', 'BSIT']);
+        $this->assertContains('BSIT', array_map('strtoupper', $expected));
+    }
+
+    // ------------------------------------------------------------------
+    // Persistence — the server decides, never the client
+    // ------------------------------------------------------------------
+
+    /** Choosing "Yes" for BSIT stores 1. */
+    public function test_ladderized_yes_is_persisted_for_a_ladderized_program(): void
+    {
+        $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'program_id' => 1,      // BSIT
+                'ladderized' => '1',
+            ]))
+            ->assertRedirect(route('student.dashboard'));
+
+        $this->assertAuthenticated('student');
+        $this->assertSame(1, (int) DB::table('student_info_tbl')->value('ladderized'));
+    }
+
+    /** Choosing "No" for BSOA stores an explicit 0. */
+    public function test_ladderized_explicit_no_is_persisted_for_a_ladderized_program(): void
+    {
+        DB::table('program_tbl')->insert(['program_id' => 3, 'program_name' => 'BSOA']);
+
+        $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'program_id' => 3,
+                'ladderized' => '0',
+            ]))
+            ->assertRedirect(route('student.dashboard'));
+
+        $this->assertSame(0, (int) DB::table('student_info_tbl')->value('ladderized'));
+    }
+
+    /** An unanswered field is stored as 0, never as NULL. */
+    public function test_ladderized_defaults_to_zero_when_unanswered(): void
+    {
+        $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'program_id' => 1,
+            ]))
+            ->assertRedirect(route('student.dashboard'));
+
+        $this->assertSame(0, (int) DB::table('student_info_tbl')->value('ladderized'));
+    }
+
+    /**
+     * A FORGED ladderized value must be discarded for a non-ladderized program.
+     *
+     * The field is hidden in the browser, but the request can be crafted by
+     * hand — the server must still refuse to mark BSCS as ladderized.
+     */
+    public function test_ladderized_flag_is_ignored_for_a_non_ladderized_program(): void
+    {
+        $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'program_id' => 2,      // BSCS — not ladderizable
+                'ladderized' => '1',    // forged
+            ]))
+            ->assertRedirect(route('student.dashboard'));
+
+        $this->assertSame(0, (int) DB::table('student_info_tbl')->value('ladderized'));
+    }
+
+    /** A value outside 0/1 is rejected outright — no account is created. */
+    public function test_ladderized_rejects_a_value_outside_the_allowed_set(): void
+    {
+        $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'program_id' => 1,
+                'ladderized' => '5',
+            ]))
+            ->assertSessionHasErrors('ladderized');
+
+        $this->assertDatabaseMissing('users_tbl', ['idp_subject' => 'user-123']);
+    }
+
+    // ==================================================================
     // Helpers
     // ==================================================================
+
+    /**
+     * Render the registration page with the verified IDP identity staged.
+     *
+     * `$oldInput` reproduces a repopulated form (what the student sees after a
+     * validation error), which is the only way the Ladderized wrapper is
+     * revealed server-side — otherwise the script decides at runtime.
+     */
+    private function registrationPageHtml(array $oldInput = []): string
+    {
+        $session = $this->pendingProfileSession();
+
+        if ($oldInput !== []) {
+            $session['_old_input'] = $oldInput;
+        }
+
+        return $this->withSession($session)
+            ->get(route('student.idp.link'))
+            ->assertOk()
+            ->getContent();
+    }
 
     private function fakeIdp(
         string $idpSubject = 'user-123',

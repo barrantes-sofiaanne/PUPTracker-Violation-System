@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Security;
 use App\Models\User;
+use App\Support\Auth\AuthDestination;
+use App\Support\Auth\PortalLoginRedirect;
 use App\Support\Auth\SessionExpiryNotice;
 use App\Support\MfaService;
 use Illuminate\Http\RedirectResponse;
@@ -143,7 +145,10 @@ class MfaController extends Controller
 
         $guard = (string) ($pending['guard'] ?? 'student');
 
-        return redirect()->route($this->loginRouteForGuard($guard));
+        return redirect()->route($this->loginRouteForGuard(
+            $guard,
+            $this->resolveUserForGuard($guard, (string) ($pending['identifier'] ?? ''))
+        ));
     }
 
     /**
@@ -187,23 +192,31 @@ class MfaController extends Controller
         };
     }
 
+    /**
+     * The landing page for a guard after a SUCCESSFUL MFA verification.
+     *
+     * The rule (and its fail-closed behaviour) lives in
+     * {@see AuthDestination} so every auth path agrees:
+     *   - IT Administrator -> the existing Super Admin destination
+     *   - OSS Staff        -> the OSS Staff module
+     *   - plain Admin      -> the Admin dashboard
+     *   - Security/Student -> their existing modules
+     */
     private function redirectRouteForGuard(string $guard, Admin|Security|User $user): string
     {
-        return match ($guard) {
-            'admin' => $user instanceof Admin && $user->isItAdministrator()
-                ? 'admin.super-admin.dashboard'
-                : 'admin.dashboard',
-            'security' => 'security.dashboard',
-            default => 'student.dashboard',
-        };
+        return AuthDestination::forGuard($guard, $user);
     }
 
-    private function loginRouteForGuard(string $guard): string
+    /**
+     * The login page a cancelled/failed challenge returns to.
+     *
+     * Resolved through {@see PortalLoginRedirect} so an OSS Staff member is sent
+     * back to the SHARED Security + OSS Staff portal they actually signed in
+     * from, instead of the Administrator login page they never used. A null
+     * account falls back to the guard's own login page.
+     */
+    private function loginRouteForGuard(string $guard, Admin|Security|User|null $user = null): string
     {
-        return match ($guard) {
-            'admin' => 'admin.login',
-            'security' => 'security.login',
-            default => 'student.login',
-        };
+        return PortalLoginRedirect::forGuard($guard, $user);
     }
 }

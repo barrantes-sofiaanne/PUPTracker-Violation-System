@@ -60,7 +60,7 @@ return [
             'report' => false,
         ],
 
-'evidence' => [
+        'evidence' => [
     'driver' => 's3',
     'key' => env('EVIDENCE_AWS_ACCESS_KEY_ID'),
     'secret' => env('EVIDENCE_AWS_SECRET_ACCESS_KEY'),

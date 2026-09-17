@@ -44,6 +44,15 @@ class ForgotPasswordController extends Controller
     /**
      * Step 2 — Accept the email and (if an account exists) send a reset link.
      *
+     * SHARED PORTAL: `/security/login` serves BOTH Security Personnel and OSS
+     * Staff, so a reset requested from that page must reach the right account
+     * type. OSS Staff are ADMIN accounts, so when no Security row matches the
+     * email we fall back to the Administrator table — but ONLY for an account
+     * that actually holds the OSS Staff role. A regular Administrator or an IT
+     * Administrator is NOT recoverable through this portal (they use
+     * `admin.login`), so the shared page cannot be used to enumerate or reset
+     * their accounts.
+     *
      * Deliberately does not reveal whether the email has an account: the same
      * generic success message is shown regardless.
      */
@@ -56,7 +65,21 @@ class ForgotPasswordController extends Controller
         $config = $this->guardConfig($guard);
         $email = strtolower(trim($validated['email']));
 
+        // The ledger the token is filed under. Normally the URL's guard, but an
+        // OSS Staff account must be reset as an ADMIN (that is the account it
+        // really is), while still being told to return to the shared portal.
+        $accountGuard = $guard;
+
         $account = $passwordResetService->findAccountByEmail($guard, $email);
+
+        if ($account === null && $guard === 'security') {
+            $candidate = Admin::query()->where('email', $email)->first();
+
+            if ($candidate instanceof Admin && $candidate->isOssStaff()) {
+                $account = $candidate;
+                $accountGuard = 'admin';
+            }
+        }
 
         if ($account === null) {
             $this->audit(
@@ -71,13 +94,13 @@ class ForgotPasswordController extends Controller
             return back()->with('status', 'If an account is associated with this email address, a password reset link has been sent.');
         }
 
-        $result = $passwordResetService->createReset($guard, $account);
+        $result = $passwordResetService->createReset($accountGuard, $account);
         $token = $result['token'];
 
-        $this->sendResetLinkMail($guard, $email, $token);
+        $this->sendResetLinkMail($accountGuard, $email, $token);
 
         $this->audit(
-            $guard,
+            $accountGuard,
             $account->getKey(),
             'PASSWORD_RESET_REQUESTED',
             'Password Reset',
@@ -102,7 +125,7 @@ class ForgotPasswordController extends Controller
 
         if ($reset === null) {
             return redirect()
-                ->route($config['login_route'])
+                ->route($this->loginRouteFor($guard))
                 ->withErrors(['link' => 'Invalid or expired password reset link. Please request a new one.']);
         }
 
@@ -110,7 +133,7 @@ class ForgotPasswordController extends Controller
 
         if ($account === null) {
             return redirect()
-                ->route($config['login_route'])
+                ->route($this->loginRouteFor($guard))
                 ->withErrors(['link' => 'Invalid or expired password reset link. Please request a new one.']);
         }
 
@@ -164,7 +187,7 @@ class ForgotPasswordController extends Controller
             || ($staged['token'] ?? null) !== $validated['token']
         ) {
             return redirect()
-                ->route($config['login_route'])
+                ->route($this->loginRouteFor($guard))
                 ->withErrors(['link' => 'Invalid or expired password reset link. Please request a new one.']);
         }
 
@@ -186,7 +209,7 @@ class ForgotPasswordController extends Controller
             );
 
             return redirect()
-                ->route($config['login_route'])
+                ->route($this->loginRouteFor($guard))
                 ->withErrors(['link' => 'Too many incorrect attempts. Please request a new password reset link.']);
         }
 
@@ -252,7 +275,7 @@ class ForgotPasswordController extends Controller
 
         if ($reset === null) {
             return redirect()
-                ->route($config['login_route'])
+                ->route($this->loginRouteFor($guard))
                 ->withErrors(['link' => 'Invalid or expired password reset link. Please request a new one.']);
         }
 
@@ -260,7 +283,7 @@ class ForgotPasswordController extends Controller
 
         if ($account === null) {
             return redirect()
-                ->route($config['login_route'])
+                ->route($this->loginRouteFor($guard))
                 ->withErrors(['link' => 'Invalid or expired password reset link. Please request a new one.']);
         }
 
@@ -277,7 +300,7 @@ class ForgotPasswordController extends Controller
                 || (int) ($staged['account_id'] ?? 0) !== (int) $account->getKey()
             ) {
                 return redirect()
-                    ->route($config['login_route'])
+                    ->route($this->loginRouteFor($guard))
                     ->withErrors(['link' => 'Invalid or expired password reset link. Please request a new one.']);
             }
         }
@@ -309,8 +332,25 @@ class ForgotPasswordController extends Controller
         $this->sendPasswordChangedMail($guard, (string) $account->email);
 
         return redirect()
-            ->route($config['login_route'])
+            ->route($this->loginRouteFor($guard, $account))
             ->with('status', 'Your password has been changed successfully. Please log in.');
+    }
+
+    /**
+     * The login page to return to for a guard, aware of WHICH account it is.
+     *
+     * An OSS Staff account is an ADMIN account that signs in through the SHARED
+     * Security + OSS Staff portal, so it is returned there instead of the
+     * Administrator login it never uses. A regular Administrator or IT
+     * Administrator still returns to `admin.login`.
+     */
+    private function loginRouteFor(string $guard, ?Admin $account = null): string
+    {
+        if ($guard === 'admin') {
+            return \App\Support\Auth\PortalLoginRedirect::forGuard('admin', $account);
+        }
+
+        return $this->guardConfig($guard)['login_route'];
     }
 
     // ------------------------------------------------------------------
@@ -519,7 +559,9 @@ class ForgotPasswordController extends Controller
                 'model' => Security::class,
                 'password_column' => 'password',
                 'login_route' => 'security.login',
-                'module_label' => 'Security',
+                // This guard backs the SHARED portal, so the label names both
+                // account types that may recover here.
+                'module_label' => 'Security and OSS Staff',
             ],
             default => abort(404),
         };

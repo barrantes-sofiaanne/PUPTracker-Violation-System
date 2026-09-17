@@ -283,7 +283,19 @@ public function requestSanction(Request $request)
         'violation_type_id' => 'required|integer'
     ]);
 
+    /** @var \App\Models\User $user */
     $user = Auth::user();
+
+    /*
+     * Inactive students cannot create new sanction requests.
+     * This is enforced server-side even if the browser UI is bypassed.
+     */
+    if (! $user instanceof \App\Models\User || ! $user->isActiveAccount()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'A sanction request cannot be created because your PUPTracker account is inactive.',
+        ], 403);
+    }
 
     $violationType = \App\Models\ViolationType::find($request->violation_type_id);
 

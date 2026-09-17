@@ -17,6 +17,7 @@ use App\Models\StudentStatus;
 use App\Models\User;
 use App\Models\Year;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -25,6 +26,7 @@ use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
 
 class StudentController extends Controller
 {
@@ -138,7 +140,7 @@ class StudentController extends Controller
         $genders = Gender::orderBy('gender_name')->get();
         $statuses = Status::orderBy('status_name')->get();
         $adminRoles = Role::query()
-            ->whereIn('roles_name', ['Admin', 'IT Administrator', 'Admin Assistant'])
+            ->whereIn('roles_name', ['Admin', 'IT Administrator', 'OSS Staff'])
             ->orderBy('roles_name')
             ->get();
 
@@ -251,7 +253,6 @@ class StudentController extends Controller
             'lastname' => 'required|string|max:50',
             'status_id' => 'required|exists:status_tbl,status_id',
             'role_id' => 'required|exists:roles_tbl,roles_id',
-            'password' => 'required|string|min:8',
         ]);
 
         $admin = null;
@@ -260,7 +261,7 @@ class StudentController extends Controller
             $admin = Admin::create([
                 'username' => $validated['email'],
                 'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
+                'password' => Hash::make(Str::random(64)),
                 'mfa_totp_enabled' => 0,
             ]);
 
@@ -297,7 +298,6 @@ class StudentController extends Controller
             'firstname' => 'required|string|max:50',
             'middlename' => 'nullable|string|max:50',
             'lastname' => 'required|string|max:50',
-            'password' => 'required|string|min:8',
         ]);
 
         $security = null;
@@ -305,7 +305,7 @@ class StudentController extends Controller
         DB::transaction(function () use ($validated, &$security): void {
             $security = Security::create([
                 'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
+                'password' => Hash::make(Str::random(64)),
                 'mfa_totp_enabled' => 0,
             ]);
 
@@ -511,8 +511,8 @@ class StudentController extends Controller
         $securityEmail = $security->email;
         $securityName = trim(
             ($security->securityInfo?->firstname ?? $security->securityProfile?->firstname ?? '')
-            . ' '
-            . ($security->securityInfo?->lastname ?? $security->securityProfile?->lastname ?? '')
+                . ' '
+                . ($security->securityInfo?->lastname ?? $security->securityProfile?->lastname ?? '')
         ) ?: $securityEmail;
 
         if ($security->securityInfo) {
@@ -662,21 +662,65 @@ class StudentController extends Controller
                 '2024-00001-TG-0',
             ]],
             $validated['account_type'] === 'student' => [[
-                'student_number', 'first_name', 'middle_name', 'last_name', 'name_suffix',
-                'program', 'year', 'section', 'gender', 'ladderized',
+                'student_number',
+                'first_name',
+                'middle_name',
+                'last_name',
+                'name_suffix',
+                'program',
+                'year',
+                'section',
+                'gender',
+                'ladderized',
             ], [
-                '2024-00001-TG-0', 'Juan', 'Dela', 'Cruz', '',
-                'BSIT', '1', '1A', 'Male', 'No',
+                '2024-00001-TG-0',
+                'Juan',
+                'Dela',
+                'Cruz',
+                '',
+                'BSIT',
+                '1',
+                '1A',
+                'Male',
+                'No',
             ]],
             $validated['account_type'] === 'admin' => [[
-                'email', 'firstname', 'middlename', 'lastname', 'position', 'role', 'status', 'password',
+                'email',
+                'firstname',
+                'middlename',
+                'lastname',
+                'position',
+                'role',
+                'status',
+                'password',
             ], [
-                'admin.user@example.com', 'Ana', 'Santos', 'Reyes', 'Admin', 'Admin', 'Active', 'Temp1234!',
+                'admin.user@example.com',
+                'Ana',
+                'Santos',
+                'Reyes',
+                'Admin',
+                'Admin',
+                'Active',
+                'Temp1234!',
             ]],
             default => [[
-                'email', 'firstname', 'middlename', 'lastname', 'position', 'contact_number', 'address', 'password',
+                'email',
+                'firstname',
+                'middlename',
+                'lastname',
+                'position',
+                'contact_number',
+                'address',
+                'password',
             ], [
-                'security.user@example.com', 'Maria', 'Santos', 'Dela Cruz', 'Security Personnel', '09171234567', 'PUP Main Campus', 'Temp1234!',
+                'security.user@example.com',
+                'Maria',
+                'Santos',
+                'Dela Cruz',
+                'Security Personnel',
+                '09171234567',
+                'PUP Main Campus',
+                'Temp1234!',
             ]],
         };
 
@@ -701,7 +745,7 @@ class StudentController extends Controller
             ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
         )->deleteFileAfterSend(true);
     }
-    
+
     private function deactivateStudentRow(array $row): int
     {
         $studentNumber = trim((string) ($row['student_number'] ?? ''));
@@ -1141,12 +1185,14 @@ class StudentController extends Controller
         // until then (the column is nullable). An `email` column is still
         // tolerated if a legacy file happens to carry one.
         $identity = [];
-        foreach ([
-            'first_name' => 'first_name',
-            'middle_name' => 'middle_name',
-            'last_name' => 'last_name',
-            'name_suffix' => 'name_suffix',
-        ] as $field => $sourceKey) {
+        foreach (
+            [
+                'first_name' => 'first_name',
+                'middle_name' => 'middle_name',
+                'last_name' => 'last_name',
+                'name_suffix' => 'name_suffix',
+            ] as $field => $sourceKey
+        ) {
             $value = $row[$sourceKey] ?? null;
             if ($value !== null && trim((string) $value) !== '') {
                 $identity[$field] = trim((string) $value);

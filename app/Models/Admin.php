@@ -133,7 +133,7 @@ class Admin extends Authenticatable
             // Every role the application recognises. A free-text value is only
             // accepted when it IS one of these, so an arbitrary string can never
             // be mistaken for a role (and therefore never grant privilege).
-            $known = ['admin', 'it administrator', strtolower(self::ROLE_ADMIN_ASSISTANT)];
+            $known = ['admin', 'it administrator', strtolower(self::ROLE_OSS_STAFF)];
 
             $roleNames = [];
             if (isset($adminInfo->role_id)) {
@@ -185,23 +185,23 @@ class Admin extends Authenticatable
         return $this->isItAdministrator();
     }
 
-    /** The `roles_tbl.roles_name` value that marks an Admin Assistant. */
-    public const ROLE_ADMIN_ASSISTANT = 'Admin Assistant';
+    /** The `roles_tbl.roles_name` value that marks an OSS Staff account. */
+    public const ROLE_OSS_STAFF = 'OSS Staff';
 
     /**
-     * Whether this administrator holds the ADMIN ASSISTANT role.
+     * Whether this administrator holds the OSS STAFF role.
      *
-     * The Admin Assistant is an ADMIN account (admin guard, Admin module UI)
-     * that carries the same OPERATIONAL capabilities as Security Personnel:
-     * student lookup, violation recording, the evidence/photo workflow and
-     * violation history. See {@see \App\Support\Access\SecurityAccess} for the
-     * single place that turns this into an access decision.
+     * OSS Staff is an ADMIN account (admin guard, admins row) that carries the
+     * same OPERATIONAL capabilities as Security Personnel: student lookup,
+     * violation recording, the evidence/photo workflow and violation history —
+     * but in its OWN module (`/oss-staff/...`), and with its activity recorded
+     * as an ADMIN actor rather than as Security.
      *
      * Matched case-insensitively against the structured role so the stored
      * spelling cannot silently disable the role. An unrecognised or absent role
      * is a DENIAL (fail closed) — guessing here would mean guessing at privilege.
      */
-    public function isAdminAssistant(): bool
+    public function isOssStaff(): bool
     {
         $roleName = $this->roleName();
 
@@ -209,6 +209,6 @@ class Admin extends Authenticatable
             return false;
         }
 
-        return strcasecmp(trim($roleName), self::ROLE_ADMIN_ASSISTANT) === 0;
+        return strcasecmp(trim($roleName), self::ROLE_OSS_STAFF) === 0;
     }
 }

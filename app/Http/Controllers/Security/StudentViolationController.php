@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Security;
 
 use App\Http\Controllers\Controller;
-use App\Models\DisciplinarySanction;
 use App\Models\EvidenceSecurityEvent;
 use App\Models\Program;
 use App\Models\ViolationCategory;
@@ -17,15 +16,23 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 use App\Models\Violation;
 use App\Models\ViolationEvidence;
-use Illuminate\Support\Collection;
 
 class StudentViolationController extends Controller
 {
-    private const REPORT_TIMEZONE = 'Asia/Manila';
+    /**
+     * Identity-free recording helpers (evidence pipeline, report content, PDF
+     * rendering, offense-level/type lookups) shared with the OSS Staff module.
+     *
+     * The actor is NOT read from this service: the Security module always
+     * supplies 'security' + the security account id itself, so the shared code
+     * can never mislabel an OSS Staff actor as Security (or the reverse).
+     */
+    public function __construct(private readonly \App\Services\ViolationRecordingService $recording)
+    {
+    }
 
     /**
      * Resolve the configured evidence storage disk (S3-ready on Railway).
@@ -291,22 +298,9 @@ class StudentViolationController extends Controller
 
     public function getViolationTypes(Request $request): JsonResponse
     {
-        $categoryId = $request->get('category_id');
-
-        if (!$categoryId) {
-            return response()->json([]);
-        }
-
-        $types = ViolationType::where('violation_category_id', $categoryId)
-            ->orderBy('violation_type')
-            ->get([
-                'violation_type_id',
-                'violation_type',
-                'violation_description',
-                'resolution_number',
-            ]);
-
-        return response()->json($types);
+        return response()->json(
+            $this->recording->violationTypesForCategory($request->integer('category_id') ?: null)
+        );
     }
 
     public function previewViolation(Request $request): JsonResponse
@@ -316,37 +310,18 @@ class StudentViolationController extends Controller
             'violation_type_id' => ['required', 'integer'],
         ]);
 
-        $violationType = ViolationType::with('violationCategory')
-            ->find($validated['violation_type_id']);
+        $preview = $this->recording->previewViolationData(
+            $validated['student_number'],
+            (int) $validated['violation_type_id']
+        );
 
-        if (!$violationType) {
+        if ($preview === null) {
             return response()->json([
                 'message' => 'Violation type not found.',
             ], 404);
         }
 
-        $previousCount = Violation::where('student_number', $validated['student_number'])
-            ->where(function ($query) use ($violationType) {
-                $query->where('violation_type', (string) $violationType->violation_type_id)
-                    ->orWhere('violation_type', $violationType->violation_type);
-            })
-            ->effective()
-            ->count();
-
-        $currentOffenseNumber = $previousCount + 1;
-        $offenseLevel = $this->formatOffenseLevel($currentOffenseNumber);
-
-        $sanction = DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
-            ->where('offense_level', $offenseLevel)
-            ->first();
-
-        return response()->json([
-            'category' => optional($violationType->violationCategory)->category_name,
-            'violation_type' => $violationType->violation_type,
-            'severity_level' => $violationType->severity_level,
-            'offense_level' => $offenseLevel,
-            'sanction' => $sanction?->disciplinary_sanction ?? 'No disciplinary sanction configured.',
-        ]);
+        return response()->json($preview);
     }
 
     public function store(\App\Http\Requests\StoreViolationRequest $request): JsonResponse
@@ -560,114 +535,14 @@ class StudentViolationController extends Controller
     /**
      * Store uploaded evidence for a violation privately and record audit/security
      * events. Runs inside the caller's DB transaction.
+     *
+     * The implementation is the SHARED, identity-free one, called with the
+     * Security actor explicitly ('security' + the security account id) so this
+     * module's audit identity is unchanged.
      */
     private function storeEvidence(Violation $violation, Request $request, $security, ?int $securityId, ?string $captureSessionId = null): void
     {
-        $evidenceFiles = $request->allFiles()['evidence'] ?? [];
-
-        // Capture metadata is submitted as parallel arrays (one entry per
-        // staged evidence item). The camera path marks capture_method as
-        // 'camera' and records when the photo was taken. This is audit
-        // metadata only — it never proves identity.
-        $captureMethods = (array) $request->input('capture_methods', []);
-        $capturedAts = (array) $request->input('captured_ats', []);
-        $evidenceService = app(EvidenceSecurityService::class);
-
-        if ($evidenceFiles !== []) {
-            // Production guard: refuse to write confidential evidence to an
-            // ephemeral filesystem when object storage is misconfigured.
-            \App\Support\Storage\EvidenceDisk::assertWritable();
-        }
-
-        foreach ($evidenceFiles as $index => $evidenceFile) {
-            $evidenceCode = $evidenceService->nextEvidenceCode();
-            $directory = 'violation-evidence/' . $violation->violation_id;
-            $extension = strtolower($evidenceFile->getClientOriginalExtension());
-            // Server-side filename derived from the unique evidence code —
-            // the original filename is never trusted or used on disk.
-            $filename = $evidenceCode . '.' . ($extension !== '' ? $extension : 'bin');
-            $disk = $this->evidenceDisk();
-
-            $isCamera = strcasecmp((string) ($captureMethods[$index] ?? ''), 'camera') === 0;
-            $capturedAt = isset($capturedAts[$index]) && $capturedAts[$index] !== ''
-                ? Carbon::parse($capturedAts[$index])
-                : null;
-
-            // Build the row first so we can derive the official path + hash.
-            $evidence = ViolationEvidence::create([
-                'evidence_code' => $evidenceCode,
-                'capture_session_id' => $captureSessionId,
-                'violation_id' => $violation->violation_id,
-                'disk_path' => $directory . '/' . $filename,
-                'original_name' => $evidenceFile->getClientOriginalName(),
-                'mime_type' => $evidenceFile->getMimeType(),
-                'capture_method' => $isCamera
-                    ? ViolationEvidence::CAPTURE_CAMERA
-                    : ViolationEvidence::CAPTURE_UPLOAD,
-                // The client `watermarked` flag is never proof. The server
-                // re-bakes the watermark and records server_watermarked.
-                'watermarked' => false,
-                'server_watermarked' => false,
-                'captured_at' => $capturedAt,
-                'file_size' => $evidenceFile->getSize(),
-                'ip_address' => $evidenceService->clientIp($request),
-                'user_agent' => $evidenceService->userAgent($request),
-                'uploader_type' => 'security',
-                'uploader_id' => $securityId,
-            ]);
-
-            // Final trusted image: server-side watermark (images only), stored
-            // on the private disk, with SHA-256 of the FINAL bytes.
-            $store = app(\App\Services\EvidenceWatermarkService::class)->storeOfficialFile(
-                $evidenceFile,
-                $directory,
-                $filename,
-                $evidenceCode,
-                (string) ($violation->student_number ?? ''),
-                $capturedAt?->format('Y-m-d H:i:s'),
-            );
-
-            $storedPath = $store['path'];
-            if ($storedPath === '' || ! $disk->exists($storedPath)) {
-                // The row was created moments ago inside the caller's
-                // transaction, so re-throwing rolls it back. Remove any object
-                // that did land so no unreferenced confidential file survives.
-                try {
-                    $disk->delete($storedPath);
-                } catch (\Throwable $ignored) {
-                    // Best-effort cleanup only.
-                }
-
-                throw new \RuntimeException('Unable to store evidence file.');
-            }
-
-            $storedSize = \App\Support\Storage\EvidenceDisk::size($storedPath);
-
-            $evidence->update([
-                'disk_path' => $storedPath,
-                'file_size' => $storedSize ?? $evidenceFile->getSize(),
-                'server_watermarked' => $store['server_watermarked'],
-                'watermarked' => $store['server_watermarked'] || $isCamera,
-                'sha256_hash' => $store['sha256'],
-            ]);
-
-            $evidenceService->logEvent(
-                EvidenceSecurityEvent::EVIDENCE_UPLOADED,
-                $violation->violation_id,
-                $evidence->evidence_id,
-                'info',
-                $request,
-                [
-                    'method' => $evidence->capture_method,
-                    'code' => $evidenceCode,
-                    'sha256' => $store['sha256'],
-                    'server_watermarked' => $store['server_watermarked'],
-                ],
-                'security',
-                $securityId,
-                $captureSessionId,
-            );
-        }
+        $this->recording->storeEvidence($violation, $request, 'security', $securityId, $captureSessionId);
     }
 
     public function report(Request $request)
@@ -677,7 +552,12 @@ class StudentViolationController extends Controller
         // A PDF download is requested explicitly (?format=pdf). Without it the
         // existing printable HTML report is returned, unchanged.
         if (strtolower((string) $request->input('format', '')) === 'pdf') {
-            return $this->reportPdf($report);
+            return $this->recording->reportPdf(
+                $report,
+                'security.violations.report',
+                'security.violations.students',
+                'Security'
+            );
         }
 
         return view('security.violations.report', $report);
@@ -701,7 +581,15 @@ class StudentViolationController extends Controller
         // The report range selector is the ONLY filter for this report. The
         // student-list filters (search / program / year) belong to the Student
         // Record tab and are deliberately NOT applied here.
-        $reportStudents = $this->buildReportStudents($period, $dateFrom, $dateTo);
+        $reportStudents = $this->recording->buildReportStudents(
+            $period,
+            $dateFrom,
+            $dateTo,
+            function ($query) {
+                // Authorization: only this officer's own recorded violations.
+                $this->applyRecorderScope($query);
+            }
+        );
 
         $security = Auth::guard('security')->user();
         $reportedBy = $this->buildSecurityAccountName($security);
@@ -711,13 +599,13 @@ class StudentViolationController extends Controller
             'last7' => 'Last 7 Days',
             'last30' => 'Last 30 Days',
             'all' => 'All My Recorded Violations',
-            'custom' => $this->formatCustomDateFilter($dateFrom, $dateTo),
+            'custom' => $this->recording->formatCustomDateFilter($dateFrom, $dateTo),
             default => 'Last 7 Days',
         };
 
         return [
             'reportStudents' => $reportStudents,
-            'generatedAt' => $this->phtNow(),
+            'generatedAt' => $this->recording->phtNow(),
             'filtersApplied' => $filtersApplied,
             'reportedBy' => $reportedBy,
         ];
@@ -726,73 +614,27 @@ class StudentViolationController extends Controller
     /**
      * Render the SAME report as a downloadable PDF.
      *
-     * The report Blade view already declares `@page { size: A4; margin: 12mm }`
-     * and a 100%-width table with fixed column widths, so it is reused verbatim
-     * as the PDF template — report content, ordering, sections and filters are
-     * all preserved. Only the output format changes. Uses mPDF, which the
-     * project already ships and uses for the Admin report exports (no new
-     * dependency).
+     * The report Blade view already declares its own `@page { size ... margin }`
+     * rule and a 100%-width table with fixed column widths, so it is reused
+     * verbatim as the PDF template — report content, ordering, sections and
+     * filters are all preserved. Only the output format changes. Uses mPDF,
+     * which the project already ships (no new dependency).
      *
      * The template must stay self-contained: mPDF resolves every remote URL
-     * while writing the document, so a remote stylesheet or logo made this
+     * while writing the document, so a remote stylesheet or logo makes this
      * request hang (the page appeared to "just load") whenever the server could
      * not reach that host.
+     *
+     * The rendering itself is the shared, identity-free implementation.
      */
     private function reportPdf(array $report): \Symfony\Component\HttpFoundation\Response
     {
-        $html = view('security.violations.report', $report)->render();
-
-        // mPDF writes scratch files; make sure the directory exists so it never
-        // fails on a fresh deployment.
-        $tempDir = storage_path('app/mpdf');
-        if (! is_dir($tempDir)) {
-            @mkdir($tempDir, 0775, true);
-        }
-
-        try {
-            $mpdf = new \Mpdf\Mpdf([
-                // A4 portrait, matching the template's own @page rule.
-                'format' => 'A4',
-                'margin_left' => 12,
-                'margin_right' => 12,
-                'margin_top' => 12,
-                'margin_bottom' => 14,
-                'tempDir' => $tempDir,
-                // Keep the rendered widths inside the printable area so the
-                // table never overflows or gets clipped.
-                'shrink_tables_to_fit' => 1,
-            ]);
-
-            $mpdf->SetTitle('PUPT Student Violation Report');
-            $mpdf->WriteHTML($html);
-
-            $pdf = $mpdf->Output('', 'S');
-        } catch (\Throwable $e) {
-            // Never leave the officer staring at a spinner: log the real reason
-            // server-side and return a clear, actionable message.
-            Log::error('Security violation report PDF generation failed', [
-                'reported_by' => $report['reportedBy'] ?? null,
-                'student_groups' => isset($report['reportStudents'])
-                    ? $report['reportStudents']->count()
-                    : null,
-                'error' => $e->getMessage(),
-                'exception' => get_class($e),
-            ]);
-
-            return redirect()
-                ->route('security.violations.students')
-                ->with('error', 'Unable to generate the PDF report right now. Please try again.');
-        }
-
-        // Required download filename: PUPTracker_Violation_Report-YY-MM-DD.pdf
-        $fileName = 'PUPTracker_Violation_Report-' . $this->phtNow()->format('y-m-d') . '.pdf';
-
-        return response($pdf, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
-            'Content-Length' => (string) strlen($pdf),
-            'Cache-Control' => 'private, max-age=0, must-revalidate',
-        ]);
+        return $this->recording->reportPdf(
+            $report,
+            'security.violations.report',
+            'security.violations.students',
+            'Security'
+        );
     }
 
     /**
@@ -836,174 +678,6 @@ class StudentViolationController extends Controller
             'minor' => (int) ($severityCounts[2] ?? 0),
             'by_category' => $byCategory,
         ];
-    }
-
-    private function buildReportStudents(string $period = 'last7', ?string $dateFrom = null, ?string $dateTo = null): Collection
-    {
-        $violationsQuery = Violation::with([
-                'student.studentInfo.program',
-                'student.studentInfo.year',
-                'student.studentInfo.section',
-                'violationType.violationCategory',
-                'violationType.disciplinarySanctions',
-            ])
-            ->where(function ($query) {
-                // Authorization: only this officer's own recorded violations.
-                $this->applyRecorderScope($query);
-            });
-
-        $phtNow = $this->phtNow();
-
-        if ($period === 'today') {
-            $violationsQuery->whereBetween('violation_date', [
-                $phtNow->copy()->startOfDay(),
-                $phtNow->copy()->endOfDay(),
-            ]);
-        } elseif ($period === 'last7') {
-            $violationsQuery->where('violation_date', '>=', $phtNow->copy()->subDays(7));
-        } elseif ($period === 'last30') {
-            $violationsQuery->where('violation_date', '>=', $phtNow->copy()->subDays(30));
-        } elseif ($period === 'custom') {
-            $from = $this->normalizeDateBoundary($dateFrom, false);
-            $to = $this->normalizeDateBoundary($dateTo, true);
-
-            if ($from !== null && $to !== null) {
-                $violationsQuery->whereBetween('violation_date', [$from, $to]);
-            } elseif ($from !== null) {
-                $violationsQuery->where('violation_date', '>=', $from);
-            } elseif ($to !== null) {
-                $violationsQuery->where('violation_date', '<=', $to);
-            }
-        }
-
-        $violations = $violationsQuery
-            ->latest('violation_date')
-            ->get();
-
-        return $violations
-            ->groupBy('student_number')
-            ->map(function ($studentViolations) {
-                $firstViolation = $studentViolations->first();
-                $student = $firstViolation?->student;
-
-                $detailedRecords = $studentViolations
-                    ->sortByDesc('violation_date')
-                    ->values()
-                    ->map(function (Violation $record) {
-                        $offenseLevel = $record->offense_level ?: 'N/A';
-                        $resolvedViolationType = $record->resolvedViolationType();
-
-                        $sanctionText = 'N/A';
-                        if (!empty($resolvedViolationType?->violation_type_id)) {
-                            $disciplinarySanction = DisciplinarySanction::where(
-                                    'violation_type_id',
-                                    $resolvedViolationType->violation_type_id
-                                )
-                                ->whereRaw('LOWER(TRIM(offense_level)) = ?', [strtolower(trim($offenseLevel))])
-                                ->first();
-
-                            if (!$disciplinarySanction) {
-                                $disciplinarySanction = DisciplinarySanction::where(
-                                        'violation_type_id',
-                                        $resolvedViolationType->violation_type_id
-                                    )
-                                    ->first();
-                            }
-
-                            $sanctionText = $disciplinarySanction?->disciplinary_sanction ?? 'N/A';
-                        }
-
-                        $status = 'N/A';
-                        if ($sanctionText !== 'N/A') {
-                            $status = str_contains(strtolower($sanctionText), 'warning') ? 'Warning' : 'Sanction';
-                        }
-
-                        return (object) [
-                            'category' => $record->violation_category_display,
-                            'type' => $record->violation_type_display,
-                            'offense_level' => $offenseLevel,
-                            'remarks' => $record->description ?: 'No remarks',
-                            'date_recorded' => $record->violation_date,
-                            'status' => $status,
-                            'sanction' => $sanctionText,
-                            'recorded_by' => $record->recorded_by_display,
-                        ];
-                    });
-
-                return (object) [
-                    'student' => $student,
-                    'records' => $detailedRecords,
-                ];
-            })
-            ->values()
-            ->sortBy(function ($entry) {
-                return trim(($entry->student?->last_name ?? '') . ', ' . ($entry->student?->first_name ?? ''));
-            })
-            ->values();
-    }
-
-    private function normalizeDateBoundary(?string $date, bool $endOfDay): ?Carbon
-    {
-        if (empty($date)) {
-            return null;
-        }
-
-        try {
-            $parsed = Carbon::parse($date, self::REPORT_TIMEZONE);
-            return $endOfDay ? $parsed->endOfDay() : $parsed->startOfDay();
-        } catch (\Throwable) {
-            return null;
-        }
-    }
-
-    private function phtNow(): Carbon
-    {
-        return Carbon::now(self::REPORT_TIMEZONE);
-    }
-
-    private function formatCustomDateFilter(?string $dateFrom, ?string $dateTo): string
-    {
-        $from = $this->normalizeDateBoundary($dateFrom, false);
-        $to = $this->normalizeDateBoundary($dateTo, true);
-
-        if ($from && $to) {
-            return 'Custom Date Range: ' . $from->format('M d, Y') . ' to ' . $to->format('M d, Y');
-        }
-
-        if ($from) {
-            return 'Custom Date Range: From ' . $from->format('M d, Y');
-        }
-
-        if ($to) {
-            return 'Custom Date Range: Until ' . $to->format('M d, Y');
-        }
-
-        return 'Custom Date Range: No valid dates provided';
-    }
-
-    private function formatOffenseLevel(int $count): string
-    {
-        if ($count === 1) {
-            return '1st Offense';
-        }
-
-        if ($count === 2) {
-            return '2nd Offense';
-        }
-
-        if ($count === 3) {
-            return '3rd Offense';
-        }
-
-        $suffix = match (true) {
-            $count % 100 >= 11 && $count % 100 <= 13 => 'th',
-            $count % 10 === 1 => 'st',
-            $count % 10 === 2 => 'nd',
-            $count % 10 === 3 => 'rd',
-            default => 'th',
-        };
-
-        return "{$count}{$suffix} Offense";
     }
 
     private function applyRecorderScope($query, bool $includeDenied = false): void

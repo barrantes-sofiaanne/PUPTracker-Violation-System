@@ -34,8 +34,15 @@
             const swalConfig = JSON.parse(flashData.dataset.config || '{}');
 
             if (window.Swal) {
-                Swal.fire(swalConfig);
-            }
+    const activeElement = document.activeElement;
+    const authRoot = document.querySelector('[data-auth-spa-root]');
+
+    if (activeElement && authRoot && authRoot.contains(activeElement)) {
+        activeElement.blur();
+    }
+
+    Swal.fire(swalConfig);
+}
         });
     </script>
 @endif

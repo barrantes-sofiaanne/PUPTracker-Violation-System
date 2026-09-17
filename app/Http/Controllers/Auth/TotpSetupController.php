@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Support\Auth\AuthDestination;
+use App\Support\Auth\PortalLoginRedirect;
 use App\Support\MfaSchema;
 use App\Support\MfaService;
 use App\Support\TotpService;
@@ -253,23 +255,19 @@ class TotpSetupController extends Controller
 
     private function loginRouteForGuard(string $guard): string
     {
-        return match ($guard) {
-            'admin' => 'admin.login',
-            'security' => 'security.login',
-            default => 'student.login',
-        };
+        // Resolved through the shared helper so an OSS Staff admin is returned to
+        // the Security + OSS Staff portal it signed in from, and a regular
+        // Administrator to the Administrator login.
+        return PortalLoginRedirect::forGuard(
+            $guard,
+            $guard === 'admin' ? auth()->guard('admin')->user() : null
+        );
     }
 
     private function dashboardRouteForGuard(string $guard, ?Authenticatable $user): string
     {
-        if ($guard === 'admin') {
-            return method_exists($user, 'isItAdministrator') && $user->isItAdministrator()
-                ? 'admin.super-admin.dashboard'
-                : 'admin.dashboard';
-        }
-
-        return $guard === 'security'
-            ? 'security.dashboard'
-            : 'student.dashboard';
+        // Delegates to the single destination rule, so TOTP enrolment lands an
+        // OSS Staff account in its OWN module instead of the Admin dashboard.
+        return AuthDestination::forGuard($guard, $user);
     }
 }

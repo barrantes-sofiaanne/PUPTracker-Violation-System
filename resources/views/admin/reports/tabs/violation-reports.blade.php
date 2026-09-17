@@ -303,29 +303,23 @@
 </div>
 
 </div>
+
 <div class="row mb-4">
 
     {{-- Monthly Trend --}}
-    <div class="col-lg-8 mb-4">
+    <div class="col-lg-8 col-md-12 mb-4">
 
-        <div class="card border-0 shadow-sm h-100">
+        <div class="card border-0 shadow-sm h-100 report-chart-card">
 
             <div class="card-header bg-white">
-
                 <h5 class="fw-bold mb-0">
-
                     Monthly Violation Trend
-
                 </h5>
-
             </div>
 
-            <div class="card-body">
+            <div class="card-body report-chart-body report-chart-body-line">
 
-                <canvas
-                    id="monthlyTrendChart"
-                    height="120">
-                </canvas>
+                <canvas id="monthlyTrendChart"></canvas>
 
             </div>
 
@@ -334,26 +328,61 @@
     </div>
 
     {{-- Category Distribution --}}
-    <div class="col-lg-4 mb-4">
+    <div class="col-lg-4 col-md-6 mb-4">
 
-        <div class="card border-0 shadow-sm h-100">
+        <div class="card border-0 shadow-sm h-100 report-chart-card">
 
             <div class="card-header bg-white">
-
                 <h5 class="fw-bold mb-0">
-
                     Category Distribution
-
                 </h5>
+            </div>
+
+            <div class="card-body report-chart-body">
+
+                <canvas id="categoryChart"></canvas>
 
             </div>
 
-            <div class="card-body">
+        </div>
 
-                <canvas
-                    id="categoryChart"
-                    height="240">
-                </canvas>
+    </div>
+
+    {{-- Violations by Program --}}
+    <div class="col-lg-4 col-md-6 mb-4">
+
+        <div class="card border-0 shadow-sm h-100 report-chart-card">
+
+            <div class="card-header bg-white">
+                <h5 class="fw-bold mb-0">
+                    Violations by Program
+                </h5>
+            </div>
+
+            <div class="card-body report-chart-body">
+
+                <canvas id="programChart"></canvas>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    {{-- Top Violations --}}
+    <div class="col-lg-8 col-md-12 mb-4">
+
+        <div class="card border-0 shadow-sm h-100 report-chart-card">
+
+            <div class="card-header bg-white">
+                <h5 class="fw-bold mb-0">
+                    Top 10 Most Common Violations
+                </h5>
+            </div>
+
+            <div class="card-body report-chart-body report-chart-body-bar">
+
+                <canvas id="topViolationChart"></canvas>
 
             </div>
 
@@ -362,28 +391,7 @@
     </div>
 
 </div>
-<div class="card border-0 shadow-sm mb-4">
 
-    <div class="card-header bg-white">
-
-        <h5 class="fw-bold mb-0">
-
-            Top 10 Most Common Violations
-
-        </h5>
-
-    </div>
-
-    <div class="card-body">
-
-        <canvas
-            id="topViolationChart"
-            height="100">
-        </canvas>
-
-    </div>
-
-</div>
 <div class="card border-0 shadow-sm">
 
     <div class="card-header bg-white">
