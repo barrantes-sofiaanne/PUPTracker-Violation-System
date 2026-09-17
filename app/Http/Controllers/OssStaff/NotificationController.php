@@ -114,10 +114,12 @@ class NotificationController extends Controller
      * the Super Admin flag forced OFF, so only operational-admin notifications
      * addressed to this account (or broadcast to the admin audience) appear.
      */
-    private function accessibleNotifications(?int $adminId)
-    {
-        return AdminNotification::query()->forAudience($adminId, false);
-    }
+   private function accessibleNotifications(?int $adminId)
+{
+    return AdminNotification::query()
+        ->where('recipient_type', AdminNotification::AUDIENCE_ADMIN)
+        ->where('recipient_id', $adminId);
+}
 
     private function unreadCountFor(?int $adminId): int
     {
@@ -141,9 +143,10 @@ class NotificationController extends Controller
 
         abort_unless(
             AdminNotification::query()
-                ->whereKey($notification->getKey())
-                ->forAudience($adminId, false)
-                ->exists(),
+    ->whereKey($notification->getKey())
+    ->where('recipient_type', AdminNotification::AUDIENCE_ADMIN)
+    ->where('recipient_id', $adminId)
+    ->exists(),
             403
         );
     }

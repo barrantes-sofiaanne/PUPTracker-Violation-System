@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Violation;
 use App\Models\ViolationCategory;
 use App\Models\ViolationType;
+use App\Models\AdminNotification;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;

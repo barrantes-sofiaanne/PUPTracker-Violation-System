@@ -50,7 +50,8 @@
                 try {
                     if ($ossStaffUser && \Illuminate\Support\Facades\Schema::hasTable('admin_notifications_tbl')) {
                         $ossStaffNotificationQuery = \App\Models\AdminNotification::query()
-                            ->forAudience((int) $ossStaffUser->id, false);
+    ->where('recipient_type', \App\Models\AdminNotification::AUDIENCE_ADMIN)
+    ->where('recipient_id', (int) $ossStaffUser->id);
 
                         $ossStaffRecentNotifications = (clone $ossStaffNotificationQuery)
                             ->latest('created_at')
@@ -119,7 +120,6 @@
                 'menuUserName' => $ossStaffDisplayName,
                 'menuUserSub' => $ossStaffDisplaySub,
                 'menuItems' => [
-                    ['label' => 'Profile', 'url' => route('oss-staff.profile'), 'icon' => 'bi-person-vcard'],
                 ],
                 // OSS Staff accounts authenticate on the ADMIN guard, so the
                 // logout endpoint is the admin one.
