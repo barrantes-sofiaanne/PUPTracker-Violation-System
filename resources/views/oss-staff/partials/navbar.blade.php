@@ -119,8 +119,7 @@
             @include('partials.user-menu', [
                 'menuUserName' => $ossStaffDisplayName,
                 'menuUserSub' => $ossStaffDisplaySub,
-                'menuItems' => [
-                ],
+                'menuItems' => [],
                 // OSS Staff accounts authenticate on the ADMIN guard, so the
                 // logout endpoint is the admin one.
                 'menuLogoutUrl' => route('admin.logout'),
