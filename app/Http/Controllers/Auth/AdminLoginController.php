@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Support\Auth\LoginAttemptLimiter;
 use App\Support\Auth\SessionExpiryNotice;
 use App\Support\MfaService;
+use App\Support\MfaTrustedDeviceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -30,7 +31,11 @@ class AdminLoginController extends Controller
         return view('auth.admin-login');
     }
 
-    public function login(Request $request, MfaService $mfaService)
+    public function login(
+    Request $request,
+    MfaService $mfaService,
+    MfaTrustedDeviceService $trustedDeviceService
+)
     {
         try {
             $request->validate([
@@ -95,9 +100,27 @@ class AdminLoginController extends Controller
             // "3 attempts" means three FAILURES, never three lifetime logins.
             LoginAttemptLimiter::clear(self::LOGIN_MODULE, $request);
 
-            Log::info('Admin login: credentials verified', ['admin_id' => $admin->id]);
+           Log::info('Admin login: credentials verified', ['admin_id' => $admin->id]);
 
-            return $this->beginMfaForVerifiedAdmin($request, $mfaService, $admin);
+if (
+    (bool) config('auth.features.remember_device', false)
+    && $trustedDeviceService->isTrusted('admin', (int) $admin->getKey())
+) {
+    Auth::guard('admin')->login($admin, false);
+    $request->session()->regenerate();
+
+    SessionExpiryNotice::clear($request);
+
+    Log::info('Admin login: MFA skipped for trusted device', [
+        'admin_id' => $admin->id,
+    ]);
+
+    return redirect()
+        ->route(\App\Support\Auth\AuthDestination::forGuard('admin', $admin))
+        ->with('show_login_announcement_modal', true);
+}
+
+return $this->beginMfaForVerifiedAdmin($request, $mfaService, $admin);
         } catch (\Throwable $exception) {
             Log::error('Admin login controller error - UNCAUGHT', [
                 'admin_id' => $admin->id ?? null,

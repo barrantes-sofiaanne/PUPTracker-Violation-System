@@ -22,7 +22,7 @@
     $rememberChecked = $canRemember
         && (bool) old('remember', $pending['remember'] ?? false);
 
-    // The whole feature is DISABLED (config/auth.php `features`). The markup
+    // The Remember Me feature is controlled by config/auth.php `features`. The markup
     // below is kept so re-enabling it is a one-flag change; gating it here means
     // the checkbox simply does not render. The BACKEND refuses it independently
     // (MfaController + MfaService), so a crafted POST cannot re-enable it.
