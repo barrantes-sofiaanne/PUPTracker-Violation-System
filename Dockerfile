@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     unzip \
+        default-mysql-client \
     zip \
     libzip-dev \
     libpng-dev \
