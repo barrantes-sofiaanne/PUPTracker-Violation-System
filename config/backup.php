@@ -76,7 +76,7 @@ return [
     |
     */
 
-    'disk' => env('BACKUP_STORAGE_DISK', 's3'),
+    'disk' => env('BACKUP_STORAGE_DISK', 'backup_s3'),
 
     // Object prefix inside the bucket, e.g. "database-backups".
     'prefix' => trim((string) env('BACKUP_STORAGE_PREFIX', 'database-backups'), '/'),
