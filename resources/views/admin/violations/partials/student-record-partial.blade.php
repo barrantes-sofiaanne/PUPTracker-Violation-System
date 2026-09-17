@@ -56,8 +56,7 @@
                 @forelse($summary as $item)
                     <tr>
                         <td>{{ $item['category'] ?? '-' }}</td>
-                       <td>{{ $violation->violationType?->violation_type ?? $violation->violation_type_display }}</td>
-                        <td><span class="admin-badge admin-badge-gold">{{ $item['offense_level'] }}</span></td>
+<td>{{ $item['violation_type'] ?? '-' }}</td>                        <td><span class="admin-badge admin-badge-gold">{{ $item['offense_level'] }}</span></td>
                         <td>
                             @php $status = strtolower((string) ($item['violation_status'] ?? 'unknown')); @endphp
                             @if($status === 'sanction')
