@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Security;
 use App\Support\Auth\LoginAttemptLimiter;
 use App\Support\MfaService;
+use App\Support\MfaTrustedDeviceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -60,7 +61,11 @@ class SecurityLoginController extends Controller
         return view('auth.security-login');
     }
 
-    public function login(Request $request, MfaService $mfaService)
+    public function login(
+    Request $request,
+    MfaService $mfaService,
+    MfaTrustedDeviceService $trustedDeviceService
+)
     {
         $request->validate([
             'email' => 'required|email',
@@ -101,9 +106,9 @@ class SecurityLoginController extends Controller
         // both: a Security row wins, otherwise the Administrators are consulted.
         $security = Security::where('email', $request->email)->first();
 
-        return $security !== null
-            ? $this->loginSecurityAccount($request, $mfaService, $security)
-            : $this->loginOssStaffAccount($request, $mfaService);
+       return $security !== null
+    ? $this->loginSecurityAccount($request, $mfaService, $trustedDeviceService, $security)
+    : $this->loginOssStaffAccount($request, $mfaService, $trustedDeviceService);
     }
 
     public function logout(Request $request)
@@ -123,7 +128,12 @@ class SecurityLoginController extends Controller
      * Behaviour is unchanged from before the portal became shared, except that
      * it returns early so the OSS Staff branch can run for other emails.
      */
-    private function loginSecurityAccount(Request $request, MfaService $mfaService, Security $security)
+   private function loginSecurityAccount(
+    Request $request,
+    MfaService $mfaService,
+    MfaTrustedDeviceService $trustedDeviceService,
+    Security $security
+)
     {
         if (! Hash::check($request->password, $security->password)) {
             LoginAttemptLimiter::recordFailure(self::LOGIN_MODULE, $request);
@@ -133,7 +143,21 @@ class SecurityLoginController extends Controller
 
         // A SUCCESSFUL credential check clears the failed-attempt counter.
         LoginAttemptLimiter::clear(self::LOGIN_MODULE, $request);
+        if (
+            (bool) config('auth.features.remember_device', false)
+            && $trustedDeviceService->isTrusted('security', (int) $security->getKey())
+        ) {
+            Auth::guard('security')->login($security, false);
+            $request->session()->regenerate();
 
+            Log::info('Security login: MFA skipped for trusted device', [
+                'security_id' => $security->id,
+            ]);
+
+            return redirect()
+                ->route(\App\Support\Auth\AuthDestination::forGuard('security', $security))
+                ->with('show_login_announcement_modal', true);
+        }
         if (empty($security->email)) {
             return back()
                 ->withErrors([
@@ -224,7 +248,11 @@ class SecurityLoginController extends Controller
      * their accounts are deliberately NOT usable here, because this portal is
      * not the Administrator login.
      */
-    private function loginOssStaffAccount(Request $request, MfaService $mfaService)
+   private function loginOssStaffAccount(
+    Request $request,
+    MfaService $mfaService,
+    MfaTrustedDeviceService $trustedDeviceService
+)
     {
         $admin = Admin::where('email', $request->email)->first();
 
@@ -248,7 +276,23 @@ class SecurityLoginController extends Controller
         // login must not survive a successful sign-in here.
         LoginAttemptLimiter::clear(self::ADMIN_MODULE, $request);
 
-        Log::info('Shared portal: OSS Staff credentials verified', ['admin_id' => $admin->id]);
+               Log::info('Shared portal: OSS Staff credentials verified', ['admin_id' => $admin->id]);
+
+        if (
+            (bool) config('auth.features.remember_device', false)
+            && $trustedDeviceService->isTrusted('admin', (int) $admin->getKey())
+        ) {
+            Auth::guard('admin')->login($admin, false);
+            $request->session()->regenerate();
+
+            Log::info('Shared portal: OSS Staff MFA skipped for trusted device', [
+                'admin_id' => $admin->id,
+            ]);
+
+            return redirect()
+                ->route(\App\Support\Auth\AuthDestination::forGuard('admin', $admin))
+                ->with('show_login_announcement_modal', true);
+        }
 
         return app(AdminLoginController::class)
             ->beginMfaForVerifiedAdmin($request, $mfaService, $admin);
