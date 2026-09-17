@@ -147,9 +147,16 @@ class BinaryLogSupportService
         }
     }
 
-   protected function variable(string $name): ?string
+protected function variable(string $name): ?string
 {
-    $rows = DB::select("SHOW VARIABLES LIKE ?", [$name]);
+    $allowed = ['log_bin', 'binlog_format'];
+
+    if (! in_array($name, $allowed, true)) {
+        return null;
+    }
+
+    $rows = DB::select("SHOW VARIABLES LIKE '{$name}'");
+
     if (! $rows) {
         return null;
     }
