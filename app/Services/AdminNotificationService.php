@@ -96,7 +96,7 @@ if (
 // Email the operational Admins when a student submits a sanction request.
 if (
     $audience === AdminNotification::AUDIENCE_ADMIN
-    && $type === 'sanction_request'
+    && $type === 'disciplinary_sanction_request'
     && $targetType === 'sanction_request'
 ) {
     try {
