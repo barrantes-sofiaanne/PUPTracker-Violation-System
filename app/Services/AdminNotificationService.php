@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use App\Mail\SystemNotification;
+use App\Models\Admin;
 use App\Models\AdminNotification;
 use App\Models\EmailIncident;
 use App\Models\SanctionRequest;
 use App\Models\StudentSanctionRecord;
 use App\Models\Violation;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
@@ -69,7 +73,27 @@ class AdminNotificationService
             $data['recipient_id'] = $recipientId;
         }
 
-        return AdminNotification::create($data);
+        $notification = AdminNotification::create($data);
+
+// Email only user-facing operational notifications.
+// System alerts are intentionally excluded for now because
+// EmailIncidentService creates system_email_failure notifications
+// when an email itself fails.
+if (
+    $audience === AdminNotification::AUDIENCE_ADMIN
+    && $type === 'violation_confirmation'
+) {
+    try {
+        $this->sendViolationConfirmationEmail($notification);
+    } catch (\Throwable $e) {
+        Log::warning('Failed to send violation notification email', [
+            'notification_id' => $notification->admin_notification_id,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
+
+return $notification;
     }
 
     /**
@@ -271,4 +295,65 @@ class AdminNotificationService
 
         return route('admin.super-admin.email-incidents.show', $incident->incident_id);
     }
+    /**
+ * Send the email corresponding to an operational violation-confirmation
+ * notification.
+ *
+ * The email recipient follows the exact same audience rules as the
+ * AdminNotification inbox:
+ *
+ * - recipient_id provided -> that specific operational admin
+ * - recipient_id null -> all operational admins
+ *
+ * Super Admins are excluded from operational notifications.
+ */
+private function sendViolationConfirmationEmail(AdminNotification $notification): void
+{
+    $admins = Admin::query()
+        ->with('adminInfo')
+        ->get()
+        ->filter(function (Admin $admin): bool {
+            // IT Administrator = Super Admin.
+            // Super Admin must not receive operational violation notifications.
+            return ! $admin->isItAdministrator();
+        });
+
+    // If this notification was addressed to one specific admin,
+    // only email that administrator.
+    if ($notification->recipient_id !== null) {
+        $admins = $admins->filter(
+            fn (Admin $admin): bool =>
+                (int) $admin->id === (int) $notification->recipient_id
+        );
+    }
+
+    foreach ($admins as $admin) {
+        $email = trim((string) $admin->email);
+
+        if ($email === '') {
+            continue;
+        }
+
+        try {
+            Mail::to($email)->send(
+                new SystemNotification(
+                    notificationTitle: (string) ($notification->title ?? 'Violation Awaiting Confirmation'),
+                    notificationMessage: (string) $notification->message,
+                    recipientName: (string) ($admin->username ?: 'Administrator'),
+                    actionUrl: $this->openUrl($notification),
+                    actionText: 'View Notification',
+                )
+            );
+        } catch (\Throwable $e) {
+            // Record the failure without allowing the original violation
+            // operation to fail.
+            app(EmailIncidentService::class)->record(
+                emailType: 'Violation Confirmation Notification',
+                errorMessage: $e->getMessage(),
+                relatedRecordType: 'AdminNotification',
+                relatedRecordId: $notification->admin_notification_id,
+            );
+        }
+    }
+}
 }
