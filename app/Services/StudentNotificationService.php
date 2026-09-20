@@ -75,8 +75,15 @@ class StudentNotificationService
 // Send email only for decision-related violation notifications.
 // The existing in-app notification remains unchanged.
 if (
-    $type === 'violation'
-    && in_array($title, ['Violation Confirmed', 'Violation Rejected'], true)
+    (
+        $type === 'violation'
+        && in_array($title, ['Violation Confirmed', 'Violation Rejected'], true)
+    )
+    ||
+    (
+        $type === 'sanction'
+        && in_array($title, ['Sanction Request Approved', 'Sanction Request Declined'], true)
+    )
 ) {
     try {
         $this->sendDecisionEmail(
