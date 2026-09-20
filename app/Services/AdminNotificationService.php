@@ -95,6 +95,7 @@ if (
 }
 
 // Email the specific OSS Staff member when their violation is confirmed/rejected.
+// Email the specific OSS Staff member when their violation is confirmed or rejected.
 if (
     $audience === AdminNotification::AUDIENCE_ADMIN
     && $type === 'violation'
