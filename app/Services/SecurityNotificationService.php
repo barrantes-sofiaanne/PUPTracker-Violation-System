@@ -145,31 +145,32 @@ return $notification;
  */
 private function sendDecisionEmail(Notification $notification): void
 {
-    if ($notification->recipient_id === null) {
+    $recipientId = (int) ($notification->recipient_id ?? 0);
+
+    if ($recipientId <= 0) {
         return;
     }
 
-    $security = Security::query()
-        ->with('securityInfo')
-        ->find((int) $notification->recipient_id);
+    $security = \App\Models\Security::query()->find($recipientId);
 
     if (! $security) {
+        Log::warning('Security notification recipient not found', [
+            'notification_id' => $notification->notification_id ?? null,
+            'recipient_id' => $recipientId,
+        ]);
+
         return;
     }
 
-    $email = trim((string) $security->email);
+    $email = trim((string) ($security->email ?? ''));
 
     if ($email === '') {
+        Log::warning('Security notification recipient has no email', [
+            'notification_id' => $notification->notification_id ?? null,
+            'recipient_id' => $recipientId,
+        ]);
+
         return;
-    }
-
-    $name = trim(
-        ($security->securityInfo->firstname ?? '') . ' ' .
-        ($security->securityInfo->lastname ?? '')
-    );
-
-    if ($name === '') {
-        $name = 'Security Officer';
     }
 
     try {
@@ -179,7 +180,7 @@ private function sendDecisionEmail(Notification $notification): void
                     $notification->title ?? 'Violation Update'
                 ),
                 notificationMessage: (string) $notification->message,
-                recipientName: $name,
+                recipientName: 'Security Officer',
                 actionUrl: $this->openUrl($notification),
                 actionText: 'View Violation',
             )
