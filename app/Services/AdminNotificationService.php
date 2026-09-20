@@ -79,6 +79,7 @@ class AdminNotificationService
 // System alerts are intentionally excluded for now because
 // EmailIncidentService creates system_email_failure notifications
 // when an email itself fails.
+// Email the operational Admins when a violation is awaiting confirmation.
 if (
     $audience === AdminNotification::AUDIENCE_ADMIN
     && $type === 'violation_confirmation'
@@ -87,6 +88,23 @@ if (
         $this->sendViolationConfirmationEmail($notification);
     } catch (\Throwable $e) {
         Log::warning('Failed to send violation notification email', [
+            'notification_id' => $notification->admin_notification_id,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
+
+// Email the specific OSS Staff member when their violation is confirmed/rejected.
+if (
+    $audience === AdminNotification::AUDIENCE_ADMIN
+    && $type === 'violation'
+    && $targetType === 'oss_staff_violation'
+    && $recipientId !== null
+) {
+    try {
+        $this->sendOssStaffDecisionEmail($notification);
+    } catch (\Throwable $e) {
+        Log::warning('Failed to send OSS Staff decision email', [
             'notification_id' => $notification->admin_notification_id,
             'error' => $e->getMessage(),
         ]);
@@ -309,14 +327,16 @@ return $notification;
  */
 private function sendViolationConfirmationEmail(AdminNotification $notification): void
 {
-    $admins = Admin::query()
-        ->with('adminInfo')
-        ->get()
-        ->filter(function (Admin $admin): bool {
-            // IT Administrator = Super Admin.
-            // Super Admin must not receive operational violation notifications.
-            return ! $admin->isItAdministrator();
-        });
+$admins = Admin::query()
+    ->with('adminInfo')
+    ->get()
+    ->filter(function (Admin $admin): bool {
+        // Operational Admins receive violation confirmation emails.
+        // IT Administrator = Super Admin.
+        // OSS Staff must not receive Admin-only violation confirmation emails.
+        return ! $admin->isItAdministrator()
+            && ! $admin->isOssStaff();
+    });
 
     // If this notification was addressed to one specific admin,
     // only email that administrator.
@@ -354,6 +374,69 @@ private function sendViolationConfirmationEmail(AdminNotification $notification)
                 relatedRecordId: $notification->admin_notification_id,
             );
         }
+    }
+}
+private function sendOssStaffDecisionEmail(AdminNotification $notification): void
+{
+    $recipientId = (int) ($notification->recipient_id ?? 0);
+
+    if ($recipientId <= 0) {
+        return;
+    }
+
+    $ossStaff = Admin::query()
+        ->with('adminInfo')
+        ->find($recipientId);
+
+    if (! $ossStaff) {
+        Log::warning('OSS Staff notification recipient not found', [
+            'notification_id' => $notification->admin_notification_id,
+            'recipient_id' => $recipientId,
+        ]);
+
+        return;
+    }
+
+    // Make sure the recipient is actually an OSS Staff account.
+    if (! $ossStaff->isOssStaff()) {
+        Log::warning('Notification recipient is not an OSS Staff account', [
+            'notification_id' => $notification->admin_notification_id,
+            'recipient_id' => $recipientId,
+        ]);
+
+        return;
+    }
+
+    $email = trim((string) $ossStaff->email);
+
+    if ($email === '') {
+        Log::warning('OSS Staff notification recipient has no email', [
+            'notification_id' => $notification->admin_notification_id,
+            'recipient_id' => $recipientId,
+        ]);
+
+        return;
+    }
+
+    try {
+        Mail::to($email)->send(
+            new SystemNotification(
+                notificationTitle: (string) (
+                    $notification->title ?? 'Violation Update'
+                ),
+                notificationMessage: (string) $notification->message,
+                recipientName: (string) ($ossStaff->username ?: 'OSS Staff'),
+                actionUrl: $this->openUrl($notification),
+                actionText: 'View Violation',
+            )
+        );
+    } catch (\Throwable $e) {
+        app(EmailIncidentService::class)->record(
+            emailType: 'OSS Staff Violation Decision Notification',
+            errorMessage: $e->getMessage(),
+            relatedRecordType: 'AdminNotification',
+            relatedRecordId: $notification->admin_notification_id,
+        );
     }
 }
 }
