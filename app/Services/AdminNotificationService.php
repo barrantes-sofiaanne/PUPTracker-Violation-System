@@ -108,6 +108,21 @@ if (
         ]);
     }
 }
+// Email the operational Admins when a sanction becomes overdue.
+if (
+    $audience === AdminNotification::AUDIENCE_ADMIN
+    && $type === 'sanction_overdue'
+    && $targetType === 'sanction_record'
+) {
+    try {
+        $this->sendSanctionOverdueEmail($notification);
+    } catch (\Throwable $e) {
+        Log::warning('Failed to send sanction overdue notification email', [
+            'notification_id' => $notification->admin_notification_id,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
 // Email the specific OSS Staff member when their violation is confirmed/rejected.
 // Email the specific OSS Staff member when their violation is confirmed or rejected.
 if (
@@ -435,6 +450,55 @@ private function sendSanctionRequestEmail(AdminNotification $notification): void
         } catch (\Throwable $e) {
             app(EmailIncidentService::class)->record(
                 emailType: 'Sanction Request Notification',
+                errorMessage: $e->getMessage(),
+                relatedRecordType: 'AdminNotification',
+                relatedRecordId: $notification->admin_notification_id,
+            );
+        }
+    }
+}
+private function sendSanctionOverdueEmail(AdminNotification $notification): void
+{
+    $admins = Admin::query()
+        ->with('adminInfo')
+        ->get()
+        ->filter(function (Admin $admin): bool {
+            // Only operational Admins receive sanction overdue alerts.
+            // Super Admin and OSS Staff are excluded.
+            return ! $admin->isItAdministrator()
+                && ! $admin->isOssStaff();
+        });
+
+    // If addressed to one specific Admin, only email that account.
+    if ($notification->recipient_id !== null) {
+        $admins = $admins->filter(
+            fn (Admin $admin): bool =>
+                (int) $admin->id === (int) $notification->recipient_id
+        );
+    }
+
+    foreach ($admins as $admin) {
+        $email = trim((string) $admin->email);
+
+        if ($email === '') {
+            continue;
+        }
+
+        try {
+            Mail::to($email)->send(
+                new SystemNotification(
+                    notificationTitle: (string) (
+                        $notification->title ?? 'Sanction Overdue'
+                    ),
+                    notificationMessage: (string) $notification->message,
+                    recipientName: (string) ($admin->username ?: 'Administrator'),
+                    actionUrl: $this->openUrl($notification),
+                    actionText: 'View Sanction Record',
+                )
+            );
+        } catch (\Throwable $e) {
+            app(EmailIncidentService::class)->record(
+                emailType: 'Sanction Overdue Notification',
                 errorMessage: $e->getMessage(),
                 relatedRecordType: 'AdminNotification',
                 relatedRecordId: $notification->admin_notification_id,
