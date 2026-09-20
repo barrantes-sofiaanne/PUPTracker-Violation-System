@@ -2,10 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\Security;
 use App\Models\Notification;
 use App\Models\Violation;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use App\Mail\SystemNotification;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Target-aware notifications for security officers.
@@ -64,7 +68,24 @@ class SecurityNotificationService
             $data['link'] = $link;
         }
 
-        return Notification::create($data);
+        $notification = Notification::create($data);
+
+// Email Security only for violation decision notifications.
+if (
+    $type === 'violation'
+    && in_array($title, ['Violation Confirmed', 'Violation Rejected'], true)
+) {
+    try {
+        $this->sendDecisionEmail($notification);
+    } catch (\Throwable $e) {
+        Log::warning('Failed to send security notification email', [
+            'notification_id' => $notification->notification_id ?? null,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
+
+return $notification;
     }
 
     /**
@@ -113,4 +134,63 @@ class SecurityNotificationService
             'highlight_violation' => $violation->violation_id,
         ]);
     }
+    /**
+ * Send an email for a Security violation decision notification.
+ */
+/**
+ * Send an email for a Security violation decision notification.
+ *
+ * The notification already contains the exact Security account ID
+ * through recipient_id, so only that officer receives the email.
+ */
+private function sendDecisionEmail(Notification $notification): void
+{
+    if ($notification->recipient_id === null) {
+        return;
+    }
+
+    $security = Security::query()
+        ->with('securityInfo')
+        ->find((int) $notification->recipient_id);
+
+    if (! $security) {
+        return;
+    }
+
+    $email = trim((string) $security->email);
+
+    if ($email === '') {
+        return;
+    }
+
+    $name = trim(
+        ($security->securityInfo->firstname ?? '') . ' ' .
+        ($security->securityInfo->lastname ?? '')
+    );
+
+    if ($name === '') {
+        $name = 'Security Officer';
+    }
+
+    try {
+        Mail::to($email)->send(
+            new SystemNotification(
+                notificationTitle: (string) (
+                    $notification->title ?? 'Violation Update'
+                ),
+                notificationMessage: (string) $notification->message,
+                recipientName: $name,
+                actionUrl: $this->openUrl($notification),
+                actionText: 'View Violation',
+            )
+        );
+    } catch (\Throwable $e) {
+        app(\App\Services\EmailIncidentService::class)->record(
+            emailType: 'Security Violation Decision Notification',
+            errorMessage: $e->getMessage(),
+            relatedRecordType: 'Notification',
+            relatedRecordId: $notification->notification_id ?? null,
+        );
+    }
+}
 }
