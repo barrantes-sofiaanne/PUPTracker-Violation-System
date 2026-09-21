@@ -81,12 +81,14 @@ if (
     )
     ||
     (
-        $type === 'sanction'
-        && in_array($title, [
-            'Sanction Request Approved',
-            'Sanction Request Declined',
-            'Sanction Overdue',
-        ], true)
+       'type' === 'sanction'
+&& in_array($title, [
+    'Sanction Request Approved',
+    'Sanction Request Declined',
+    'Sanction Overdue',
+    'Sanction Completed',
+    'Proof of Completion Rejected',
+], true)
     )
 ) {
     try {
