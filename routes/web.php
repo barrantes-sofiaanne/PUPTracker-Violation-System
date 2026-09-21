@@ -277,11 +277,10 @@ Route::middleware(['auth:student', 'student.profile.complete', 'session.inactivi
         Route::post('/submit-proof', [StudentRecordController::class, 'submitProof'])
             ->name('student.submit-proof');
 
-        Route::get('/sanction-records/{studentSanctionRecord}/proof', [StudentRecordController::class, 'downloadProof'])
+        Route::get('/sanction-records/{studentSanctionRecord:proof_access_key}/proof', [StudentRecordController::class, 'downloadProof'])
             ->name('student.proof.download');
 
-        Route::get('/violations/evidence/{evidence}', [StudentRecordController::class, 'downloadEvidence'])
-            ->name('student.violations.evidence');
+Route::get('/violations/evidence/{evidence:access_key}', [StudentRecordController::class, 'downloadEvidence'])            ->name('student.violations.evidence');
 
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->name('student.notifications');
@@ -461,7 +460,7 @@ Route::middleware(['auth:admin', 'session.inactivity'])
         Route::post('/violations/deny/{violation}', [ViolationController::class, 'denyViolation'])
             ->name('admin.violations.deny');
 
-        Route::get('/violations/evidence/{evidence}', [ViolationController::class, 'downloadEvidence'])
+Route::get('/violations/evidence/{evidence:access_key}', [ViolationController::class, 'downloadEvidence'])
             ->name('admin.violations.evidence');
 
         Route::get('/violations/evidence/{evidence}/events', [ViolationController::class, 'evidenceEvents'])
@@ -493,7 +492,7 @@ Route::middleware(['auth:admin', 'session.inactivity'])
         Route::post('/sanctions/records/{studentSanctionRecord}/service-assignment', [SanctionController::class, 'updateServiceAssignment'])
             ->name('admin.sanctions.records.update-service-assignment');
 
-        Route::get('/sanctions/records/{studentSanctionRecord}/proof', [SanctionController::class, 'downloadProof'])
+        Route::get('/sanctions/records/{studentSanctionRecord:proof_access_key}/proof', [SanctionController::class, 'downloadProof'])
             ->name('admin.sanctions.proof.download');
 
         Route::get(
@@ -872,8 +871,8 @@ Route::middleware(['auth:security,admin', 'security.operational', 'session.inact
         Route::post('/violations/preview', [App\Http\Controllers\Security\StudentViolationController::class, 'previewViolation'])
             ->name('security.violations.preview');
 
-        Route::get('/violations/evidence/{evidence}', [App\Http\Controllers\Security\StudentViolationController::class, 'downloadEvidence'])
-            ->name('security.violations.evidence');
+        Route::get('/violations/evidence/{evidence:access_key}', [App\Http\Controllers\Security\StudentViolationController::class, 'downloadEvidence'])
+    ->name('security.violations.evidence');
 
         Route::post('/evidence/security-event', [App\Http\Controllers\Security\StudentViolationController::class, 'logSecurityEvent'])
             ->name('security.violations.evidence-security-event');
@@ -974,7 +973,7 @@ Route::middleware(['auth:admin', 'oss.staff', 'session.inactivity'])
         Route::post('/violations/preview', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'previewViolation'])
             ->name('violations.preview');
 
-        Route::get('/violations/evidence/{evidence}', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'downloadEvidence'])
+       Route::get('/violations/evidence/{evidence:access_key}', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'downloadEvidence'])
             ->name('violations.evidence');
 
         Route::post('/evidence/security-event', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'logSecurityEvent'])

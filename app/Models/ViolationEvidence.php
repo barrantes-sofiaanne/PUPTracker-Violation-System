@@ -42,6 +42,7 @@ class ViolationEvidence extends Model
 
     protected $fillable = [
         'evidence_code',
+        'access_key',
         'capture_session_id',
         'violation_id',
         'disk_path',

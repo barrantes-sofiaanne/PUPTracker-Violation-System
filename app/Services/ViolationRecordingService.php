@@ -103,6 +103,7 @@ class ViolationRecordingService
             // Build the row first so we can derive the official path + hash.
             $evidence = ViolationEvidence::create([
                 'evidence_code' => $evidenceCode,
+                'access_key' => bin2hex(random_bytes(32)),
                 'capture_session_id' => $captureSessionId,
                 'violation_id' => $violation->violation_id,
                 'disk_path' => $directory . '/' . $filename,
