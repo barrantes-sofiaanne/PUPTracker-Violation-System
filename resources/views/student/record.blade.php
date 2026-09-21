@@ -14,22 +14,23 @@
    this dialog sit oddly. That leak is now scoped in student.css, and the
    centring is stated explicitly here so it cannot regress. */
 #submitProofModal .modal-dialog {
-    width: calc(100% - 1rem);
+    width: 100%;
     max-width: 500px;
     margin: 0.5rem auto;
-    height: calc(100vh - 1rem);
-    display: flex;
-    align-items: center;
 }
 
 #submitProofModal .modal-content {
+    width: 100%;
     max-height: calc(100vh - 1rem);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 #submitProofModal .modal-body {
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     flex: 1 1 auto;
 }
@@ -301,19 +302,69 @@
     outline: none;
     box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.25);
 }
-@media (max-width: 480px) {
+@media (max-width: 767.98px) {
+    #submitProofModal .modal-dialog {
+        width: calc(100% - 1rem);
+        max-width: none;
+        margin: 0.5rem auto;
+    }
+
+    #submitProofModal .modal-content {
+        max-height: calc(100vh - 1rem);
+        border-radius: 0.6rem;
+    }
+
+    #submitProofModal .modal-header {
+        padding: 1rem;
+    }
+
+    #submitProofModal .modal-body {
+        padding: 1rem;
+    }
+
+    #submitProofModal .modal-footer {
+        padding: 0.8rem 1rem;
+    }
+
     #submitProofModal .proof-detail-grid {
         grid-template-columns: 1fr;
         gap: 0.6rem;
     }
-    #submitProofModal .modal-body {
-        padding: 1rem;
+
+    #submitProofModal .official-form-area {
+        flex-direction: column;
+        align-items: stretch;
     }
+
+    #submitProofModal .official-form-label {
+        text-align: center;
+    }
+
+    #submitProofModal .official-form-area .btn {
+        width: 100%;
+    }
+
+    #submitProofModal .proof-file-selected {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    #submitProofModal .proof-file-chip {
+        width: 100%;
+    }
+
+    #submitProofModal .proof-file-selected .btn {
+        width: 100%;
+    }
+
     #submitProofModal .modal-footer {
-        padding: 0.8rem 1rem;
+        display: flex;
+        gap: 0.5rem;
     }
+
     #submitProofModal .modal-footer .btn {
-        flex: 1 1 auto;
+        flex: 1 1 0;
+        width: auto;
     }
 }
 
