@@ -3,7 +3,7 @@ import { FaceDetector, FilesetResolver } from "@mediapipe/tasks-vision";
 let faceDetector = null;
 
 /**
- * Initialize MediaPipe Face Detector
+ * Initialize MediaPipe Face Detector.
  */
 export async function initializeFaceDetector() {
     if (faceDetector) {
@@ -16,8 +16,11 @@ export async function initializeFaceDetector() {
 
     faceDetector = await FaceDetector.createFromOptions(vision, {
         baseOptions: {
+            // Use the locally hosted model.
+            // This keeps the model request same-origin and avoids
+            // depending on the old Google Storage model URL.
             modelAssetPath:
-                "https://storage.googleapis.com/mediapipe-models/face_detector/face_detector/float16/1/face_detector.task",
+                "/vendor/mediapipe/models/blaze_face_short_range.tflite",
             delegate: "GPU",
         },
         runningMode: "IMAGE",
@@ -62,11 +65,12 @@ export async function blurFacesOnCanvas(sourceCanvas) {
             continue;
         }
 
-        // Save the original face area
+        // Save the original face area.
         const faceImage = ctx.getImageData(x, y, width, height);
 
-        // Create a temporary canvas
+        // Create a temporary canvas.
         const tempCanvas = document.createElement("canvas");
+
         tempCanvas.width = width;
         tempCanvas.height = height;
 
@@ -74,7 +78,7 @@ export async function blurFacesOnCanvas(sourceCanvas) {
 
         tempCtx.putImageData(faceImage, 0, 0);
 
-        // Apply blur
+        // Apply blur.
         ctx.save();
 
         ctx.filter = "blur(18px)";
