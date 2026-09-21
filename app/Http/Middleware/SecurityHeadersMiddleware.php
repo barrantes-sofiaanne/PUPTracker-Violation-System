@@ -22,21 +22,18 @@ class SecurityHeadersMiddleware
         $localhost = $isLocal ? "'self' http://127.0.0.1:8000 http://localhost:8000" : "'self'";
 
         $csp = implode(' ', [
-            "default-src {$localhost};",
-            "base-uri {$localhost};",
-            "form-action {$localhost};",
-            "frame-ancestors {$localhost};",
-            "object-src 'none';",
-            "img-src {$localhost} data: https:;",
-            "script-src {$localhost} 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
-            "style-src {$localhost} 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;",
-            "font-src {$localhost} data: https://cdn.jsdelivr.net https://fonts.gstatic.com;",
-            "connect-src {$localhost} https://cdn.jsdelivr.net;",
-            // Live camera preview + captured-image blob playback (evidence
-            // capture) must be allowed; blob: covers the object URL used to
-            // preview the just-captured photo.
-            "media-src {$localhost} blob:;",
-        ]);
+    "default-src {$localhost};",
+    "base-uri {$localhost};",
+    "form-action {$localhost};",
+    "frame-ancestors {$localhost};",
+    "object-src 'none';",
+    "img-src {$localhost} data: https:;",
+    "script-src {$localhost} 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net;",
+    "style-src {$localhost} 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;",
+    "font-src {$localhost} data: https://cdn.jsdelivr.net https://fonts.gstatic.com;",
+    "connect-src {$localhost} https://cdn.jsdelivr.net;",
+    "media-src {$localhost} blob:;",
+]);
 
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
