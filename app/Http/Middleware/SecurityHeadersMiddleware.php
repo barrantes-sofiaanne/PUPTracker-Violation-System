@@ -28,7 +28,7 @@ class SecurityHeadersMiddleware
             "frame-ancestors {$localhost};",
             "object-src 'none';",
             "img-src {$localhost} data: https:;",
-            "script-src {$localhost} 'unsafe-inline' https://cdn.jsdelivr.net;",
+            "script-src {$localhost} 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
             "style-src {$localhost} 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;",
             "font-src {$localhost} data: https://cdn.jsdelivr.net https://fonts.gstatic.com;",
             "connect-src {$localhost} https://cdn.jsdelivr.net;",
