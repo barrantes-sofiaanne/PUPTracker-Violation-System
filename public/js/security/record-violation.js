@@ -770,19 +770,44 @@ document.addEventListener("DOMContentLoaded", function () {
     // ------------------------------------------------------------------
     // Canvas watermark — the watermark is BAKED into the captured image.
     // ------------------------------------------------------------------
-    const drawWatermarkedCanvas = (video) => {
+    const drawWatermarkedCanvas = async (video) => {
         const width = video.videoWidth || 1280;
         const height = video.videoHeight || 720;
 
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
+
         const ctx = canvas.getContext("2d");
 
         // 1. Draw the camera frame.
         ctx.drawImage(video, 0, 0, width, height);
 
-        // 2. Draw the watermark onto the canvas (part of the image).
+        // 2. Detect and blur faces BEFORE the watermark is added.
+        if (
+            window.PUPTrackerFaceBlur &&
+            typeof window.PUPTrackerFaceBlur.blurFacesOnCanvas === "function"
+        ) {
+            try {
+                await window.PUPTrackerFaceBlur.blurFacesOnCanvas(canvas);
+            } catch (error) {
+                console.error("Face blur failed:", error);
+
+                reportSecurityEvent(
+                    "FACE_BLUR_ERROR",
+                    {
+                        reason: error
+                            ? String(error.message || error)
+                            : "Unknown face blur error",
+                    },
+                    "warning",
+                );
+
+                throw error;
+            }
+        }
+
+        // 3. Draw the watermark onto the canvas.
         const lines = [
             "PUPTracker",
             "Student ID: " + (currentStudentNumber() || "N/A"),
@@ -790,9 +815,13 @@ document.addEventListener("DOMContentLoaded", function () {
         ];
 
         ctx.font = "600 26px Arial, sans-serif";
+
         const maxLineWidth = Math.round(width * 0.86);
+
         let fontSize = 26;
+
         ctx.font = "600 " + fontSize + "px Arial, sans-serif";
+
         while (
             fontSize > 12 &&
             ctx.measureText(lines[1] + "  " + lines[2]).width > maxLineWidth
@@ -807,12 +836,14 @@ document.addEventListener("DOMContentLoaded", function () {
         const blockBottom = blockTop + lines.length * lineHeight + 16;
         const blockLeft = padX;
 
-        // Semi-opaque band behind the watermark for readability.
+        // Semi-opaque band behind the watermark.
         ctx.fillStyle = "rgba(0,0,0,0.55)";
         ctx.fillRect(0, blockTop - 6, width, blockBottom);
+
         ctx.textBaseline = "top";
         ctx.textAlign = "left";
         ctx.fillStyle = "#ffffff";
+
         ctx.shadowColor = "rgba(0,0,0,0.8)";
         ctx.shadowBlur = 4;
 
@@ -826,7 +857,7 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     capturePhotoBtn &&
-        capturePhotoBtn.addEventListener("click", function () {
+        capturePhotoBtn.addEventListener("click", async function () {
             if (!cameraActive || cameraPausedByInterruption) {
                 return; // Capture disabled while inactive/paused.
             }
@@ -834,8 +865,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            const canvas = drawWatermarkedCanvas(cameraPreview);
-
+            const canvas = await drawWatermarkedCanvas(cameraPreview);
             // Stop live camera while reviewing the captured photo.
             stopCamera();
 
