@@ -17,14 +17,21 @@
     width: calc(100% - 1rem);
     max-width: 500px;
     margin: 0.5rem auto;
+    height: calc(100vh - 1rem);
+    display: flex;
+    align-items: center;
 }
+
 #submitProofModal .modal-content {
     max-height: calc(100vh - 1rem);
+    display: flex;
+    flex-direction: column;
 }
 
 #submitProofModal .modal-body {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    flex: 1 1 auto;
 }
 #submitProofModal .modal-header {
     align-items: flex-start;
