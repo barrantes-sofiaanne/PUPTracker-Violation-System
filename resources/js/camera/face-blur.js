@@ -47,6 +47,13 @@ export async function blurFacesOnCanvas(sourceCanvas) {
 
     const ctx = sourceCanvas.getContext("2d");
 
+    // Privacy settings.
+    // 30% expands the detected face area on all sides.
+    const BLUR_MARGIN_RATIO = 0.3;
+
+    // Stronger blur than the previous 18px.
+    const BLUR_STRENGTH = 24;
+
     for (const detection of detections.detections) {
         const box = detection.boundingBox;
 
@@ -54,21 +61,39 @@ export async function blurFacesOnCanvas(sourceCanvas) {
             continue;
         }
 
-        const x = Math.max(0, box.originX);
-        const y = Math.max(0, box.originY);
+        // Add extra coverage around the detected face.
+        const marginX = Math.max(15, Math.round(box.width * BLUR_MARGIN_RATIO));
 
-        const width = Math.min(box.width, sourceCanvas.width - x);
+        const marginY = Math.max(
+            15,
+            Math.round(box.height * BLUR_MARGIN_RATIO),
+        );
 
-        const height = Math.min(box.height, sourceCanvas.height - y);
+        const x = Math.max(0, Math.round(box.originX - marginX));
+
+        const y = Math.max(0, Math.round(box.originY - marginY));
+
+        const right = Math.min(
+            sourceCanvas.width,
+            Math.round(box.originX + box.width + marginX),
+        );
+
+        const bottom = Math.min(
+            sourceCanvas.height,
+            Math.round(box.originY + box.height + marginY),
+        );
+
+        const width = right - x;
+        const height = bottom - y;
 
         if (width <= 0 || height <= 0) {
             continue;
         }
 
-        // Save the original face area.
+        // Copy the expanded face area.
         const faceImage = ctx.getImageData(x, y, width, height);
 
-        // Create a temporary canvas.
+        // Temporary canvas for applying the blur.
         const tempCanvas = document.createElement("canvas");
 
         tempCanvas.width = width;
@@ -78,10 +103,10 @@ export async function blurFacesOnCanvas(sourceCanvas) {
 
         tempCtx.putImageData(faceImage, 0, 0);
 
-        // Apply blur.
+        // Apply stronger privacy blur.
         ctx.save();
 
-        ctx.filter = "blur(18px)";
+        ctx.filter = `blur(${BLUR_STRENGTH}px)`;
 
         ctx.drawImage(tempCanvas, x, y, width, height);
 
