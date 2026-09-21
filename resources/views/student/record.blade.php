@@ -14,8 +14,17 @@
    this dialog sit oddly. That leak is now scoped in student.css, and the
    centring is stated explicitly here so it cannot regress. */
 #submitProofModal .modal-dialog {
-    margin-left: auto;
-    margin-right: auto;
+    width: calc(100% - 1rem);
+    max-width: 500px;
+    margin: 0.5rem auto;
+}
+#submitProofModal .modal-content {
+    max-height: calc(100vh - 1rem);
+}
+
+#submitProofModal .modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 #submitProofModal .modal-header {
     align-items: flex-start;
