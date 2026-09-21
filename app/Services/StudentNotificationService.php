@@ -77,18 +77,30 @@ class StudentNotificationService
 if (
     (
         $type === 'violation'
-        && in_array($title, ['Violation Confirmed', 'Violation Rejected'], true)
+        && in_array($title, [
+            'Violation Notice',
+            'Violation Confirmed',
+            'Violation Rejected',
+        ], true)
     )
     ||
     (
-       $type === 'sanction'
+        $type === 'sanction'
         && in_array($title, [
+            'Sanction Request Pending',
             'Sanction Request Approved',
             'Sanction Request Declined',
             'Sanction Overdue',
             'Sanction Completed',
             'Proof of Completion Rejected',
-], true)
+            'Sanction Reopened',
+            'Service Assignment Updated',
+        ], true)
+    )
+    ||
+    (
+        $type === 'announcement'
+        && $title === 'New Announcement'
     )
 ) {
     try {
