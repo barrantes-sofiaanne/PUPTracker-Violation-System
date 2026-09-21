@@ -21,19 +21,23 @@
 
 #submitProofModal .modal-content {
     width: 100%;
-    max-height: calc(100vh - 1rem);
+}
+
+#submitProofModal #submitProofForm {
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    flex: 1 1 auto;
 }
 
 #submitProofModal .modal-body {
     min-height: 0;
+    flex: 1 1 auto;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    flex: 1 1 auto;
 }
+
 #submitProofModal .modal-header {
     align-items: flex-start;
     gap: 1rem;
@@ -310,7 +314,6 @@
     }
 
     #submitProofModal .modal-content {
-        max-height: calc(100vh - 1rem);
         border-radius: 0.6rem;
     }
 
@@ -318,9 +321,14 @@
         padding: 1rem;
     }
 
-    #submitProofModal .modal-body {
-        padding: 1rem;
-    }
+    #submitProofModal #submitProofForm {
+    min-height: 0;
+}
+
+#submitProofModal .modal-body {
+    min-height: 0;
+    overflow-y: auto;
+}
 
     #submitProofModal .modal-footer {
         padding: 0.8rem 1rem;
