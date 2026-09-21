@@ -29,7 +29,7 @@ class SanctionOverdueService
                 $q->where('status', StudentSanctionRecord::STATUS_PENDING)
                     ->orWhere('status', StudentSanctionRecord::STATUS_IN_PROGRESS);
             })
-            ->where('deadline_date', '<', $now)
+            ->whereDate('deadline_date', '<', $now->toDateString())
             ->get();
 
         $flipped = 0;

@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Mail\StudentNotification;
 use App\Models\Announcement;
 use App\Models\Notification;
 use App\Models\SanctionRequest;
 use App\Models\User;
 use App\Models\Violation;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
@@ -67,7 +70,54 @@ class StudentNotificationService
             $data['target_id'] = $targetId;
         }
 
-        return Notification::create($data);
+        $notification = Notification::create($data);
+
+// Send email only for decision-related violation notifications.
+// The existing in-app notification remains unchanged.
+if (
+    (
+        $type === 'violation'
+        && in_array($title, [
+            'Violation Notice',
+            'Violation Confirmed',
+            'Violation Rejected',
+        ], true)
+    )
+    ||
+    (
+        $type === 'sanction'
+        && in_array($title, [
+            'Sanction Request Pending',
+            'Sanction Request Approved',
+            'Sanction Request Declined',
+            'Sanction Overdue',
+            'Sanction Completed',
+            'Proof of Completion Rejected',
+            'Sanction Reopened',
+            'Service Assignment Updated',
+        ], true)
+    )
+    ||
+    (
+        $type === 'announcement'
+        && $title === 'New Announcement'
+    )
+) {
+    try {
+        $this->sendDecisionEmail(
+            notification: $notification,
+            studentNumber: $studentNumber,
+        );
+    } catch (\Throwable $e) {
+        Log::warning('Failed to send student notification email', [
+            'notification_id' => $notification->notification_id ?? null,
+            'student_number' => $studentNumber,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
+
+return $notification;
     }
 
     /**
@@ -151,4 +201,61 @@ class StudentNotificationService
 
         return route('student.announcements');
     }
+
+    /**
+ * Send an email for a student violation decision notification.
+ */
+private function sendDecisionEmail(
+    Notification $notification,
+    string $studentNumber
+): void {
+    $student = User::query()
+        ->where('student_number', $studentNumber)
+        ->first();
+
+    if (! $student) {
+        return;
+    }
+
+    $email = trim((string) $student->email);
+
+    if ($email === '') {
+        return;
+    }
+
+    $studentName = trim(
+        ($student->first_name ?? '') . ' ' .
+        ($student->last_name ?? '')
+    );
+
+    if ($studentName === '') {
+        $studentName = 'Student';
+    }
+
+    $actionUrl = $this->openUrl($notification);
+
+    try {
+        Mail::to($email)->send(
+            new StudentNotification(
+                notificationTitle: (string) (
+                    $notification->title ?? 'PUPTracker Notification'
+                ),
+                notificationMessage: (string) $notification->message,
+                recipientName: $studentName,
+                actionUrl: $actionUrl,
+                actionText: 'View Student Record',
+            )
+        );
+    } catch (\Throwable $e) {
+        // Email failure must never prevent the notification
+        // or the underlying Admin decision from succeeding.
+
+        app(\App\Services\EmailIncidentService::class)->record(
+            emailType: 'Student Violation Decision Notification',
+            errorMessage: $e->getMessage(),
+            relatedRecordType: 'Notification',
+            relatedRecordId: $notification->notification_id ?? null,
+        );
+    }
+}
 }

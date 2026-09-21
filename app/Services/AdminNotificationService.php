@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use App\Mail\SystemNotification;
+use App\Models\Admin;
 use App\Models\AdminNotification;
 use App\Models\EmailIncident;
 use App\Models\SanctionRequest;
 use App\Models\StudentSanctionRecord;
 use App\Models\Violation;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
@@ -69,7 +73,91 @@ class AdminNotificationService
             $data['recipient_id'] = $recipientId;
         }
 
-        return AdminNotification::create($data);
+        $notification = AdminNotification::create($data);
+
+// Email only user-facing operational notifications.
+// System alerts are intentionally excluded for now because
+// EmailIncidentService creates system_email_failure notifications
+// when an email itself fails.
+// Email the operational Admins when a violation is awaiting confirmation.
+if (
+    $audience === AdminNotification::AUDIENCE_ADMIN
+    && $type === 'violation_confirmation'
+) {
+    try {
+        $this->sendViolationConfirmationEmail($notification);
+    } catch (\Throwable $e) {
+        Log::warning('Failed to send violation notification email', [
+            'notification_id' => $notification->admin_notification_id,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
+// Email the operational Admins when a student submits a sanction request.
+if (
+    $audience === AdminNotification::AUDIENCE_ADMIN
+    && $type === 'disciplinary_sanction_request'
+    && $targetType === 'sanction_request'
+) {
+    try {
+        $this->sendSanctionRequestEmail($notification);
+    } catch (\Throwable $e) {
+        Log::warning('Failed to send sanction request notification email', [
+            'notification_id' => $notification->admin_notification_id,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
+// Email the operational Admins when a sanction becomes overdue.
+if (
+    $audience === AdminNotification::AUDIENCE_ADMIN
+    && $type === 'sanction_overdue'
+    && $targetType === 'sanction_record'
+) {
+    try {
+        $this->sendSanctionOverdueEmail($notification);
+    } catch (\Throwable $e) {
+        Log::warning('Failed to send sanction overdue notification email', [
+            'notification_id' => $notification->admin_notification_id,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
+
+// Email the operational Admins when a student submits proof of completion.
+if (
+    $audience === AdminNotification::AUDIENCE_ADMIN
+    && $type === 'completion_proof'
+    && $targetType === 'sanction_record'
+) {
+    try {
+        $this->sendCompletionProofEmail($notification);
+    } catch (\Throwable $e) {
+        Log::warning('Failed to send completion proof notification email', [
+            'notification_id' => $notification->admin_notification_id,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
+// Email the specific OSS Staff member when their violation is confirmed/rejected.
+// Email the specific OSS Staff member when their violation is confirmed or rejected.
+if (
+    $audience === AdminNotification::AUDIENCE_ADMIN
+    && $type === 'violation'
+    && $targetType === 'oss_staff_violation'
+    && $recipientId !== null
+) {
+    try {
+        $this->sendOssStaffDecisionEmail($notification);
+    } catch (\Throwable $e) {
+        Log::warning('Failed to send OSS Staff decision email', [
+            'notification_id' => $notification->admin_notification_id,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
+
+return $notification;
     }
 
     /**
@@ -271,4 +359,280 @@ class AdminNotificationService
 
         return route('admin.super-admin.email-incidents.show', $incident->incident_id);
     }
+    /**
+ * Send the email corresponding to an operational violation-confirmation
+ * notification.
+ *
+ * The email recipient follows the exact same audience rules as the
+ * AdminNotification inbox:
+ *
+ * - recipient_id provided -> that specific operational admin
+ * - recipient_id null -> all operational admins
+ *
+ * Super Admins are excluded from operational notifications.
+ */
+private function sendViolationConfirmationEmail(AdminNotification $notification): void
+{
+$admins = Admin::query()
+    ->with('adminInfo')
+    ->get()
+    ->filter(function (Admin $admin): bool {
+        // Operational Admins receive violation confirmation emails.
+        // IT Administrator = Super Admin.
+        // OSS Staff must not receive Admin-only violation confirmation emails.
+        return ! $admin->isItAdministrator()
+            && ! $admin->isOssStaff();
+    });
+
+    // If this notification was addressed to one specific admin,
+    // only email that administrator.
+    if ($notification->recipient_id !== null) {
+        $admins = $admins->filter(
+            fn (Admin $admin): bool =>
+                (int) $admin->id === (int) $notification->recipient_id
+        );
+    }
+
+    foreach ($admins as $admin) {
+        $email = trim((string) $admin->email);
+
+        if ($email === '') {
+            continue;
+        }
+
+        try {
+            Mail::to($email)->send(
+                new SystemNotification(
+                    notificationTitle: (string) ($notification->title ?? 'Violation Awaiting Confirmation'),
+                    notificationMessage: (string) $notification->message,
+                    recipientName: (string) ($admin->username ?: 'Administrator'),
+                    actionUrl: $this->openUrl($notification),
+                    actionText: 'View Notification',
+                )
+            );
+        } catch (\Throwable $e) {
+            // Record the failure without allowing the original violation
+            // operation to fail.
+            app(EmailIncidentService::class)->record(
+                emailType: 'Violation Confirmation Notification',
+                errorMessage: $e->getMessage(),
+                relatedRecordType: 'AdminNotification',
+                relatedRecordId: $notification->admin_notification_id,
+            );
+        }
+    }
+}
+
+private function sendSanctionRequestEmail(AdminNotification $notification): void
+{
+    $admins = Admin::query()
+        ->with('adminInfo')
+        ->get()
+        ->filter(function (Admin $admin): bool {
+            // Only operational Admins receive student sanction requests.
+            // Super Admin and OSS Staff are excluded.
+            return ! $admin->isItAdministrator()
+                && ! $admin->isOssStaff();
+        });
+
+    // If the notification is addressed to one specific admin,
+    // only email that administrator.
+    if ($notification->recipient_id !== null) {
+        $admins = $admins->filter(
+            fn (Admin $admin): bool =>
+                (int) $admin->id === (int) $notification->recipient_id
+        );
+    }
+
+    foreach ($admins as $admin) {
+        $email = trim((string) $admin->email);
+
+        if ($email === '') {
+            continue;
+        }
+
+        try {
+            Mail::to($email)->send(
+                new SystemNotification(
+                    notificationTitle: (string) (
+                        $notification->title ?? 'Disciplinary Sanction Request'
+                    ),
+                    notificationMessage: (string) $notification->message,
+                    recipientName: (string) ($admin->username ?: 'Administrator'),
+                    actionUrl: $this->openUrl($notification),
+                    actionText: 'View Sanction Request',
+                )
+            );
+        } catch (\Throwable $e) {
+            app(EmailIncidentService::class)->record(
+                emailType: 'Sanction Request Notification',
+                errorMessage: $e->getMessage(),
+                relatedRecordType: 'AdminNotification',
+                relatedRecordId: $notification->admin_notification_id,
+            );
+        }
+    }
+}
+private function sendSanctionOverdueEmail(AdminNotification $notification): void
+{
+    $admins = Admin::query()
+        ->with('adminInfo')
+        ->get()
+        ->filter(function (Admin $admin): bool {
+            // Only operational Admins receive sanction overdue alerts.
+            // Super Admin and OSS Staff are excluded.
+            return ! $admin->isItAdministrator()
+                && ! $admin->isOssStaff();
+        });
+
+    // If addressed to one specific Admin, only email that account.
+    if ($notification->recipient_id !== null) {
+        $admins = $admins->filter(
+            fn (Admin $admin): bool =>
+                (int) $admin->id === (int) $notification->recipient_id
+        );
+    }
+
+    foreach ($admins as $admin) {
+        $email = trim((string) $admin->email);
+
+        if ($email === '') {
+            continue;
+        }
+
+        try {
+            Mail::to($email)->send(
+                new SystemNotification(
+                    notificationTitle: (string) (
+                        $notification->title ?? 'Sanction Overdue'
+                    ),
+                    notificationMessage: (string) $notification->message,
+                    recipientName: (string) ($admin->username ?: 'Administrator'),
+                    actionUrl: $this->openUrl($notification),
+                    actionText: 'View Sanction Record',
+                )
+            );
+        } catch (\Throwable $e) {
+            app(EmailIncidentService::class)->record(
+                emailType: 'Sanction Overdue Notification',
+                errorMessage: $e->getMessage(),
+                relatedRecordType: 'AdminNotification',
+                relatedRecordId: $notification->admin_notification_id,
+            );
+        }
+    }
+}
+
+private function sendCompletionProofEmail(AdminNotification $notification): void
+{
+    $admins = Admin::query()
+        ->with('adminInfo')
+        ->get()
+        ->filter(function (Admin $admin): bool {
+            // Only operational Admins review submitted sanction proofs.
+            // Super Admin and OSS Staff are excluded.
+            return ! $admin->isItAdministrator()
+                && ! $admin->isOssStaff();
+        });
+
+    // If addressed to one specific Admin, only email that account.
+    if ($notification->recipient_id !== null) {
+        $admins = $admins->filter(
+            fn (Admin $admin): bool =>
+                (int) $admin->id === (int) $notification->recipient_id
+        );
+    }
+
+    foreach ($admins as $admin) {
+        $email = trim((string) $admin->email);
+
+        if ($email === '') {
+            continue;
+        }
+
+        try {
+            Mail::to($email)->send(
+                new SystemNotification(
+                    notificationTitle: (string) (
+                        $notification->title ?? 'Sanction Proof of Completion'
+                    ),
+                    notificationMessage: (string) $notification->message,
+                    recipientName: (string) ($admin->username ?: 'Administrator'),
+                    actionUrl: $this->openUrl($notification),
+                    actionText: 'Review Sanction Proof',
+                )
+            );
+        } catch (\Throwable $e) {
+            app(EmailIncidentService::class)->record(
+                emailType: 'Sanction Proof of Completion Notification',
+                errorMessage: $e->getMessage(),
+                relatedRecordType: 'AdminNotification',
+                relatedRecordId: $notification->admin_notification_id,
+            );
+        }
+    }
+}
+private function sendOssStaffDecisionEmail(AdminNotification $notification): void
+{
+    $recipientId = (int) ($notification->recipient_id ?? 0);
+
+    if ($recipientId <= 0) {
+        return;
+    }
+
+    $ossStaff = Admin::query()
+        ->with('adminInfo')
+        ->find($recipientId);
+
+    if (! $ossStaff) {
+        Log::warning('OSS Staff notification recipient not found', [
+            'notification_id' => $notification->admin_notification_id,
+            'recipient_id' => $recipientId,
+        ]);
+
+        return;
+    }
+
+    // Make sure the recipient is actually an OSS Staff account.
+    if (! $ossStaff->isOssStaff()) {
+        Log::warning('Notification recipient is not an OSS Staff account', [
+            'notification_id' => $notification->admin_notification_id,
+            'recipient_id' => $recipientId,
+        ]);
+
+        return;
+    }
+
+    $email = trim((string) $ossStaff->email);
+
+    if ($email === '') {
+        Log::warning('OSS Staff notification recipient has no email', [
+            'notification_id' => $notification->admin_notification_id,
+            'recipient_id' => $recipientId,
+        ]);
+
+        return;
+    }
+
+    try {
+        Mail::to($email)->send(
+            new SystemNotification(
+                notificationTitle: (string) (
+                    $notification->title ?? 'Violation Update'
+                ),
+                notificationMessage: (string) $notification->message,
+                recipientName: (string) ($ossStaff->username ?: 'OSS Staff'),
+                actionUrl: $this->openUrl($notification),
+                actionText: 'View Violation',
+            )
+        );
+    } catch (\Throwable $e) {
+        app(EmailIncidentService::class)->record(
+            emailType: 'OSS Staff Violation Decision Notification',
+            errorMessage: $e->getMessage(),
+            relatedRecordType: 'AdminNotification',
+            relatedRecordId: $notification->admin_notification_id,
+        );
+    }
+}
 }

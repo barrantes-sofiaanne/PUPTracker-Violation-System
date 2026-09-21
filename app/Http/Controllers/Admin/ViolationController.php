@@ -396,8 +396,7 @@ $students = User::with([
                     studentNumber: $violation->student_number,
                     type: 'violation',
                     title: 'Violation Confirmed',
-                    message: 'Your recorded violation (' . $violationLabel . ') has been confirmed and added to your Student Record.',
-                    targetType: 'violation',
+message: 'Your recorded violation (' . $violationLabel . ') has been confirmed and added to your Student Record. Please check your PUPTracker account regularly for any disciplinary sanction related to this violation. If the system requires a disciplinary sanction request, you may submit the request through your account for proper review.',                    targetType: 'violation',
                     targetId: (int) $violation->violation_id,
                 );
             } catch (\Throwable $e) {
