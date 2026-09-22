@@ -168,7 +168,9 @@
                             @if($evidenceCount === 0)
                                 <span class="text-muted">-</span>
                             @elseif($evidenceCount === 1)
-                                <a href="{{ route('admin.violations.evidence', $history->evidence->first()) }}"
+                                <a href="{{ route('admin.violations.evidence', [
+    'evidence' => $history->evidence->first()->access_key,
+]) }}"
                                    class="admin-btn admin-btn-view admin-btn-sm"
                                    target="_blank"
                                    rel="noopener"
@@ -186,7 +188,9 @@
                                     type="button"
                                     class="admin-btn admin-btn-view admin-btn-sm viewViolationEvidence"
                                     data-evidence="{{ $history->evidence->map(fn ($e) => [
-                                        'url' => route('admin.violations.evidence', $e),
+                                        'url' => route('admin.violations.evidence', [
+    'evidence' => $e->access_key,
+]),
                                         'name' => $e->original_name,
                                         'code' => $e->evidence_code,
                                         'method' => $e->capture_method,

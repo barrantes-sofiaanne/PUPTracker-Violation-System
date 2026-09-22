@@ -945,7 +945,9 @@
                                 @if ($visibleEvidence->isNotEmpty())
                                     @foreach ($visibleEvidence as $item)
                                         <a
-                                            href="{{ route('student.violations.evidence', $item) }}"
+                                            href="{{ route('student.violations.evidence', [
+    'evidence' => $item->access_key,
+]) }}"
                                             target="_blank"
                                             rel="noopener"
                                             class="btn btn-sm btn-outline-secondary me-1 mb-1"
