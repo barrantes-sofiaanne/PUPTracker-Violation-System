@@ -57,7 +57,7 @@ export async function blurFacesOnCanvas(sourceCanvas) {
      * remain protected.
      */
     const FACE_HORIZONTAL_PADDING = 0.08;
-    const FACE_VERTICAL_PADDING = 0.2;
+    const FACE_VERTICAL_PADDING = 0.28;
 
     /*
      * Strong blur for the central facial area.
