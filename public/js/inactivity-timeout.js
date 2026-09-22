@@ -76,7 +76,7 @@
 
     let activityRequestInProgress = false;
 
-    let lastActivitySentAt = 0;
+    let lastActivitySentAt = Date.now();
 
     /* ----------------------------------------------------------------------
      * Modal
@@ -287,14 +287,6 @@
      * ------------------------------------------------------------------ */
 
     function userInteracted() {
-        /*
-         * Once the warning is visible,
-         * normal page interaction must NOT
-         * dismiss it.
-         *
-         * The user must explicitly click:
-         * "I'm still here".
-         */
         if (modalOpen) {
             return;
         }
@@ -302,19 +294,17 @@
         const now = Date.now();
 
         /*
-         * Update the local timer immediately.
+         * Any genuine interaction means the user is present.
          */
         lastActivityAt = now;
 
         /*
-         * Do not send an HTTP request
-         * for every mouse movement or
-         * keystroke.
-         *
-         * Maximum activity request rate:
-         * once every 30 seconds.
+         * Synchronize the server activity timestamp
+         * at most once every 30 seconds.
          */
         if (now - lastActivitySentAt >= 30000) {
+            lastActivitySentAt = now;
+
             sendActivity();
         }
     }
@@ -358,20 +348,23 @@
             return;
         }
 
-        const inactiveFor = Date.now() - lastActivityAt;
+        const now = Date.now();
 
-        /*
-         * Example:
-         *
-         * 15-minute timeout
-         * minus
-         * 10-second warning
-         *
-         * = warning at 14:50
-         */
+        const inactiveFor = now - lastActivityAt;
+
         const warningAt = TIMEOUT_MS - WARNING_MS;
 
+        /*
+         * Show the warning shortly before the
+         * server-side inactivity limit.
+         */
         if (inactiveFor >= warningAt) {
+            console.log("[PUPTracker Inactivity]", {
+                inactiveFor: Math.round(inactiveFor / 1000),
+                warningAt: Math.round(warningAt / 1000),
+                timeout: TIMEOUT_MINUTES,
+                modalOpen,
+            });
             showTimeoutWarning();
         }
     }, 1000);
