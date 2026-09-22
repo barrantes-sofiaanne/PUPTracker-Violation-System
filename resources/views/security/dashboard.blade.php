@@ -353,7 +353,7 @@
             {{-- Violations by Category --}}
             <div class="card shadow-sm border-0">
                 <div class="card-header card-header-custom">
-                    <h5 class="fw-bold mb-0">Categories (This Week)</h5>
+                    <h5 class="fw-bold mb-0">Categories</h5>
                 </div>
                 <div class="card-body">
                     @forelse($violationsByCategory as $category)
@@ -371,8 +371,7 @@
                                  aria-valuemin="0"
                                  aria-valuemax="100"
                                  aria-valuenow="0"
-                                 data-progress-width="{{ $recentViolations->count() > 0 ? round(($category->count / $recentViolations->count()) * 100, 1) : 0 }}">
-                            </div>
+data-progress-width="{{ $totalViolations > 0 ? round(($category->count / $totalViolations) * 100, 1) : 0 }}"                            </div>
                         </div>
                     </div>
                     @empty
