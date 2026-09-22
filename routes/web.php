@@ -38,6 +38,7 @@ use App\Http\Controllers\Admin\ViolationTypeController;
 
 // Security Controllers
 use App\Http\Controllers\Security\SecurityDashboardController;
+
 /*
 
 
@@ -163,6 +164,26 @@ Route::post('/mfa/resend', [MfaController::class, 'resend'])
 
 Route::post('/mfa/cancel', [MfaController::class, 'cancel'])
     ->name('mfa.verify.cancel');
+
+/*
+|--------------------------------------------------------------------------
+| Session Activity
+|--------------------------------------------------------------------------
+|
+| This endpoint refreshes the inactivity timer when an authenticated
+| user explicitly interacts with the system.
+|
+| IMPORTANT:
+| Do NOT attach `session.inactivity` to this route.
+|
+| The controller itself checks whether the session has already expired.
+| Keeping the timeout middleware off this endpoint allows it to return
+| a clean JSON 440 response instead of redirecting through the middleware.
+|
+*/
+Route::post('/session/activity', [SessionActivityController::class, 'touch'])
+    ->middleware('auth:admin,security,student')
+    ->name('session.activity');
 
 // Proper password reset flow (see SECURITY MODULE requirements):
 //   1. Forgot Password? -> email only (no security questions)

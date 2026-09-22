@@ -10,9 +10,16 @@ use Illuminate\Support\Facades\Auth;
 
 class SessionActivityController extends Controller
 {
+    /**
+     * Refresh the authenticated user's inactivity window.
+     *
+     * This endpoint is called only when the user performs an
+     * intentional interaction with the system or clicks
+     * "I'm still here".
+     */
     public function touch(Request $request): JsonResponse
     {
-        if (!EnforceInactivityTimeout::enabled()) {
+        if (! EnforceInactivityTimeout::enabled()) {
             return response()->json([
                 'ok' => true,
                 'enabled' => false,
@@ -30,8 +37,15 @@ class SessionActivityController extends Controller
                 EnforceInactivityTimeout::SESSION_KEY
             );
 
+            /*
+             * Check the server-side timeout BEFORE resetting it.
+             *
+             * This prevents a user from extending an already-expired
+             * session simply by sending an activity request.
+             */
             if (is_numeric($last)) {
-                $idleSeconds = now()->timestamp - (int) $last;
+                $idleSeconds =
+                    now()->timestamp - (int) $last;
 
                 if (
                     $idleSeconds >=
@@ -44,7 +58,13 @@ class SessionActivityController extends Controller
                 }
             }
 
-            EnforceInactivityTimeout::startFreshActivityWindow($request);
+            /*
+             * Session is still valid.
+             * Start a fresh inactivity window.
+             */
+            EnforceInactivityTimeout::startFreshActivityWindow(
+                $request
+            );
 
             return response()->json([
                 'ok' => true,
