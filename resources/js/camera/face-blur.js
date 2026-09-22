@@ -39,91 +39,292 @@ export async function initializeFaceDetector() {
 export async function blurFacesOnCanvas(sourceCanvas) {
     const detector = await initializeFaceDetector();
 
-    /*
-     * The original image is used for the final blur.
-     *
-     * For detection, however, we create a larger copy.
-     * This makes small/far-away faces easier for MediaPipe
-     * to detect.
-     */
-    const DETECTION_SCALE = 2;
-
-    const detectionCanvas = document.createElement("canvas");
-
-    detectionCanvas.width = sourceCanvas.width * DETECTION_SCALE;
-
-    detectionCanvas.height = sourceCanvas.height * DETECTION_SCALE;
-
-    const detectionCtx = detectionCanvas.getContext("2d");
-
-    if (!detectionCtx) {
-        return sourceCanvas;
-    }
-
-    detectionCtx.drawImage(
-        sourceCanvas,
-        0,
-        0,
-        detectionCanvas.width,
-        detectionCanvas.height,
-    );
-
-    /*
-     * Detect on the enlarged image.
-     */
-    const detectionResult = detector.detect(detectionCanvas);
-
-    if (
-        !detectionResult.detections ||
-        detectionResult.detections.length === 0
-    ) {
-        /*
-         * Do not alter the original image if there are no
-         * detections yet.
-         *
-         * We will add a secondary detection pass below.
-         */
-    }
-
-    /*
-     * Convert MediaPipe coordinates from the enlarged
-     * detection image back to the original image.
-     */
-    const detections = [];
-
-    for (const detection of detectionResult.detections ?? []) {
-        const box = detection.boundingBox;
-
-        if (!box) {
-            continue;
-        }
-
-        detections.push({
-            boundingBox: {
-                originX: box.originX / DETECTION_SCALE,
-
-                originY: box.originY / DETECTION_SCALE,
-
-                width: box.width / DETECTION_SCALE,
-
-                height: box.height / DETECTION_SCALE,
-            },
-        });
-    }
-
-    /*
-     * If the enlarged full-frame detection found faces,
-     * use those detections.
-     */
     const ctx = sourceCanvas.getContext("2d");
 
     if (!ctx) {
         return sourceCanvas;
     }
 
-    if (detections.length === 0) {
+    /*
+     * ---------------------------------------------------------
+     * FACE DETECTION
+     * ---------------------------------------------------------
+     *
+     * We perform:
+     *
+     * 1. A 2x full-image detection.
+     * 2. Multiple overlapping 2x regional detections.
+     *
+     * The regional passes help detect:
+     * - small/far-away faces
+     * - faces near the left/right edge
+     * - partially visible faces
+     */
+
+    const DETECTION_SCALE = 2;
+
+    const detections = [];
+
+    /**
+     * Run MediaPipe detection on a region of the original image.
+     *
+     * @param {number} regionX
+     * @param {number} regionY
+     * @param {number} regionWidth
+     * @param {number} regionHeight
+     */
+    const detectRegion = (regionX, regionY, regionWidth, regionHeight) => {
+        const detectionCanvas = document.createElement("canvas");
+
+        detectionCanvas.width = Math.max(
+            1,
+            Math.round(regionWidth * DETECTION_SCALE),
+        );
+
+        detectionCanvas.height = Math.max(
+            1,
+            Math.round(regionHeight * DETECTION_SCALE),
+        );
+
+        const detectionCtx = detectionCanvas.getContext("2d");
+
+        if (!detectionCtx) {
+            return;
+        }
+
+        /*
+         * Copy the selected region into the enlarged
+         * detection canvas.
+         */
+        detectionCtx.drawImage(
+            sourceCanvas,
+
+            regionX,
+            regionY,
+            regionWidth,
+            regionHeight,
+
+            0,
+            0,
+            detectionCanvas.width,
+            detectionCanvas.height,
+        );
+
+        const result = detector.detect(detectionCanvas);
+
+        for (const detection of result.detections ?? []) {
+            const box = detection.boundingBox;
+
+            if (!box) {
+                continue;
+            }
+
+            /*
+             * Convert detection coordinates:
+             *
+             * enlarged region
+             *        ↓
+             * original image coordinates
+             */
+            const originalX = regionX + box.originX / DETECTION_SCALE;
+
+            const originalY = regionY + box.originY / DETECTION_SCALE;
+
+            const originalWidth = box.width / DETECTION_SCALE;
+
+            const originalHeight = box.height / DETECTION_SCALE;
+
+            /*
+             * Ignore invalid detections.
+             */
+            if (originalWidth <= 0 || originalHeight <= 0) {
+                continue;
+            }
+
+            /*
+             * Keep detections that overlap the actual
+             * image boundaries.
+             */
+            const left = Math.max(0, originalX);
+
+            const top = Math.max(0, originalY);
+
+            const right = Math.min(
+                sourceCanvas.width,
+                originalX + originalWidth,
+            );
+
+            const bottom = Math.min(
+                sourceCanvas.height,
+                originalY + originalHeight,
+            );
+
+            const width = right - left;
+
+            const height = bottom - top;
+
+            if (width <= 0 || height <= 0) {
+                continue;
+            }
+
+            detections.push({
+                boundingBox: {
+                    originX: left,
+                    originY: top,
+                    width,
+                    height,
+                },
+            });
+        }
+
+        /*
+         * Release detection canvas.
+         */
+        detectionCanvas.width = 1;
+        detectionCanvas.height = 1;
+    };
+
+    /*
+     * ---------------------------------------------------------
+     * PASS 1 — FULL IMAGE
+     * ---------------------------------------------------------
+     */
+    detectRegion(0, 0, sourceCanvas.width, sourceCanvas.height);
+
+    /*
+     * ---------------------------------------------------------
+     * PASS 2 — OVERLAPPING REGIONS
+     * ---------------------------------------------------------
+     *
+     * We divide the image into overlapping regions.
+     *
+     * The overlap is intentional. A face near a boundary
+     * will still appear substantially inside another region.
+     */
+
+    const horizontalTiles = 3;
+    const verticalTiles = 2;
+
+    const tileWidth = sourceCanvas.width / 2;
+
+    const tileHeight = sourceCanvas.height / 1.5;
+
+    const horizontalStep =
+        (sourceCanvas.width - tileWidth) / (horizontalTiles - 1);
+
+    const verticalStep =
+        (sourceCanvas.height - tileHeight) / (verticalTiles - 1);
+
+    for (let row = 0; row < verticalTiles; row++) {
+        for (let column = 0; column < horizontalTiles; column++) {
+            const x = Math.max(0, Math.round(column * horizontalStep));
+
+            const y = Math.max(0, Math.round(row * verticalStep));
+
+            const width = Math.min(tileWidth, sourceCanvas.width - x);
+
+            const height = Math.min(tileHeight, sourceCanvas.height - y);
+
+            if (width <= 0 || height <= 0) {
+                continue;
+            }
+
+            detectRegion(x, y, width, height);
+        }
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * REMOVE DUPLICATE DETECTIONS
+     * ---------------------------------------------------------
+     *
+     * Because the regions overlap, the same face may have
+     * been detected several times.
+     */
+
+    const uniqueDetections = [];
+
+    const intersectionOverUnion = (a, b) => {
+        const ax1 = a.originX;
+        const ay1 = a.originY;
+        const ax2 = a.originX + a.width;
+        const ay2 = a.originY + a.height;
+
+        const bx1 = b.originX;
+        const by1 = b.originY;
+        const bx2 = b.originX + b.width;
+        const by2 = b.originY + b.height;
+
+        const intersectionLeft = Math.max(ax1, bx1);
+
+        const intersectionTop = Math.max(ay1, by1);
+
+        const intersectionRight = Math.min(ax2, bx2);
+
+        const intersectionBottom = Math.min(ay2, by2);
+
+        const intersectionWidth = Math.max(
+            0,
+            intersectionRight - intersectionLeft,
+        );
+
+        const intersectionHeight = Math.max(
+            0,
+            intersectionBottom - intersectionTop,
+        );
+
+        const intersectionArea = intersectionWidth * intersectionHeight;
+
+        const areaA = a.width * a.height;
+
+        const areaB = b.width * b.height;
+
+        const unionArea = areaA + areaB - intersectionArea;
+
+        if (unionArea <= 0) {
+            return 0;
+        }
+
+        return intersectionArea / unionArea;
+    };
+
+    for (const detection of detections) {
+        const box = detection.boundingBox;
+
+        const duplicate = uniqueDetections.some(
+            (existing) =>
+                intersectionOverUnion(existing.boundingBox, box) > 0.45,
+        );
+
+        if (!duplicate) {
+            uniqueDetections.push(detection);
+        }
+    }
+
+    /*
+     * No detected faces.
+     */
+    if (uniqueDetections.length === 0) {
         return sourceCanvas;
     }
+
+    /*
+     * ---------------------------------------------------------
+     * FACE PRIVACY CONFIGURATION
+     * ---------------------------------------------------------
+     */
+
+    const FACE_HORIZONTAL_PADDING = 0.08;
+
+    const FACE_VERTICAL_PADDING = 0.28;
+
+    const BLUR_STRENGTH = 32;
+
+    const BLUR_PADDING = 45;
+
+    const FEATHER_START = 0.68;
+
+    const FEATHER_END = 1.0;
 
     /*
      * Face privacy configuration.
@@ -134,31 +335,8 @@ export async function blurFacesOnCanvas(sourceCanvas) {
      * The vertical padding is larger so the forehead and chin
      * remain protected.
      */
-    const FACE_HORIZONTAL_PADDING = 0.08;
-    const FACE_VERTICAL_PADDING = 0.28;
 
-    /*
-     * Strong blur for the central facial area.
-     */
-    const BLUR_STRENGTH = 32;
-
-    /*
-     * Additional source area around the face.
-     * This prevents the blur from being clipped.
-     */
-    const BLUR_PADDING = 45;
-
-    /*
-     * Feathering controls.
-     *
-     * The first value keeps the center fully blurred.
-     * The second value determines where the blur begins
-     * fading toward the original image.
-     */
-    const FEATHER_START = 0.68;
-    const FEATHER_END = 1.0;
-
-    for (const detection of detections) {
+    for (const detection of uniqueDetections) {
         const box = detection.boundingBox;
 
         if (!box) {
