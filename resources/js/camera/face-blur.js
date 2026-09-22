@@ -24,7 +24,7 @@ export async function initializeFaceDetector() {
             delegate: "GPU",
         },
         runningMode: "IMAGE",
-        minDetectionConfidence: 0.5,
+        minDetectionConfidence: 0.35,
     });
 
     return faceDetector;
@@ -39,13 +39,91 @@ export async function initializeFaceDetector() {
 export async function blurFacesOnCanvas(sourceCanvas) {
     const detector = await initializeFaceDetector();
 
-    const detections = detector.detect(sourceCanvas);
+    /*
+     * The original image is used for the final blur.
+     *
+     * For detection, however, we create a larger copy.
+     * This makes small/far-away faces easier for MediaPipe
+     * to detect.
+     */
+    const DETECTION_SCALE = 2;
 
-    if (!detections.detections || detections.detections.length === 0) {
+    const detectionCanvas = document.createElement("canvas");
+
+    detectionCanvas.width = sourceCanvas.width * DETECTION_SCALE;
+
+    detectionCanvas.height = sourceCanvas.height * DETECTION_SCALE;
+
+    const detectionCtx = detectionCanvas.getContext("2d");
+
+    if (!detectionCtx) {
         return sourceCanvas;
     }
 
+    detectionCtx.drawImage(
+        sourceCanvas,
+        0,
+        0,
+        detectionCanvas.width,
+        detectionCanvas.height,
+    );
+
+    /*
+     * Detect on the enlarged image.
+     */
+    const detectionResult = detector.detect(detectionCanvas);
+
+    if (
+        !detectionResult.detections ||
+        detectionResult.detections.length === 0
+    ) {
+        /*
+         * Do not alter the original image if there are no
+         * detections yet.
+         *
+         * We will add a secondary detection pass below.
+         */
+    }
+
+    /*
+     * Convert MediaPipe coordinates from the enlarged
+     * detection image back to the original image.
+     */
+    const detections = [];
+
+    for (const detection of detectionResult.detections ?? []) {
+        const box = detection.boundingBox;
+
+        if (!box) {
+            continue;
+        }
+
+        detections.push({
+            boundingBox: {
+                originX: box.originX / DETECTION_SCALE,
+
+                originY: box.originY / DETECTION_SCALE,
+
+                width: box.width / DETECTION_SCALE,
+
+                height: box.height / DETECTION_SCALE,
+            },
+        });
+    }
+
+    /*
+     * If the enlarged full-frame detection found faces,
+     * use those detections.
+     */
     const ctx = sourceCanvas.getContext("2d");
+
+    if (!ctx) {
+        return sourceCanvas;
+    }
+
+    if (detections.length === 0) {
+        return sourceCanvas;
+    }
 
     /*
      * Face privacy configuration.
@@ -80,7 +158,7 @@ export async function blurFacesOnCanvas(sourceCanvas) {
     const FEATHER_START = 0.68;
     const FEATHER_END = 1.0;
 
-    for (const detection of detections.detections) {
+    for (const detection of detections) {
         const box = detection.boundingBox;
 
         if (!box) {
