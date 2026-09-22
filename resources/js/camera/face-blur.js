@@ -56,10 +56,9 @@ export async function blurFacesOnCanvas(sourceCanvas) {
      */
 
     // Slightly enlarge the detected face.
-    const FACE_HORIZONTAL_PADDING = 0.12;
-    const FACE_VERTICAL_PADDING = 0.12;
+    const FACE_HORIZONTAL_PADDING = 0.08;
+    const FACE_VERTICAL_PADDING = 0.2;
 
-    // Strong facial blur.
     const BLUR_STRENGTH = 32;
 
     // Extra source pixels used so the blur itself is not clipped.
