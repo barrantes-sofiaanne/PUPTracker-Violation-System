@@ -48,10 +48,20 @@ return [
     |
     */
 
-    'features' => [
-        'remember_device' => (bool) env('AUTH_REMEMBER_DEVICE_ENABLED', false),
-        'inactivity_timeout' => (bool) env('AUTH_INACTIVITY_TIMEOUT_ENABLED', false),
-    ],
+'features' => [
+    'remember_device' => (bool) env('AUTH_REMEMBER_DEVICE_ENABLED', false),
+    'inactivity_timeout' => (bool) env('AUTH_INACTIVITY_TIMEOUT_ENABLED', true),
+],
+
+'inactivity_timeout_minutes' => (int) env(
+    'AUTH_INACTIVITY_TIMEOUT_MINUTES',
+    15
+),
+
+'inactivity_warning_seconds' => (int) env(
+    'AUTH_INACTIVITY_WARNING_SECONDS',
+    10
+),
 
 'guards' => [
 

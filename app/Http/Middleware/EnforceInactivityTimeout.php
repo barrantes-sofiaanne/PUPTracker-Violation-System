@@ -114,20 +114,25 @@ class EnforceInactivityTimeout
         // Only honour a stamp that came from THIS session. A remembered session
         // carries no stamp (it starts clean), so there is nothing to extend and
         // the request is simply stamped below.
-        if (is_numeric($last)) {
-            $idleMinutes = ($now->getTimestamp() - (int) $last) / 60;
+if (is_numeric($last)) {
+    $idleSeconds = $now->getTimestamp() - (int) $last;
 
-            if ($idleMinutes >= self::TIMEOUT_MINUTES) {
-                return $this->expire($request, $guard);
-            }
-        }
+    if ($idleSeconds >= self::timeoutMinutes() * 60) {
+        return $this->expire($request, $guard);
+    }
+}
 
-        // Qualifying activity: stamp the session. Written on every served
-        // request so the window tracks real interaction, not wall-clock time
-        // since login.
-        $request->session()->put(self::SESSION_KEY, $now->getTimestamp());
+// A missing timestamp means this is an authenticated session that has
+// not yet been initialized. Start it once.
+//
+// IMPORTANT:
+// Do NOT update this timestamp on every request.
+// Background polling must not keep an unattended session alive.
+if (! is_numeric($last)) {
+    self::startFreshActivityWindow($request);
+}
 
-        return $next($request);
+return $next($request);
     }
 
     /**
@@ -264,4 +269,46 @@ class EnforceInactivityTimeout
             ? $candidate
             : 'student.login';
     }
+
+    /**
+ * Start a fresh inactivity window after successful authentication.
+ *
+ * This MUST be called after a user successfully authenticates because
+ * session()->regenerate() preserves session data, including an old
+ * auth.last_activity_at value.
+ */
+public static function startFreshActivityWindow(Request $request): void
+{
+    if (! self::enabled()) {
+        return;
+    }
+
+    $request->session()->put(
+        self::SESSION_KEY,
+        now()->timestamp
+    );
+}
+
+public static function timeoutMinutes(): int
+{
+    return max(
+        1,
+        (int) config('auth.inactivity_timeout_minutes', 15)
+    );
+}
+
+public static function warningSeconds(): int
+{
+    return max(
+        1,
+        (int) config('auth.inactivity_warning_seconds', 10)
+    );
+}
+
+/**
+ * Starts a completely fresh inactivity window.
+ *
+ * This MUST be called immediately after successful authentication.
+ */
+
 }

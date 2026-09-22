@@ -14,6 +14,7 @@ use App\Support\MfaTrustedDeviceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Middleware\EnforceInactivityTimeout;
 
 class MfaController extends Controller
 {
@@ -110,7 +111,8 @@ class MfaController extends Controller
         // can be skipped for up to 12 hours when this device was explicitly
         // trusted.
         Auth::guard($guard)->login($user, false);
-        $request->session()->regenerate();
+$request->session()->regenerate();
+EnforceInactivityTimeout::startFreshActivityWindow($request);
 
         if ($remember) {
             $trustedDeviceService->trust(
@@ -119,10 +121,10 @@ class MfaController extends Controller
             );
         }
 
-        $mfaService->clear($request);
-        // Drop any pending expiry notice: it describes a PAST session, and the
-        // user is authenticated again now, so it must never surface later.
-        SessionExpiryNotice::clear($request);
+EnforceInactivityTimeout::startFreshActivityWindow($request);
+
+$mfaService->clear($request);
+SessionExpiryNotice::clear($request);
 
         // Show the privacy/terms consent modal first on every login.
         $request->session()->put('show_privacy_consent_modal', true);

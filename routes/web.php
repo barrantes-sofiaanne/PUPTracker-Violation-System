@@ -45,6 +45,7 @@ use App\Http\Controllers\Security\SecurityDashboardController;
 | Landing Page
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\Auth\SessionActivityController;
 
 Route::get('/', function () {
     return view('landing');
@@ -1012,6 +1013,11 @@ Route::middleware(['auth:admin', 'oss.staff', 'session.inactivity'])
 
         Route::get('/profile', [App\Http\Controllers\OssStaff\OssStaffProfileController::class, 'index'])
             ->name('profile');
+
+            Route::post(
+    '/session/activity',
+    [SessionActivityController::class, 'touch']
+)->name('session.activity');
 
     });
 

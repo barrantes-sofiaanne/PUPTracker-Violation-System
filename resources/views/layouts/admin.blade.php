@@ -22,15 +22,22 @@
     <link rel="stylesheet"
         href="{{ asset('css/admin-components.css') }}">
 
-    <link rel="stylesheet"
-        href="{{ asset('css/user-menu.css') }}">
+<link rel="stylesheet"
+    href="{{ asset('css/user-menu.css') }}">
+
+<link rel="stylesheet"
+    href="{{ asset('css/inactivity-timeout.css') }}">
+
 
     @stack('styles')
 
 </head>
 
-<body>
-
+<body
+    data-inactivity-timeout-minutes="{{ config('auth.inactivity_timeout_minutes', 15) }}"
+    data-inactivity-warning-seconds="{{ config('auth.inactivity_warning_seconds', 10) }}"
+    data-session-activity-url="{{ route('session.activity') }}"
+>
 <div class="admin-wrapper">
 
     @include('admin.partials.sidebar')
@@ -58,10 +65,12 @@
 
 <script src="{{ asset('js/admin.js') }}"></script>
 <script src="{{ asset('js/admin-ui.js') }}"></script>
+<script src="{{ asset('js/inactivity-timeout.js') }}"></script>
 
 @include('partials.sweetalert')
 @include('partials.privacy-consent-modal')
 @include('partials.login-announcement-modal')
+@include('partials.inactivity-timeout-modal')
 
 @stack('scripts')
 
