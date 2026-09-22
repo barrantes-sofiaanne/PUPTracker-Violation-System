@@ -344,6 +344,11 @@
      * ------------------------------------------------------------------ */
 
     warningInterval = window.setInterval(() => {
+        console.log("[PUPTracker Warning Timer]", {
+            inactiveFor: Math.round((Date.now() - lastActivityAt) / 1000),
+            modalOpen: modalOpen,
+        });
+
         if (modalOpen) {
             return;
         }
