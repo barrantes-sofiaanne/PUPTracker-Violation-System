@@ -593,6 +593,7 @@ document.addEventListener('DOMContentLoaded', function () {
     applyOptionState();
 });
 </script>
+@vite('resources/js/camera/face-blur-entry.js')
 <script src="{{ asset('js/oss-staff/record-violation.js') }}"></script>
 @endpush
 

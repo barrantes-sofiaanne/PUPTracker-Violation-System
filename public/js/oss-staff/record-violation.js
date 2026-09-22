@@ -221,6 +221,26 @@ document.addEventListener("DOMContentLoaded", function () {
     const currentStudentNumber = () =>
         document.getElementById("selectedStudentNumber").value || "";
 
+    // ---------------------------------------------------------------
+    // Privacy face-blur protection
+    // Uses the same MediaPipe face-blur module as Security.
+    // ---------------------------------------------------------------
+    const getFaceBlur = () => window.PUPTrackerFaceBlur || null;
+
+    const initializePrivacyFaceBlur = async () => {
+        const faceBlur = getFaceBlur();
+
+        if (!faceBlur) {
+            throw new Error(
+                "The privacy face-blur module is not available. Capture is disabled.",
+            );
+        }
+
+        await faceBlur.initializeFaceDetector();
+
+        return faceBlur;
+    };
+
     const updateLiveWatermark = () => {
         if (liveWatermarkStudent) {
             liveWatermarkStudent.textContent =
@@ -389,20 +409,63 @@ document.addEventListener("DOMContentLoaded", function () {
                 video: videoConstraint,
                 audio: false,
             })
-            .then(function (stream) {
+            .then(async function (stream) {
                 cameraStream = stream;
                 cameraActive = true;
                 cameraPausedByInterruption = false;
                 cameraDeviceId = deviceId || null;
+
                 if (cameraPreview) {
                     cameraPreview.srcObject = stream;
                 }
-                // Capture is enabled only after the stream initializes.
+
+                // ---------------------------------------------------------------
+                // Privacy protection MUST initialize before capture is enabled.
+                // If face detection cannot initialize, the system will not allow
+                // an evidence photograph to be captured.
+                // ---------------------------------------------------------------
+                try {
+                    await initializePrivacyFaceBlur();
+                } catch (error) {
+                    stream.getTracks().forEach(function (track) {
+                        track.stop();
+                    });
+
+                    cameraStream = null;
+                    cameraActive = false;
+
+                    if (cameraPreview) {
+                        cameraPreview.srcObject = null;
+                    }
+
+                    showCameraIdle();
+
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        {
+                            reason: "face blur initialization failed",
+                        },
+                        "warning",
+                    );
+
+                    showAlert(
+                        "error",
+                        "Privacy protection unavailable",
+                        "The face-blur protection could not be initialized. The photo was not captured. Please try again.",
+                    );
+
+                    return;
+                }
+
+                // Capture is enabled ONLY after both the camera and privacy
+                // protection are ready.
                 if (capturePhotoBtn) {
                     capturePhotoBtn.disabled = false;
                 }
+
                 updateLiveWatermark();
                 startLiveClock();
+
                 reportSecurityEvent("CAMERA_INITIALIZED", null, "info");
             })
             .catch(function (error) {
@@ -770,49 +833,83 @@ document.addEventListener("DOMContentLoaded", function () {
     // ------------------------------------------------------------------
     // Canvas watermark — the watermark is BAKED into the captured image.
     // ------------------------------------------------------------------
-    const drawWatermarkedCanvas = (video) => {
+    const drawWatermarkedCanvas = async (video) => {
         const width = video.videoWidth || 1280;
         const height = video.videoHeight || 720;
 
         const canvas = document.createElement("canvas");
+
         canvas.width = width;
         canvas.height = height;
+
         const ctx = canvas.getContext("2d");
 
-        // 1. Draw the camera frame.
+        if (!ctx) {
+            throw new Error("Unable to create capture canvas.");
+        }
+
+        // ---------------------------------------------------------------
+        // 1. Draw the raw camera frame.
+        // ---------------------------------------------------------------
         ctx.drawImage(video, 0, 0, width, height);
 
-        // 2. Draw the watermark onto the canvas (part of the image).
+        // ---------------------------------------------------------------
+        // 2. Apply face blur BEFORE drawing the watermark.
+        //
+        // This uses the same face-blur implementation already used
+        // by the Security module.
+        // ---------------------------------------------------------------
+        const faceBlur = await initializePrivacyFaceBlur();
+
+        await faceBlur.blurFacesOnCanvas(canvas);
+
+        // ---------------------------------------------------------------
+        // 3. Draw the watermark AFTER face anonymization.
+        //
+        // Student ID is intentionally NOT placed in the watermark.
+        // It remains available to the backend/database.
+        // ---------------------------------------------------------------
         const lines = [
             "PUPTracker",
-            "Student ID: " + (currentStudentNumber() || "N/A"),
             "Captured: " + formatPhTimestamp(),
+            "For Official Use Only",
         ];
 
-        ctx.font = "600 26px Arial, sans-serif";
-        const maxLineWidth = Math.round(width * 0.86);
         let fontSize = 26;
+
+        const maxLineWidth = Math.round(width * 0.86);
+
         ctx.font = "600 " + fontSize + "px Arial, sans-serif";
+
         while (
             fontSize > 12 &&
             ctx.measureText(lines[1] + "  " + lines[2]).width > maxLineWidth
         ) {
             fontSize -= 1;
+
             ctx.font = "600 " + fontSize + "px Arial, sans-serif";
         }
 
         const padX = 16;
+
         const lineHeight = Math.round(fontSize * 1.45);
+
         const blockTop = 14;
+
         const blockBottom = blockTop + lines.length * lineHeight + 16;
+
         const blockLeft = padX;
 
-        // Semi-opaque band behind the watermark for readability.
+        // Semi-transparent watermark background.
         ctx.fillStyle = "rgba(0,0,0,0.55)";
+
         ctx.fillRect(0, blockTop - 6, width, blockBottom);
+
         ctx.textBaseline = "top";
         ctx.textAlign = "left";
+
         ctx.fillStyle = "#ffffff";
+
         ctx.shadowColor = "rgba(0,0,0,0.8)";
         ctx.shadowBlur = 4;
 
@@ -826,7 +923,7 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     capturePhotoBtn &&
-        capturePhotoBtn.addEventListener("click", function () {
+        capturePhotoBtn.addEventListener("click", async function () {
             if (!cameraActive || cameraPausedByInterruption) {
                 return; // Capture disabled while inactive/paused.
             }
@@ -834,7 +931,28 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            const canvas = drawWatermarkedCanvas(cameraPreview);
+            let canvas;
+
+            try {
+                // Face blur must succeed before the image can become evidence.
+                canvas = await drawWatermarkedCanvas(cameraPreview);
+            } catch (error) {
+                reportSecurityEvent(
+                    "CAMERA_ERROR",
+                    {
+                        reason: "face blur processing failed",
+                    },
+                    "warning",
+                );
+
+                showAlert(
+                    "error",
+                    "Privacy protection unavailable",
+                    "The face-blur protection could not process this image. The photo was not captured. Please try again.",
+                );
+
+                return;
+            }
 
             // Stop live camera while reviewing the captured photo.
             stopCamera();
