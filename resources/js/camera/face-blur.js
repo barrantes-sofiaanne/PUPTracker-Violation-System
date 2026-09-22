@@ -48,21 +48,37 @@ export async function blurFacesOnCanvas(sourceCanvas) {
     const ctx = sourceCanvas.getContext("2d");
 
     /*
-     * Privacy configuration.
+     * Face privacy configuration.
      *
-     * We intentionally use an oval mask instead of a rectangle.
-     * This keeps the person's hair and surrounding evidence visible
-     * while protecting the facial features.
+     * The horizontal padding stays relatively small so that
+     * important hair details remain visible.
+     *
+     * The vertical padding is larger so the forehead and chin
+     * remain protected.
      */
-
-    // Slightly enlarge the detected face.
     const FACE_HORIZONTAL_PADDING = 0.08;
     const FACE_VERTICAL_PADDING = 0.2;
 
+    /*
+     * Strong blur for the central facial area.
+     */
     const BLUR_STRENGTH = 32;
 
-    // Extra source pixels used so the blur itself is not clipped.
+    /*
+     * Additional source area around the face.
+     * This prevents the blur from being clipped.
+     */
     const BLUR_PADDING = 45;
+
+    /*
+     * Feathering controls.
+     *
+     * The first value keeps the center fully blurred.
+     * The second value determines where the blur begins
+     * fading toward the original image.
+     */
+    const FEATHER_START = 0.68;
+    const FEATHER_END = 1.0;
 
     for (const detection of detections.detections) {
         const box = detection.boundingBox;
@@ -72,10 +88,7 @@ export async function blurFacesOnCanvas(sourceCanvas) {
         }
 
         /*
-         * Expand the MediaPipe face box slightly.
-         *
-         * Keep this relatively small because we do NOT want to
-         * accidentally include the person's hair.
+         * Expand the detected face slightly.
          */
         const faceWidth = box.width * (1 + FACE_HORIZONTAL_PADDING * 2);
 
@@ -86,26 +99,26 @@ export async function blurFacesOnCanvas(sourceCanvas) {
         const faceCenterY = box.originY + box.height / 2;
 
         /*
-         * Oval boundaries.
+         * Ellipse boundaries.
          */
         const ellipseLeft = Math.max(
             0,
-            Math.round(faceCenterX - faceWidth / 2),
+            Math.floor(faceCenterX - faceWidth / 2),
         );
 
         const ellipseTop = Math.max(
             0,
-            Math.round(faceCenterY - faceHeight / 2),
+            Math.floor(faceCenterY - faceHeight / 2),
         );
 
         const ellipseRight = Math.min(
             sourceCanvas.width,
-            Math.round(faceCenterX + faceWidth / 2),
+            Math.ceil(faceCenterX + faceWidth / 2),
         );
 
         const ellipseBottom = Math.min(
             sourceCanvas.height,
-            Math.round(faceCenterY + faceHeight / 2),
+            Math.ceil(faceCenterY + faceHeight / 2),
         );
 
         const ellipseWidth = ellipseRight - ellipseLeft;
@@ -117,10 +130,8 @@ export async function blurFacesOnCanvas(sourceCanvas) {
         }
 
         /*
-         * Create a larger source region around the face.
-         *
-         * This gives the blur filter enough surrounding pixels
-         * to produce a smooth result.
+         * Expand the source region so the blur has surrounding
+         * pixels to work with.
          */
         const sourceLeft = Math.max(0, ellipseLeft - BLUR_PADDING);
 
@@ -145,23 +156,22 @@ export async function blurFacesOnCanvas(sourceCanvas) {
         }
 
         /*
-         * Temporary canvas.
+         * ---------------------------------------------
+         * 1. Copy the original region
+         * ---------------------------------------------
          */
-        const tempCanvas = document.createElement("canvas");
+        const originalCanvas = document.createElement("canvas");
 
-        tempCanvas.width = sourceWidth;
-        tempCanvas.height = sourceHeight;
+        originalCanvas.width = sourceWidth;
+        originalCanvas.height = sourceHeight;
 
-        const tempCtx = tempCanvas.getContext("2d");
+        const originalCtx = originalCanvas.getContext("2d");
 
-        if (!tempCtx) {
+        if (!originalCtx) {
             continue;
         }
 
-        /*
-         * Copy the original image region.
-         */
-        tempCtx.drawImage(
+        originalCtx.drawImage(
             sourceCanvas,
             sourceLeft,
             sourceTop,
@@ -174,7 +184,9 @@ export async function blurFacesOnCanvas(sourceCanvas) {
         );
 
         /*
-         * Apply the strong blur to the temporary region.
+         * ---------------------------------------------
+         * 2. Create the blurred version
+         * ---------------------------------------------
          */
         const blurredCanvas = document.createElement("canvas");
 
@@ -187,45 +199,141 @@ export async function blurFacesOnCanvas(sourceCanvas) {
             continue;
         }
 
+        blurredCtx.save();
+
         blurredCtx.filter = `blur(${BLUR_STRENGTH}px)`;
 
-        blurredCtx.drawImage(tempCanvas, 0, 0);
+        /*
+         * Slight scaling prevents the blur from producing
+         * a visible unblurred border.
+         */
+        blurredCtx.drawImage(
+            originalCanvas,
+            -BLUR_PADDING / 2,
+            -BLUR_PADDING / 2,
+            sourceWidth + BLUR_PADDING,
+            sourceHeight + BLUR_PADDING,
+        );
 
-        blurredCtx.filter = "none";
+        blurredCtx.restore();
 
         /*
-         * Only the oval face area will be copied back.
-         *
-         * This is the important part:
-         *
-         * Hair outside the oval remains completely sharp.
+         * ---------------------------------------------
+         * 3. Create the feathered oval mask
+         * ---------------------------------------------
          */
-        ctx.save();
+        const maskCanvas = document.createElement("canvas");
 
-        ctx.beginPath();
+        maskCanvas.width = sourceWidth;
+        maskCanvas.height = sourceHeight;
 
+        const maskCtx = maskCanvas.getContext("2d");
+
+        if (!maskCtx) {
+            continue;
+        }
+
+        /*
+         * Face center relative to temporary canvas.
+         */
         const localCenterX = faceCenterX - sourceLeft;
 
         const localCenterY = faceCenterY - sourceTop;
 
-        ctx.ellipse(
-            faceCenterX,
-            faceCenterY,
-            ellipseWidth / 2,
-            ellipseHeight / 2,
-            0,
-            0,
-            Math.PI * 2,
-        );
+        /*
+         * The ellipse is slightly smaller than the entire
+         * source region because the surrounding area needs
+         * to remain sharp.
+         */
+        const radiusX = ellipseWidth / 2;
 
-        ctx.clip();
+        const radiusY = ellipseHeight / 2;
 
         /*
-         * Put the blurred image back into the original
-         * canvas at its original position.
+         * Draw a radial gradient and stretch it vertically/
+         * horizontally into an ellipse.
+         */
+        maskCtx.save();
+
+        maskCtx.translate(localCenterX, localCenterY);
+
+        maskCtx.scale(radiusX, radiusY);
+
+        const gradient = maskCtx.createRadialGradient(0, 0, 0, 0, 0, 1);
+
+        /*
+         * Center:
+         * completely blurred.
+         */
+        gradient.addColorStop(0, "rgba(255,255,255,1)");
+
+        /*
+         * Keep almost the entire face strongly blurred.
+         */
+        gradient.addColorStop(FEATHER_START, "rgba(255,255,255,1)");
+
+        /*
+         * Begin gradually reducing the blur.
+         */
+        gradient.addColorStop(0.86, "rgba(255,255,255,0.75)");
+
+        gradient.addColorStop(0.94, "rgba(255,255,255,0.35)");
+
+        /*
+         * Outside the ellipse:
+         * original image remains visible.
+         */
+        gradient.addColorStop(FEATHER_END, "rgba(255,255,255,0)");
+
+        maskCtx.fillStyle = gradient;
+
+        maskCtx.beginPath();
+        maskCtx.arc(0, 0, 1, 0, Math.PI * 2);
+        maskCtx.fill();
+
+        maskCtx.restore();
+
+        /*
+         * ---------------------------------------------
+         * 4. Apply the mask to the blurred image
+         * ---------------------------------------------
+         */
+        const maskedBlurCanvas = document.createElement("canvas");
+
+        maskedBlurCanvas.width = sourceWidth;
+        maskedBlurCanvas.height = sourceHeight;
+
+        const maskedBlurCtx = maskedBlurCanvas.getContext("2d");
+
+        if (!maskedBlurCtx) {
+            continue;
+        }
+
+        /*
+         * Draw blurred image first.
+         */
+        maskedBlurCtx.drawImage(blurredCanvas, 0, 0);
+
+        /*
+         * Keep only the portion covered by the
+         * feathered mask.
+         */
+        maskedBlurCtx.globalCompositeOperation = "destination-in";
+
+        maskedBlurCtx.drawImage(maskCanvas, 0, 0);
+
+        maskedBlurCtx.globalCompositeOperation = "source-over";
+
+        /*
+         * ---------------------------------------------
+         * 5. Put the feathered blur over the original
+         * ---------------------------------------------
+         *
+         * The original image underneath remains sharp.
+         * Only the masked facial region is replaced.
          */
         ctx.drawImage(
-            blurredCanvas,
+            maskedBlurCanvas,
             0,
             0,
             sourceWidth,
@@ -236,16 +344,20 @@ export async function blurFacesOnCanvas(sourceCanvas) {
             sourceHeight,
         );
 
-        ctx.restore();
-
         /*
          * Release temporary canvas memory.
          */
-        tempCanvas.width = 1;
-        tempCanvas.height = 1;
+        originalCanvas.width = 1;
+        originalCanvas.height = 1;
 
         blurredCanvas.width = 1;
         blurredCanvas.height = 1;
+
+        maskCanvas.width = 1;
+        maskCanvas.height = 1;
+
+        maskedBlurCanvas.width = 1;
+        maskedBlurCanvas.height = 1;
     }
 
     return sourceCanvas;
