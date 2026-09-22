@@ -342,6 +342,7 @@
     /* ----------------------------------------------------------------------
      * Warning monitor
      * ------------------------------------------------------------------ */
+    console.log("[PUPTracker] Starting inactivity warning monitor");
 
     warningInterval = window.setInterval(() => {
         console.log("[PUPTracker Warning Timer]", {
@@ -354,23 +355,24 @@
         }
 
         const now = Date.now();
-
         const inactiveFor = now - lastActivityAt;
 
         const warningAt = TIMEOUT_MS - WARNING_MS;
 
-        /*
-         * Show the warning shortly before the
-         * server-side inactivity limit.
-         */
         if (inactiveFor >= warningAt) {
-            console.log("[PUPTracker Inactivity]", {
+            console.log("[PUPTracker Inactivity] Showing warning", {
                 inactiveFor: Math.round(inactiveFor / 1000),
                 warningAt: Math.round(warningAt / 1000),
                 timeout: TIMEOUT_MINUTES,
                 modalOpen,
             });
+
             showTimeoutWarning();
         }
     }, 1000);
+
+    console.log(
+        "[PUPTracker] Inactivity warning monitor started",
+        warningInterval,
+    );
 })();
