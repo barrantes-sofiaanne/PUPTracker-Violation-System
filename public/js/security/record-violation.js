@@ -1,5 +1,3 @@
-import { blurFacesOnCanvas } from "../../resources/js/camera/face-blur.js";
-
 document.addEventListener("DOMContentLoaded", function () {
     const modalElement = document.getElementById("recordViolationModal");
     const studentStep = document.getElementById("studentStep");
@@ -793,7 +791,12 @@ document.addEventListener("DOMContentLoaded", function () {
         // 2. Face detection + privacy blur
         // ------------------------------------------------------------
 
-        await blurFacesOnCanvas(canvas);
+        if (
+            window.PUPTrackerFaceBlur &&
+            typeof window.PUPTrackerFaceBlur.blurFacesOnCanvas === "function"
+        ) {
+            await window.PUPTrackerFaceBlur.blurFacesOnCanvas(canvas);
+        }
 
         // ------------------------------------------------------------
         // 3. Professional PUPTracker watermark
