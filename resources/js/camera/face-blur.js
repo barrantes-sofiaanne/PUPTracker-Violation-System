@@ -48,27 +48,22 @@ export async function blurFacesOnCanvas(sourceCanvas) {
     const ctx = sourceCanvas.getContext("2d");
 
     /*
-     * Privacy settings.
+     * Privacy configuration.
      *
-     * The detected MediaPipe box is intentionally expanded because
-     * the detector does not necessarily cover the entire visible
-     * facial area, especially when the subject is farther from the camera.
+     * We intentionally use an oval mask instead of a rectangle.
+     * This keeps the person's hair and surrounding evidence visible
+     * while protecting the facial features.
      */
-    const BLUR_MARGIN_X = 0.45;
-    const BLUR_MARGIN_Y = 0.5;
 
-    /*
-     * Strong, consistent Gaussian blur.
-     */
+    // Slightly enlarge the detected face.
+    const FACE_HORIZONTAL_PADDING = 0.12;
+    const FACE_VERTICAL_PADDING = 0.12;
+
+    // Strong facial blur.
     const BLUR_STRENGTH = 32;
 
-    /*
-     * Additional pixels around the blur region.
-     *
-     * This prevents the browser's blur filter from being clipped
-     * directly at the edge of the temporary canvas.
-     */
-    const BLUR_PADDING = 40;
+    // Extra source pixels used so the blur itself is not clipped.
+    const BLUR_PADDING = 45;
 
     for (const detection of detections.detections) {
         const box = detection.boundingBox;
@@ -78,58 +73,72 @@ export async function blurFacesOnCanvas(sourceCanvas) {
         }
 
         /*
-         * Expand the detected face region substantially.
+         * Expand the MediaPipe face box slightly.
+         *
+         * Keep this relatively small because we do NOT want to
+         * accidentally include the person's hair.
          */
-        const marginX = Math.max(20, Math.round(box.width * BLUR_MARGIN_X));
+        const faceWidth = box.width * (1 + FACE_HORIZONTAL_PADDING * 2);
 
-        const marginY = Math.max(20, Math.round(box.height * BLUR_MARGIN_Y));
+        const faceHeight = box.height * (1 + FACE_VERTICAL_PADDING * 2);
+
+        const faceCenterX = box.originX + box.width / 2;
+
+        const faceCenterY = box.originY + box.height / 2;
 
         /*
-         * Main privacy region.
+         * Oval boundaries.
          */
-        const privacyLeft = Math.max(0, Math.floor(box.originX - marginX));
+        const ellipseLeft = Math.max(
+            0,
+            Math.round(faceCenterX - faceWidth / 2),
+        );
 
-        const privacyTop = Math.max(0, Math.floor(box.originY - marginY));
+        const ellipseTop = Math.max(
+            0,
+            Math.round(faceCenterY - faceHeight / 2),
+        );
 
-        const privacyRight = Math.min(
+        const ellipseRight = Math.min(
             sourceCanvas.width,
-            Math.ceil(box.originX + box.width + marginX),
+            Math.round(faceCenterX + faceWidth / 2),
         );
 
-        const privacyBottom = Math.min(
+        const ellipseBottom = Math.min(
             sourceCanvas.height,
-            Math.ceil(box.originY + box.height + marginY),
+            Math.round(faceCenterY + faceHeight / 2),
         );
 
-        const privacyWidth = privacyRight - privacyLeft;
-        const privacyHeight = privacyBottom - privacyTop;
+        const ellipseWidth = ellipseRight - ellipseLeft;
 
-        if (privacyWidth <= 0 || privacyHeight <= 0) {
+        const ellipseHeight = ellipseBottom - ellipseTop;
+
+        if (ellipseWidth <= 0 || ellipseHeight <= 0) {
             continue;
         }
 
         /*
-         * Expand the source area beyond the privacy region.
+         * Create a larger source region around the face.
          *
-         * The blur needs neighboring pixels to produce a smooth
-         * transition. Without this, the blur can be clipped at
-         * the temporary canvas boundary.
+         * This gives the blur filter enough surrounding pixels
+         * to produce a smooth result.
          */
-        const sourceLeft = Math.max(0, privacyLeft - BLUR_PADDING);
+        const sourceLeft = Math.max(0, ellipseLeft - BLUR_PADDING);
 
-        const sourceTop = Math.max(0, privacyTop - BLUR_PADDING);
+        const sourceTop = Math.max(0, ellipseTop - BLUR_PADDING);
 
         const sourceRight = Math.min(
             sourceCanvas.width,
-            privacyRight + BLUR_PADDING,
+            ellipseRight + BLUR_PADDING,
         );
 
         const sourceBottom = Math.min(
             sourceCanvas.height,
-            privacyBottom + BLUR_PADDING,
+            ellipseBottom + BLUR_PADDING,
         );
 
         const sourceWidth = sourceRight - sourceLeft;
+
         const sourceHeight = sourceBottom - sourceTop;
 
         if (sourceWidth <= 0 || sourceHeight <= 0) {
@@ -137,24 +146,21 @@ export async function blurFacesOnCanvas(sourceCanvas) {
         }
 
         /*
-         * Create an off-screen canvas containing extra pixels
-         * around the face.
+         * Temporary canvas.
          */
         const tempCanvas = document.createElement("canvas");
 
         tempCanvas.width = sourceWidth;
         tempCanvas.height = sourceHeight;
 
-        const tempCtx = tempCanvas.getContext("2d", {
-            willReadFrequently: false,
-        });
+        const tempCtx = tempCanvas.getContext("2d");
 
         if (!tempCtx) {
             continue;
         }
 
         /*
-         * Copy the original image into the temporary canvas.
+         * Copy the original image region.
          */
         tempCtx.drawImage(
             sourceCanvas,
@@ -169,54 +175,58 @@ export async function blurFacesOnCanvas(sourceCanvas) {
         );
 
         /*
-         * Apply strong Gaussian blur to the entire expanded region.
+         * Apply the strong blur to the temporary region.
+         */
+        const blurredCanvas = document.createElement("canvas");
+
+        blurredCanvas.width = sourceWidth;
+        blurredCanvas.height = sourceHeight;
+
+        const blurredCtx = blurredCanvas.getContext("2d");
+
+        if (!blurredCtx) {
+            continue;
+        }
+
+        blurredCtx.filter = `blur(${BLUR_STRENGTH}px)`;
+
+        blurredCtx.drawImage(tempCanvas, 0, 0);
+
+        blurredCtx.filter = "none";
+
+        /*
+         * Only the oval face area will be copied back.
          *
-         * Because the temporary canvas includes padding, the blur
-         * does not abruptly stop at the face boundary.
-         */
-        tempCtx.save();
-
-        tempCtx.filter = `blur(${BLUR_STRENGTH}px)`;
-
-        /*
-         * Draw the image slightly offset so the blur has room
-         * to spread naturally around the edges.
-         */
-        tempCtx.drawImage(
-            tempCanvas,
-            -BLUR_PADDING / 2,
-            -BLUR_PADDING / 2,
-            sourceWidth + BLUR_PADDING,
-            sourceHeight + BLUR_PADDING,
-        );
-
-        tempCtx.restore();
-
-        /*
-         * Calculate where the privacy region begins inside
-         * the temporary canvas.
-         */
-        const localX = privacyLeft - sourceLeft;
-        const localY = privacyTop - sourceTop;
-
-        /*
-         * Only replace the expanded privacy region on the
-         * original image.
+         * This is the important part:
          *
-         * This keeps the rest of the photograph sharp while
-         * providing a larger, stronger privacy zone around
-         * the detected face.
+         * Hair outside the oval remains completely sharp.
          */
         ctx.save();
 
         ctx.beginPath();
 
-        ctx.rect(privacyLeft, privacyTop, privacyWidth, privacyHeight);
+        const localCenterX = faceCenterX - sourceLeft;
+
+        const localCenterY = faceCenterY - sourceTop;
+
+        ctx.ellipse(
+            faceCenterX,
+            faceCenterY,
+            ellipseWidth / 2,
+            ellipseHeight / 2,
+            0,
+            0,
+            Math.PI * 2,
+        );
 
         ctx.clip();
 
+        /*
+         * Put the blurred image back into the original
+         * canvas at its original position.
+         */
         ctx.drawImage(
-            tempCanvas,
+            blurredCanvas,
             0,
             0,
             sourceWidth,
@@ -230,10 +240,13 @@ export async function blurFacesOnCanvas(sourceCanvas) {
         ctx.restore();
 
         /*
-         * Release the temporary canvas.
+         * Release temporary canvas memory.
          */
         tempCanvas.width = 1;
         tempCanvas.height = 1;
+
+        blurredCanvas.width = 1;
+        blurredCanvas.height = 1;
     }
 
     return sourceCanvas;
