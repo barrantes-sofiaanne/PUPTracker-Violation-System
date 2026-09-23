@@ -523,6 +523,7 @@ if (! $student->isActiveAccount()) {
             $studentSanctionRecord->update([
                 'status' => $revertTo,
                 'proof_path' => null,
+                'proof_access_key' => null,
                 'proof_original_name' => null,
                 'proof_submitted_at' => null,
                 'proof_notes' => null,
@@ -595,6 +596,7 @@ if (! $student->isActiveAccount()) {
                 'completion_reviewed_at' => null,
                 'completion_remarks' => null,
                 'proof_path' => null,
+                'proof_access_key' => null,
                 'proof_original_name' => null,
                 'proof_submitted_at' => null,
                 'proof_notes' => null,
