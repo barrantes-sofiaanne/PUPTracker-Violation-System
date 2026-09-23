@@ -298,8 +298,8 @@ Route::middleware(['auth:student', 'student.profile.complete', 'session.inactivi
         Route::post('/submit-proof', [StudentRecordController::class, 'submitProof'])
             ->name('student.submit-proof');
 
-        Route::get('/sanction-records/{studentSanctionRecord:proof_access_key}/proof', [StudentRecordController::class, 'downloadProof'])
-            ->name('student.proof.download');
+Route::get('/sanction-records/{studentSanctionRecord}/proof', [StudentRecordController::class, 'downloadProof'])
+    ->name('student.proof.download');
 
 Route::get('/violations/evidence/{evidence:access_key}', [StudentRecordController::class, 'downloadEvidence'])            ->name('student.violations.evidence');
 
@@ -513,8 +513,8 @@ Route::get('/violations/evidence/{evidence:access_key}', [ViolationController::c
         Route::post('/sanctions/records/{studentSanctionRecord}/service-assignment', [SanctionController::class, 'updateServiceAssignment'])
             ->name('admin.sanctions.records.update-service-assignment');
 
-        Route::get('/sanctions/records/{studentSanctionRecord:proof_access_key}/proof', [SanctionController::class, 'downloadProof'])
-            ->name('admin.sanctions.proof.download');
+Route::get('/sanctions/records/{studentSanctionRecord}/proof', [SanctionController::class, 'downloadProof'])
+    ->name('admin.sanctions.proof.download');
 
         Route::get(
             '/violations/student/{student_number}',

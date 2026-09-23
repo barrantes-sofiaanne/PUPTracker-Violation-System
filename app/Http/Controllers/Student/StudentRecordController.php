@@ -600,7 +600,6 @@ public function requestSanction(Request $request)
                     $record->update([
                         'status' => $record->status,
                         'proof_path' => $storedPath,
-                        'proof_access_key' => bin2hex(random_bytes(32)),
                         'proof_original_name' => $file->getClientOriginalName(),
                         'proof_submitted_at' => now(),
                         'proof_notes' => $notes,
