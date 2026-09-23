@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Security;
 
+use Illuminate\Support\Facades\Schema;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Violation;
@@ -162,22 +163,58 @@ $violationsByCategory = Violation::with([
      * (by recorder identity). Does NOT apply the notDenied exclusion so callers
      * (e.g. the filterable chart) can include denied rows when requested.
      */
-    private function applyRecorderIdentityScope($query): void
-    {
-        $security = Auth::guard('security')->user();
+private function applyRecorderIdentityScope($query): void
+{
+    $security = Auth::guard('security')->user();
 
-        $label = !empty($security?->email)
-            ? 'Security: ' . $security->email
-            : 'Security #' . ($security?->id ?? 'Unknown');
-
-        $legacySecurityIdLabel = 'Security #' . ($security?->id ?? 'Unknown');
-
-        $query->where('recorder_type', 'security')
-            ->where(function ($innerQuery) use ($label, $legacySecurityIdLabel) {
-                $innerQuery->where('recorder_name', $label)
-                    ->orWhere('recorder_name', $legacySecurityIdLabel);
-            });
+    if (!$security) {
+        $query->whereRaw('1 = 0');
+        return;
     }
+
+    $securityId = $security->id;
+
+    $securityLabel = !empty($security->email)
+        ? 'Security: ' . $security->email
+        : 'Security #' . $securityId;
+
+    $legacySecurityIdLabel = 'Security #' . $securityId;
+
+    $query->where(function ($outerQuery) use (
+        $securityId,
+        $securityLabel,
+        $legacySecurityIdLabel
+    ) {
+        /*
+         * New records:
+         * Match the actual Security account ID.
+         */
+        $outerQuery->where(function ($q) use ($securityId) {
+            $q->where('recorder_type', 'security')
+              ->where('recorded_by_security_id', $securityId);
+        });
+
+        /*
+         * Legacy records:
+         * Only use recorder_name when there is no
+         * recorded_by_security_id available.
+         */
+        $outerQuery->orWhere(function ($q) use (
+            $securityLabel,
+            $legacySecurityIdLabel
+        ) {
+            $q->where('recorder_type', 'security')
+              ->whereNull('recorded_by_security_id')
+              ->where(function ($nameQuery) use (
+                  $securityLabel,
+                  $legacySecurityIdLabel
+              ) {
+                  $nameQuery->where('recorder_name', $securityLabel)
+                      ->orWhere('recorder_name', $legacySecurityIdLabel);
+              });
+        });
+    });
+}
 
     /**
      * Filterable chart data: violations recorded by the CURRENT security
