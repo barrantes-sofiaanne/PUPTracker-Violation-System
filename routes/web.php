@@ -38,7 +38,7 @@ use App\Http\Controllers\Admin\ViolationTypeController;
 
 // Security Controllers
 use App\Http\Controllers\Security\SecurityDashboardController;
-
+use Illuminate\Http\Request;
 /*
 
 
@@ -99,6 +99,12 @@ Route::post('/student/idp/link', [StudentIdpLoginController::class, 'linkAccount
 
 Route::post('/logout', [LoginController::class, 'logout'])
     ->name('logout');
+
+Route::get('/csrf-token', function (Illuminate\Http\Request $request) {
+    return response()->json([
+        'token' => csrf_token(),
+    ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+})->name('csrf.token');
 
 Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])
     ->middleware('guest:admin')

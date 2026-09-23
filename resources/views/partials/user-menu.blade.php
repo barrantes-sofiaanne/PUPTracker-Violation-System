@@ -53,13 +53,22 @@
         <li><hr class="dropdown-divider"></li>
 
         <li>
-            <form action="{{ $menuLogoutUrl }}" method="POST" class="mb-0">
-                @csrf
-                <button type="submit" class="dropdown-item user-menu-item user-menu-logout">
-                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
-                    <span>Logout</span>
-                </button>
-            </form>
+<form
+    action="{{ $menuLogoutUrl }}"
+    method="POST"
+    class="mb-0"
+    data-puptracker-logout-form
+>
+    @csrf
+
+    <button
+        type="submit"
+        class="dropdown-item user-menu-item user-menu-logout"
+    >
+        <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+        <span>Logout</span>
+    </button>
+</form>
         </li>
     </ul>
 </div>

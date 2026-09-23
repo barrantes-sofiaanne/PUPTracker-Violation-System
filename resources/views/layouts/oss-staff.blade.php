@@ -38,11 +38,20 @@
     </div>
 
     <div id="portalSidebarBackdrop" aria-hidden="true"></div>
+<form action="{{ route('logout') }}"
+      method="POST"
+      data-puptracker-logout-form>
+    @csrf
 
+    <button type="submit">
+        Logout
+    </button>
+</form>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="{{ asset('js/portal.js') }}"></script>
 <script src="{{ asset('js/inactivity-timeout.js') }}"></script>
+<script src="{{ asset('js/logout.js') }}"></script>
 
 @include('partials.sweetalert')
 {{-- The consent modal's logout button resolves the admin guard -> admin.logout. --}}
