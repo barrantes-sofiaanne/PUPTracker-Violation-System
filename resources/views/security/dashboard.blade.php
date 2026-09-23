@@ -262,7 +262,7 @@
                                 <tr>
                                     <th>Student</th>
                                     <th>Violation Type</th>
-                                    <th>Severity</th>
+                                    <th>Offense Level</th>
                                     <th>Date & Time</th>
                                     <th>Action</th>
                                 </tr>
@@ -438,13 +438,15 @@ data-progress-width="{{ $totalViolations > 0 ? round(($category->count / $totalV
     </div>
 </div>
 
-{{-- Violation and Sanction Guide — the SAME shared partial the Student
-     Dashboard renders, so both modules show identical violation/sanction
-     information from the same data source. --}}
-@include('partials.violation-sanction-guide', [
-    'guideId' => 'securityGuide',
-    'guideTitle' => 'Violation and Sanction Guide',
-])
+{{-- Violation and Sanction Guide --}}
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        @include('partials.violation-sanction-guide', [
+            'guideId' => 'securityGuide',
+            'guideTitle' => 'Violation and Sanction Guide',
+        ])
+    </div>
+</div>
 
 @push('scripts')
 <script>

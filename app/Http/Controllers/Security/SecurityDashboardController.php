@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
+
 class SecurityDashboardController extends Controller
 {
 public function index()
@@ -99,36 +100,37 @@ $violationsByCategory = Violation::with([
     ->values();
 
 
-    // ------------------------------------------------------------
-    // SEVERITY
-    // ------------------------------------------------------------
+// ------------------------------------------------------------
+// OFFENSE LEVEL
+// ------------------------------------------------------------
 
-    $violationsBySeverity = Violation::leftJoin(
-            'violation_type_tbl',
-            'violation_tbl.violation_type',
-            '=',
-            'violation_type_tbl.violation_type_id'
-        )
-        ->where(function (Builder $query) {
-            $this->applyRecorderScope($query);
-        })
-        ->selectRaw(
-            'COALESCE(violation_type_tbl.severity_level, 0) as severity_level,
-             COUNT(*) as count'
-        )
-        ->groupBy('severity_level')
-        ->orderByDesc('count')
-        ->get()
-        ->mapWithKeys(function ($row) {
-            $label = (int) $row->severity_level === 0
-                ? 'Unmapped'
-                : 'Level ' . (int) $row->severity_level;
+// Offense Level is the student's historical occurrence of the
+// same violation type across the entire system.
+//
+// It is NOT the violation type's fixed severity level.
+//
+// Example:
+// Security records Prohibited Clothing  -> 1st Offense
+// Admin records Prohibited Clothing     -> 2nd Offense
+// OSS Staff records Prohibited Clothing -> 3rd Offense
+//
+// The dashboard still only displays records belonging to the
+// currently logged-in Security officer.
+$violationsByOffenseLevel = (clone $baseViolations)
+    ->with(['violationType.violationCategory'])
+    ->get()
+    ->groupBy(function (Violation $violation) {
+        return $violation->offense_level ?: 'N/A';
+    })
+    ->map(function ($items) {
+        return $items->count();
+    })
+    ->sortKeysUsing(function ($a, $b) {
+        $numberA = (int) preg_replace('/\D+/', '', (string) $a);
+        $numberB = (int) preg_replace('/\D+/', '', (string) $b);
 
-            return [
-                $label => (int) $row->count
-            ];
-        });
-
+        return $numberA <=> $numberB;
+    });
 
     // ------------------------------------------------------------
     // VIOLATION / SANCTION GUIDE
@@ -145,7 +147,7 @@ $violationsByCategory = Violation::with([
         'recentViolations',
         'activeOffenders',
         'violationsByCategory',
-        'violationsBySeverity',
+        'violationsByOffenseLevel',
         'categories'
     ));
 }
