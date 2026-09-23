@@ -38,6 +38,7 @@ use App\Http\Controllers\Admin\ViolationTypeController;
 
 // Security Controllers
 use App\Http\Controllers\Security\SecurityDashboardController;
+use Illuminate\Http\Request;
 /*
 
 
@@ -45,6 +46,7 @@ use App\Http\Controllers\Security\SecurityDashboardController;
 | Landing Page
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\Auth\SessionActivityController;
 
 Route::get('/', function () {
     return view('landing');
@@ -97,6 +99,12 @@ Route::post('/student/idp/link', [StudentIdpLoginController::class, 'linkAccount
 
 Route::post('/logout', [LoginController::class, 'logout'])
     ->name('logout');
+
+Route::get('/csrf-token', function (Illuminate\Http\Request $request) {
+    return response()->json([
+        'token' => csrf_token(),
+    ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+})->name('csrf.token');
 
 Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])
     ->middleware('guest:admin')
@@ -162,6 +170,26 @@ Route::post('/mfa/resend', [MfaController::class, 'resend'])
 
 Route::post('/mfa/cancel', [MfaController::class, 'cancel'])
     ->name('mfa.verify.cancel');
+
+/*
+|--------------------------------------------------------------------------
+| Session Activity
+|--------------------------------------------------------------------------
+|
+| This endpoint refreshes the inactivity timer when an authenticated
+| user explicitly interacts with the system.
+|
+| IMPORTANT:
+| Do NOT attach `session.inactivity` to this route.
+|
+| The controller itself checks whether the session has already expired.
+| Keeping the timeout middleware off this endpoint allows it to return
+| a clean JSON 440 response instead of redirecting through the middleware.
+|
+*/
+Route::post('/session/activity', [SessionActivityController::class, 'touch'])
+    ->middleware('auth:admin,security,student')
+    ->name('session.activity');
 
 // Proper password reset flow (see SECURITY MODULE requirements):
 //   1. Forgot Password? -> email only (no security questions)
@@ -277,11 +305,10 @@ Route::middleware(['auth:student', 'student.profile.complete', 'session.inactivi
         Route::post('/submit-proof', [StudentRecordController::class, 'submitProof'])
             ->name('student.submit-proof');
 
-        Route::get('/sanction-records/{studentSanctionRecord}/proof', [StudentRecordController::class, 'downloadProof'])
+        Route::get('/sanction-records/{studentSanctionRecord:proof_access_key}/proof', [StudentRecordController::class, 'downloadProof'])
             ->name('student.proof.download');
 
-        Route::get('/violations/evidence/{evidence}', [StudentRecordController::class, 'downloadEvidence'])
-            ->name('student.violations.evidence');
+Route::get('/violations/evidence/{evidence:access_key}', [StudentRecordController::class, 'downloadEvidence'])            ->name('student.violations.evidence');
 
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->name('student.notifications');
@@ -461,7 +488,7 @@ Route::middleware(['auth:admin', 'session.inactivity'])
         Route::post('/violations/deny/{violation}', [ViolationController::class, 'denyViolation'])
             ->name('admin.violations.deny');
 
-        Route::get('/violations/evidence/{evidence}', [ViolationController::class, 'downloadEvidence'])
+Route::get('/violations/evidence/{evidence:access_key}', [ViolationController::class, 'downloadEvidence'])
             ->name('admin.violations.evidence');
 
         Route::get('/violations/evidence/{evidence}/events', [ViolationController::class, 'evidenceEvents'])
@@ -493,7 +520,7 @@ Route::middleware(['auth:admin', 'session.inactivity'])
         Route::post('/sanctions/records/{studentSanctionRecord}/service-assignment', [SanctionController::class, 'updateServiceAssignment'])
             ->name('admin.sanctions.records.update-service-assignment');
 
-        Route::get('/sanctions/records/{studentSanctionRecord}/proof', [SanctionController::class, 'downloadProof'])
+        Route::get('/sanctions/records/{studentSanctionRecord:proof_access_key}/proof', [SanctionController::class, 'downloadProof'])
             ->name('admin.sanctions.proof.download');
 
         Route::get(
@@ -872,8 +899,8 @@ Route::middleware(['auth:security,admin', 'security.operational', 'session.inact
         Route::post('/violations/preview', [App\Http\Controllers\Security\StudentViolationController::class, 'previewViolation'])
             ->name('security.violations.preview');
 
-        Route::get('/violations/evidence/{evidence}', [App\Http\Controllers\Security\StudentViolationController::class, 'downloadEvidence'])
-            ->name('security.violations.evidence');
+        Route::get('/violations/evidence/{evidence:access_key}', [App\Http\Controllers\Security\StudentViolationController::class, 'downloadEvidence'])
+    ->name('security.violations.evidence');
 
         Route::post('/evidence/security-event', [App\Http\Controllers\Security\StudentViolationController::class, 'logSecurityEvent'])
             ->name('security.violations.evidence-security-event');
@@ -974,7 +1001,7 @@ Route::middleware(['auth:admin', 'oss.staff', 'session.inactivity'])
         Route::post('/violations/preview', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'previewViolation'])
             ->name('violations.preview');
 
-        Route::get('/violations/evidence/{evidence}', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'downloadEvidence'])
+       Route::get('/violations/evidence/{evidence:access_key}', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'downloadEvidence'])
             ->name('violations.evidence');
 
         Route::post('/evidence/security-event', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'logSecurityEvent'])
@@ -1013,6 +1040,11 @@ Route::middleware(['auth:admin', 'oss.staff', 'session.inactivity'])
 
         Route::get('/profile', [App\Http\Controllers\OssStaff\OssStaffProfileController::class, 'index'])
             ->name('profile');
+
+            Route::post(
+    '/session/activity',
+    [SessionActivityController::class, 'touch']
+)->name('session.activity');
 
     });
 

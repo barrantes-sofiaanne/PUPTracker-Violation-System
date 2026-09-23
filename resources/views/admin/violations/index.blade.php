@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <script src="{{ asset('js/admin/violations.js') }}"></script>
 
 <script src="{{ asset('js/admin/violation-categories.js') }}"></script>
-
+@vite('resources/js/camera/face-blur-entry.js')
 <script src="{{ asset('js/admin/record-violation.js') }}"></script>
 <script src="{{ asset('js/admin/violation-types.js') }}"></script>
 <script src="{{ asset('js/admin/violation-confirmations.js') }}"></script>

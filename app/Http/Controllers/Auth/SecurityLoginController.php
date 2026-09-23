@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-
+use App\Http\Middleware\EnforceInactivityTimeout;
 /**
  * The SHARED Security + OSS Staff login.
  *
@@ -148,7 +148,8 @@ class SecurityLoginController extends Controller
             && $trustedDeviceService->isTrusted('security', (int) $security->getKey())
         ) {
             Auth::guard('security')->login($security, false);
-            $request->session()->regenerate();
+$request->session()->regenerate();
+EnforceInactivityTimeout::startFreshActivityWindow($request);
 
             Log::info('Security login: MFA skipped for trusted device', [
                 'security_id' => $security->id,
@@ -283,7 +284,9 @@ class SecurityLoginController extends Controller
             && $trustedDeviceService->isTrusted('admin', (int) $admin->getKey())
         ) {
             Auth::guard('admin')->login($admin, false);
-            $request->session()->regenerate();
+$request->session()->regenerate();
+
+EnforceInactivityTimeout::startFreshActivityWindow($request);
 
             Log::info('Shared portal: OSS Staff MFA skipped for trusted device', [
                 'admin_id' => $admin->id,

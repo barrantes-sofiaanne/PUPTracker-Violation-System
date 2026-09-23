@@ -75,7 +75,9 @@
                                     'is_image' => (bool) $ev->is_image,
                                     'method' => $ev->capture_method,
                                     'watermarked' => (bool) $ev->watermarked,
-                                    'url' => route('admin.violations.evidence', $ev),
+                                    'url' => route('admin.violations.evidence', [
+    'evidence' => $ev->access_key,
+]),
                                     'events_url' => route('admin.violations.evidence.events', $ev),
                                 ];
                             })->values()->all();

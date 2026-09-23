@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Security;
 
+use Illuminate\Support\Facades\Schema;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Violation;
@@ -10,96 +11,146 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
+
 class SecurityDashboardController extends Controller
 {
-    public function index()
-    {
-        $baseViolations = Violation::query();
-        $this->applyRecorderScope($baseViolations);
+public function index()
+{
+    $baseViolations = Violation::query();
 
-        // Get active students count
-        $activeStudents = User::count();
+    // Apply the logged-in security officer's scope
+    // and exclude denied violations.
+    $this->applyRecorderScope($baseViolations);
 
-        // Get total violations
-        $totalViolations = (clone $baseViolations)->count();
+    // ------------------------------------------------------------
+    // BASIC COUNTS
+    // ------------------------------------------------------------
 
-        // Get recent violations (last 7 days)
-        $recentViolations = Violation::with(['student', 'violationType.violationCategory'])
-            ->where(function (Builder $query) {
-                $this->applyRecorderScope($query);
-            })
-            ->where('violation_date', '>=', now()->subDays(7))
-            ->latest('violation_date')
-            ->take(10)
-            ->get();
+    $activeStudents = User::count();
 
-        // Get students with active violations (repeat offenders)
-        $activeOffenders = Violation::select('student_number', DB::raw('COUNT(*) as violation_count'))
-            ->where(function (Builder $query) {
-                $this->applyRecorderScope($query);
-            })
-            ->groupBy('student_number')
-            ->orderByDesc('violation_count')
-            ->take(10)
-            ->get();
+    // Total = ALL effective violations recorded by this officer.
+    $totalViolations = (clone $baseViolations)->count();
 
-        // Get violations by category for the week
-        $violationsByCategory = Violation::with(['violationType.violationCategory'])
-            ->where(function (Builder $query) {
-                $this->applyRecorderScope($query);
-            })
-            ->where('violation_date', '>=', now()->subDays(7))
-            ->get()
-            ->groupBy(fn($violation) => $violation->violation_category_display)
-            ->map(function ($items, $categoryName) {
-                return (object) [
-                    'category_name' => $categoryName,
-                    'count' => $items->count(),
-                ];
-            })
-            ->sortByDesc('count')
-            ->values();
 
-        // Get violations by severity from violation_type_tbl.
-        // Some rows may still have legacy or unmapped violation types, so keep them as Unmapped.
-        $violationsBySeverity = Violation::leftJoin(
-                'violation_type_tbl',
-                'violation_tbl.violation_type',
-                '=',
-                'violation_type_tbl.violation_type_id'
-            )
-            ->where(function (Builder $query) {
-                $this->applyRecorderScope($query);
-            })
-            ->selectRaw('COALESCE(violation_type_tbl.severity_level, 0) as severity_level, COUNT(*) as count')
-            ->groupBy('severity_level')
-            ->orderByDesc('count')
-            ->get()
-            ->mapWithKeys(function ($row) {
-                $label = (int) $row->severity_level === 0
-                    ? 'Unmapped'
-                    : 'Level ' . (int) $row->severity_level;
+    // ------------------------------------------------------------
+    // RECENT VIOLATIONS
+    // ------------------------------------------------------------
 
-                return [$label => (int) $row->count];
-            });
+    // Recent Violations intentionally remains a 7-day metric.
+    // This is different from Total Violations.
+    $recentViolations = Violation::with([
+            'student',
+            'violationType.violationCategory'
+        ])
+        ->where(function (Builder $query) {
+            $this->applyRecorderScope($query);
+        })
+        ->where('violation_date', '>=', now()->subDays(7))
+        ->latest('violation_date')
+        ->take(10)
+        ->get();
 
-        // Violation and Sanction Guide. Uses the SAME data source and the SAME
-        // shared partial as the Student Dashboard, so both modules display
-        // identical violation/sanction information.
-        $categories = ViolationCategory::with([
-            'violationTypes.disciplinarySanctions'
-        ])->get();
 
-        return view('security.dashboard', compact(
-            'activeStudents',
-            'totalViolations',
-            'recentViolations',
-            'activeOffenders',
-            'violationsByCategory',
-            'violationsBySeverity',
-            'categories'
-        ));
-    }
+    // ------------------------------------------------------------
+    // TOP OFFENDERS
+    // ------------------------------------------------------------
+
+    // Top Offenders uses ALL effective violations recorded
+    // by the current security officer.
+$activeOffenders = Violation::select(
+        'student_number',
+        DB::raw('COUNT(*) as violation_count')
+    )
+    ->where(function (Builder $query) {
+        $this->applyRecorderScope($query);
+    })
+    ->groupBy('student_number')
+    ->orderByDesc('violation_count')
+    ->take(10)
+    ->get();
+
+
+    // ------------------------------------------------------------
+    // CATEGORIES
+    // ------------------------------------------------------------
+
+    // IMPORTANT:
+    // The old code used only the last 7 days.
+    //
+    // The dashboard's Total Violations represents the officer's
+    // complete effective violation records, so Categories should
+    // also represent the complete set.
+$violationsByCategory = Violation::with([
+        'violationType.violationCategory'
+    ])
+    ->where(function (Builder $query) {
+        $this->applyRecorderScope($query);
+    })
+    ->get()
+    ->groupBy(
+        fn ($violation) => $violation->violation_category_display
+    )
+    ->map(function ($items, $categoryName) {
+        return (object) [
+            'category_name' => $categoryName,
+            'count' => $items->count(),
+        ];
+    })
+    ->sortByDesc('count')
+    ->values();
+
+
+// ------------------------------------------------------------
+// OFFENSE LEVEL
+// ------------------------------------------------------------
+
+// Offense Level is the student's historical occurrence of the
+// same violation type across the entire system.
+//
+// It is NOT the violation type's fixed severity level.
+//
+// Example:
+// Security records Prohibited Clothing  -> 1st Offense
+// Admin records Prohibited Clothing     -> 2nd Offense
+// OSS Staff records Prohibited Clothing -> 3rd Offense
+//
+// The dashboard still only displays records belonging to the
+// currently logged-in Security officer.
+$violationsByOffenseLevel = (clone $baseViolations)
+    ->with(['violationType.violationCategory'])
+    ->get()
+    ->groupBy(function (Violation $violation) {
+        return $violation->offense_level ?: 'N/A';
+    })
+    ->map(function ($items) {
+        return $items->count();
+    })
+    ->sortKeysUsing(function ($a, $b) {
+        $numberA = (int) preg_replace('/\D+/', '', (string) $a);
+        $numberB = (int) preg_replace('/\D+/', '', (string) $b);
+
+        return $numberA <=> $numberB;
+    });
+
+    // ------------------------------------------------------------
+    // VIOLATION / SANCTION GUIDE
+    // ------------------------------------------------------------
+
+    $categories = ViolationCategory::with([
+        'violationTypes.disciplinarySanctions'
+    ])->get();
+
+
+    return view('security.dashboard', compact(
+        'activeStudents',
+        'totalViolations',
+        'recentViolations',
+        'activeOffenders',
+        'violationsByCategory',
+        'violationsByOffenseLevel',
+        'categories'
+    ));
+}
 
     private function applyRecorderScope($query): void
     {
@@ -114,22 +165,58 @@ class SecurityDashboardController extends Controller
      * (by recorder identity). Does NOT apply the notDenied exclusion so callers
      * (e.g. the filterable chart) can include denied rows when requested.
      */
-    private function applyRecorderIdentityScope($query): void
-    {
-        $security = Auth::guard('security')->user();
+private function applyRecorderIdentityScope($query): void
+{
+    $security = Auth::guard('security')->user();
 
-        $label = !empty($security?->email)
-            ? 'Security: ' . $security->email
-            : 'Security #' . ($security?->id ?? 'Unknown');
-
-        $legacySecurityIdLabel = 'Security #' . ($security?->id ?? 'Unknown');
-
-        $query->where('recorder_type', 'security')
-            ->where(function ($innerQuery) use ($label, $legacySecurityIdLabel) {
-                $innerQuery->where('recorder_name', $label)
-                    ->orWhere('recorder_name', $legacySecurityIdLabel);
-            });
+    if (!$security) {
+        $query->whereRaw('1 = 0');
+        return;
     }
+
+    $securityId = $security->id;
+
+    $securityLabel = !empty($security->email)
+        ? 'Security: ' . $security->email
+        : 'Security #' . $securityId;
+
+    $legacySecurityIdLabel = 'Security #' . $securityId;
+
+    $query->where(function ($outerQuery) use (
+        $securityId,
+        $securityLabel,
+        $legacySecurityIdLabel
+    ) {
+        /*
+         * New records:
+         * Match the actual Security account ID.
+         */
+        $outerQuery->where(function ($q) use ($securityId) {
+            $q->where('recorder_type', 'security')
+              ->where('recorded_by_security_id', $securityId);
+        });
+
+        /*
+         * Legacy records:
+         * Only use recorder_name when there is no
+         * recorded_by_security_id available.
+         */
+        $outerQuery->orWhere(function ($q) use (
+            $securityLabel,
+            $legacySecurityIdLabel
+        ) {
+            $q->where('recorder_type', 'security')
+              ->whereNull('recorded_by_security_id')
+              ->where(function ($nameQuery) use (
+                  $securityLabel,
+                  $legacySecurityIdLabel
+              ) {
+                  $nameQuery->where('recorder_name', $securityLabel)
+                      ->orWhere('recorder_name', $legacySecurityIdLabel);
+              });
+        });
+    });
+}
 
     /**
      * Filterable chart data: violations recorded by the CURRENT security

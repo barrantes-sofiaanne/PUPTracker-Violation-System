@@ -91,7 +91,9 @@
                                 @if($evCount > 0)
                                     <span class="badge text-bg-light border">{{ $evCount }} file(s)</span>
                                     @foreach($violation->evidence as $ev)
-                                        <a href="{{ route('oss-staff.violations.evidence', $ev) }}" target="_blank" class="d-inline-block small text-decoration-none me-1" title="{{ $ev->original_name }}">
+                                        <a href="{{ route('oss-staff.violations.evidence', [
+    'evidence' => $ev->access_key,
+]) }}" target="_blank" class="d-inline-block small text-decoration-none me-1" title="{{ $ev->original_name }}">
                                             <i class="bi {{ $ev->is_image ? 'bi-file-earmark-image' : 'bi-file-earmark-pdf' }}"></i>
                                         </a>
                                     @endforeach

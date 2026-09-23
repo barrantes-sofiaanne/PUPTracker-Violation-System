@@ -89,9 +89,15 @@
         </div>
     </div>
 
-    <form id="privacyConsentLogoutForm" method="POST" action="{{ $consentLogoutUrl }}" class="d-none">
-        @csrf
-    </form>
+<form
+    id="privacyConsentLogoutForm"
+    method="POST"
+    action="{{ $consentLogoutUrl }}"
+    class="d-none"
+    data-puptracker-logout-form
+>
+    @csrf
+</form>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {

@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use App\Http\Middleware\EnforceInactivityTimeout;
 
 class StudentIdpLoginController extends Controller
 {
@@ -227,9 +228,12 @@ class StudentIdpLoginController extends Controller
                 $request->session()->put('student.idp.refresh_token', $refreshToken);
             }
 
-            Auth::guard('student')->login($user);
-            $request->session()->regenerate();
-            $request->session()->put('show_privacy_consent_modal', true);
+Auth::guard('student')->login($user);
+$request->session()->regenerate();
+
+EnforceInactivityTimeout::startFreshActivityWindow($request);
+
+$request->session()->put('show_privacy_consent_modal', true);
 
             return redirect()->route('student.dashboard');
         } catch (\Throwable $exception) {
@@ -611,8 +615,10 @@ class StudentIdpLoginController extends Controller
             'student.idp.pending_year_id',
         ]);
 
-        Auth::guard('student')->login($student);
-        $request->session()->regenerate();
+Auth::guard('student')->login($student);
+$request->session()->regenerate();
+
+EnforceInactivityTimeout::startFreshActivityWindow($request);
         $request->session()->put('show_privacy_consent_modal', true);
 
         return redirect()->route('student.dashboard')

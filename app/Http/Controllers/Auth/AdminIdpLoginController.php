@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-
+use App\Http\Middleware\EnforceInactivityTimeout;
 /**
  * Administrator sign-in through the PUP Identity Provider (OAuth2
  * authorization-code flow).
@@ -258,10 +258,10 @@ class AdminIdpLoginController extends Controller
             if ($refreshToken !== '') {
                 $request->session()->put('admin.idp.refresh_token', $refreshToken);
             }
+Auth::guard('admin')->login($admin);
+$request->session()->regenerate();
 
-            Auth::guard('admin')->login($admin);
-            $request->session()->regenerate();
-            $request->session()->put('show_privacy_consent_modal', true);
+EnforceInactivityTimeout::startFreshActivityWindow($request);
 
             Log::info('Admin IDP login succeeded', [
                 'admin_id' => $admin->getKey(),

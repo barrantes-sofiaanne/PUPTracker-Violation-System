@@ -770,63 +770,167 @@ document.addEventListener("DOMContentLoaded", function () {
     // ------------------------------------------------------------------
     // Canvas watermark — the watermark is BAKED into the captured image.
     // ------------------------------------------------------------------
-    const drawWatermarkedCanvas = (video) => {
+    const drawWatermarkedCanvas = async (video) => {
         const width = video.videoWidth || 1280;
         const height = video.videoHeight || 720;
 
         const canvas = document.createElement("canvas");
+
         canvas.width = width;
         canvas.height = height;
+
         const ctx = canvas.getContext("2d");
 
-        // 1. Draw the camera frame.
+        // ------------------------------------------------------------
+        // 1. Draw original camera frame
+        // ------------------------------------------------------------
+
         ctx.drawImage(video, 0, 0, width, height);
 
-        // 2. Draw the watermark onto the canvas (part of the image).
-        const lines = [
-            "PUPTracker",
-            "Student ID: " + (currentStudentNumber() || "N/A"),
-            "Captured: " + formatPhTimestamp(),
-        ];
+        // ------------------------------------------------------------
+        // 2. Face detection + privacy blur
+        // ------------------------------------------------------------
 
-        ctx.font = "600 26px Arial, sans-serif";
-        const maxLineWidth = Math.round(width * 0.86);
-        let fontSize = 26;
-        ctx.font = "600 " + fontSize + "px Arial, sans-serif";
-        while (
-            fontSize > 12 &&
-            ctx.measureText(lines[1] + "  " + lines[2]).width > maxLineWidth
+        if (
+            window.PUPTrackerFaceBlur &&
+            typeof window.PUPTrackerFaceBlur.blurFacesOnCanvas === "function"
         ) {
-            fontSize -= 1;
-            ctx.font = "600 " + fontSize + "px Arial, sans-serif";
+            await window.PUPTrackerFaceBlur.blurFacesOnCanvas(canvas);
         }
 
-        const padX = 16;
-        const lineHeight = Math.round(fontSize * 1.45);
-        const blockTop = 14;
-        const blockBottom = blockTop + lines.length * lineHeight + 16;
-        const blockLeft = padX;
+        // ------------------------------------------------------------
+        // 3. Professional PUPTracker watermark
+        // ------------------------------------------------------------
 
-        // Semi-opaque band behind the watermark for readability.
-        ctx.fillStyle = "rgba(0,0,0,0.55)";
-        ctx.fillRect(0, blockTop - 6, width, blockBottom);
-        ctx.textBaseline = "top";
+        const timestamp = formatPhTimestamp();
+
+        // Scale watermark based on image width.
+        const scale = Math.max(0.75, Math.min(1.5, width / 1280));
+
+        const padding = Math.round(18 * scale);
+
+        const headerHeight = Math.round(105 * scale);
+
+        const footerHeight = Math.round(48 * scale);
+
+        // ------------------------------------------------------------
+        // TOP HEADER
+        // ------------------------------------------------------------
+
+        ctx.save();
+
+        ctx.fillStyle = "rgba(0, 0, 0, 0.68)";
+
+        ctx.fillRect(0, 0, width, headerHeight);
+
+        // ------------------------------------------------------------
+        // PUPTracker title
+        // ------------------------------------------------------------
+
         ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+
         ctx.fillStyle = "#ffffff";
-        ctx.shadowColor = "rgba(0,0,0,0.8)";
-        ctx.shadowBlur = 4;
 
-        lines.forEach(function (line, i) {
-            ctx.fillText(line, blockLeft, blockTop + i * lineHeight);
-        });
+        ctx.font = `bold ${Math.round(30 * scale)}px Arial, sans-serif`;
 
-        ctx.shadowBlur = 0;
+        ctx.fillText("PUPTRACKER", padding, Math.round(18 * scale));
+
+        // ------------------------------------------------------------
+        // Organization
+        // ------------------------------------------------------------
+
+        ctx.font = `${Math.round(13 * scale)}px Arial, sans-serif`;
+
+        ctx.fillStyle = "#f5f5f5";
+
+        ctx.fillText(
+            "POLYTECHNIC UNIVERSITY OF THE PHILIPPINES",
+            padding,
+            Math.round(53 * scale),
+        );
+
+        ctx.fillText(
+            "VIOLATION MONITORING SYSTEM",
+            padding,
+            Math.round(72 * scale),
+        );
+
+        // ------------------------------------------------------------
+        // Header divider
+        // ------------------------------------------------------------
+
+        const dividerX = Math.round(width * 0.7);
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+
+        ctx.fillRect(
+            dividerX,
+            Math.round(16 * scale),
+            1,
+            headerHeight - Math.round(32 * scale),
+        );
+
+        // ------------------------------------------------------------
+        // Capture information
+        // ------------------------------------------------------------
+
+        const infoX = dividerX + Math.round(22 * scale);
+
+        ctx.font = `${Math.round(13 * scale)}px Arial, sans-serif`;
+
+        ctx.fillStyle = "#ffffff";
+
+        ctx.fillText(`Captured: ${timestamp}`, infoX, Math.round(25 * scale));
+
+        ctx.fillText("Device: Web Camera", infoX, Math.round(49 * scale));
+
+        ctx.fillText("For Official Use Only", infoX, Math.round(73 * scale));
+
+        ctx.restore();
+
+        // ------------------------------------------------------------
+        // BOTTOM FOOTER
+        // ------------------------------------------------------------
+
+        ctx.save();
+
+        ctx.fillStyle = "rgba(128, 0, 0, 0.88)";
+
+        ctx.fillRect(0, height - footerHeight, width, footerHeight);
+
+        // Left footer
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+
+        ctx.fillStyle = "#ffffff";
+
+        ctx.font = `bold ${Math.round(15 * scale)}px Arial, sans-serif`;
+
+        ctx.fillText(
+            "PUPTRACKER EVIDENCE RECORD",
+            padding,
+            height - footerHeight / 2,
+        );
+
+        // Right footer
+        ctx.textAlign = "right";
+
+        ctx.font = `${Math.round(12 * scale)}px Arial, sans-serif`;
+
+        ctx.fillText(
+            "DISCIPLINE  |  INTEGRITY  |  SERVICE",
+            width - padding,
+            height - footerHeight / 2,
+        );
+
+        ctx.restore();
 
         return canvas;
     };
 
     capturePhotoBtn &&
-        capturePhotoBtn.addEventListener("click", function () {
+        capturePhotoBtn.addEventListener("click", async function () {
             if (!cameraActive || cameraPausedByInterruption) {
                 return; // Capture disabled while inactive/paused.
             }
@@ -834,8 +938,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            const canvas = drawWatermarkedCanvas(cameraPreview);
-
+            const canvas = await drawWatermarkedCanvas(cameraPreview);
             // Stop live camera while reviewing the captured photo.
             stopCamera();
 

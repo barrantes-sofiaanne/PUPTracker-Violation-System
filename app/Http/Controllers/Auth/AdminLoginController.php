@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Middleware\EnforceInactivityTimeout;
+
 
 class AdminLoginController extends Controller
 {
@@ -106,10 +108,12 @@ if (
     (bool) config('auth.features.remember_device', false)
     && $trustedDeviceService->isTrusted('admin', (int) $admin->getKey())
 ) {
-    Auth::guard('admin')->login($admin, false);
-    $request->session()->regenerate();
+Auth::guard('admin')->login($admin, false);
+$request->session()->regenerate();
 
-    SessionExpiryNotice::clear($request);
+EnforceInactivityTimeout::startFreshActivityWindow($request);
+
+SessionExpiryNotice::clear($request);
 
     Log::info('Admin login: MFA skipped for trusted device', [
         'admin_id' => $admin->id,
