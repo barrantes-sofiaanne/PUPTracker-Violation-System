@@ -210,13 +210,6 @@ Route::get('/password/reset/{guard}/{token}', [ForgotPasswordController::class, 
     ->whereIn('guard', ['student', 'admin', 'security'])
     ->name('password.reset.form');
 
-// OTP step for privileged (admin/security) password resets.
-// The in-app lock caps verification attempts at 5; the network throttle is a
-// looser backstop so a user with a couple of typos isn't blocked by IP.
-Route::post('/password/reset/{guard}/otp', [ForgotPasswordController::class, 'verifyOtp'])
-    ->whereIn('guard', ['student', 'admin', 'security'])
-    ->middleware('throttle:10,15')
-    ->name('password.reset.otp');
 
 Route::post('/password/reset/{guard}', [ForgotPasswordController::class, 'reset'])
     ->whereIn('guard', ['student', 'admin', 'security'])

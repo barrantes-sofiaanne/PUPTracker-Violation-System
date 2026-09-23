@@ -25,8 +25,7 @@ class PasswordResetService
         'security' => Security::class,
     ];
 
-    /** Account types that require an extra OTP step before setting a new password. */
-    private const PRIVILEGED_GUARDS = ['admin', 'security'];
+
 
     public function guardModel(string $guard): string
     {
@@ -37,10 +36,7 @@ class PasswordResetService
         return self::MODELS[$guard];
     }
 
-    public function isPrivileged(string $guard): bool
-    {
-        return in_array($guard, self::PRIVILEGED_GUARDS, true);
-    }
+
 
     public function findAccountByEmail(string $guard, string $email): Admin|Security|User|null
     {
