@@ -1638,11 +1638,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 const data = await response.json();
 
                 if (!response.ok) {
+                    console.error("Violation submission failed:", data);
+
                     throw new Error(
-                        data.message || "Unable to submit violation.",
+                        data.error
+                            ? `${data.message || "Unable to submit violation."} ${data.error}`
+                            : data.message || "Unable to submit violation.",
                     );
                 }
-
                 const modal = bootstrap.Modal.getInstance(modalElement);
                 modal.hide();
 
