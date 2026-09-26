@@ -483,9 +483,9 @@ $violationType = $original->resolvedViolationType();
                 'student_number' => $original->student_number,
 'violation_type_id' => $violationType?->violation_type_id,                'violation_date' => $validated['violation_date'],
                 'description' => trim($validated['description']),
-                'recorder_type' => 'security',
-'recorder_id' => $security->id,
-                'recorder_name' => $securityLabel,
+'recorder_type' => 'security',
+'recorder_id' => null,
+'recorder_name' => $securityLabel,
                 'status' => Violation::STATUS_PENDING,
             ];
 
