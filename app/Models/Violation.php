@@ -245,14 +245,14 @@ public function getOffenseLevelAttribute(): string
     |--------------------------------------------------------------------------
     */
 
-    public function violationType(): BelongsTo
-    {
-        return $this->belongsTo(
-            ViolationType::class,
-            'violation_type_id',
-            'violation_type_id'
-        );
-    }
+public function violationType(): BelongsTo
+{
+    return $this->belongsTo(
+        ViolationType::class,
+        'violation_type_id',
+        'violation_type_id'
+    );
+}
 
     /*
     |--------------------------------------------------------------------------
