@@ -703,7 +703,7 @@ $violationCounts = $reports->groupBy(
                 trim((string) ($report->student?->last_name ?? '') . ', ' . (string) ($report->student?->first_name ?? ''))
             );
             $sheet->setCellValue('C' . $row, optional($report->student?->studentInfo?->program)->program_name ?? '-');
-            $sheet->setCellValue('D' . $row, optional($report->violationType)->violation_type ?: ($report->violation_type ?: '-'));
+            $sheet->setCellValue('D' . $row, optional($report->violationType)->violation_type ?: '-');
             $sheet->setCellValue('E' . $row, optional($report->violationType?->violationCategory)->category_name ?? '-');
             $sheet->setCellValue('F' . $row, optional($report->violationType)->severity_level ?? '-');
             $sheet->setCellValue('G' . $row, optional($report->sanction)->disciplinary_sanction ?? '-');

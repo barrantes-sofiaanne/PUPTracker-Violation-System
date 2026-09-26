@@ -567,9 +567,7 @@ $individualViolations = Violation::with([
                 return 'type:' . $resolvedId;
             }
 
-            $raw = mb_strtolower(trim((string) $violation->violation_type));
-
-            // Legacy row: map the stored NAME back to its type ID.
+$raw = mb_strtolower(trim((string) $violation->violationType?->violation_type));
             return isset($typeIdByName[$raw])
                 ? 'type:' . $typeIdByName[$raw]
                 : 'raw:' . $raw;
@@ -606,8 +604,7 @@ $individualViolations = Violation::with([
                 // Human-readable type name. The `violation_type` column stores the
                 // TYPE ID, so printing it directly showed numbers like "10"/"24".
                 // The relationship is the source of truth; Security does the same.
-                'violation_type' => optional($latest->violationType)->violation_type ?? $latest->violation_type,
-                'offense_level' => $offenseLevel,
+'violation_type' => optional($latest->violationType)->violation_type ?? '-',                'offense_level' => $offenseLevel,
                 'status' => $sanctionRequest?->status ?? 'No Request',
                 'violation_status' => $violationStatus,
                 'remarks' => $records->count() > 1

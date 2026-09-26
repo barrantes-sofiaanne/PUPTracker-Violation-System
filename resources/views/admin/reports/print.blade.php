@@ -163,8 +163,7 @@
                 return $studentReports
                     ->sortBy('violation_date')
                     ->map(function ($record) use (&$offenseCounter) {
-                        $key = (string) $record->violation_type;
-                        $offenseCounter[$key] = ($offenseCounter[$key] ?? 0) + 1;
+$key = (string) $record->violation_type_id;                        $offenseCounter[$key] = ($offenseCounter[$key] ?? 0) + 1;
 
                         return [
                             'record' => $record,
@@ -222,8 +221,7 @@
                         @endphp
                         <tr>
                             <td>
-                                {{ optional($record->violationType)->violation_type ?: ($record->violation_type ?: '-') }}
-                                @if(!empty($record->description))
+{{ optional($record->violationType)->violation_type ?: '-' }}                                @if(!empty($record->description))
                                     <span class="remarks">Remarks: {{ $record->description }}</span>
                                 @endif
                             </td>
