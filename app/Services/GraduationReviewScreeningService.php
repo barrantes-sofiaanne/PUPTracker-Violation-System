@@ -90,16 +90,15 @@ class GraduationReviewScreeningService
         $outstanding = $pending; // Open sanction = outstanding/not yet completed.
 
         $mostRecentViolation = $violations->last();
+$patternCounts = $violations
+    ->map(function (\App\Models\Violation $violation) {
+        $type = $violation->resolvedViolationType();
 
-        $patternCounts = $violations
-            ->map(function (\App\Models\Violation $violation) {
-                $type = $violation->resolvedViolationType();
-
-                return $type?->violation_type_id
-                    ? 'id:' . $type->violation_type_id
-                    : 'raw:' . strtolower(trim((string) $violation->violation_type));
-            })
-            ->countBy();
+        return $type?->violation_type_id
+            ? 'id:' . $type->violation_type_id
+            : 'unknown:' . $violation->violation_id;
+    })
+    ->countBy();
 
         $repeatedViolations = $patternCounts->filter(fn ($count) => $count > 1)->isNotEmpty();
 
@@ -134,9 +133,9 @@ class GraduationReviewScreeningService
             'pending_sanctions' => $pending,
             'outstanding_sanctions' => $outstanding,
             'most_recent_violation_date' => $mostRecentViolation?->violation_date?->toDateString(),
-            'most_recent_violation_type' => $mostRecentViolation
-                ? ($mostRecentViolation->violationTypeDisplay ?? $mostRecentViolation->violation_type)
-                : null,
+'most_recent_violation_type' => $mostRecentViolation
+    ? $mostRecentViolation->violationTypeDisplay
+    : null,
             'repeated_violations_exist' => $repeatedViolations,
             'repeated_categories_exist' => $repeatedCategories,
             'violation_periods' => $this->academicPeriods($violations),
@@ -155,9 +154,9 @@ class GraduationReviewScreeningService
     {
         $payload = [
             'violations' => $violations->map(fn ($v) => [
-                $v->violation_id,
-                (string) $v->violation_type,
-                $v->violation_date?->toDateString(),
+$v->violation_id,
+(string) $v->violation_type_id,
+$v->violation_date?->toDateString(),
                 (string) $v->description,
             ])->all(),
             'sanctions' => $sanctionRecords->map(fn ($r) => [
@@ -223,8 +222,7 @@ class GraduationReviewScreeningService
         return $violations->map(function ($violation) {
             return [
                 'ref' => $violation->violation_id,
-                'type' => $violation->violationTypeDisplay ?? $violation->violation_type,
-                'date' => $violation->violation_date?->toDateString(),
+'type' => $violation->violationTypeDisplay,                'date' => $violation->violation_date?->toDateString(),
                 'description' => mb_substr((string) $violation->description, 0, 200),
             ];
         })->values()->all();

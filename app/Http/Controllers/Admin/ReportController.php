@@ -182,19 +182,13 @@ class ReportController extends Controller
                 $query->whereHas('violationType', fn ($q) => $q->where('violation_category_id', $request->category));
             }
 
-            if ($request->filled('violation_type')) {
-                $selectedViolationType = (string) $request->violation_type;
+if ($request->filled('violation_type')) {
+    $selectedViolationType = (string) $request->violation_type;
 
-                $query->where(function ($violationQuery) use ($selectedViolationType): void {
-                    // Support both data styles in violation_tbl.violation_type:
-                    // some records store the ID, others store the violation type text.
-                    $violationQuery->where('violation_type', $selectedViolationType)
-                        ->orWhereHas('violationType', function ($typeQuery) use ($selectedViolationType): void {
-                            $typeQuery->where('violation_type_id', $selectedViolationType)
-                                ->orWhere('violation_type', $selectedViolationType);
-                        });
-                });
-            }
+    $query->whereHas('violationType', function ($typeQuery) use ($selectedViolationType): void {
+        $typeQuery->where('violation_type_id', $selectedViolationType);
+    });
+}
 
             if ($request->filled('start_date')) {
                 $query->whereDate('violation_date', '>=', $request->start_date);
