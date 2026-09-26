@@ -113,17 +113,19 @@ class StudentController extends Controller
             ->paginate(15, ['*'], 'admins_page')
             ->withQueryString();
 
-        $securities = Security::query()
-            ->with(['securityInfo', 'securityProfile'])
+$securities = Security::query()
+    ->with('securityInfo')
             ->when($request->filled('security_search'), function ($query) use ($request) {
                 $search = '%' . trim($request->security_search) . '%';
                 $query->where(function ($searchQuery) use ($search) {
                     $searchQuery->where('email', 'like', $search)
-                        ->orWhereHas('securityProfile', function ($securityProfileQuery) use ($search) {
-                            $securityProfileQuery->where('firstname', 'like', $search)
-                                ->orWhere('middlename', 'like', $search)
-                                ->orWhere('lastname', 'like', $search);
-                        })
+->orWhereHas('securityInfo', function ($securityInfoQuery) use ($search) {
+    $securityInfoQuery->where('firstname', 'like', $search)
+        ->orWhere('middlename', 'like', $search)
+        ->orWhere('lastname', 'like', $search)
+        ->orWhere('contact_number', 'like', $search)
+        ->orWhere('address', 'like', $search);
+})
                         ->orWhereHas('securityInfo', function ($securityInfoQuery) use ($search) {
                             $securityInfoQuery->where('contact_number', 'like', $search)
                                 ->orWhere('address', 'like', $search);
@@ -314,7 +316,6 @@ class StudentController extends Controller
                 $this->buildSecurityInfoData($validated)
             );
 
-            $this->syncLegacySecurityNameData($security->id, $validated);
         });
 
         // The transaction always assigns $security before committing; the
@@ -471,11 +472,11 @@ class StudentController extends Controller
         ]);
 
         $securityEmailBefore = $security->email;
-        $securityNameBefore = [
-            'firstname' => $security->securityInfo->firstname ?? $security->securityProfile->firstname ?? '',
-            'middlename' => $security->securityInfo->middlename ?? $security->securityProfile->middlename ?? '',
-            'lastname' => $security->securityInfo->lastname ?? $security->securityProfile->lastname ?? '',
-        ];
+       $securityNameBefore = [
+    'firstname' => $security->securityInfo->firstname ?? '',
+    'middlename' => $security->securityInfo->middlename ?? '',
+    'lastname' => $security->securityInfo->lastname ?? '',
+];
 
         DB::transaction(function () use ($security, $validated): void {
             $security->email = $validated['email'];
@@ -491,7 +492,6 @@ class StudentController extends Controller
                 $this->buildSecurityInfoData($validated)
             );
 
-            $this->syncLegacySecurityNameData($security->id, $validated);
         });
 
         $this->logUserManagementAction(
@@ -506,14 +506,15 @@ class StudentController extends Controller
             ->with('success', 'Security account updated successfully.');
     }
 
-    public function destroySecurity(Security $security)
-    {
-        $securityEmail = $security->email;
-        $securityName = trim(
-            ($security->securityInfo?->firstname ?? $security->securityProfile?->firstname ?? '')
-                . ' '
-                . ($security->securityInfo?->lastname ?? $security->securityProfile?->lastname ?? '')
-        ) ?: $securityEmail;
+public function destroySecurity(Security $security)
+{
+    $securityEmail = $security->email;
+
+    $securityName = trim(
+        ($security->securityInfo?->firstname ?? '')
+        . ' '
+        . ($security->securityInfo?->lastname ?? '')
+    ) ?: $securityEmail;
 
         if ($security->securityInfo) {
             $security->securityInfo->delete();
@@ -567,11 +568,11 @@ class StudentController extends Controller
         ];
 
         $fresh = $security->fresh();
-        $nameAfter = [
-            'firstname' => $fresh?->securityInfo?->firstname ?? $fresh?->securityProfile?->firstname ?? '',
-            'middlename' => $fresh?->securityInfo?->middlename ?? $fresh?->securityProfile?->middlename ?? '',
-            'lastname' => $fresh?->securityInfo?->lastname ?? $fresh?->securityProfile?->lastname ?? '',
-        ];
+$nameAfter = [
+    'firstname' => $fresh?->securityInfo?->firstname ?? '',
+    'middlename' => $fresh?->securityInfo?->middlename ?? '',
+    'lastname' => $fresh?->securityInfo?->lastname ?? '',
+];
 
         foreach ($fieldMap as $key => $label) {
             $from = (string) ($nameBefore[$key] ?? '');
@@ -1271,7 +1272,6 @@ class StudentController extends Controller
             $this->buildSecurityInfoData($row)
         );
 
-        $this->syncLegacySecurityNameData($security->id, $row);
 
         return 1;
     }
@@ -1299,54 +1299,7 @@ class StudentController extends Controller
         return $securityInfoData;
     }
 
-    private function syncLegacySecurityNameData(int $securityId, array $data): void
-    {
-        if (!Schema::hasTable('security_info')) {
-            return;
-        }
 
-        $legacyData = [];
-
-        if (Schema::hasColumn('security_info', 'firstname')) {
-            $legacyData['firstname'] = $data['firstname'] ?? '';
-        }
-
-        if (Schema::hasColumn('security_info', 'middlename')) {
-            $legacyData['middlename'] = $data['middlename'] ?? null;
-        }
-
-        if (Schema::hasColumn('security_info', 'lastname')) {
-            $legacyData['lastname'] = $data['lastname'] ?? '';
-        }
-
-        if (Schema::hasColumn('security_info', 'position')) {
-            $legacyData['position'] = $data['position'] ?? null;
-        }
-
-        if (Schema::hasColumn('security_info', 'updated_at')) {
-            $legacyData['updated_at'] = now();
-        }
-
-        if (!empty($legacyData)) {
-            $existing = DB::table('security_info')
-                ->where('security_id', $securityId)
-                ->exists();
-
-            if ($existing) {
-                DB::table('security_info')
-                    ->where('security_id', $securityId)
-                    ->update($legacyData);
-                return;
-            }
-
-            if (Schema::hasColumn('security_info', 'created_at')) {
-                $legacyData['created_at'] = now();
-            }
-
-            $legacyData['security_id'] = $securityId;
-            DB::table('security_info')->insert($legacyData);
-        }
-    }
 
     private function resolveStudentStatusIdFromUserStatusId(?int $statusId): ?int
     {
@@ -1433,14 +1386,20 @@ class StudentController extends Controller
         }
 
         if ($accountType === 'security') {
-            $security = Security::query()->with(['securityProfile', 'securityInfo'])->find($userId);
+$security = Security::query()
+    ->with('securityInfo')
+    ->find($userId);
 
-            if ($security) {
-                $profile = $security->securityProfile;
-                $name = trim(($profile->firstname ?? '') . ' ' . ($profile->lastname ?? ''));
+if ($security) {
+    $info = $security->securityInfo;
 
-                return $name ?: $security->email;
-            }
+    $name = trim(
+        ($info->firstname ?? '') . ' ' .
+        ($info->lastname ?? '')
+    );
+
+    return $name ?: $security->email;
+}
 
             return $email ?: ('Security #' . $userId);
         }

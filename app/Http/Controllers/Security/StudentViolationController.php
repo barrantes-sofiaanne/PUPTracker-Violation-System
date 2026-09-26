@@ -267,7 +267,7 @@ class StudentViolationController extends Controller
             ->limit(10)
             ->get();
 
-        return response()->json($students->map(function ($student) {
+        return response()->json($students->map(function (User $student) {
             return [
                 'id' => $student->student_number,
                 'student_number' => $student->student_number,
@@ -721,13 +721,12 @@ class StudentViolationController extends Controller
             return 'Security Account';
         }
 
-        $info = $security->securityInfo;
-        $legacyInfo = $security->securityProfile;
+$info = $security->securityInfo;
 
-        $fullName = trim(implode(' ', array_filter([
-            $info?->firstname ?? $legacyInfo?->firstname,
-            $info?->middlename ?? $legacyInfo?->middlename,
-            $info?->lastname ?? $legacyInfo?->lastname,
+$fullName = trim(implode(' ', array_filter([
+    $info?->firstname,
+    $info?->middlename,
+    $info?->lastname,
         ], fn ($value) => !empty($value))));
 
         if ($fullName !== '') {

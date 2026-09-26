@@ -516,8 +516,7 @@ public function show(Request $request, string $student_number)
 $individualViolations = Violation::with([
     'violationType.violationCategory',
     'recorder.adminInfo',
-    'recordingSecurity.securityInfo',
-    'recordingSecurity.securityProfile',
+'recordingSecurity.securityInfo',
 ])
     ->where('student_number', $student_number)
     ->effective()

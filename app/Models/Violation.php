@@ -209,14 +209,14 @@ class Violation extends Model
         if (!empty($this->recorder_name)) {
             if (str_starts_with($this->recorder_name, 'Security: ')) {
                 $security = Security::where('email', substr($this->recorder_name, 10))
-                    ->with(['securityInfo', 'securityProfile'])
+                    ->with('securityInfo')
                     ->first();
 
                 $fullName = trim(implode(' ', array_filter([
-                    $security?->securityInfo?->firstname ?? $security?->securityProfile?->firstname,
-                    $security?->securityInfo?->middlename ?? $security?->securityProfile?->middlename,
-                    $security?->securityInfo?->lastname ?? $security?->securityProfile?->lastname,
-                ], fn ($value) => !empty($value))));
+    $security?->securityInfo?->firstname,
+    $security?->securityInfo?->middlename,
+    $security?->securityInfo?->lastname,
+], fn ($value) => !empty($value))));
 
                 if ($fullName !== '') {
                     return $fullName;

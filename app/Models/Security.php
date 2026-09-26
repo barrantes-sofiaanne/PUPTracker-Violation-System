@@ -45,13 +45,9 @@ class Security extends Authenticatable
         return $this->password;
     }
 
-    public function securityInfo(): HasOne
-    {
-        return $this->hasOne(SecurityInfo::class, 'security_id', 'id');
-    }
+public function securityInfo(): HasOne
+{
+    return $this->hasOne(SecurityInfo::class, 'security_id', 'id');
+}
 
-    public function securityProfile(): HasOne
-    {
-        return $this->hasOne(SecurityProfile::class, 'security_id', 'id');
-    }
 }
