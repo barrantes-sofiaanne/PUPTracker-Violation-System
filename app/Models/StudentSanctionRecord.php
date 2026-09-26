@@ -68,6 +68,7 @@ class StudentSanctionRecord extends Model
         'date_assigned',
         'date_completed',
         'proof_path',
+        'proof_access_key',
         'proof_original_name',
         'proof_submitted_at',
         'proof_notes',

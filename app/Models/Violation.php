@@ -12,7 +12,7 @@ use App\Models\ViolationType;
 /**
  * @property int $violation_id
  * @property string|null $student_number
- * @property string|int|null $violation_type
+ * @property string|int|null $violation_type_id
  * @property \Illuminate\Support\Carbon|null $violation_date
  * @property string|null $description
  * @property int|null $recorder_id
@@ -146,20 +146,16 @@ class Violation extends Model
         return $this->hasMany(ViolationEvidence::class, 'violation_id', 'violation_id');
     }
 
-    public function getViolationTypeDisplayAttribute(): string
-    {
-        $resolved = $this->resolvedViolationType();
-        if (!empty($resolved?->violation_type)) {
-            return $resolved->violation_type;
-        }
+public function getViolationTypeDisplayAttribute(): string
+{
+    $resolved = $this->resolvedViolationType();
 
-        $raw = trim((string) $this->violation_type);
-        if ($raw !== '' && !ctype_digit($raw)) {
-            return $raw;
-        }
-
-        return 'Unknown Violation';
+    if (!empty($resolved?->violation_type)) {
+        return $resolved->violation_type;
     }
+
+    return 'Unknown Violation';
+}
 
     public function getViolationCategoryDisplayAttribute(): string
     {
@@ -167,43 +163,28 @@ class Violation extends Model
         return (string) ($resolved?->violationCategory?->category_name ?? 'N/A');
     }
 
-    public function getOffenseLevelAttribute(): string
-    {
-        if (!empty($this->attributes['offense_level'])) {
-            return (string) $this->attributes['offense_level'];
-        }
-
-        if (empty($this->student_number) || empty($this->violation_id)) {
-            return '';
-        }
-
-        $rawType = trim((string) $this->violation_type);
-        if ($rawType === '') {
-            return '';
-        }
-
-        $resolved = $this->resolvedViolationType();
-
-        $count = self::where('student_number', $this->student_number)
-            ->where('violation_id', '<=', $this->violation_id)
-            ->where(function ($query) use ($rawType, $resolved) {
-                $query->where('violation_type', $rawType);
-
-                if ($resolved?->violation_type_id !== null) {
-                    $query->orWhere('violation_type', (string) $resolved->violation_type_id);
-                }
-
-                if (!empty($resolved?->violation_type)) {
-                    $query->orWhere('violation_type', $resolved->violation_type);
-                }
-            })
-            // Only confirmed/legacy violations count toward the offense level;
-            // pending (awaiting admin confirmation) and denied rows do not.
-            ->effective()
-            ->count();
-
-        return $this->formatOffenseLevel((int) $count);
+public function getOffenseLevelAttribute(): string
+{
+    if (!empty($this->attributes['offense_level'])) {
+        return (string) $this->attributes['offense_level'];
     }
+
+    if (empty($this->student_number) || empty($this->violation_id)) {
+        return '';
+    }
+
+    if (empty($this->violation_type_id)) {
+        return '';
+    }
+
+    $count = self::where('student_number', $this->student_number)
+        ->where('violation_type_id', $this->violation_type_id)
+        ->where('violation_id', '<=', $this->violation_id)
+        ->effective()
+        ->count();
+
+    return $this->formatOffenseLevel((int) $count);
+}
 
     public function getRecordedByDisplayAttribute(): string
     {
@@ -302,25 +283,26 @@ public function recordingSecurity(): BelongsTo
     );
 }
 
-    public function resolvedViolationType(): ?ViolationType
-    {
-        if ($this->relationLoaded('violationType') && $this->violationType) {
-            return $this->violationType;
-        }
-
-        $raw = trim((string) $this->violation_type);
-        if ($raw === '') {
-            return null;
-        }
-
-        if (ctype_digit($raw)) {
-            return ViolationType::with('violationCategory')->find((int) $raw);
-        }
-
-        return ViolationType::with('violationCategory')
-            ->where('violation_type', $raw)
-            ->first();
+public function resolvedViolationType(): ?ViolationType
+{
+    if ($this->relationLoaded('violationType') && $this->violationType) {
+        return $this->violationType;
     }
+
+    $raw = trim((string) $this->violation_type);
+
+    if ($raw === '') {
+        return null;
+    }
+
+    if (ctype_digit($raw)) {
+        return ViolationType::with('violationCategory')->find((int) $raw);
+    }
+
+    return ViolationType::with('violationCategory')
+        ->where('violation_type', $raw)
+        ->first();
+}
 
     private function formatOffenseLevel(int $count): string
     {
