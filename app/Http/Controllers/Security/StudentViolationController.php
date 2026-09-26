@@ -425,12 +425,7 @@ class StudentViolationController extends Controller
                 'line' => $exception->getLine(),
             ]);
 
-            return response()->json([
-    'message' => 'Security violation store failed.',
-    'error' => $exception->getMessage(),
-    'file' => $exception->getFile(),
-    'line' => $exception->getLine(),
-], 500);
+return \App\Support\Responses::unexpectedError();
         }
     }
 
