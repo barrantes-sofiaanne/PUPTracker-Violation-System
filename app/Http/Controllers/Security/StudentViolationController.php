@@ -364,9 +364,9 @@ class StudentViolationController extends Controller
                 'violation_date' => $validated['violation_date'],
                 'description' => trim($validated['description']),
                 // recorder_id references admins.id; security accounts are in a different table.
-                'recorder_type' => 'security',
-'recorder_id' => $security->id,
-                'recorder_name' => $securityLabel,
+'recorder_type' => 'security',
+'recorder_id' => null,
+'recorder_name' => $securityLabel,
                 // Security-recorded violations are sent to the admin for
                 // confirmation before they count toward the student's record.
                 'status' => Violation::STATUS_PENDING,
