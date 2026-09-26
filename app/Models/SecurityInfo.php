@@ -13,7 +13,6 @@ class SecurityInfo extends Model
         'firstname',
         'middlename',
         'lastname',
-        'contact_number',
-        'address',
+
     ];
 }

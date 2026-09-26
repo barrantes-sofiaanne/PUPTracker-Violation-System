@@ -122,9 +122,7 @@ $securities = Security::query()
 ->orWhereHas('securityInfo', function ($securityInfoQuery) use ($search) {
     $securityInfoQuery->where('firstname', 'like', $search)
         ->orWhere('middlename', 'like', $search)
-        ->orWhere('lastname', 'like', $search)
-        ->orWhere('contact_number', 'like', $search)
-        ->orWhere('address', 'like', $search);
+        ->orWhere('lastname', 'like', $search);
 })
                         ->orWhereHas('securityInfo', function ($securityInfoQuery) use ($search) {
                             $securityInfoQuery->where('contact_number', 'like', $search)
@@ -1276,28 +1274,24 @@ $nameAfter = [
         return 1;
     }
 
-    private function buildSecurityInfoData(array $data): array
-    {
-        $securityInfoData = [
-            'contact_number' => '',
-            'address' => '',
-        ];
+private function buildSecurityInfoData(array $data): array
+{
+    $securityInfoData = [];
 
-        // Some environments may still be pending the name-fields migration.
-        if (Schema::hasColumn('security_info_tbl', 'firstname')) {
-            $securityInfoData['firstname'] = $data['firstname'] ?? '';
-        }
-
-        if (Schema::hasColumn('security_info_tbl', 'middlename')) {
-            $securityInfoData['middlename'] = $data['middlename'] ?? null;
-        }
-
-        if (Schema::hasColumn('security_info_tbl', 'lastname')) {
-            $securityInfoData['lastname'] = $data['lastname'] ?? '';
-        }
-
-        return $securityInfoData;
+    if (Schema::hasColumn('security_info_tbl', 'firstname')) {
+        $securityInfoData['firstname'] = $data['firstname'] ?? '';
     }
+
+    if (Schema::hasColumn('security_info_tbl', 'middlename')) {
+        $securityInfoData['middlename'] = $data['middlename'] ?? null;
+    }
+
+    if (Schema::hasColumn('security_info_tbl', 'lastname')) {
+        $securityInfoData['lastname'] = $data['lastname'] ?? '';
+    }
+
+    return $securityInfoData;
+}
 
 
 

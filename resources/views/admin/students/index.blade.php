@@ -856,8 +856,8 @@ const importGuides = {
         help: 'Role and status values can use readable names (e.g., Admin, IT Administrator, Active).',
     },
     security_create_activate: {
-        columns: ['email', 'firstname', 'middlename', 'lastname', 'position', 'contact_number', 'address', 'password'],
-        help: 'Firstname and lastname are required. Position, contact number, and address are optional but recommended for complete profiles.',
+        columns: ['email', 'firstname', 'middlename', 'lastname', 'position', 'password'],
+        help: 'Firstname and lastname are required. Position is optional but recommended for complete profiles.',
     },
 };
 
