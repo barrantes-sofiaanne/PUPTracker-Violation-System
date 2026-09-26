@@ -37,7 +37,7 @@ class Violation extends Model
 
     protected $fillable = [
         'student_number',
-        'violation_type',
+        'violation_type_id',
         'violation_date',
         'description',
         'recorder_id',
@@ -51,7 +51,8 @@ class Violation extends Model
     ];
 
     protected $casts = [
-        'violation_date' => 'datetime',
+    'violation_type_id' => 'integer',    
+    'violation_date' => 'datetime',
         'reviewed_at' => 'datetime',
     ];
 
@@ -267,7 +268,7 @@ class Violation extends Model
     {
         return $this->belongsTo(
             ViolationType::class,
-            'violation_type',
+            'violation_type_id',
             'violation_type_id'
         );
     }

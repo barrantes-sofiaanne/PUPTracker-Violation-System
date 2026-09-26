@@ -793,13 +793,13 @@ $violationType = ViolationType::with('violationCategory')
         */
 
 $previousCount = Violation::where(
-        'student_number',
-        $request->student_number
+    'student_number',
+    $request->student_number
+)
+    ->where(
+        'violation_type_id',
+        $violationType->violation_type_id
     )
-    ->where(function ($query) use ($violationType) {
-        $query->where('violation_type', (string) $violationType->violation_type_id)
-            ->orWhere('violation_type', $violationType->violation_type);
-    })
     ->effective()
     ->count();
 
@@ -926,14 +926,11 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
             |--------------------------------------------------------------------------
             */
 
-            $exists = Violation::where(
-                    'student_number',
-                    $validated['student_number']
-                )
-                ->where(function ($query) use ($violationType) {
-                    $query->where('violation_type', (string) $violationType->violation_type_id)
-                        ->orWhere('violation_type', $violationType->violation_type);
-                })
+$exists = Violation::where(
+        'student_number',
+        $validated['student_number']
+    )
+    ->where('violation_type_id', $violationType->violation_type_id)
                 ->whereDate(
                     'violation_date',
                     date(
@@ -976,7 +973,7 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
 
                 'student_number' => $validated['student_number'],
 
-                'violation_type' => $violationType->violation_type_id,
+                'violation_type_id' => $violationType->violation_type_id,
 
                 'violation_date' => $validated['violation_date'],
 
