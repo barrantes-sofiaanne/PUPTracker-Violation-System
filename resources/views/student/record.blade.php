@@ -1232,8 +1232,7 @@
                                             data-office="{{ $record->designated_office ?? '' }}"
                                             data-starting-date="{{ optional($record->starting_date)->format('M d, Y') ?? '' }}"
                                             data-required-hours="{{ $record->required_hours ?? '' }}"
-                                            data-community-service="{{ $record->is_service_sanction ? '1' : '0' }}">
-                                            <i class="bi bi-upload me-1"></i>Submit Proof
+data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}"                                            <i class="bi bi-upload me-1"></i>Submit Proof
                                         </button>
                                     @else
                                         {{-- Every other sanction is settled through a personal
@@ -1683,11 +1682,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 // The official form is only relevant for Community Service /
                 // Campus Service sanctions. Show the download link only when
                 // the assigned sanction is one of those; hide it for others.
-                const officialArea = document.getElementById('officialFormArea');
-                if (officialArea) {
-                    const isCommunityService = String(button.dataset.communityService || '0') === '1';
-                    officialArea.classList.toggle('d-none', !isCommunityService);
-                }
+// The official form is relevant to service sanctions.
+// Show the download link for Community Service, Campus Service,
+// and Student-Assistance Service.
+const officialArea = document.getElementById('officialFormArea');
+
+if (officialArea) {
+    const isServiceSanction =
+        String(button.dataset.serviceSanction || '0') === '1';
+
+    officialArea.classList.toggle('d-none', !isServiceSanction);
+}
 
                 submitProofModal.show();
             });

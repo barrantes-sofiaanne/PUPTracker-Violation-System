@@ -677,8 +677,11 @@ document.addEventListener('DOMContentLoaded', function () {
             // Community Service / Campus Service assignment fields are shown and
             // required ONLY for those two sanction types.
             const sanctionText = String(button.dataset.sanction || '').toLowerCase();
-            const isServiceSanction = sanctionText.includes('community') || sanctionText.includes('campus service');
-            const serviceWrap = document.getElementById('serviceAssignmentFields');
+const isServiceSanction =
+    sanctionText.includes('community service') ||
+    sanctionText.includes('campus service') ||
+    sanctionText.includes('student-assistance service') ||
+    sanctionText.includes('student assistance service');            const serviceWrap = document.getElementById('serviceAssignmentFields');
             if (serviceWrap) {
                 serviceWrap.classList.toggle('d-none', !isServiceSanction);
                 const officeInput = document.getElementById('modal_designated_office');

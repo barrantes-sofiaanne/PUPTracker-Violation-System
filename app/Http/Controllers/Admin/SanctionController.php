@@ -712,13 +712,15 @@ if (! $student->isActiveAccount()) {
      * Service sanction (the only types that carry a designated office and a
      * starting date).
      */
-    private function isServiceSanctionText(?string $sanctionText): bool
-    {
-        $text = strtolower(trim((string) $sanctionText));
+private function isServiceSanctionText(string $sanction): bool
+{
+    $text = strtolower(trim($sanction));
 
-        return $text !== ''
-            && (str_contains($text, 'community') || str_contains($text, 'campus service'));
-    }
+    return str_contains($text, 'community service')
+        || str_contains($text, 'campus service')
+        || str_contains($text, 'student-assistance service')
+        || str_contains($text, 'student assistance service');
+}
 
     /**
      * Resolve the DisciplinarySanction that approveRequest() will assign for a

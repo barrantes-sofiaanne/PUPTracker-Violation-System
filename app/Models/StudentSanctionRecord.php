@@ -179,7 +179,9 @@ class StudentSanctionRecord extends Model
      */
     public function getIsServiceSanctionAttribute(): bool
     {
-        return $this->is_community_service || $this->is_campus_service;
+           return $this->is_community_service
+        || $this->is_campus_service
+        || $this->is_student_assistance_service;
     }
 
     /**
@@ -257,4 +259,12 @@ class StudentSanctionRecord extends Model
             ->orderByDesc('submitted_at')
             ->orderByDesc('proof_id');
     }
+
+    public function getIsStudentAssistanceServiceAttribute(): bool
+{
+    $text = strtolower(trim((string) ($this->sanction ?? '')));
+
+    return str_contains($text, 'student-assistance service')
+        || str_contains($text, 'student assistance service');
+}
 }
