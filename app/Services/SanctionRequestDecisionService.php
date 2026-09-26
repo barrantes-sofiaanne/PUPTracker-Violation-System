@@ -65,14 +65,12 @@ class SanctionRequestDecisionService
 
             if ($student && $violationType) {
                 $latestViolation = Violation::where('student_number', $student->student_number)
-                    ->where('violation_type', $violationType->violation_type_id)
-                    ->effective()
+->where('violation_type_id', $violationType->violation_type_id)                    ->effective()
                     ->latest('violation_date')
                     ->first();
 
                 $offenseCount = Violation::where('student_number', $student->student_number)
-                    ->where('violation_type', $violationType->violation_type_id)
-                    ->effective()
+->where('violation_type_id', $violationType->violation_type_id)                    ->effective()
                     ->count();
 
                 $offenseLevel = $this->formatOffenseLevel($offenseCount);

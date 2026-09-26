@@ -86,7 +86,7 @@ class SanctionController extends Controller
         $recordViolationTypeId = request('record_violation_type');
         if (!empty($recordViolationTypeId)) {
             $studentSanctionsQuery->whereHas('violation', function ($violationQuery) use ($recordViolationTypeId) {
-                $violationQuery->where('violation_type', $recordViolationTypeId);
+                $violationQuery->where('violation_type_id', $recordViolationTypeId);
             });
         }
 
@@ -106,18 +106,17 @@ class SanctionController extends Controller
             ->withQueryString();
 
         $requests->getCollection()->transform(function (SanctionRequest $request) {
-            $offenseCount = Violation::where('student_number', $request->student_number)
-                ->where('violation_type', $request->violation_type_id)
-                ->effective()
-                ->count();
-
+$offenseCount = Violation::where('student_number', $request->student_number)
+    ->where('violation_type_id', $request->violation_type_id)
+    ->effective()
+    ->count();
             $offenseLevel = $this->formatOffenseLevel($offenseCount);
 
-            $latestViolation = Violation::where('student_number', $request->student_number)
-                ->where('violation_type', $request->violation_type_id)
-                ->effective()
-                ->latest('violation_date')
-                ->first();
+$latestViolation = Violation::where('student_number', $request->student_number)
+    ->where('violation_type_id', $request->violation_type_id)
+    ->effective()
+    ->latest('violation_date')
+    ->first();
 
             $assignedSanction = DisciplinarySanction::where('violation_type_id', $request->violation_type_id)
                 ->where('offense_level', $offenseLevel)
@@ -141,14 +140,12 @@ class SanctionController extends Controller
         $sanctionRequest->load(['student', 'violationType.violationCategory']);
 
         $latestViolation = Violation::where('student_number', $sanctionRequest->student_number)
-            ->where('violation_type', $sanctionRequest->violation_type_id)
-            ->effective()
+->where('violation_type_id', $sanctionRequest->violation_type_id)            ->effective()
             ->latest('violation_date')
             ->first();
 
         $offenseCount = Violation::where('student_number', $sanctionRequest->student_number)
-            ->where('violation_type', $sanctionRequest->violation_type_id)
-            ->effective()
+->where('violation_type_id', $sanctionRequest->violation_type_id)            ->effective()
             ->count();
         $offenseLevel = $this->formatOffenseLevel($offenseCount);
         $assignedSanction = DisciplinarySanction::where('violation_type_id', $sanctionRequest->violation_type_id)
@@ -248,8 +245,7 @@ if (! $student->isActiveAccount()) {
 }
 
             $latestViolation = Violation::where('student_number', $student->student_number)
-                ->where('violation_type', $violationType->violation_type_id)
-                ->effective()
+->where('violation_type_id', $violationType->violation_type_id)                ->effective()
                 ->latest('violation_date')
                 ->first();
 
@@ -260,8 +256,7 @@ if (! $student->isActiveAccount()) {
             }
 
             $offenseCount = Violation::where('student_number', $student->student_number)
-                ->where('violation_type', $violationType->violation_type_id)
-                ->effective()
+->where('violation_type_id', $violationType->violation_type_id)                ->effective()
                 ->count();
 
             $offenseLevel = $this->formatOffenseLevel($offenseCount);
@@ -732,10 +727,10 @@ if (! $student->isActiveAccount()) {
      */
     private function resolveAssignedSanction(string $studentNumber, int $violationTypeId): ?DisciplinarySanction
     {
-        $offenseCount = Violation::where('student_number', $studentNumber)
-            ->where('violation_type', $violationTypeId)
-            ->effective()
-            ->count();
+$offenseCount = Violation::where('student_number', $studentNumber)
+    ->where('violation_type_id', $violationTypeId)
+    ->effective()
+    ->count();
 
         $offenseLevel = $this->formatOffenseLevel($offenseCount);
 

@@ -285,23 +285,16 @@ public function recordingSecurity(): BelongsTo
 
 public function resolvedViolationType(): ?ViolationType
 {
-    if ($this->relationLoaded('violationType') && $this->violationType) {
+    if ($this->relationLoaded('violationType')) {
         return $this->violationType;
     }
 
-    $raw = trim((string) $this->violation_type);
-
-    if ($raw === '') {
+    if (!$this->violation_type_id) {
         return null;
     }
 
-    if (ctype_digit($raw)) {
-        return ViolationType::with('violationCategory')->find((int) $raw);
-    }
-
     return ViolationType::with('violationCategory')
-        ->where('violation_type', $raw)
-        ->first();
+        ->find($this->violation_type_id);
 }
 
     private function formatOffenseLevel(int $count): string

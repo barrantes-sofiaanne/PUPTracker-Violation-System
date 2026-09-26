@@ -335,8 +335,10 @@ class StudentViolationController extends Controller
         try {
             $exists = Violation::where('student_number', $validated['student_number'])
                 ->where(function ($query) use ($violationType) {
-                    $query->where('violation_type', (string) $violationType->violation_type_id)
-                        ->orWhere('violation_type', $violationType->violation_type);
+                    $query->where(
+    'violation_type_id',
+    $violationType->violation_type_id
+);
                 })
                 ->whereDate('violation_date', Carbon::parse($validated['violation_date'])->toDateString())
                 // A denied violation should not block re-recording the same real
@@ -358,7 +360,7 @@ class StudentViolationController extends Controller
 
             $violationData = [
                 'student_number' => $validated['student_number'],
-                'violation_type' => $violationType->violation_type_id,
+                'violation_type_id' => $violationType->violation_type_id,
                 'violation_date' => $validated['violation_date'],
                 'description' => trim($validated['description']),
                 // recorder_id references admins.id; security accounts are in a different table.
@@ -465,8 +467,7 @@ class StudentViolationController extends Controller
             'evidence.*' => ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ]);
 
-        $violationType = $original->resolvedViolationType() ?? ViolationType::find($original->violation_type);
-
+$violationType = $original->resolvedViolationType();
         DB::beginTransaction();
 
         try {
@@ -475,8 +476,7 @@ class StudentViolationController extends Controller
 
             $violationData = [
                 'student_number' => $original->student_number,
-                'violation_type' => $violationType?->violation_type_id ?? $original->violation_type,
-                'violation_date' => $validated['violation_date'],
+'violation_type_id' => $violationType?->violation_type_id,                'violation_date' => $validated['violation_date'],
                 'description' => trim($validated['description']),
                 'recorder_type' => 'security',
 'recorder_id' => $security->id,
@@ -663,10 +663,10 @@ class StudentViolationController extends Controller
 
         $severityCounts = (clone $violations)
             ->leftJoin(
-                'violation_type_tbl',
-                'violation_tbl.violation_type',
-                '=',
-                'violation_type_tbl.violation_type_id'
+    'violation_type_tbl',
+    'violation_tbl.violation_type_id',
+    '=',
+    'violation_type_tbl.violation_type_id'
             )
             ->selectRaw('COALESCE(violation_type_tbl.severity_level, 0) as severity_level, COUNT(*) as count')
             ->groupBy('severity_level')

@@ -82,40 +82,32 @@ $assignedSanctionTypeKeys = StudentSanctionRecord::with('violation')
     ->where('student_number', $user->student_number)
     ->get()
     ->flatMap(function ($record) {
-        $raw = (string) ($record->violation?->violation_type ?? '');
-        $resolvedTypeId = (string) ($record->violation?->resolvedViolationType()?->violation_type_id ?? '');
-        $resolvedTypeName = (string) ($record->violation?->resolvedViolationType()?->violation_type ?? '');
+$resolvedType = $record->violation?->resolvedViolationType();
 
-        return array_filter([
-            $raw,
-            strtolower($raw),
-            $resolvedTypeId,
-            $resolvedTypeName,
-            strtolower($resolvedTypeName),
-        ]);
+$resolvedTypeId = (string) ($resolvedType?->violation_type_id ?? '');
+$resolvedTypeName = (string) ($resolvedType?->violation_type ?? '');
+
+return array_filter([
+    $resolvedTypeId,
+    $resolvedTypeName,
+    strtolower($resolvedTypeName),
+]);
     })
     ->unique()
     ->values()
     ->toArray();
 
 $matchesViolationType = function ($violationRecord, array $pool): bool {
-    $rawType = (string) ($violationRecord->violation_type ?? '');
-    $relationTypeId = (string) ($violationRecord->violationType?->violation_type_id ?? '');
-    $relationTypeName = (string) ($violationRecord->violationType?->violation_type ?? '');
-    $resolvedType = $violationRecord->resolvedViolationType();
-    $resolvedTypeId = (string) ($resolvedType?->violation_type_id ?? '');
-    $resolvedTypeName = (string) ($resolvedType?->violation_type ?? '');
+ $resolvedType = $violationRecord->resolvedViolationType();
 
-    $candidates = array_filter([
-        $rawType,
-        strtolower($rawType),
-        $relationTypeId,
-        $relationTypeName,
-        strtolower($relationTypeName),
-        $resolvedTypeId,
-        $resolvedTypeName,
-        strtolower($resolvedTypeName),
-    ]);
+$resolvedTypeId = (string) ($resolvedType?->violation_type_id ?? '');
+$resolvedTypeName = (string) ($resolvedType?->violation_type ?? '');
+
+$candidates = array_filter([
+    $resolvedTypeId,
+    $resolvedTypeName,
+    strtolower($resolvedTypeName),
+]);
 
     foreach ($candidates as $candidate) {
         if (in_array($candidate, $pool, true)) {
@@ -147,8 +139,7 @@ $groupedViolations = Violation::with([
             return 'id:' . $resolvedType->violation_type_id;
         }
 
-        return 'raw:' . strtolower(trim((string) $violation->violation_type));
-    });
+return 'unknown:' . $violation->violation_id;    });
 
 foreach ($groupedViolations as $records) {
 
@@ -306,13 +297,10 @@ public function requestSanction(Request $request)
         ], 422);
     }
 
-    $offenseCount = Violation::where('student_number', $user->student_number)
-        ->where(function ($query) use ($violationType) {
-            $query->where('violation_type', (string) $violationType->violation_type_id)
-                ->orWhere('violation_type', $violationType->violation_type);
-        })
-        ->effective()
-        ->count();
+$offenseCount = Violation::where('student_number', $user->student_number)
+    ->where('violation_type_id', $violationType->violation_type_id)
+    ->effective()
+    ->count();
 
     if ($offenseCount < 1) {
         return response()->json([
@@ -403,14 +391,11 @@ public function requestSanction(Request $request)
         // here — it is created only after an administrator approves the request
         // (with the authenticated admin id and deadline). This keeps pending
         // requests out of the sanction tab / graduation screens until approved.
-        $latestViolation = Violation::where('student_number', $user->student_number)
-            ->where(function ($query) use ($violationType) {
-                $query->where('violation_type', (string) $violationType->violation_type_id)
-                    ->orWhere('violation_type', $violationType->violation_type);
-            })
-            ->effective()
-            ->latest('violation_date')
-            ->first();
+$latestViolation = Violation::where('student_number', $user->student_number)
+    ->where('violation_type_id', $violationType->violation_type_id)
+    ->effective()
+    ->latest('violation_date')
+    ->first();
 
         if (!$latestViolation) {
             throw new \RuntimeException('Unable to locate the latest violation for this sanction request.');

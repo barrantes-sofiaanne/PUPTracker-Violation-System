@@ -1032,12 +1032,7 @@ $exists = Violation::where(
         'line' => $exception->getLine(),
     ]);
 
-    return response()->json([
-        'message' => 'Failed to record violation.',
-        'error' => $exception->getMessage(),
-        'file' => $exception->getFile(),
-        'line' => $exception->getLine(),
-    ], 500);
+return \App\Support\Responses::unexpectedError();
 }
     }
 
