@@ -236,8 +236,10 @@ class ForgotPasswordController extends Controller
      * Administrator login it never uses. A regular Administrator or IT
      * Administrator still returns to `admin.login`.
      */
-    private function loginRouteFor(string $guard, ?Admin $account = null): string
-    {
+private function loginRouteFor(
+    string $guard,
+    Admin|Security|User|null $account = null
+): string    {
         if ($guard === 'admin') {
             return \App\Support\Auth\PortalLoginRedirect::forGuard('admin', $account);
         }
