@@ -1025,20 +1025,20 @@ $exists = Violation::where(
             ]);
 
         } catch (\Throwable $exception) {
+    Log::error('Admin violation store failed', [
+        'student_number' => $request->input('student_number'),
+        'error' => $exception->getMessage(),
+        'file' => $exception->getFile(),
+        'line' => $exception->getLine(),
+    ]);
 
-            DB::rollBack();
-
-            // Log full technical detail server-side only; never leak internal
-            // paths/lines/messages to the client.
-            Log::error('Admin violation store failed', [
-                'student_number' => $request->input('student_number'),
-                'error' => $exception->getMessage(),
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
-            ]);
-
-            return \App\Support\Responses::unexpectedError();
-        }
+    return response()->json([
+        'message' => 'Failed to record violation.',
+        'error' => $exception->getMessage(),
+        'file' => $exception->getFile(),
+        'line' => $exception->getLine(),
+    ], 500);
+}
     }
 
     /**
