@@ -120,6 +120,10 @@
                                     <i class="bi bi-arrow-repeat me-1"></i>
                                     Refresh
                                 </a>
+<a href="{{ route('admin.students', ['tab' => 'students']) }}" class="admin-btn admin-btn-neutral">
+    <i class="bi bi-arrow-repeat me-1"></i>
+    Refresh
+</a>
 
 @if($isItAdministrator)
     <button
@@ -409,6 +413,7 @@
         data-suffix="{{ $student->name_suffix }}"
         data-email="{{ $student->email }}"
         data-program="{{ $student->program_id }}"
+        data-year="{{ $student->studentInfo?->year_id }}"
         data-year-name="{{ $student->year?->year ?? '—' }}"
         data-section="{{ $student->section_id }}"
         data-gender="{{ $student->gender_id }}"
@@ -967,16 +972,14 @@
             <div class="col-md-4"><label class="form-label">Email</label><input type="email" id="email" class="form-control" readonly></div>
             <div class="col-md-4"><label class="form-label">Program</label><select name="program_id" id="program_id" class="form-select" onchange="toggleEditLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
 <div class="col-md-6">
-    <label class="form-label">Year Level</label>
-    <input
-        type="text"
-        id="student_year_level"
-        class="form-control"
-        readonly
-    >
-    <small class="text-muted">
-        Year level can only be changed through Year Level Management.
-    </small>
+    <label for="year_id" class="form-label">Year Level</label>
+    <select name="year_id" id="year_id" class="form-select" required>
+        @foreach($years as $year)
+            <option value="{{ $year->year_id }}">
+                Year {{ $year->year }}
+            </option>
+        @endforeach
+    </select>
 </div>          <div class="col-md-6"><label class="form-label">Section</label><select name="section_id" id="section_id" class="form-select">@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Gender</label><select name="gender_id" id="gender_id" class="form-select">@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" id="status_id" class="form-select">@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
@@ -1123,13 +1126,7 @@ document.querySelectorAll('.editStudentBtn').forEach(function (button) {
         document.getElementById('name_suffix').value = this.dataset.suffix || '';
         document.getElementById('email').value = this.dataset.email;
 document.getElementById('program_id').value = this.dataset.program;
-
-const yearLevel = document.getElementById('student_year_level');
-
-if (yearLevel) {
-    yearLevel.value = this.dataset.yearName || '—';
-}
-
+document.getElementById('year_id').value = this.dataset.year;
 document.getElementById('section_id').value = this.dataset.section;
         document.getElementById('gender_id').value = this.dataset.gender;
         document.getElementById('status_id').value = this.dataset.status;

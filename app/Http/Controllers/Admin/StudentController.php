@@ -310,6 +310,9 @@ class StudentController extends Controller
             'status_id' =>
                 'required|exists:status_tbl,status_id',
 
+            'year_id' =>
+                'required|exists:year_tbl,year_id',
+
             'ladderized' =>
                 'nullable|in:0,1',
         ]);
@@ -575,15 +578,10 @@ class StudentController extends Controller
          * Do not assume the year number is the primary key.
          */
         $yearIds = Year::query()
-            ->get(['year_id', 'year'])
-            ->mapWithKeys(function (Year $year): array {
-                $label = preg_replace('/^year\s*/i', '', trim((string) $year->year));
-
-                return in_array($label, ['1', '2', '3', '4'], true)
-                    ? [$label => (int) $year->year_id]
-                    : [];
-            })
-            ->all();
+            ->whereIn('year', ['1', '2', '3', '4'])
+            ->pluck('year_id', 'year')
+            ->map(fn ($id) => (int) $id)
+            ->toArray();
 
         if (
             !isset($yearIds['1']) ||
@@ -681,23 +679,22 @@ class StudentController extends Controller
 
         $promotedCount = 0;
 
-        try {
-            DB::transaction(function () use (
-                $students,
-                $yearIds,
-                &$promotedCount
-            ): void {
+        DB::transaction(function () use (
+            $students,
+            $yearIds,
+            &$promotedCount
+        ): void {
 
-                foreach ($students as $student) {
+            foreach ($students as $student) {
 
-                    if (!$student->studentInfo) {
-                        continue;
-                    }
+                if (!$student->studentInfo) {
+                    continue;
+                }
 
-                    $currentYearId =
-                        (int) $student->studentInfo->year_id;
+                $currentYearId =
+                    (int) $student->studentInfo->year_id;
 
-                    $newYearId = match ($currentYearId) {
+                $newYearId = match ($currentYearId) {
 
                     $yearIds['1'] =>
                         $yearIds['2'],
@@ -712,67 +709,54 @@ class StudentController extends Controller
                         null,
                 };
 
-                    if (
-                        !$newYearId ||
-                        $newYearId === $currentYearId
-                    ) {
-                        continue;
-                    }
+                if (
+                    !$newYearId ||
+                    $newYearId === $currentYearId
+                ) {
+                    continue;
+                }
 
-                    $oldYear =
-                        $student->studentInfo->year?->year
+                $oldYear =
+                    $student->studentInfo->year?->year
+                    ?? '—';
+
+                $newYear =
+                    Year::query()
+                        ->where(
+                            'year_id',
+                            $newYearId
+                        )
+                        ->value('year')
                         ?? '—';
-
-                    $newYear =
-                        Year::query()
-                            ->where(
-                                'year_id',
-                                $newYearId
-                            )
-                            ->value('year')
-                            ?? '—';
 
                 /*
                  * IMPORTANT:
                  * Only student_info_tbl.year_id is changed.
                  */
-                    $student->studentInfo->update([
-                        'year_id' => $newYearId,
-                    ]);
+                $student->studentInfo->update([
+                    'year_id' => $newYearId,
+                ]);
 
                 /*
                  * Create one audit entry for each promotion.
                  */
-                    $this->logUserManagementAction(
-                        'student',
-                        'Automatic Year-Level Promotion',
-                        $student->getKey(),
-                        $student->email,
+                $this->logUserManagementAction(
+                    'student',
+                    'Automatic Year-Level Promotion',
+                    $student->getKey(),
+                    $student->email,
+                    [
                         [
-                            [
-                                'field' => 'Year Level',
-                                'from' => $oldYear,
-                                'to' => $newYear,
-                            ],
-                        ]
-                    );
-
-                    $promotedCount++;
-                }
-            });
-        } catch (\Throwable $exception) {
-            report($exception);
-
-            return redirect()
-                ->route(
-                    'admin.students',
-                    ['tab' => 'students']
-                )
-                ->with(
-                    'error',
-                    'The student promotion could not be completed. No changes were saved.'
+                            'field' => 'Year Level',
+                            'from' => $oldYear,
+                            'to' => $newYear,
+                        ],
+                    ]
                 );
-        }
+
+                $promotedCount++;
+            }
+        });
 
         /*
          * Explicitly report when the operation did not change anything.
@@ -1951,16 +1935,8 @@ class StudentController extends Controller
     /**
      * Update normal student information.
      *
-     * IMPORTANT:
-     * Year level is intentionally NOT accepted here anymore.
-     *
-     * Year level must be changed through:
-     *
-     * updateYearLevel()
-     *
-     * or
-     *
-     * promoteActiveStudents()
+     * Year level can be manually changed from the normal Edit Student form.
+     * Automatic promotion remains available through promoteActiveStudents().
      */
     public function update(
         Request $request,
@@ -1996,7 +1972,8 @@ class StudentController extends Controller
          *
          * Identity fields are not editable here.
          *
-         * YEAR LEVEL IS ALSO NOT UPDATED HERE.
+         * Year level is intentionally editable from the normal Edit Student
+         * form and is stored only in student_info_tbl.year_id.
          */
         $studentInfoBefore =
             $student->studentInfo
@@ -2046,20 +2023,15 @@ class StudentController extends Controller
                         $student->getKey()
                 ]);
 
-        /*
-         * IMPORTANT:
-         *
-         * There is NO year_id here.
-         *
-         * This means normal student editing cannot
-         * change the year level.
-         */
         $studentInfo->fill([
             'user_id' =>
                 $student->getKey(),
 
             'program_id' =>
                 $request->input('program_id'),
+
+            'year_id' =>
+                $request->input('year_id'),
 
             'section_id' =>
                 $request->input('section_id'),
