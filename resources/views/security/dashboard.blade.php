@@ -151,6 +151,41 @@
             font-size: 1rem;
         }
     }
+
+    .violation-guide-section {
+    width: 100%;
+    clear: both;
+    margin-top: 2rem;
+    padding-top: 0.5rem;
+}
+
+.violation-guide-wrapper {
+    width: 100%;
+}
+
+.violation-guide-wrapper > .card {
+    width: 100%;
+    margin: 0;
+}
+
+/* Make sure the guide never gets treated as part
+   of the sidebar when the dashboard stacks on mobile. */
+@media (max-width: 991.98px) {
+    .violation-guide-section {
+        margin-top: 2rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .violation-guide-section {
+        margin-top: 2.5rem;
+        padding-top: 0;
+    }
+
+    .violation-guide-wrapper {
+        width: 100%;
+    }
+}
 </style>
 @endpush
 
@@ -439,14 +474,18 @@ data-progress-width="{{ $totalViolations > 0 ? round(($category->count / $totalV
 </div>
 
 {{-- Violation and Sanction Guide --}}
-<div class="row g-3 mb-4">
-    <div class="col-12">
-        @include('partials.violation-sanction-guide', [
-            'guideId' => 'securityGuide',
-            'guideTitle' => 'Violation and Sanction Guide',
-        ])
+<section class="violation-guide-section">
+    <div class="row">
+        <div class="col-12">
+            <div class="violation-guide-wrapper">
+                @include('partials.violation-sanction-guide', [
+                    'guideId' => 'securityGuide',
+                    'guideTitle' => 'Violation and Sanction Guide',
+                ])
+            </div>
+        </div>
     </div>
-</div>
+</section>
 
 @push('scripts')
 <script>
