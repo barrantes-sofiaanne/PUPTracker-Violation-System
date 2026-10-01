@@ -396,6 +396,22 @@ Route::middleware(['auth:admin', 'session.inactivity'])
         Route::post('/students', [StudentController::class, 'store'])
             ->name('admin.students.store');
 
+/*
+|--------------------------------------------------------------------------
+| Student Year-Level Management
+|--------------------------------------------------------------------------
+*/
+
+Route::put(
+    '/students/{student_number}/year-level',
+    [StudentController::class, 'updateYearLevel']
+)->name('admin.students.year-level.update');
+
+Route::post(
+    '/students/promote-active',
+    [StudentController::class, 'promoteActiveStudents']
+)->name('admin.students.promote-active');
+
         Route::get('/students/{student_number}/edit', [StudentController::class, 'edit'])
             ->name('admin.students.edit');
 
@@ -1043,15 +1059,6 @@ Route::middleware(['auth:admin', 'oss.staff', 'session.inactivity'])
     [SessionActivityController::class, 'touch']
 )->name('session.activity');
 
-Route::put(
-    '/students/{student_number}/year-level',
-    [StudentController::class, 'updateYearLevel']
-)->name('admin.students.year-level.update');
-
-Route::post(
-    '/students/promote-active',
-    [StudentController::class, 'promoteActiveStudents']
-)->name('admin.students.promote-active');
     });
 
 // TEMPORARY DEBUG ROUTE - DELETE AFTER USE
