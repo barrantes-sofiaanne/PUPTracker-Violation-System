@@ -14,7 +14,7 @@
     }
 
     .admin-record-modal .modal-header {
-        background: linear-gradient(120deg, #800000 0%, #5f0000 65%, #daa520 180%) !important;
+background: #800000 !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.15);
         color: #fff;
     }
@@ -26,7 +26,7 @@
     }
 
     .admin-record-modal .modal-body {
-        background: linear-gradient(180deg, #fffefa 0%, #fff7e3 100%);
+background: #ffffff;
         max-height: calc(100vh - 220px);
         overflow-y: auto;
     }
@@ -208,7 +208,7 @@
     /* Header/footer chrome — literally the Security values (its radius token
        is 1rem and its border tone is rgba(122, 15, 30, ...)). */
     .admin-record-modal .modal-header {
-        background: linear-gradient(120deg, #7a0f1e 0%, #4a0209 65%, #c9981f 180%) !important;
+background: #800000 !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.15);
         color: #fff;
         padding: 1.1rem 1.25rem;

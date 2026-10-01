@@ -10,12 +10,12 @@
         max-height: calc(100vh - 2rem);
     }
 
-    .security-record-modal .modal-header {
-        background: linear-gradient(120deg, #7a0f1e 0%, #4a0209 65%, #c9981f 180%);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-        color: #fff;
-        padding: 1.1rem 1.25rem;
-    }
+.security-record-modal .modal-header {
+    background: #800000;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 1.1rem 1.25rem;
+}
 
     .security-record-modal .modal-header .modal-title,
     .security-record-modal .modal-header .modal-title i,
@@ -24,7 +24,7 @@
     }
 
     .security-record-modal .modal-body {
-        background: linear-gradient(180deg, #fffefa 0%, #fff7e3 100%);
+background: #ffffff;
         overflow-y: auto;
         max-height: calc(100vh - 220px);
     }
@@ -545,7 +545,7 @@
 <div class="modal fade security-notice-modal" id="securityNoticeModal" tabindex="-1" aria-labelledby="securityNoticeModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header" style="background:linear-gradient(120deg,#7a0f1e 0%,#4a0209 65%,#c9981f 180%);">
+            <div class="modal-header" style="background:#800000;">
                 <h5 class="modal-title text-white fw-bold" id="securityNoticeModalLabel">
                     <i class="bi bi-shield-exclamation me-2"></i>Security Notice
                 </h5>

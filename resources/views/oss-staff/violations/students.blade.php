@@ -99,7 +99,7 @@
     }
 
     .report-modal-header {
-        background: linear-gradient(135deg, #7a0f1e 0%, #4a0209 100%);
+background: #800000;
         color: #fff;
     }
 

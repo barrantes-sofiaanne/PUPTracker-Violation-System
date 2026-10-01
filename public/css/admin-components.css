@@ -446,12 +446,7 @@
 }
 
 .admin-modal-header {
-    background: linear-gradient(
-        120deg,
-        #800000 0%,
-        #5f0000 62%,
-        #daa520 180%
-    ) !important;
+    background: #800000 !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
     color: #fff;
 }
@@ -521,8 +516,15 @@
     flex: 1 1 auto;
 }
 
+/* Shared announcement viewer used by the Admin module. */
+.announcement-modal-header {
+    background: #800000 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #fff !important;
+}
+
 .admin-modal-body {
-    background: linear-gradient(180deg, #fffefa 0%, #fff7e3 100%);
+    background: #ffffff;
 }
 
 .admin-modal-footer {
