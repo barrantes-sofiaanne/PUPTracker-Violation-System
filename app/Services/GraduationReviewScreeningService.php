@@ -144,9 +144,47 @@ $patternCounts = $violations
             'requires_factual_review' => $requiresReview,
             'violations' => $this->violationsForPrompt($violations),
             'sanction_records' => $this->sanctionsForPrompt($sanctionRecords),
+            'display_violations' => $this->violationsForDisplay($violations),
+'display_sanction_records' => $this->sanctionsForDisplay($sanctionRecords),
         ];
     }
+protected function violationsForDisplay(Collection $violations): array
+{
+    return $violations->map(function ($violation) {
+        return [
+            'type' => $violation->violationTypeDisplay,
+            'date' => $violation->violation_date?->toDateString(),
+            'description' => (string) $violation->description,
+        ];
+    })->values()->all();
+}
 
+/**
+ * Detailed sanction information for authorized PUPTracker users.
+ *
+ * This data stays inside the application and is not sent to the AI.
+ */
+protected function sanctionsForDisplay(Collection $records): array
+{
+    return $records->map(function ($record) {
+        return [
+            'sanction' =>
+                $record->assignedSanction?->disciplinary_sanction
+                ?? 'Unspecified sanction',
+
+            'status' => $record->status,
+
+            'date_assigned' =>
+                $record->date_assigned?->toDateString(),
+
+            'date_completed' =>
+                $record->date_completed?->toDateString(),
+
+            'deadline' =>
+                $record->deadline_date?->toDateString(),
+        ];
+    })->values()->all();
+}
     /**
      * Deterministic hash of the disciplinary state (for change detection).
      */

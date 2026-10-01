@@ -214,6 +214,7 @@
                         <th>Violations</th>
                         <th>Outstanding</th>
                         <th>Review Status</th>
+                        <th>Open Sanctions</th>
                         <th class="text-end">Action</th>
                     </tr>
                 </thead>
@@ -250,6 +251,32 @@
                                     <i class="bi bi-eye"></i> Review
                                 </a>
                             </td>
+                            <td>
+    @php
+        $openSanctions = collect($student['display_sanction_records'] ?? [])
+            ->filter(function ($sanction) {
+                return in_array(
+                    strtolower(trim((string) ($sanction['status'] ?? ''))),
+                    ['pending', 'in progress', 'overdue'],
+                    true
+                );
+            });
+    @endphp
+
+    @if($openSanctions->isEmpty())
+        <span class="text-muted">None</span>
+    @else
+        <div class="d-flex flex-column gap-1">
+            @foreach($openSanctions as $sanction)
+                <span class="badge bg-danger text-start">
+                    {{ $sanction['sanction'] ?? 'Unspecified sanction' }}
+                    —
+                    {{ $sanction['status'] ?? 'Unknown' }}
+                </span>
+            @endforeach
+        </div>
+    @endif
+</td>
                         </tr>
                     @empty
                         <x-admin.empty-state
