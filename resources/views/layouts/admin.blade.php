@@ -28,7 +28,8 @@
 <link rel="stylesheet"
     href="{{ asset('css/inactivity-timeout.css') }}">
 
-
+<link rel="stylesheet"
+    href="{{ asset('css/portal.css') }}">
     @stack('styles')
 
 </head>
@@ -62,7 +63,7 @@
       data-puptracker-logout-form>
     @csrf
 
-    <button type="submit">
+    <button type="submit"><link rel="stylesheet"
         Logout
     </button>
 </form>
