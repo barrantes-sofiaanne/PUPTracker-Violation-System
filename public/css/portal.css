@@ -13,18 +13,7 @@
 
 body {
     font-family: "Manrope", sans-serif;
-    background:
-        radial-gradient(
-            circle at 12% 6%,
-            rgba(255, 223, 0, 0.17) 0,
-            rgba(255, 223, 0, 0) 25%
-        ),
-        radial-gradient(
-            circle at 88% 12%,
-            rgba(218, 165, 32, 0.1) 0,
-            rgba(218, 165, 32, 0) 25%
-        ),
-        #f9f6f2;
+    background: #f9f6f2;
     color: var(--portal-ink);
     overflow-x: hidden;
 }

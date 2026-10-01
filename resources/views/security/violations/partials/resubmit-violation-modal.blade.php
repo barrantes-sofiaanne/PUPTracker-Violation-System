@@ -5,11 +5,79 @@
     the document: Bootstrap's inactive `.tab-pane` is `display:none`, which would
     also hide a modal nested inside it.
 --}}
+
+<style>
+    #resubmitViolationModal .modal-content {
+        max-height: calc(100vh - 1rem);
+    }
+
+    #resubmitViolationModal .modal-body {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #resubmitViolationModal .modal-header {
+        position: relative;
+        padding-right: 4rem;
+        background: #800000 !important;
+        color: #fff !important;
+    }
+
+    #resubmitViolationModal .modal-header .modal-title {
+        color: #fff !important;
+    }
+
+    #resubmitViolationModal .modal-header .btn-close {
+        position: absolute;
+        top: 50%;
+        right: 0.75rem;
+        transform: translateY(-50%);
+
+        width: 44px;
+        height: 44px;
+
+        margin: 0 !important;
+        padding: 0;
+
+        z-index: 10;
+    }
+
+    #resubmitViolationModal .modal-footer {
+        flex-shrink: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    @media (max-width: 575.98px) {
+        #resubmitViolationModal .modal-dialog {
+            margin: 0.5rem;
+        }
+
+        #resubmitViolationModal .modal-footer {
+            padding: 0.75rem;
+        }
+
+        #resubmitViolationModal .modal-footer .btn {
+            min-height: 44px;
+        }
+
+        #resubmitViolationModal .modal-footer .btn[type="submit"] {
+            flex: 1 1 100%;
+        }
+    }
+
+    #resubmitViolationModal .modal-title,
+#resubmitViolationModal .modal-title i {
+    color: #fff !important;
+}
+</style>
+
 <div class="modal fade" id="resubmitViolationModal" tabindex="-1" aria-labelledby="resubmitViolationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header text-white" style="background: #800000;">
-                <h5 class="modal-title fw-bold" id="resubmitViolationModalLabel">
+<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg">
+<div class="modal-header text-white"
+     style="background: #800000; color: #fff !important;">                <h5 class="modal-title fw-bold" id="resubmitViolationModalLabel">
                     <i class="bi bi-arrow-repeat me-2"></i>Resubmit Violation
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>

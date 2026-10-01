@@ -58,15 +58,7 @@
 </div>
 
 <div id="sidebarBackdrop" aria-hidden="true"></div>
-<form action="{{ route('logout') }}"
-      method="POST"
-      data-puptracker-logout-form>
-    @csrf
 
-    <button type="submit"><link rel="stylesheet"
-        Logout
-    </button>
-</form>
 <x-admin.toast />
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
