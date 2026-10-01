@@ -1043,6 +1043,12 @@ Route::middleware(['auth:admin', 'oss.staff', 'session.inactivity'])
     [SessionActivityController::class, 'touch']
 )->name('session.activity');
 
+Route::put('/students/{student_number}/year-level', [StudentController::class, 'updateYearLevel'])
+    ->name('admin.students.year-level.update');
+
+Route::post('/students/promote-active', [StudentController::class, 'promoteActiveStudents'])
+    ->name('admin.students.promote-active');
+
     });
 
 // TEMPORARY DEBUG ROUTE - DELETE AFTER USE

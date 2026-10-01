@@ -96,10 +96,141 @@
                                     <i class="bi bi-arrow-repeat me-1"></i>
                                     Refresh
                                 </a>
-                                <button type="button" class="admin-btn admin-btn-danger" data-bs-toggle="modal" data-bs-target="#createStudentModal">
-                                    <i class="bi bi-plus-lg me-1"></i>
-                                    Add Student
-                                </button>
+<a href="{{ route('admin.students', ['tab' => 'students']) }}" class="admin-btn admin-btn-neutral">
+    <i class="bi bi-arrow-repeat me-1"></i>
+    Refresh
+</a>
+
+@if($isItAdministrator)
+    <button
+        type="button"
+        class="admin-btn admin-btn-primary"
+        data-bs-toggle="modal"
+        data-bs-target="#promoteActiveStudentsModal"
+    >
+        <i class="bi bi-arrow-up-circle me-1"></i>
+        Promote Active Students
+    </button>
+@endif
+
+<button
+    type="button"
+    class="admin-btn admin-btn-danger"
+    data-bs-toggle="modal"
+    data-bs-target="#createStudentModal"
+>
+    <i class="bi bi-plus-lg me-1"></i>
+    Add Student
+</button>
+
+@if($isItAdministrator)
+
+<div
+    class="modal fade admin-modal"
+    id="promoteActiveStudentsModal"
+    tabindex="-1"
+    aria-labelledby="promoteActiveStudentsModalLabel"
+    aria-hidden="true"
+>
+    <div class="modal-dialog">
+        <div class="modal-content admin-modal-content">
+
+            <form
+                method="POST"
+                action="{{ route('admin.students.promote-active') }}"
+                id="promoteActiveStudentsForm"
+            >
+                @csrf
+
+                <div class="modal-header admin-modal-header">
+                    <h5
+                        class="modal-title admin-modal-title"
+                        id="promoteActiveStudentsModalLabel"
+                    >
+                        Promote Active Students
+                    </h5>
+
+                    <button
+                        type="button"
+                        class="btn-close admin-modal-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                    ></button>
+                </div>
+
+                <div class="modal-body admin-modal-body">
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+
+                        <strong>Important:</strong>
+
+                        This action will automatically promote
+                        <strong>Active</strong> students according to
+                        the following rules:
+                    </div>
+
+                    <div class="border rounded p-3 mb-3">
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Year 1</span>
+                            <strong>→ Year 2</strong>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Year 2</span>
+                            <strong>→ Year 3</strong>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Year 3</span>
+                            <strong>→ Year 4</strong>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <span>Year 4</span>
+                            <strong>→ Remains Year 4</strong>
+                        </div>
+
+                    </div>
+
+                    <ul class="small text-muted mb-0">
+                        <li>Only Active students will be promoted.</li>
+                        <li>Inactive students will not be changed.</li>
+                        <li>Year 4 students will remain Year 4.</li>
+                        <li>Only the year level will be changed.</li>
+                        <li>Each promotion will be recorded in the audit history.</li>
+                    </ul>
+
+                </div>
+
+                <div class="modal-footer admin-modal-footer">
+
+                    <button
+                        type="button"
+                        class="admin-btn admin-btn-neutral"
+                        data-bs-dismiss="modal"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="admin-btn admin-btn-primary"
+                    >
+                        <i class="bi bi-arrow-up-circle me-1"></i>
+                        Confirm Promotion
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+@endif
                             </div>
                         </div>
 
@@ -232,32 +363,52 @@
                                             @endif
                                         </td>
                                         <td class="text-end user-action-cell">
-                                            <div class="user-action-group">
-                                                <button
-                                                    class="admin-btn admin-btn-view admin-btn-sm user-action-btn editStudentBtn"
-                                                    data-id="{{ $student->student_number }}"
-                                                    data-first="{{ $student->first_name }}"
-                                                    data-middle="{{ $student->middle_name }}"
-                                                    data-last="{{ $student->last_name }}"
-                                                    data-suffix="{{ $student->name_suffix }}"
-                                                    data-email="{{ $student->email }}"
-                                                    data-program="{{ $student->program_id }}"
-                                                    data-year="{{ $student->year_id }}"
-                                                    data-section="{{ $student->section_id }}"
-                                                    data-gender="{{ $student->gender_id }}"
-                                                    data-status="{{ $student->status_id }}"
-                                                    data-ladderized="{{ $student->studentInfo?->ladderized ?? 0 }}">
-                                                    <i class="bi bi-pencil-square me-1"></i>
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteStudentBtn"
-                                                    data-id="{{ $student->student_number }}"
-                                                    data-name="{{ $student->first_name }} {{ $student->last_name }}">
-                                                    <i class="bi bi-trash me-1"></i>
-                                                    Delete
-                                                </button>
-                                            </div>
+<div class="user-action-group">
+
+@if($isItAdministrator)
+    <button
+        type="button"
+        class="admin-btn admin-btn-primary admin-btn-sm user-action-btn updateYearLevelBtn"
+        data-id="{{ $student->student_number }}"
+        data-name="{{ trim($student->first_name . ' ' . $student->last_name) }}"
+        data-status="{{ $student->status?->status_name ?? 'Unknown' }}"
+        data-year="{{ $student->studentInfo?->year_id }}"
+        data-year-name="{{ $student->year?->year ?? '—' }}"
+    >
+        <i class="bi bi-arrow-up-circle me-1"></i>
+        Year Level
+    </button>
+@endif
+
+    <button
+        class="admin-btn admin-btn-view admin-btn-sm user-action-btn editStudentBtn"
+        data-id="{{ $student->student_number }}"
+        data-first="{{ $student->first_name }}"
+        data-middle="{{ $student->middle_name }}"
+        data-last="{{ $student->last_name }}"
+        data-suffix="{{ $student->name_suffix }}"
+        data-email="{{ $student->email }}"
+        data-program="{{ $student->program_id }}"
+        data-year="{{ $student->year_id }}"
+        data-section="{{ $student->section_id }}"
+        data-gender="{{ $student->gender_id }}"
+        data-status="{{ $student->status_id }}"
+        data-ladderized="{{ $student->studentInfo?->ladderized ?? 0 }}"
+    >
+        <i class="bi bi-pencil-square me-1"></i>
+        Edit
+    </button>
+
+    <button
+        class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteStudentBtn"
+        data-id="{{ $student->student_number }}"
+        data-name="{{ $student->first_name }} {{ $student->last_name }}"
+    >
+        <i class="bi bi-trash me-1"></i>
+        Delete
+    </button>
+
+</div>
                                         </td>
                                     </tr>
                                 @empty
@@ -554,6 +705,166 @@
     </div></div>
 </div>
 
+@if($isItAdministrator)
+
+<div
+    class="modal fade admin-modal"
+    id="updateYearLevelModal"
+    tabindex="-1"
+    aria-labelledby="updateYearLevelModalLabel"
+    aria-hidden="true"
+>
+    <div class="modal-dialog">
+        <div class="modal-content admin-modal-content">
+
+            <form id="updateYearLevelForm" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="modal-header admin-modal-header">
+                    <h5
+                        class="modal-title admin-modal-title"
+                        id="updateYearLevelModalLabel"
+                    >
+                        Update Student Year Level
+                    </h5>
+
+                    <button
+                        type="button"
+                        class="btn-close admin-modal-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                    ></button>
+                </div>
+
+                <div class="modal-body admin-modal-body">
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Student
+                        </label>
+
+                        <input
+                            type="text"
+                            id="yearLevelStudentName"
+                            class="form-control"
+                            readonly
+                        >
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Student Number
+                        </label>
+
+                        <input
+                            type="text"
+                            id="yearLevelStudentNumber"
+                            class="form-control"
+                            readonly
+                        >
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Student Status
+                        </label>
+
+                        <input
+                            type="text"
+                            id="yearLevelStudentStatus"
+                            class="form-control"
+                            readonly
+                        >
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Current Year Level
+                        </label>
+
+                        <input
+                            type="text"
+                            id="currentYearLevel"
+                            class="form-control"
+                            readonly
+                        >
+                    </div>
+
+                    <div class="mb-3">
+                        <label
+                            for="newYearLevel"
+                            class="form-label"
+                        >
+                            New Year Level
+                        </label>
+
+                        <select
+                            name="year_id"
+                            id="newYearLevel"
+                            class="form-select"
+                            required
+                        >
+                            <option value="">
+                                Select year level
+                            </option>
+
+                            @foreach($years as $year)
+                                <option value="{{ $year->year_id }}">
+                                    Year {{ $year->year }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div
+                        class="alert alert-warning small mb-0"
+                        id="inactiveYearLevelWarning"
+                        style="display: none;"
+                    >
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        This student is Inactive. Automatic promotion does not
+                        apply to inactive students, but the IT Administrator
+                        may manually update the year level.
+                    </div>
+
+                    <div class="alert alert-info small mb-0 mt-3">
+                        <i class="bi bi-shield-lock me-1"></i>
+                        Only the student's year level will be changed.
+                        Student status, program, section, violations, sanctions,
+                        and student number will remain unchanged.
+                    </div>
+
+                </div>
+
+                <div class="modal-footer admin-modal-footer">
+
+                    <button
+                        type="button"
+                        class="admin-btn admin-btn-neutral"
+                        data-bs-dismiss="modal"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="admin-btn admin-btn-primary"
+                    >
+                        <i class="bi bi-check2-circle me-1"></i>
+                        Update Year Level
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+@endif
+
 <div class="modal fade admin-modal" id="editStudentModal" tabindex="-1" aria-labelledby="editStudentModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog modal-lg"><div class="modal-content admin-modal-content">
     <form id="editStudentForm" method="POST">@csrf @method('PUT')
         <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="editStudentModalLabel">Edit Student</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
@@ -565,8 +876,18 @@
             <div class="col-md-4"><label class="form-label">Name Suffix</label><input type="text" id="name_suffix" class="form-control" placeholder="—" readonly></div>
             <div class="col-md-4"><label class="form-label">Email</label><input type="email" id="email" class="form-control" readonly></div>
             <div class="col-md-4"><label class="form-label">Program</label><select name="program_id" id="program_id" class="form-select" onchange="toggleEditLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
-            <div class="col-md-6"><label class="form-label">Year</label><select name="year_id" id="year_id" class="form-select">@foreach($years as $year)<option value="{{ $year->year_id }}">{{ $year->year }}</option>@endforeach</select></div>
-            <div class="col-md-6"><label class="form-label">Section</label><select name="section_id" id="section_id" class="form-select">@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
+<div class="col-md-6">
+    <label class="form-label">Year Level</label>
+    <input
+        type="text"
+        id="student_year_level"
+        class="form-control"
+        readonly
+    >
+    <small class="text-muted">
+        Year level can only be changed through Year Level Management.
+    </small>
+</div>          <div class="col-md-6"><label class="form-label">Section</label><select name="section_id" id="section_id" class="form-select">@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Gender</label><select name="gender_id" id="gender_id" class="form-select">@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" id="status_id" class="form-select">@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
             <div class="col-12 d-none" id="editLadderizedWrap">
@@ -711,9 +1032,15 @@ document.querySelectorAll('.editStudentBtn').forEach(function (button) {
         document.getElementById('last_name').value = this.dataset.last;
         document.getElementById('name_suffix').value = this.dataset.suffix || '';
         document.getElementById('email').value = this.dataset.email;
-        document.getElementById('program_id').value = this.dataset.program;
-        document.getElementById('year_id').value = this.dataset.year;
-        document.getElementById('section_id').value = this.dataset.section;
+document.getElementById('program_id').value = this.dataset.program;
+
+const yearLevel = document.getElementById('student_year_level');
+
+if (yearLevel) {
+    yearLevel.value = this.dataset.yearName || '—';
+}
+
+document.getElementById('section_id').value = this.dataset.section;
         document.getElementById('gender_id').value = this.dataset.gender;
         document.getElementById('status_id').value = this.dataset.status;
 
@@ -730,6 +1057,101 @@ document.querySelectorAll('.editStudentBtn').forEach(function (button) {
         new bootstrap.Modal(document.getElementById('editStudentModal')).show();
     });
 });
+
+const isItAdministrator = "{{ $isItAdministrator ? 'true' : 'false' }}" === 'true';
+
+if (isItAdministrator) {
+    document.querySelectorAll('.updateYearLevelBtn').forEach(function (button) {
+    button.addEventListener('click', function () {
+        const studentNumber = this.dataset.id;
+        const studentName = this.dataset.name || '';
+        const studentStatus = this.dataset.status || 'Unknown';
+        const currentYear = this.dataset.yearName || '—';
+        const currentYearId = this.dataset.year || '';
+
+        document.getElementById('yearLevelStudentName').value = studentName;
+        document.getElementById('yearLevelStudentNumber').value = studentNumber;
+        document.getElementById('yearLevelStudentStatus').value = studentStatus;
+        document.getElementById('currentYearLevel').value = currentYear;
+
+        const newYearSelect = document.getElementById('newYearLevel');
+
+        if (newYearSelect) {
+            newYearSelect.value = currentYearId;
+        }
+
+        const warning = document.getElementById('inactiveYearLevelWarning');
+
+        if (warning) {
+            const normalizedStatus = studentStatus.trim().toLowerCase();
+
+            warning.style.display =
+                normalizedStatus === 'inactive'
+                    ? 'block'
+                    : 'none';
+        }
+
+        document.getElementById('updateYearLevelForm').action =
+            "{{ url('/admin/students') }}/"
+            + encodeURIComponent(studentNumber)
+            + "/year-level";
+
+        new bootstrap.Modal(
+            document.getElementById('updateYearLevelModal')
+        ).show();
+        });
+    });
+
+
+    const updateYearLevelForm =
+    document.getElementById('updateYearLevelForm');
+
+if (updateYearLevelForm) {
+    updateYearLevelForm.addEventListener('submit', function (event) {
+        const currentYear =
+            document.getElementById('currentYearLevel').value;
+
+        const newYearSelect =
+            document.getElementById('newYearLevel');
+
+        const newYear =
+            newYearSelect?.selectedOptions[0]?.textContent.trim() || '';
+
+        if (!newYearSelect || !newYearSelect.value) {
+            event.preventDefault();
+
+            alert('Please select a new year level.');
+
+            return;
+        }
+
+        if (currentYear === newYear.replace(/^Year\s+/i, '')) {
+            event.preventDefault();
+
+            alert('The student is already assigned to this year level.');
+
+            return;
+        }
+
+        const studentName =
+            document.getElementById('yearLevelStudentName').value;
+
+        const confirmed = confirm(
+            'Are you sure you want to change ' +
+            studentName +
+            '\'s year level from Year ' +
+            currentYear +
+            ' to ' +
+            newYear +
+            '?'
+        );
+
+        if (!confirmed) {
+            event.preventDefault();
+        }
+        });
+    }
+}
 
 // Show the Ladderized radio group only for BSOA / BSIT programs (create modal).
 function toggleLadderizedField(selectEl) {

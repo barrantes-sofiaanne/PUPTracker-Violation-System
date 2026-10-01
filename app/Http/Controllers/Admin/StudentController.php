@@ -27,13 +27,25 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
-
 class StudentController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Student / Admin / Security Index
+    |--------------------------------------------------------------------------
+    */
+
     public function index(Request $request)
     {
         $students = User::query()
-            ->with(['role', 'studentInfo.program', 'studentInfo.year', 'studentInfo.section', 'gender', 'status'])
+            ->with([
+                'role',
+                'studentInfo.program',
+                'studentInfo.year',
+                'studentInfo.section',
+                'gender',
+                'status'
+            ])
             ->whereHas('role', function ($query) {
                 $query->where('roles_name', 'Student');
             });
@@ -60,164 +72,319 @@ class StudentController extends Controller
 
         if ($request->filled('filter_program_id')) {
             $students->whereHas('studentInfo', function ($query) use ($request) {
-                $query->where('program_id', $request->input('filter_program_id'));
+                $query->where(
+                    'program_id',
+                    $request->input('filter_program_id')
+                );
             });
         }
 
         if ($request->filled('filter_year_id')) {
             $students->whereHas('studentInfo', function ($query) use ($request) {
-                $query->where('year_id', $request->input('filter_year_id'));
+                $query->where(
+                    'year_id',
+                    $request->input('filter_year_id')
+                );
             });
         }
 
         if ($request->filled('filter_section_id')) {
             $students->whereHas('studentInfo', function ($query) use ($request) {
-                $query->where('section_id', $request->input('filter_section_id'));
+                $query->where(
+                    'section_id',
+                    $request->input('filter_section_id')
+                );
             });
         }
 
         if ($request->filled('filter_gender_id')) {
-            $students->where('gender_id', $request->input('filter_gender_id'));
+            $students->where(
+                'gender_id',
+                $request->input('filter_gender_id')
+            );
         }
 
         if ($request->filled('filter_status_id')) {
-            $students->where('status_id', $request->input('filter_status_id'));
+            $students->where(
+                'status_id',
+                $request->input('filter_status_id')
+            );
         }
 
         if ($request->filled('filter_ladderized')) {
             $students->whereHas('studentInfo', function ($query) use ($request) {
-                $query->where('ladderized', (int) $request->input('filter_ladderized'));
+                $query->where(
+                    'ladderized',
+                    (int) $request->input('filter_ladderized')
+                );
             });
         }
 
         $students = $students
             ->orderBy('last_name')
             ->orderBy('first_name')
-            ->paginate(15, ['*'], 'students_page')
+            ->paginate(
+                15,
+                ['*'],
+                'students_page'
+            )
             ->withQueryString();
 
         $admins = Admin::query()
             ->with('adminInfo')
-            ->when($request->filled('admin_search'), function ($query) use ($request) {
-                $search = '%' . trim($request->admin_search) . '%';
-                $query->where(function ($searchQuery) use ($search) {
-                    $searchQuery->where('email', 'like', $search)
-                        ->orWhere('username', 'like', $search)
-                        ->orWhereHas('adminInfo', function ($adminInfoQuery) use ($search) {
-                            $adminInfoQuery->where('firstname', 'like', $search)
-                                ->orWhere('lastname', 'like', $search);
-                        });
-                });
-            })
+            ->when(
+                $request->filled('admin_search'),
+                function ($query) use ($request) {
+
+                    $search = '%' . trim($request->admin_search) . '%';
+
+                    $query->where(function ($searchQuery) use ($search) {
+
+                        $searchQuery
+                            ->where('email', 'like', $search)
+                            ->orWhere('username', 'like', $search)
+                            ->orWhereHas(
+                                'adminInfo',
+                                function ($adminInfoQuery) use ($search) {
+
+                                    $adminInfoQuery
+                                        ->where(
+                                            'firstname',
+                                            'like',
+                                            $search
+                                        )
+                                        ->orWhere(
+                                            'lastname',
+                                            'like',
+                                            $search
+                                        );
+                                }
+                            );
+                    });
+                }
+            )
             ->orderBy('id')
-            ->paginate(15, ['*'], 'admins_page')
+            ->paginate(
+                15,
+                ['*'],
+                'admins_page'
+            )
             ->withQueryString();
 
-$securities = Security::query()
-    ->with('securityInfo')
-            ->when($request->filled('security_search'), function ($query) use ($request) {
-                $search = '%' . trim($request->security_search) . '%';
-                $query->where(function ($searchQuery) use ($search) {
-                    $searchQuery->where('email', 'like', $search)
-->orWhereHas('securityInfo', function ($securityInfoQuery) use ($search) {
-    $securityInfoQuery->where('firstname', 'like', $search)
-        ->orWhere('middlename', 'like', $search)
-        ->orWhere('lastname', 'like', $search);
-})
-                        ->orWhereHas('securityInfo', function ($securityInfoQuery) use ($search) {
-                            $securityInfoQuery->where('contact_number', 'like', $search)
-                                ->orWhere('address', 'like', $search);
-                        });
-                });
-            })
+        $securities = Security::query()
+            ->with('securityInfo')
+            ->when(
+                $request->filled('security_search'),
+                function ($query) use ($request) {
+
+                    $search = '%' . trim($request->security_search) . '%';
+
+                    $query->where(function ($searchQuery) use ($search) {
+
+                        $searchQuery
+                            ->where('email', 'like', $search)
+                            ->orWhereHas(
+                                'securityInfo',
+                                function ($securityInfoQuery) use ($search) {
+
+                                    $securityInfoQuery
+                                        ->where(
+                                            'firstname',
+                                            'like',
+                                            $search
+                                        )
+                                        ->orWhere(
+                                            'middlename',
+                                            'like',
+                                            $search
+                                        )
+                                        ->orWhere(
+                                            'lastname',
+                                            'like',
+                                            $search
+                                        );
+                                }
+                            )
+                            ->orWhereHas(
+                                'securityInfo',
+                                function ($securityInfoQuery) use ($search) {
+
+                                    $securityInfoQuery
+                                        ->where(
+                                            'contact_number',
+                                            'like',
+                                            $search
+                                        )
+                                        ->orWhere(
+                                            'address',
+                                            'like',
+                                            $search
+                                        );
+                                }
+                            );
+                    });
+                }
+            )
             ->orderBy('id')
-            ->paginate(15, ['*'], 'security_page')
+            ->paginate(
+                15,
+                ['*'],
+                'security_page'
+            )
             ->withQueryString();
 
         $programs = Program::orderBy('program_name')->get();
+
         $years = Year::orderBy('year')->get();
+
         $sections = Section::orderBy('section_name')->get();
+
         $genders = Gender::orderBy('gender_name')->get();
+
         $statuses = Status::orderBy('status_name')->get();
+
         $adminRoles = Role::query()
-            ->whereIn('roles_name', ['Admin', 'IT Administrator', 'OSS Staff'])
+            ->whereIn(
+                'roles_name',
+                [
+                    'Admin',
+                    'IT Administrator',
+                    'OSS Staff'
+                ]
+            )
             ->orderBy('roles_name')
             ->get();
 
-        return view('admin.students.index', compact(
-            'students',
-            'admins',
-            'securities',
-            'programs',
-            'years',
-            'sections',
-            'genders',
-            'statuses',
-            'adminRoles'
-        ));
+        return view(
+            'admin.students.index',
+            compact(
+                'students',
+                'admins',
+                'securities',
+                'programs',
+                'years',
+                'sections',
+                'genders',
+                'statuses',
+                'adminRoles'
+            )
+        );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Create Student
+    |--------------------------------------------------------------------------
+    */
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'student_number' => 'required|string|max:50|unique:users_tbl,student_number',
-            // Identity fields the administrator enters manually. Email is
-            // deliberately NOT accepted here — it comes from the PUP IDP when
-            // the student links their account. Middle name and suffix are
-            // genuinely optional (nullable columns), so they are not required.
-            'first_name' => 'required|string|max:100',
-            'middle_name' => 'nullable|string|max:100',
-            'last_name' => 'required|string|max:100',
-            'name_suffix' => 'nullable|string|max:20',
-            'program_id' => 'required|exists:program_tbl,program_id',
-            'year_id' => 'required|exists:year_tbl,year_id',
-            'section_id' => 'required|exists:section_tbl,section_id',
-            'gender_id' => 'required|exists:gender_tbl,gender_id',
-            'status_id' => 'required|exists:status_tbl,status_id',
-            'ladderized' => 'nullable|in:0,1',
+            'student_number' =>
+                'required|string|max:50|unique:users_tbl,student_number',
+
+            'first_name' =>
+                'required|string|max:100',
+
+            'middle_name' =>
+                'nullable|string|max:100',
+
+            'last_name' =>
+                'required|string|max:100',
+
+            'name_suffix' =>
+                'nullable|string|max:20',
+
+            'program_id' =>
+                'required|exists:program_tbl,program_id',
+
+            'year_id' =>
+                'required|exists:year_tbl,year_id',
+
+            'section_id' =>
+                'required|exists:section_tbl,section_id',
+
+            'gender_id' =>
+                'required|exists:gender_tbl,gender_id',
+
+            'status_id' =>
+                'required|exists:status_tbl,status_id',
+
+            'ladderized' =>
+                'nullable|in:0,1',
         ]);
 
         $student = null;
 
-        DB::transaction(function () use ($validated, &$student): void {
-            $studentStatusId = $this->resolveStudentStatusIdFromUserStatusId((int) $validated['status_id']);
+        DB::transaction(function () use (
+            $validated,
+            &$student
+        ): void {
+
+            $studentStatusId =
+                $this->resolveStudentStatusIdFromUserStatusId(
+                    (int) $validated['status_id']
+                );
 
             if (!$studentStatusId) {
+
                 throw ValidationException::withMessages([
-                    'status_id' => 'Unable to map the selected status to a valid student status.',
+                    'status_id' =>
+                        'Unable to map the selected status to a valid student status.',
                 ]);
             }
 
-            // Student passwords are managed by the PUP Identity Provider (IDP),
-            // so no local password is configured for student accounts.
-            //
-            // The NAME is entered by the administrator and stored here. Only
-            // `email` is left for the PUP IDP: it is the authoritative source
-            // for the student's institutional email, which is written when the
-            // student links their PUPTracker account to their PUP IDP account.
             $student = User::create([
-                'student_number' => $validated['student_number'],
-                'first_name' => trim((string) $validated['first_name']),
-                'middle_name' => $this->nullableTrim($validated['middle_name'] ?? null),
-                'last_name' => trim((string) $validated['last_name']),
-                'name_suffix' => $this->nullableTrim($validated['name_suffix'] ?? null),
-                'gender_id' => $validated['gender_id'],
-                'status_id' => $validated['status_id'],
-                'roles_id' => 2,
-                'password_hash' => '',
+                'student_number' =>
+                    $validated['student_number'],
+
+                'first_name' =>
+                    trim((string) $validated['first_name']),
+
+                'middle_name' =>
+                    $this->nullableTrim(
+                        $validated['middle_name'] ?? null
+                    ),
+
+                'last_name' =>
+                    trim((string) $validated['last_name']),
+
+                'name_suffix' =>
+                    $this->nullableTrim(
+                        $validated['name_suffix'] ?? null
+                    ),
+
+                'gender_id' =>
+                    $validated['gender_id'],
+
+                'status_id' =>
+                    $validated['status_id'],
+
+                'roles_id' =>
+                    2,
+
+                'password_hash' =>
+                    '',
             ]);
 
             $student->studentInfo()->create([
-                'program_id' => $validated['program_id'],
-                'year_id' => $validated['year_id'],
-                'section_id' => $validated['section_id'],
-                'student_status_id' => $studentStatusId,
-                'ladderized' => (int) ($validated['ladderized'] ?? 0),
+                'program_id' =>
+                    $validated['program_id'],
+
+                'year_id' =>
+                    $validated['year_id'],
+
+                'section_id' =>
+                    $validated['section_id'],
+
+                'student_status_id' =>
+                    $studentStatusId,
+
+                'ladderized' =>
+                    (int) ($validated['ladderized'] ?? 0),
             ]);
         });
 
-        // The transaction always assigns $student before committing; the
-        // null assertion keeps static analysis aware the model is available.
         $this->logUserManagementAction(
             'student',
             'Create',
@@ -225,14 +392,403 @@ $securities = Security::query()
             $student?->email
         );
 
-        return redirect()->route('admin.students', ['tab' => 'students'])
-            ->with('success', 'Student account created successfully. The student will connect their PUP IDP account to supply their institutional email.');
+        return redirect()
+            ->route(
+                'admin.students',
+                ['tab' => 'students']
+            )
+            ->with(
+                'success',
+                'Student account created successfully. The student will connect their PUP IDP account to supply their institutional email.'
+            );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Year-Level Management
+    |--------------------------------------------------------------------------
+    |
+    | These methods are intentionally separate from the normal student
+    | update method.
+    |
+    | ONLY student_info_tbl.year_id is changed.
+    |
+    */
+
+    /**
+     * Manually update a single student's year level.
+     *
+     * IT Administrator only.
+     */
+    public function updateYearLevel(
+        Request $request,
+        string $student_number
+    ) {
+        $admin = Auth::guard('admin')->user();
+
+        if (
+            !$admin instanceof Admin ||
+            !$admin->isItAdministratorRole()
+        ) {
+            abort(
+                403,
+                'Only the IT Administrator can update student year levels.'
+            );
+        }
+
+        $validated = $request->validate([
+            'year_id' =>
+                'required|exists:year_tbl,year_id',
+        ]);
+
+        $student = User::query()
+            ->with([
+                'studentInfo.year',
+                'status'
+            ])
+            ->where(
+                'student_number',
+                $student_number
+            )
+            ->firstOrFail();
+
+        if (!$student->studentInfo) {
+
+            return redirect()
+                ->route(
+                    'admin.students',
+                    ['tab' => 'students']
+                )
+                ->with(
+                    'error',
+                    'Student information was not found.'
+                );
+        }
+
+        $oldYearId =
+            (int) $student->studentInfo->year_id;
+
+        $newYearId =
+            (int) $validated['year_id'];
+
+        if ($oldYearId === $newYearId) {
+
+            return redirect()
+                ->route(
+                    'admin.students',
+                    ['tab' => 'students']
+                )
+                ->with(
+                    'info',
+                    'The student is already assigned to the selected year level.'
+                );
+        }
+
+        $oldYear =
+            $student->studentInfo->year?->year ?? '—';
+
+        $newYear =
+            Year::query()
+                ->where(
+                    'year_id',
+                    $newYearId
+                )
+                ->value('year') ?? '—';
+
+        DB::transaction(function () use (
+            $student,
+            $newYearId
+        ): void {
+
+            /*
+             * IMPORTANT:
+             *
+             * Only year_id is changed.
+             *
+             * Program
+             * Section
+             * Status
+             * Gender
+             * Ladderized
+             * Student Number
+             *
+             * are NOT modified.
+             */
+            $student->studentInfo->update([
+                'year_id' => $newYearId,
+            ]);
+        });
+
+        $this->logUserManagementAction(
+            'student',
+            'Update Year Level',
+            $student->getKey(),
+            $student->email,
+            [
+                [
+                    'field' => 'Year Level',
+                    'from' => $oldYear,
+                    'to' => $newYear,
+                ],
+            ]
+        );
+
+        return redirect()
+            ->route(
+                'admin.students',
+                ['tab' => 'students']
+            )
+            ->with(
+                'success',
+                "Student {$student->student_number} year level updated from Year {$oldYear} to Year {$newYear}."
+            );
     }
 
     /**
-     * Trim a value, returning null when it is empty so optional columns stay
-     * NULL rather than becoming empty strings.
+     * Automatically promote ACTIVE students.
+     *
+     * Active:
+     * Year 1 -> Year 2
+     * Year 2 -> Year 3
+     * Year 3 -> Year 4
+     *
+     * Year 4 remains Year 4.
+     *
+     * Inactive students are completely excluded.
      */
+    public function promoteActiveStudents(
+        Request $request
+    ) {
+        $admin = Auth::guard('admin')->user();
+
+        if (
+            !$admin instanceof Admin ||
+            !$admin->isItAdministratorRole()
+        ) {
+            abort(
+                403,
+                'Only the IT Administrator can promote student year levels.'
+            );
+        }
+
+        /*
+         * Retrieve the existing Year 1–4 records.
+         */
+        $yearIds = Year::query()
+            ->whereIn(
+                'year',
+                ['1', '2', '3', '4']
+            )
+            ->pluck(
+                'year_id',
+                'year'
+            )
+            ->map(
+                fn ($id) => (int) $id
+            )
+            ->toArray();
+
+        /*
+         * Do not continue if the required year records
+         * do not exist.
+         */
+        if (
+            !isset($yearIds['1']) ||
+            !isset($yearIds['2']) ||
+            !isset($yearIds['3']) ||
+            !isset($yearIds['4'])
+        ) {
+
+            return redirect()
+                ->route(
+                    'admin.students',
+                    ['tab' => 'students']
+                )
+                ->with(
+                    'error',
+                    'The required Year 1 to Year 4 records were not found.'
+                );
+        }
+
+        /*
+         * Find the existing Active status.
+         */
+        $activeStatusId = Status::query()
+            ->whereRaw(
+                'LOWER(status_name) = ?',
+                ['active']
+            )
+            ->value('status_id');
+
+        if (!$activeStatusId) {
+
+            return redirect()
+                ->route(
+                    'admin.students',
+                    ['tab' => 'students']
+                )
+                ->with(
+                    'error',
+                    'The Active student status could not be found.'
+                );
+        }
+
+        /*
+         * Only students whose account status is Active
+         * and whose current year is 1–3 are selected.
+         *
+         * Year 4 students are intentionally excluded.
+         *
+         * Inactive students are also excluded.
+         */
+        $students = User::query()
+            ->with([
+                'studentInfo.year',
+                'role'
+            ])
+            ->where(
+                'status_id',
+                $activeStatusId
+            )
+            ->whereHas(
+                'role',
+                function ($query) {
+                    $query->where(
+                        'roles_name',
+                        'Student'
+                    );
+                }
+            )
+            ->whereHas(
+                'studentInfo',
+                function ($query) use ($yearIds) {
+
+                    $query->whereIn(
+                        'year_id',
+                        [
+                            $yearIds['1'],
+                            $yearIds['2'],
+                            $yearIds['3'],
+                        ]
+                    );
+                }
+            )
+            ->get();
+
+        if ($students->isEmpty()) {
+
+            return redirect()
+                ->route(
+                    'admin.students',
+                    ['tab' => 'students']
+                )
+                ->with(
+                    'info',
+                    'There are no Active students eligible for year-level promotion.'
+                );
+        }
+
+        $promotedCount = 0;
+
+        DB::transaction(function () use (
+            $students,
+            $yearIds,
+            &$promotedCount
+        ): void {
+
+            foreach ($students as $student) {
+
+                if (!$student->studentInfo) {
+                    continue;
+                }
+
+                $currentYearId =
+                    (int) $student->studentInfo->year_id;
+
+                $newYearId = match ($currentYearId) {
+
+                    $yearIds['1'] =>
+                        $yearIds['2'],
+
+                    $yearIds['2'] =>
+                        $yearIds['3'],
+
+                    $yearIds['3'] =>
+                        $yearIds['4'],
+
+                    default =>
+                        null,
+                };
+
+                /*
+                 * No valid promotion means no change.
+                 */
+                if (
+                    !$newYearId ||
+                    $newYearId === $currentYearId
+                ) {
+                    continue;
+                }
+
+                $oldYear =
+                    $student->studentInfo->year?->year
+                    ?? '—';
+
+                $newYear =
+                    Year::query()
+                        ->where(
+                            'year_id',
+                            $newYearId
+                        )
+                        ->value('year')
+                        ?? '—';
+
+                /*
+                 * ONLY year_id is updated.
+                 */
+                $student->studentInfo->update([
+                    'year_id' => $newYearId,
+                ]);
+
+                /*
+                 * Every individual promotion gets its own
+                 * audit-history entry.
+                 */
+                $this->logUserManagementAction(
+                    'student',
+                    'Automatic Year-Level Promotion',
+                    $student->getKey(),
+                    $student->email,
+                    [
+                        [
+                            'field' => 'Year Level',
+                            'from' => $oldYear,
+                            'to' => $newYear,
+                        ],
+                    ]
+                );
+
+                $promotedCount++;
+            }
+        });
+
+        return redirect()
+            ->route(
+                'admin.students',
+                ['tab' => 'students']
+            )
+            ->with(
+                'success',
+                "{$promotedCount} Active student(s) were promoted to the next year level."
+            );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Utility
+    |--------------------------------------------------------------------------
+    */
+
     private function nullableTrim($value): ?string
     {
         if ($value === null) {
@@ -241,45 +797,84 @@ $securities = Security::query()
 
         $trimmed = trim((string) $value);
 
-        return $trimmed === '' ? null : $trimmed;
+        return $trimmed === ''
+            ? null
+            : $trimmed;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Account Management
+    |--------------------------------------------------------------------------
+    */
 
     public function storeAdmin(Request $request)
     {
         $validated = $request->validate([
-            'email' => 'required|email|max:255|unique:admins,email',
-            'firstname' => 'required|string|max:50',
-            'middlename' => 'nullable|string|max:50',
-            'lastname' => 'required|string|max:50',
-            'status_id' => 'required|exists:status_tbl,status_id',
-            'role_id' => 'required|exists:roles_tbl,roles_id',
+            'email' =>
+                'required|email|max:255|unique:admins,email',
+
+            'firstname' =>
+                'required|string|max:50',
+
+            'middlename' =>
+                'nullable|string|max:50',
+
+            'lastname' =>
+                'required|string|max:50',
+
+            'status_id' =>
+                'required|exists:status_tbl,status_id',
+
+            'role_id' =>
+                'required|exists:roles_tbl,roles_id',
         ]);
 
         $admin = null;
 
-        DB::transaction(function () use ($validated, &$admin): void {
+        DB::transaction(function () use (
+            $validated,
+            &$admin
+        ): void {
+
             $admin = Admin::create([
-                'username' => $validated['email'],
-                'email' => $validated['email'],
-                'password' => Hash::make(Str::random(64)),
-                'mfa_totp_enabled' => 0,
+                'username' =>
+                    $validated['email'],
+
+                'email' =>
+                    $validated['email'],
+
+                'password' =>
+                    Hash::make(Str::random(64)),
+
+                'mfa_totp_enabled' =>
+                    0,
             ]);
 
             AdminInfo::updateOrCreate(
                 ['admin_id' => $admin->id],
                 [
-                    'Position' => 'Admin',
-                    'firstname' => $validated['firstname'],
-                    'middlename' => $validated['middlename'] ?? null,
-                    'lastname' => $validated['lastname'],
-                    'status_id' => $validated['status_id'],
-                    'role_id' => $validated['role_id'],
+                    'Position' =>
+                        'Admin',
+
+                    'firstname' =>
+                        $validated['firstname'],
+
+                    'middlename' =>
+                        $validated['middlename'] ?? null,
+
+                    'lastname' =>
+                        $validated['lastname'],
+
+                    'status_id' =>
+                        $validated['status_id'],
+
+                    'role_id' =>
+                        $validated['role_id'],
                 ]
             );
         });
 
-        // The transaction always assigns $admin before committing; the
-        // null-safe access keeps static analysis aware the model is available.
         $this->logUserManagementAction(
             'admin',
             'Create',
@@ -287,37 +882,57 @@ $securities = Security::query()
             $validated['email']
         );
 
-        return redirect()->route('admin.students', ['tab' => 'admins'])
-            ->with('success', 'Admin account created successfully.');
+        return redirect()
+            ->route(
+                'admin.students',
+                ['tab' => 'admins']
+            )
+            ->with(
+                'success',
+                'Admin account created successfully.'
+            );
     }
 
     public function storeSecurity(Request $request)
     {
         $validated = $request->validate([
-            'email' => 'required|email|max:255|unique:security,email',
-            'firstname' => 'required|string|max:50',
-            'middlename' => 'nullable|string|max:50',
-            'lastname' => 'required|string|max:50',
+            'email' =>
+                'required|email|max:255|unique:security,email',
+
+            'firstname' =>
+                'required|string|max:50',
+
+            'middlename' =>
+                'nullable|string|max:50',
+
+            'lastname' =>
+                'required|string|max:50',
         ]);
 
         $security = null;
 
-        DB::transaction(function () use ($validated, &$security): void {
+        DB::transaction(function () use (
+            $validated,
+            &$security
+        ): void {
+
             $security = Security::create([
-                'email' => $validated['email'],
-                'password' => Hash::make(Str::random(64)),
-                'mfa_totp_enabled' => 0,
+                'email' =>
+                    $validated['email'],
+
+                'password' =>
+                    Hash::make(Str::random(64)),
+
+                'mfa_totp_enabled' =>
+                    0,
             ]);
 
             SecurityInfo::updateOrCreate(
                 ['security_id' => $security->id],
                 $this->buildSecurityInfoData($validated)
             );
-
         });
 
-        // The transaction always assigns $security before committing; the
-        // null-safe access keeps static analysis aware the model is available.
         $this->logUserManagementAction(
             'security',
             'Create',
@@ -325,37 +940,83 @@ $securities = Security::query()
             $validated['email']
         );
 
-        return redirect()->route('admin.students', ['tab' => 'security'])
-            ->with('success', 'Security account created successfully.');
+        return redirect()
+            ->route(
+                'admin.students',
+                ['tab' => 'security']
+            )
+            ->with(
+                'success',
+                'Security account created successfully.'
+            );
     }
 
-    public function updateAdmin(Request $request, Admin $admin)
-    {
+    public function updateAdmin(
+        Request $request,
+        Admin $admin
+    ) {
         $validated = $request->validate([
-            'email' => 'required|email|max:255|unique:admins,email,' . $admin->id,
-            'firstname' => 'required|string|max:50',
-            'middlename' => 'nullable|string|max:50',
-            'lastname' => 'required|string|max:50',
-            'status_id' => 'required|exists:status_tbl,status_id',
-            'role_id' => 'required|exists:roles_tbl,roles_id',
-            'password' => 'nullable|string|min:8',
+            'email' =>
+                'required|email|max:255|unique:admins,email,' . $admin->id,
+
+            'firstname' =>
+                'required|string|max:50',
+
+            'middlename' =>
+                'nullable|string|max:50',
+
+            'lastname' =>
+                'required|string|max:50',
+
+            'status_id' =>
+                'required|exists:status_tbl,status_id',
+
+            'role_id' =>
+                'required|exists:roles_tbl,roles_id',
+
+            'password' =>
+                'nullable|string|min:8',
         ]);
 
         $adminEmailBefore = $admin->email;
-        $adminInfoBefore = $admin->adminInfo ? [
-            'firstname' => $admin->adminInfo->firstname,
-            'middlename' => $admin->adminInfo->middlename,
-            'lastname' => $admin->adminInfo->lastname,
-            'status_id' => $admin->adminInfo->status_id,
-            'role_id' => $admin->adminInfo->role_id,
-        ] : [];
 
-        DB::transaction(function () use ($admin, $validated): void {
-            $admin->email = $validated['email'];
-            $admin->username = $validated['email'];
+        $adminInfoBefore = $admin->adminInfo
+            ? [
+                'firstname' =>
+                    $admin->adminInfo->firstname,
 
-            if (!empty($validated['password'])) {
-                $admin->password = Hash::make($validated['password']);
+                'middlename' =>
+                    $admin->adminInfo->middlename,
+
+                'lastname' =>
+                    $admin->adminInfo->lastname,
+
+                'status_id' =>
+                    $admin->adminInfo->status_id,
+
+                'role_id' =>
+                    $admin->adminInfo->role_id,
+            ]
+            : [];
+
+        DB::transaction(function () use (
+            $admin,
+            $validated
+        ): void {
+
+            $admin->email =
+                $validated['email'];
+
+            $admin->username =
+                $validated['email'];
+
+            if (
+                !empty($validated['password'])
+            ) {
+                $admin->password =
+                    Hash::make(
+                        $validated['password']
+                    );
             }
 
             $admin->save();
@@ -363,12 +1024,23 @@ $securities = Security::query()
             AdminInfo::updateOrCreate(
                 ['admin_id' => $admin->id],
                 [
-                    'Position' => 'Admin',
-                    'firstname' => $validated['firstname'],
-                    'middlename' => $validated['middlename'] ?? null,
-                    'lastname' => $validated['lastname'],
-                    'status_id' => $validated['status_id'],
-                    'role_id' => $validated['role_id'],
+                    'Position' =>
+                        'Admin',
+
+                    'firstname' =>
+                        $validated['firstname'],
+
+                    'middlename' =>
+                        $validated['middlename'] ?? null,
+
+                    'lastname' =>
+                        $validated['lastname'],
+
+                    'status_id' =>
+                        $validated['status_id'],
+
+                    'role_id' =>
+                        $validated['role_id'],
                 ]
             );
         });
@@ -378,80 +1050,157 @@ $securities = Security::query()
             'Update',
             $admin->id,
             $admin->email,
-            $this->collectAdminChanges($adminEmailBefore, $adminInfoBefore, $admin, $validated)
+            $this->collectAdminChanges(
+                $adminEmailBefore,
+                $adminInfoBefore,
+                $admin,
+                $validated
+            )
         );
 
-        return redirect()->route('admin.students', ['tab' => 'admins'])
-            ->with('success', 'Admin account updated successfully.');
+        return redirect()
+            ->route(
+                'admin.students',
+                ['tab' => 'admins']
+            )
+            ->with(
+                'success',
+                'Admin account updated successfully.'
+            );
     }
 
     public function destroyAdmin(Admin $admin)
     {
         $adminEmail = $admin->email;
+
         $adminName = trim(
-            ($admin->adminInfo?->firstname ?? '') . ' ' . ($admin->adminInfo?->lastname ?? '')
+            ($admin->adminInfo?->firstname ?? '')
+            . ' '
+            . ($admin->adminInfo?->lastname ?? '')
         ) ?: $adminEmail;
 
         if ($admin->adminInfo) {
             $admin->adminInfo->delete();
         }
 
+        $adminId = $admin->id;
+
         $admin->delete();
 
         $this->logUserManagementAction(
             'admin',
             'Delete',
-            $admin->id,
+            $adminId,
             $adminEmail,
             [
-                ['field' => 'Name', 'from' => $adminName, 'to' => '— (deleted)'],
-                ['field' => 'Email', 'from' => $adminEmail, 'to' => '— (deleted)'],
+                [
+                    'field' =>
+                        'Name',
+
+                    'from' =>
+                        $adminName,
+
+                    'to' =>
+                        '— (deleted)',
+                ],
+
+                [
+                    'field' =>
+                        'Email',
+
+                    'from' =>
+                        $adminEmail,
+
+                    'to' =>
+                        '— (deleted)',
+                ],
             ]
         );
 
-        return redirect()->route('admin.students', ['tab' => 'admins'])
-            ->with('success', 'Admin account deleted successfully.');
+        return redirect()
+            ->route(
+                'admin.students',
+                ['tab' => 'admins']
+            )
+            ->with(
+                'success',
+                'Admin account deleted successfully.'
+            );
     }
 
-    /**
-     * Build the list of changed fields for an admin update, capturing
-     * before/after values (e.g. First Name from "Sofia" to "Mika").
-     */
     private function collectAdminChanges(
         string $emailBefore,
         array $infoBefore,
         Admin $admin,
         array $validated
     ): array {
+
         $changes = [];
 
-        if ((string) $admin->email !== $emailBefore) {
+        if (
+            (string) $admin->email !==
+            $emailBefore
+        ) {
+
             $changes[] = [
-                'field' => 'Email',
-                'from' => $emailBefore,
-                'to' => (string) $admin->email,
+                'field' =>
+                    'Email',
+
+                'from' =>
+                    $emailBefore,
+
+                'to' =>
+                    (string) $admin->email,
             ];
         }
 
         $fieldMap = [
-            'firstname' => 'First Name',
-            'middlename' => 'Middle Name',
-            'lastname' => 'Last Name',
-            'status_id' => 'Status',
-            'role_id' => 'Role',
+            'firstname' =>
+                'First Name',
+
+            'middlename' =>
+                'Middle Name',
+
+            'lastname' =>
+                'Last Name',
+
+            'status_id' =>
+                'Status',
+
+            'role_id' =>
+                'Role',
         ];
 
-        $infoAfter = $admin->fresh()?->adminInfo;
+        $infoAfter =
+            $admin->fresh()?->adminInfo;
 
-        foreach ($fieldMap as $key => $label) {
-            $from = (string) ($infoBefore[$key] ?? '');
-            $to = (string) ($infoAfter->{$key} ?? $validated[$key] ?? '');
+        foreach (
+            $fieldMap as $key => $label
+        ) {
+
+            $from =
+                (string) (
+                    $infoBefore[$key] ?? ''
+                );
+
+            $to =
+                (string) (
+                    $infoAfter->{$key}
+                    ?? $validated[$key]
+                    ?? ''
+                );
 
             if ($from !== $to) {
+
                 $changes[] = [
-                    'field' => $label,
-                    'from' => $from,
-                    'to' => $to,
+                    'field' =>
+                        $label,
+
+                    'from' =>
+                        $from,
+
+                    'to' =>
+                        $to,
                 ];
             }
         }
@@ -459,37 +1208,73 @@ $securities = Security::query()
         return $changes;
     }
 
-    public function updateSecurity(Request $request, Security $security)
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | Security Account Management
+    |--------------------------------------------------------------------------
+    */
+
+    public function updateSecurity(
+        Request $request,
+        Security $security
+    ) {
+
         $validated = $request->validate([
-            'email' => 'required|email|max:255|unique:security,email,' . $security->id,
-            'firstname' => 'required|string|max:50',
-            'middlename' => 'nullable|string|max:50',
-            'lastname' => 'required|string|max:50',
-            'password' => 'nullable|string|min:8',
+            'email' =>
+                'required|email|max:255|unique:security,email,' . $security->id,
+
+            'firstname' =>
+                'required|string|max:50',
+
+            'middlename' =>
+                'nullable|string|max:50',
+
+            'lastname' =>
+                'required|string|max:50',
+
+            'password' =>
+                'nullable|string|min:8',
         ]);
 
-        $securityEmailBefore = $security->email;
-       $securityNameBefore = [
-    'firstname' => $security->securityInfo->firstname ?? '',
-    'middlename' => $security->securityInfo->middlename ?? '',
-    'lastname' => $security->securityInfo->lastname ?? '',
-];
+        $securityEmailBefore =
+            $security->email;
 
-        DB::transaction(function () use ($security, $validated): void {
-            $security->email = $validated['email'];
+        $securityNameBefore = [
+            'firstname' =>
+                $security->securityInfo->firstname ?? '',
 
-            if (!empty($validated['password'])) {
-                $security->password = Hash::make($validated['password']);
+            'middlename' =>
+                $security->securityInfo->middlename ?? '',
+
+            'lastname' =>
+                $security->securityInfo->lastname ?? '',
+        ];
+
+        DB::transaction(function () use (
+            $security,
+            $validated
+        ): void {
+
+            $security->email =
+                $validated['email'];
+
+            if (
+                !empty($validated['password'])
+            ) {
+                $security->password =
+                    Hash::make(
+                        $validated['password']
+                    );
             }
 
             $security->save();
 
             SecurityInfo::updateOrCreate(
                 ['security_id' => $security->id],
-                $this->buildSecurityInfoData($validated)
+                $this->buildSecurityInfoData(
+                    $validated
+                )
             );
-
         });
 
         $this->logUserManagementAction(
@@ -497,22 +1282,40 @@ $securities = Security::query()
             'Update',
             $security->id,
             $security->email,
-            $this->collectSecurityChanges($securityEmailBefore, $securityNameBefore, $security, $validated)
+            $this->collectSecurityChanges(
+                $securityEmailBefore,
+                $securityNameBefore,
+                $security,
+                $validated
+            )
         );
 
-        return redirect()->route('admin.students', ['tab' => 'security'])
-            ->with('success', 'Security account updated successfully.');
+        return redirect()
+            ->route(
+                'admin.students',
+                ['tab' => 'security']
+            )
+            ->with(
+                'success',
+                'Security account updated successfully.'
+            );
     }
 
-public function destroySecurity(Security $security)
-{
-    $securityEmail = $security->email;
+    public function destroySecurity(
+        Security $security
+    ) {
 
-    $securityName = trim(
-        ($security->securityInfo?->firstname ?? '')
-        . ' '
-        . ($security->securityInfo?->lastname ?? '')
-    ) ?: $securityEmail;
+        $securityEmail =
+            $security->email;
+
+        $securityName = trim(
+            ($security->securityInfo?->firstname ?? '')
+            . ' '
+            . ($security->securityInfo?->lastname ?? '')
+        ) ?: $securityEmail;
+
+        $securityId =
+            $security->id;
 
         if ($security->securityInfo) {
             $security->securityInfo->delete();
@@ -527,60 +1330,122 @@ public function destroySecurity(Security $security)
         $this->logUserManagementAction(
             'security',
             'Delete',
-            $security->id,
+            $securityId,
             $securityEmail,
             [
-                ['field' => 'Name', 'from' => $securityName, 'to' => '— (deleted)'],
-                ['field' => 'Email', 'from' => $securityEmail, 'to' => '— (deleted)'],
+                [
+                    'field' =>
+                        'Name',
+
+                    'from' =>
+                        $securityName,
+
+                    'to' =>
+                        '— (deleted)',
+                ],
+
+                [
+                    'field' =>
+                        'Email',
+
+                    'from' =>
+                        $securityEmail,
+
+                    'to' =>
+                        '— (deleted)',
+                ],
             ]
         );
 
-        return redirect()->route('admin.students', ['tab' => 'security'])
-            ->with('success', 'Security account deleted successfully.');
+        return redirect()
+            ->route(
+                'admin.students',
+                ['tab' => 'security']
+            )
+            ->with(
+                'success',
+                'Security account deleted successfully.'
+            );
     }
 
-    /**
-     * Build the list of changed fields for a security update, capturing
-     * before/after values (e.g. First Name from "Sofia" to "Mika").
-     */
     private function collectSecurityChanges(
         string $emailBefore,
         array $nameBefore,
         Security $security,
         array $validated
     ): array {
+
         $changes = [];
 
-        if ((string) $security->email !== $emailBefore) {
+        if (
+            (string) $security->email !==
+            $emailBefore
+        ) {
+
             $changes[] = [
-                'field' => 'Email',
-                'from' => $emailBefore,
-                'to' => (string) $security->email,
+                'field' =>
+                    'Email',
+
+                'from' =>
+                    $emailBefore,
+
+                'to' =>
+                    (string) $security->email,
             ];
         }
 
         $fieldMap = [
-            'firstname' => 'First Name',
-            'middlename' => 'Middle Name',
-            'lastname' => 'Last Name',
+            'firstname' =>
+                'First Name',
+
+            'middlename' =>
+                'Middle Name',
+
+            'lastname' =>
+                'Last Name',
         ];
 
-        $fresh = $security->fresh();
-$nameAfter = [
-    'firstname' => $fresh?->securityInfo?->firstname ?? '',
-    'middlename' => $fresh?->securityInfo?->middlename ?? '',
-    'lastname' => $fresh?->securityInfo?->lastname ?? '',
-];
+        $fresh =
+            $security->fresh();
 
-        foreach ($fieldMap as $key => $label) {
-            $from = (string) ($nameBefore[$key] ?? '');
-            $to = (string) ($nameAfter[$key] ?? $validated[$key] ?? '');
+        $nameAfter = [
+            'firstname' =>
+                $fresh?->securityInfo?->firstname ?? '',
+
+            'middlename' =>
+                $fresh?->securityInfo?->middlename ?? '',
+
+            'lastname' =>
+                $fresh?->securityInfo?->lastname ?? '',
+        ];
+
+        foreach (
+            $fieldMap as $key => $label
+        ) {
+
+            $from =
+                (string) (
+                    $nameBefore[$key] ?? ''
+                );
+
+            $to =
+                (string) (
+                    $nameAfter[$key]
+                    ?? $validated[$key]
+                    ?? ''
+                );
 
             if ($from !== $to) {
+
                 $changes[] = [
-                    'field' => $label,
-                    'from' => $from,
-                    'to' => $to,
+                    'field' =>
+                        $label,
+
+                    'from' =>
+                        $from,
+
+                    'to' =>
+                        $to,
                 ];
             }
         }
@@ -588,195 +1453,416 @@ $nameAfter = [
         return $changes;
     }
 
-    public function importAccounts(Request $request)
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | Import Accounts
+    |--------------------------------------------------------------------------
+    */
+
+    public function importAccounts(
+        Request $request
+    ) {
+
         $validated = $request->validate([
-            'account_type' => 'required|in:student,admin,security',
-            'import_action' => 'nullable|in:create_activate,deactivate_students',
-            'import_file' => 'required|file|mimes:xlsx,xls,csv',
+            'account_type' =>
+                'required|in:student,admin,security',
+
+            'import_action' =>
+                'nullable|in:create_activate,deactivate_students',
+
+            'import_file' =>
+                'required|file|mimes:xlsx,xls,csv',
         ]);
 
-        $importAction = $validated['import_action'] ?? 'create_activate';
-        if ($validated['account_type'] !== 'student' && $importAction === 'deactivate_students') {
+        $importAction =
+            $validated['import_action']
+            ?? 'create_activate';
+
+        if (
+            $validated['account_type'] !== 'student'
+            &&
+            $importAction === 'deactivate_students'
+        ) {
+
             throw ValidationException::withMessages([
-                'import_action' => 'Deactivate import is only available for student accounts.',
+                'import_action' =>
+                    'Deactivate import is only available for student accounts.',
             ]);
         }
 
-        $rows = $this->extractRowsFromSpreadsheet($request->file('import_file')->getRealPath());
+        $rows =
+            $this->extractRowsFromSpreadsheet(
+                $request
+                    ->file('import_file')
+                    ->getRealPath()
+            );
+
         $created = 0;
 
-        DB::transaction(function () use ($validated, $rows, $importAction, &$created): void {
-            foreach ($rows as $row) {
-                if ($validated['account_type'] === 'student') {
-                    if ($importAction === 'deactivate_students') {
-                        $created += $this->deactivateStudentRow($row);
+        DB::transaction(
+            function () use (
+                $validated,
+                $rows,
+                $importAction,
+                &$created
+            ): void {
+
+                foreach ($rows as $row) {
+
+                    if (
+                        $validated['account_type']
+                        === 'student'
+                    ) {
+
+                        if (
+                            $importAction
+                            === 'deactivate_students'
+                        ) {
+
+                            $created +=
+                                $this->deactivateStudentRow(
+                                    $row
+                                );
+
+                            continue;
+                        }
+
+                        $created +=
+                            $this->importStudentRow(
+                                $row
+                            );
+
                         continue;
                     }
 
-                    $created += $this->importStudentRow($row);
-                    continue;
-                }
+                    if (
+                        $validated['account_type']
+                        === 'admin'
+                    ) {
 
-                if ($validated['account_type'] === 'admin') {
-                    $created += $this->importAdminRow($row);
-                    continue;
-                }
+                        $created +=
+                            $this->importAdminRow(
+                                $row
+                            );
 
-                $created += $this->importSecurityRow($row);
+                        continue;
+                    }
+
+                    $created +=
+                        $this->importSecurityRow(
+                            $row
+                        );
+                }
             }
-        });
+        );
 
-        $tab = $validated['account_type'] === 'student'
-            ? 'students'
-            : ($validated['account_type'] === 'admin' ? 'admins' : 'security');
+        $tab =
+            $validated['account_type']
+            === 'student'
+                ? 'students'
+                : (
+                    $validated['account_type']
+                    === 'admin'
+                        ? 'admins'
+                        : 'security'
+                );
 
-        if ($validated['account_type'] === 'student' && $importAction === 'deactivate_students') {
-            return redirect()->route('admin.students', ['tab' => $tab])
-                ->with('success', $created . ' student account(s) deactivated successfully.');
+        if (
+            $validated['account_type']
+            === 'student'
+            &&
+            $importAction
+            === 'deactivate_students'
+        ) {
+
+            return redirect()
+                ->route(
+                    'admin.students',
+                    ['tab' => $tab]
+                )
+                ->with(
+                    'success',
+                    $created
+                    . ' student account(s) deactivated successfully.'
+                );
         }
 
-        return redirect()->route('admin.students', ['tab' => $tab])
-            ->with('success', $created . ' ' . $validated['account_type'] . ' account(s) imported successfully.');
+        return redirect()
+            ->route(
+                'admin.students',
+                ['tab' => $tab]
+            )
+            ->with(
+                'success',
+                $created
+                . ' '
+                . $validated['account_type']
+                . ' account(s) imported successfully.'
+            );
     }
 
-    public function downloadImportTemplate(Request $request)
-    {
+    public function downloadImportTemplate(
+        Request $request
+    ) {
+
         $validated = $request->validate([
-            'account_type' => 'required|in:student,admin,security',
-            'import_action' => 'nullable|in:create_activate,deactivate_students',
+            'account_type' =>
+                'required|in:student,admin,security',
+
+            'import_action' =>
+                'nullable|in:create_activate,deactivate_students',
         ]);
 
-        $importAction = $validated['import_action'] ?? 'create_activate';
-        if ($validated['account_type'] !== 'student' && $importAction === 'deactivate_students') {
+        $importAction =
+            $validated['import_action']
+            ?? 'create_activate';
+
+        if (
+            $validated['account_type'] !== 'student'
+            &&
+            $importAction === 'deactivate_students'
+        ) {
+
             throw ValidationException::withMessages([
-                'import_action' => 'Deactivate template is only available for student accounts.',
+                'import_action' =>
+                    'Deactivate template is only available for student accounts.',
             ]);
         }
 
-        [$headers, $sampleRow] = match (true) {
-            $validated['account_type'] === 'student' && $importAction === 'deactivate_students' => [[
-                'student_number',
-            ], [
-                '2024-00001-TG-0',
-            ]],
-            $validated['account_type'] === 'student' => [[
-                'student_number',
-                'first_name',
-                'middle_name',
-                'last_name',
-                'name_suffix',
-                'program',
-                'year',
-                'section',
-                'gender',
-                'ladderized',
-            ], [
-                '2024-00001-TG-0',
-                'Juan',
-                'Dela',
-                'Cruz',
-                '',
-                'BSIT',
-                '1',
-                '1A',
-                'Male',
-                'No',
-            ]],
-            $validated['account_type'] === 'admin' => [[
-                'email',
-                'firstname',
-                'middlename',
-                'lastname',
-                'position',
-                'role',
-                'status',
-                'password',
-            ], [
-                'admin.user@example.com',
-                'Ana',
-                'Santos',
-                'Reyes',
-                'Admin',
-                'Admin',
-                'Active',
-                'Temp1234!',
-            ]],
-            default => [[
-                'email',
-                'firstname',
-                'middlename',
-                'lastname',
-                'position',
-                'contact_number',
-                'address',
-                'password',
-            ], [
-                'security.user@example.com',
-                'Maria',
-                'Santos',
-                'Dela Cruz',
-                'Security Personnel',
-                '09171234567',
-                'PUP Main Campus',
-                'Temp1234!',
-            ]],
+        [
+            $headers,
+            $sampleRow
+        ] = match (true) {
+
+            $validated['account_type']
+                === 'student'
+            &&
+            $importAction
+                === 'deactivate_students'
+                => [
+                    [
+                        'student_number'
+                    ],
+                    [
+                        '2024-00001-TG-0'
+                    ]
+                ],
+
+            $validated['account_type']
+                === 'student'
+                => [
+                    [
+                        'student_number',
+                        'first_name',
+                        'middle_name',
+                        'last_name',
+                        'name_suffix',
+                        'program',
+                        'year',
+                        'section',
+                        'gender',
+                        'ladderized',
+                    ],
+                    [
+                        '2024-00001-TG-0',
+                        'Juan',
+                        'Dela',
+                        'Cruz',
+                        '',
+                        'BSIT',
+                        '1',
+                        '1A',
+                        'Male',
+                        'No',
+                    ]
+                ],
+
+            $validated['account_type']
+                === 'admin'
+                => [
+                    [
+                        'email',
+                        'firstname',
+                        'middlename',
+                        'lastname',
+                        'position',
+                        'role',
+                        'status',
+                        'password',
+                    ],
+                    [
+                        'admin.user@example.com',
+                        'Ana',
+                        'Santos',
+                        'Reyes',
+                        'Admin',
+                        'Admin',
+                        'Active',
+                        'Temp1234!',
+                    ]
+                ],
+
+            default
+                => [
+                    [
+                        'email',
+                        'firstname',
+                        'middlename',
+                        'lastname',
+                        'position',
+                        'contact_number',
+                        'address',
+                        'password',
+                    ],
+                    [
+                        'security.user@example.com',
+                        'Maria',
+                        'Santos',
+                        'Dela Cruz',
+                        'Security Personnel',
+                        '09171234567',
+                        'PUP Main Campus',
+                        'Temp1234!',
+                    ]
+                ],
         };
 
-        $fileName = $validated['account_type'] . '-import-template.xlsx';
-        if ($validated['account_type'] === 'student' && $importAction === 'deactivate_students') {
-            $fileName = 'student-deactivation-template.xlsx';
+        $fileName =
+            $validated['account_type']
+            . '-import-template.xlsx';
+
+        if (
+            $validated['account_type']
+            === 'student'
+            &&
+            $importAction
+            === 'deactivate_students'
+        ) {
+
+            $fileName =
+                'student-deactivation-template.xlsx';
         }
 
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->fromArray($headers, null, 'A1');
-        $sheet->fromArray($sampleRow, null, 'A2');
+        $spreadsheet =
+            new Spreadsheet();
 
-        $tempFile = tempnam(sys_get_temp_dir(), 'import_tpl_');
+        $sheet =
+            $spreadsheet->getActiveSheet();
 
-        $writer = new Xlsx($spreadsheet);
-        $writer->save($tempFile);
+        $sheet->fromArray(
+            $headers,
+            null,
+            'A1'
+        );
 
-        return response()->download(
-            $tempFile,
-            $fileName,
-            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
-        )->deleteFileAfterSend(true);
+        $sheet->fromArray(
+            $sampleRow,
+            null,
+            'A2'
+        );
+
+        $tempFile =
+            tempnam(
+                sys_get_temp_dir(),
+                'import_tpl_'
+            );
+
+        $writer =
+            new Xlsx($spreadsheet);
+
+        $writer->save(
+            $tempFile
+        );
+
+        return response()
+            ->download(
+                $tempFile,
+                $fileName,
+                [
+                    'Content-Type' =>
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                ]
+            )
+            ->deleteFileAfterSend(true);
     }
 
-    private function deactivateStudentRow(array $row): int
-    {
-        $studentNumber = trim((string) ($row['student_number'] ?? ''));
+    private function deactivateStudentRow(
+        array $row
+    ): int {
+
+        $studentNumber =
+            trim(
+                (string) (
+                    $row['student_number']
+                    ?? ''
+                )
+            );
+
         if ($studentNumber === '') {
             return 0;
         }
 
-        $inactiveStatusId = Status::whereRaw('LOWER(status_name) = ?', ['inactive'])->value('status_id');
-        $inactiveStudentStatusId = $this->resolveStudentStatusIdByName('inactive');
+        $inactiveStatusId =
+            Status::whereRaw(
+                'LOWER(status_name) = ?',
+                ['inactive']
+            )
+            ->value('status_id');
 
-        if (!$inactiveStatusId || !$inactiveStudentStatusId) {
+        $inactiveStudentStatusId =
+            $this->resolveStudentStatusIdByName(
+                'inactive'
+            );
+
+        if (
+            !$inactiveStatusId
+            ||
+            !$inactiveStudentStatusId
+        ) {
             return 0;
         }
 
-        $student = User::where('student_number', $studentNumber)->first();
-        if (!$student || (int) $student->status_id === (int) $inactiveStatusId) {
+        $student =
+            User::where(
+                'student_number',
+                $studentNumber
+            )->first();
+
+        if (
+            !$student
+            ||
+            (int) $student->status_id
+            === (int) $inactiveStatusId
+        ) {
             return 0;
         }
 
-        $student->status_id = $inactiveStatusId;
+        $student->status_id =
+            $inactiveStatusId;
+
         $student->save();
 
         if ($student->studentInfo) {
-            $student->studentInfo->student_status_id = $inactiveStudentStatusId;
+
+            $student->studentInfo->student_status_id =
+                $inactiveStudentStatusId;
+
             $student->studentInfo->save();
         }
 
         return 1;
     }
 
-    public function show(string $student_number)
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | Student View / Edit
+    |--------------------------------------------------------------------------
+    */
+
+    public function show(
+        string $student_number
+    ) {
+
         $student = User::query()
             ->with([
                 'studentInfo.program',
@@ -786,27 +1872,51 @@ $nameAfter = [
                 'gender',
                 'status',
                 'violations' => function ($query) {
-                    $query->notDenied()->with('violationType.violationCategory');
+                    $query
+                        ->notDenied()
+                        ->with(
+                            'violationType.violationCategory'
+                        );
                 },
             ])
-            ->where('student_number', $student_number)
+            ->where(
+                'student_number',
+                $student_number
+            )
             ->firstOrFail();
 
-        return view('admin.students.show', compact('student'));
+        return view(
+            'admin.students.show',
+            compact('student')
+        );
     }
 
-    public function edit(string $student_number)
-    {
+    public function edit(
+        string $student_number
+    ) {
+
         $student = User::query()
             ->with('studentInfo')
-            ->where('student_number', $student_number)
+            ->where(
+                'student_number',
+                $student_number
+            )
             ->firstOrFail();
 
-        $programs = Program::orderBy('program_name')->get();
-        $years = Year::orderBy('year')->get();
-        $sections = Section::orderBy('section_name')->get();
-        $genders = Gender::orderBy('gender_name')->get();
-        $statuses = Status::orderBy('status_name')->get();
+        $programs =
+            Program::orderBy('program_name')->get();
+
+        $years =
+            Year::orderBy('year')->get();
+
+        $sections =
+            Section::orderBy('section_name')->get();
+
+        $genders =
+            Gender::orderBy('gender_name')->get();
+
+        $statuses =
+            Status::orderBy('status_name')->get();
 
         return view(
             'admin.students.edit',
@@ -821,58 +1931,132 @@ $nameAfter = [
         );
     }
 
-    public function update(Request $request, string $student_number)
-    {
+    /**
+     * Update normal student information.
+     *
+     * IMPORTANT:
+     * Year level is intentionally NOT accepted here anymore.
+     *
+     * Year level must be changed through:
+     *
+     * updateYearLevel()
+     *
+     * or
+     *
+     * promoteActiveStudents()
+     */
+    public function update(
+        Request $request,
+        string $student_number
+    ) {
+
         $student = User::query()
-            ->where('student_number', $student_number)
+            ->where(
+                'student_number',
+                $student_number
+            )
             ->firstOrFail();
 
         $request->validate([
-            'program_id' => 'required',
-            'year_id' => 'required',
-            'section_id' => 'required',
-            'gender_id' => 'required',
-            'status_id' => 'required',
-            'ladderized' => 'nullable|in:0,1',
+            'program_id' =>
+                'required|exists:program_tbl,program_id',
+
+            'section_id' =>
+                'required|exists:section_tbl,section_id',
+
+            'gender_id' =>
+                'required|exists:gender_tbl,gender_id',
+
+            'status_id' =>
+                'required|exists:status_tbl,status_id',
+
+            'ladderized' =>
+                'nullable|in:0,1',
         ]);
 
-        // Student passwords are managed by the PUP Identity Provider (IDP), so
-        // the local password is never updated here. Identity fields (first_name,
-        // middle_name, last_name, name_suffix, email) are also managed by the
-        // IDP and are NOT editable by an administrator — they are only set when
-        // the student links their PUP IDP account. Only academic/enrollment
-        // fields may be corrected below.
-        $studentInfoBefore = $student->studentInfo ? [
-            'program_id' => $student->studentInfo->program_id,
-            'year_id' => $student->studentInfo->year_id,
-            'section_id' => $student->studentInfo->section_id,
-            'student_status_id' => $student->studentInfo->student_status_id,
-            'ladderized' => $student->studentInfo->ladderized,
-        ] : [];
+        /*
+         * Student passwords are managed by the PUP IDP.
+         *
+         * Identity fields are not editable here.
+         *
+         * YEAR LEVEL IS ALSO NOT UPDATED HERE.
+         */
+        $studentInfoBefore =
+            $student->studentInfo
+                ? [
+                    'program_id' =>
+                        $student->studentInfo->program_id,
+
+                    'year_id' =>
+                        $student->studentInfo->year_id,
+
+                    'section_id' =>
+                        $student->studentInfo->section_id,
+
+                    'student_status_id' =>
+                        $student->studentInfo->student_status_id,
+
+                    'ladderized' =>
+                        $student->studentInfo->ladderized,
+                ]
+                : [];
 
         $student->update([
-            'gender_id' => $request->input('gender_id'),
-            'status_id' => $request->input('status_id'),
+            'gender_id' =>
+                $request->input('gender_id'),
+
+            'status_id' =>
+                $request->input('status_id'),
         ]);
 
-        $studentStatusId = $this->resolveStudentStatusIdFromUserStatusId((int) $request->input('status_id'));
+        $studentStatusId =
+            $this->resolveStudentStatusIdFromUserStatusId(
+                (int) $request->input('status_id')
+            );
 
         if (!$studentStatusId) {
+
             throw ValidationException::withMessages([
-                'status_id' => 'Unable to map the selected status to a valid student status.',
+                'status_id' =>
+                    'Unable to map the selected status to a valid student status.',
             ]);
         }
 
-        $studentInfo = $student->studentInfo()->firstOrNew(['user_id' => $student->getKey()]);
+        $studentInfo =
+            $student->studentInfo()
+                ->firstOrNew([
+                    'user_id' =>
+                        $student->getKey()
+                ]);
 
+        /*
+         * IMPORTANT:
+         *
+         * There is NO year_id here.
+         *
+         * This means normal student editing cannot
+         * change the year level.
+         */
         $studentInfo->fill([
-            'user_id' => $student->getKey(),
-            'program_id' => $request->input('program_id'),
-            'year_id' => $request->input('year_id'),
-            'section_id' => $request->input('section_id'),
-            'student_status_id' => $studentStatusId,
-            'ladderized' => (int) ($request->input('ladderized') ?? 0),
+            'user_id' =>
+                $student->getKey(),
+
+            'program_id' =>
+                $request->input('program_id'),
+
+            'section_id' =>
+                $request->input('section_id'),
+
+            'student_status_id' =>
+                $studentStatusId,
+
+            'ladderized' =>
+                (int) (
+                    $request->input('ladderized')
+                    ?? 0
+                ),
         ]);
+
         $studentInfo->save();
 
         $this->logUserManagementAction(
@@ -880,62 +2064,122 @@ $nameAfter = [
             'Update',
             $student->getKey(),
             $student->email,
-            $this->collectStudentChanges($studentInfoBefore, $student, $studentInfo, $request)
+            $this->collectStudentChanges(
+                $studentInfoBefore,
+                $student,
+                $studentInfo,
+                $request
+            )
         );
 
         return redirect()
-            ->route('admin.students', ['tab' => 'students'])
-            ->with('success', 'Student updated successfully.');
+            ->route(
+                'admin.students',
+                ['tab' => 'students']
+            )
+            ->with(
+                'success',
+                'Student updated successfully.'
+            );
     }
 
-    /**
-     * Build the list of changed fields for a student update, capturing
-     * before/after values. Identity fields are excluded (they are managed by
-     * the IDP, not editable by admins), so only enrollment fields appear.
-     */
     private function collectStudentChanges(
         array $infoBefore,
         User $student,
         StudentInfo $studentInfo,
         Request $request
     ): array {
+
         $changes = [];
 
         $studentFieldMap = [
-            'gender_id' => 'Gender',
-            'status_id' => 'Status',
+            'gender_id' =>
+                'Gender',
+
+            'status_id' =>
+                'Status',
         ];
 
-        foreach ($studentFieldMap as $key => $label) {
-            $from = (string) $student->getOriginal($key);
-            $to = (string) $student->{$key};
+        foreach (
+            $studentFieldMap as $key => $label
+        ) {
+
+            $from =
+                (string) $student->getOriginal(
+                    $key
+                );
+
+            $to =
+                (string) $student->{$key};
 
             if ($from !== $to) {
+
                 $changes[] = [
-                    'field' => $label,
-                    'from' => $from,
-                    'to' => $to,
+                    'field' =>
+                        $label,
+
+                    'from' =>
+                        $from,
+
+                    'to' =>
+                        $to,
                 ];
             }
         }
 
         $infoFieldMap = [
-            'program_id' => 'Program',
-            'year_id' => 'Year',
-            'section_id' => 'Section',
-            'student_status_id' => 'Student Status',
-            'ladderized' => 'Ladderized',
+            'program_id' =>
+                'Program',
+
+            /*
+             * Year is intentionally kept here only so historical
+             * changes from older records can still be represented.
+             *
+             * The current update() method does not modify year_id.
+             */
+            'year_id' =>
+                'Year',
+
+            'section_id' =>
+                'Section',
+
+            'student_status_id' =>
+                'Student Status',
+
+            'ladderized' =>
+                'Ladderized',
         ];
 
-        foreach ($infoFieldMap as $key => $label) {
-            $from = (string) ($infoBefore[$key] ?? '');
-            $to = (string) ($studentInfo->{$key} ?? $request->input($key, ''));
+        foreach (
+            $infoFieldMap as $key => $label
+        ) {
+
+            $from =
+                (string) (
+                    $infoBefore[$key] ?? ''
+                );
+
+            $to =
+                (string) (
+                    $studentInfo->{$key}
+                    ??
+                    $request->input(
+                        $key,
+                        ''
+                    )
+                );
 
             if ($from !== $to) {
+
                 $changes[] = [
-                    'field' => $label,
-                    'from' => $from,
-                    'to' => $to,
+                    'field' =>
+                        $label,
+
+                    'from' =>
+                        $from,
+
+                    'to' =>
+                        $to,
                 ];
             }
         }
@@ -943,144 +2187,315 @@ $nameAfter = [
         return $changes;
     }
 
-    /**
-     * Administrator-assisted IDP linking.
-     *
-     * Links an existing PUPTracker student to a verified IDP Account ID
-     * (users_tbl.idp_subject). This is the ONLY supported way to bind an IDP
-     * identity to a local student — students can never submit their own IDP
-     * Account ID. The IDP Account ID must be unique across all students.
-     */
-    public function linkIdpAccount(Request $request, string $student_number)
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | IDP Linking
+    |--------------------------------------------------------------------------
+    */
+
+    public function linkIdpAccount(
+        Request $request,
+        string $student_number
+    ) {
+
         $student = User::query()
-            ->where('student_number', $student_number)
+            ->where(
+                'student_number',
+                $student_number
+            )
             ->firstOrFail();
 
         $validated = $request->validate([
-            'idp_subject' => ['required', 'string', 'max:191'],
+            'idp_subject' =>
+                [
+                    'required',
+                    'string',
+                    'max:191'
+                ],
         ]);
 
-        $idpSubject = trim($validated['idp_subject']);
+        $idpSubject =
+            trim(
+                $validated['idp_subject']
+            );
 
         if ($idpSubject === '') {
+
             throw ValidationException::withMessages([
-                'idp_subject' => 'The IDP Account ID cannot be empty.',
+                'idp_subject' =>
+                    'The IDP Account ID cannot be empty.',
             ]);
         }
 
-        // Uniqueness: one IDP Account ID may only be linked to ONE student.
         $existing = User::query()
-            ->where('idp_subject', $idpSubject)
-            ->where('user_id', '!=', $student->getKey())
+            ->where(
+                'idp_subject',
+                $idpSubject
+            )
+            ->where(
+                'user_id',
+                '!=',
+                $student->getKey()
+            )
             ->first();
 
         if ($existing) {
+
             throw ValidationException::withMessages([
-                'idp_subject' => 'This IDP Account ID is already linked to student ' . $existing->student_number . '.',
+                'idp_subject' =>
+                    'This IDP Account ID is already linked to student '
+                    . $existing->student_number
+                    . '.',
             ]);
         }
 
-        $admin = Auth::guard('admin')->user();
-        $adminId = $admin instanceof Admin ? $admin->id : null;
-        $adminEmail = $admin instanceof Admin ? $admin->email : 'unknown';
+        $admin =
+            Auth::guard('admin')->user();
 
-        $previousSubject = (string) ($student->idp_subject ?? '');
+        $adminId =
+            $admin instanceof Admin
+                ? $admin->id
+                : null;
+
+        $adminEmail =
+            $admin instanceof Admin
+                ? $admin->email
+                : 'unknown';
+
+        $previousSubject =
+            (string) (
+                $student->idp_subject ?? ''
+            );
 
         $student->forceFill([
-            'idp_subject' => $idpSubject,
-            'idp_email' => $request->filled('idp_email')
-                ? strtolower(trim((string) $request->input('idp_email')))
-                : $student->idp_email,
-            'idp_connected_at' => $student->idp_connected_at ?? now(),
+            'idp_subject' =>
+                $idpSubject,
+
+            'idp_email' =>
+                $request->filled('idp_email')
+                    ? strtolower(
+                        trim(
+                            (string) $request->input(
+                                'idp_email'
+                            )
+                        )
+                    )
+                    : $student->idp_email,
+
+            'idp_connected_at' =>
+                $student->idp_connected_at
+                    ?? now(),
         ])->save();
 
-        // IDP linking is both an accountability event (audit_logs) and an
-        // account-lifecycle change (user_management_histories).
-        app(\App\Services\AuditLogService::class)->userAccountChange(
-            userId: $student->getKey(),
-            actorId: $adminId,
-            accountType: 'student',
-            action: 'IDP_LINKED',
-            changes: [
-                ['field' => 'IDP Subject', 'from' => $previousSubject, 'to' => $idpSubject],
-            ],
-            displayLabel: $student->student_number,
+        app(
+            \App\Services\AuditLogService::class
+        )->userAccountChange(
+            userId:
+                $student->getKey(),
+
+            actorId:
+                $adminId,
+
+            accountType:
+                'student',
+
+            action:
+                'IDP_LINKED',
+
+            changes:
+                [
+                    [
+                        'field' =>
+                            'IDP Subject',
+
+                        'from' =>
+                            $previousSubject,
+
+                        'to' =>
+                            $idpSubject,
+                    ],
+                ],
+
+            displayLabel:
+                $student->student_number,
         );
 
-        app(\App\Services\AuditLogService::class)->audit([
-            'actor_type' => 'admin',
-            'actor_id' => $adminId,
-            'action' => 'Link IDP Account',
-            'module' => 'Students',
-            'description' => 'Linked IDP Account ID to student ' . $student->student_number . ' by ' . $adminEmail . '.',
+        app(
+            \App\Services\AuditLogService::class
+        )->audit([
+            'actor_type' =>
+                'admin',
+
+            'actor_id' =>
+                $adminId,
+
+            'action' =>
+                'Link IDP Account',
+
+            'module' =>
+                'Students',
+
+            'description' =>
+                'Linked IDP Account ID to student '
+                . $student->student_number
+                . ' by '
+                . $adminEmail
+                . '.',
         ], $request);
 
-        return back()->with('success', 'IDP Account linked to this student successfully.');
+        return back()
+            ->with(
+                'success',
+                'IDP Account linked to this student successfully.'
+            );
     }
 
-    /**
-     * Administrator-assisted IDP unlink.
-     *
-     * Removes the IDP binding from a student. Used to correct a mistaken link.
-     * This is the single unlinkIdpAccount method on this controller.
-     */
-    public function unlinkIdpAccount(Request $request, string $student_number)
-    {
+    public function unlinkIdpAccount(
+        Request $request,
+        string $student_number
+    ) {
+
         $student = User::query()
-            ->where('student_number', $student_number)
+            ->where(
+                'student_number',
+                $student_number
+            )
             ->firstOrFail();
 
-        $admin = Auth::guard('admin')->user();
-        $adminId = $admin instanceof Admin ? $admin->id : null;
-        $adminEmail = $admin instanceof Admin ? $admin->email : 'unknown';
+        $admin =
+            Auth::guard('admin')->user();
 
-        $previousSubject = (string) ($student->idp_subject ?? '');
+        $adminId =
+            $admin instanceof Admin
+                ? $admin->id
+                : null;
+
+        $adminEmail =
+            $admin instanceof Admin
+                ? $admin->email
+                : 'unknown';
+
+        $previousSubject =
+            (string) (
+                $student->idp_subject ?? ''
+            );
 
         $student->forceFill([
-            'idp_subject' => null,
-            'idp_email' => null,
-            'idp_connected_at' => null,
+            'idp_subject' =>
+                null,
+
+            'idp_email' =>
+                null,
+
+            'idp_connected_at' =>
+                null,
         ])->save();
 
-        // IDP unlinking is both an accountability event and a lifecycle change.
-        app(\App\Services\AuditLogService::class)->userAccountChange(
-            userId: $student->getKey(),
-            actorId: $adminId,
-            accountType: 'student',
-            action: 'IDP_UNLINKED',
-            changes: [
-                ['field' => 'IDP Subject', 'from' => $previousSubject, 'to' => ''],
-            ],
-            displayLabel: $student->student_number,
+        app(
+            \App\Services\AuditLogService::class
+        )->userAccountChange(
+            userId:
+                $student->getKey(),
+
+            actorId:
+                $adminId,
+
+            accountType:
+                'student',
+
+            action:
+                'IDP_UNLINKED',
+
+            changes:
+                [
+                    [
+                        'field' =>
+                            'IDP Subject',
+
+                        'from' =>
+                            $previousSubject,
+
+                        'to' =>
+                            '',
+                    ],
+                ],
+
+            displayLabel:
+                $student->student_number,
         );
 
-        app(\App\Services\AuditLogService::class)->audit([
-            'actor_type' => 'admin',
-            'actor_id' => $adminId,
-            'action' => 'Unlink IDP Account',
-            'module' => 'Students',
-            'description' => 'Unlinked IDP Account from student ' . $student->student_number . ' by ' . $adminEmail . '.',
+        app(
+            \App\Services\AuditLogService::class
+        )->audit([
+            'actor_type' =>
+                'admin',
+
+            'actor_id' =>
+                $adminId,
+
+            'action' =>
+                'Unlink IDP Account',
+
+            'module' =>
+                'Students',
+
+            'description' =>
+                'Unlinked IDP Account from student '
+                . $student->student_number
+                . ' by '
+                . $adminEmail
+                . '.',
         ], $request);
 
-        return back()->with('success', 'IDP Account unlinked from this student.');
+        return back()
+            ->with(
+                'success',
+                'IDP Account unlinked from this student.'
+            );
     }
 
-    /**
-     * Delete a student account (admin module).
-     */
-    public function destroy(string $student_number)
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | Delete Student
+    |--------------------------------------------------------------------------
+    */
+
+    public function destroy(
+        string $student_number
+    ) {
+
         $student = User::query()
-            ->where('student_number', $student_number)
+            ->where(
+                'student_number',
+                $student_number
+            )
             ->firstOrFail();
 
         $studentName = trim(
-            ($student->first_name ?? '') . ' ' . ($student->middle_name ?? '') . ' ' . ($student->last_name ?? '')
+            ($student->first_name ?? '')
+            . ' '
+            . ($student->middle_name ?? '')
+            . ' '
+            . ($student->last_name ?? '')
         ) ?: $student_number;
 
-        $program = optional($student->studentInfo)->program?->program_name ?? '—';
-        $section = optional($student->studentInfo)->section?->section_name ?? '—';
+        $program =
+            optional(
+                $student->studentInfo
+            )->program?->program_name
+            ?? '—';
+
+        $section =
+            optional(
+                $student->studentInfo
+            )->section?->section_name
+            ?? '—';
+
+        $studentId =
+            $student->getKey();
+
+        $studentEmail =
+            $student->email;
 
         if ($student->studentInfo) {
             $student->studentInfo->delete();
@@ -1091,323 +2506,745 @@ $nameAfter = [
         $this->logUserManagementAction(
             'student',
             'Delete',
-            $student->getKey(),
-            $student->email,
+            $studentId,
+            $studentEmail,
             [
-                ['field' => 'Student Number', 'from' => $student_number, 'to' => '— (deleted)'],
-                ['field' => 'Name', 'from' => $studentName, 'to' => '— (deleted)'],
-                ['field' => 'Program', 'from' => $program, 'to' => '— (deleted)'],
-                ['field' => 'Section', 'from' => $section, 'to' => '— (deleted)'],
+                [
+                    'field' =>
+                        'Student Number',
+
+                    'from' =>
+                        $student_number,
+
+                    'to' =>
+                        '— (deleted)',
+                ],
+
+                [
+                    'field' =>
+                        'Name',
+
+                    'from' =>
+                        $studentName,
+
+                    'to' =>
+                        '— (deleted)',
+                ],
+
+                [
+                    'field' =>
+                        'Program',
+
+                    'from' =>
+                        $program,
+
+                    'to' =>
+                        '— (deleted)',
+                ],
+
+                [
+                    'field' =>
+                        'Section',
+
+                    'from' =>
+                        $section,
+
+                    'to' =>
+                        '— (deleted)',
+                ],
             ]
         );
 
         return redirect()
-            ->route('admin.students', ['tab' => 'students'])
-            ->with('success', 'Student deleted successfully.');
+            ->route(
+                'admin.students',
+                ['tab' => 'students']
+            )
+            ->with(
+                'success',
+                'Student deleted successfully.'
+            );
     }
 
-    private function extractRowsFromSpreadsheet(string $filePath): array
-    {
-        $sheet = IOFactory::load($filePath)->getActiveSheet();
-        $rows = $sheet->toArray(null, true, true, false);
+    /*
+    |--------------------------------------------------------------------------
+    | Spreadsheet Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    private function extractRowsFromSpreadsheet(
+        string $filePath
+    ): array {
+
+        $sheet =
+            IOFactory::load($filePath)
+                ->getActiveSheet();
+
+        $rows =
+            $sheet->toArray(
+                null,
+                true,
+                true,
+                false
+            );
 
         if (count($rows) < 2) {
             return [];
         }
 
-        $headers = array_map(function ($value) {
-            $header = strtolower(trim((string) $value));
-            $header = str_replace([' ', '-'], '_', $header);
+        $headers =
+            array_map(
+                function ($value) {
 
-            return $header;
-        }, $rows[0]);
+                    $header =
+                        strtolower(
+                            trim(
+                                (string) $value
+                            )
+                        );
+
+                    return str_replace(
+                        [
+                            ' ',
+                            '-'
+                        ],
+                        '_',
+                        $header
+                    );
+                },
+                $rows[0]
+            );
 
         $normalizedRows = [];
-        foreach (array_slice($rows, 1) as $row) {
+
+        foreach (
+            array_slice(
+                $rows,
+                1
+            ) as $row
+        ) {
+
             $mapped = [];
+
             $hasValue = false;
 
-            foreach ($headers as $index => $header) {
+            foreach (
+                $headers as $index => $header
+            ) {
+
                 if ($header === '') {
                     continue;
                 }
-                $mapped[$header] = isset($row[$index]) ? trim((string) $row[$index]) : null;
-                if (($mapped[$header] ?? '') !== '') {
+
+                $mapped[$header] =
+                    isset($row[$index])
+                        ? trim(
+                            (string) $row[$index]
+                        )
+                        : null;
+
+                if (
+                    ($mapped[$header] ?? '')
+                    !== ''
+                ) {
                     $hasValue = true;
                 }
             }
 
             if ($hasValue) {
-                $normalizedRows[] = $mapped;
+                $normalizedRows[] =
+                    $mapped;
             }
         }
 
         return $normalizedRows;
     }
 
-    private function importStudentRow(array $row): int
-    {
-        $studentNumber = $row['student_number'] ?? null;
-        $email = $row['email'] ?? null;
+    private function importStudentRow(
+        array $row
+    ): int {
 
-        if (empty($studentNumber)) {
+        $studentNumber =
+            $row['student_number']
+            ?? null;
+
+        $email =
+            $row['email']
+            ?? null;
+
+        if (
+            empty($studentNumber)
+        ) {
             return 0;
         }
 
-        if (User::where('student_number', $studentNumber)->exists()) {
+        if (
+            User::where(
+                'student_number',
+                $studentNumber
+            )->exists()
+        ) {
             return 0;
         }
 
-        $programId = Program::where('program_name', $row['program'] ?? '')->value('program_id');
-        $yearId = Year::where('year', $row['year'] ?? '')->value('year_id');
-        $sectionId = Section::where('section_name', $row['section'] ?? '')->value('section_id');
-        $genderId = Gender::where('gender_name', $row['gender'] ?? '')->value('gender_id');
-        $statusName = trim((string) ($row['status'] ?? ''));
-        $statusId = Status::whereRaw('LOWER(status_name) = ?', [strtolower($statusName)])->value('status_id') ?? 1;
-        $studentStatusId = $this->resolveStudentStatusIdByName($statusName);
-        $ladderized = $this->normalizeLadderizedFlag($row['ladderized'] ?? null);
+        $programId =
+            Program::where(
+                'program_name',
+                $row['program'] ?? ''
+            )->value('program_id');
+
+        $yearId =
+            Year::where(
+                'year',
+                $row['year'] ?? ''
+            )->value('year_id');
+
+        $sectionId =
+            Section::where(
+                'section_name',
+                $row['section'] ?? ''
+            )->value('section_id');
+
+        $genderId =
+            Gender::where(
+                'gender_name',
+                $row['gender'] ?? ''
+            )->value('gender_id');
+
+        $statusName =
+            trim(
+                (string) (
+                    $row['status'] ?? ''
+                )
+            );
+
+        $statusId =
+            Status::whereRaw(
+                'LOWER(status_name) = ?',
+                [
+                    strtolower(
+                        $statusName
+                    )
+                ]
+            )
+            ->value('status_id')
+            ?? 1;
+
+        $studentStatusId =
+            $this->resolveStudentStatusIdByName(
+                $statusName
+            );
+
+        $ladderized =
+            $this->normalizeLadderizedFlag(
+                $row['ladderized'] ?? null
+            );
 
         if (!$studentStatusId) {
-            $studentStatusId = $this->resolveStudentStatusIdFromUserStatusId((int) $statusId);
+
+            $studentStatusId =
+                $this->resolveStudentStatusIdFromUserStatusId(
+                    (int) $statusId
+                );
         }
 
-        if (!$programId || !$yearId || !$sectionId || !$genderId || !$studentStatusId) {
+        if (
+            !$programId
+            ||
+            !$yearId
+            ||
+            !$sectionId
+            ||
+            !$genderId
+            ||
+            !$studentStatusId
+        ) {
             return 0;
         }
 
-        // Student passwords are managed by the PUP Identity Provider (IDP), so
-        // no local password is configured for imported student accounts.
-        //
-        // NAME is part of the supported import columns and is stored directly on
-        // the student record. `email` is NOT an import column: it is supplied by
-        // the PUP IDP when the student links their account, so it stays NULL
-        // until then (the column is nullable). An `email` column is still
-        // tolerated if a legacy file happens to carry one.
         $identity = [];
+
         foreach (
             [
-                'first_name' => 'first_name',
-                'middle_name' => 'middle_name',
-                'last_name' => 'last_name',
-                'name_suffix' => 'name_suffix',
-            ] as $field => $sourceKey
+                'first_name' =>
+                    'first_name',
+
+                'middle_name' =>
+                    'middle_name',
+
+                'last_name' =>
+                    'last_name',
+
+                'name_suffix' =>
+                    'name_suffix',
+            ]
+            as $field => $sourceKey
         ) {
-            $value = $row[$sourceKey] ?? null;
-            if ($value !== null && trim((string) $value) !== '') {
-                $identity[$field] = trim((string) $value);
+
+            $value =
+                $row[$sourceKey]
+                ?? null;
+
+            if (
+                $value !== null
+                &&
+                trim((string) $value) !== ''
+            ) {
+
+                $identity[$field] =
+                    trim(
+                        (string) $value
+                    );
             }
         }
-        if ($email !== null && trim((string) $email) !== '') {
-            $identity['email'] = trim((string) $email);
+
+        if (
+            $email !== null
+            &&
+            trim((string) $email) !== ''
+        ) {
+
+            $identity['email'] =
+                trim(
+                    (string) $email
+                );
         }
 
-        $student = User::create(array_merge([
-            'student_number' => $studentNumber,
-            'gender_id' => $genderId,
-            'status_id' => $statusId,
-            'roles_id' => 2,
-            'password_hash' => '',
-        ], $identity));
+        $student =
+            User::create(
+                array_merge(
+                    [
+                        'student_number' =>
+                            $studentNumber,
+
+                        'gender_id' =>
+                            $genderId,
+
+                        'status_id' =>
+                            $statusId,
+
+                        'roles_id' =>
+                            2,
+
+                        'password_hash' =>
+                            '',
+                    ],
+                    $identity
+                )
+            );
 
         $student->studentInfo()->create([
-            'program_id' => $programId,
-            'year_id' => $yearId,
-            'section_id' => $sectionId,
-            'student_status_id' => $studentStatusId,
-            'ladderized' => $ladderized,
+            'program_id' =>
+                $programId,
+
+            'year_id' =>
+                $yearId,
+
+            'section_id' =>
+                $sectionId,
+
+            'student_status_id' =>
+                $studentStatusId,
+
+            'ladderized' =>
+                $ladderized,
         ]);
 
         return 1;
     }
 
-    private function importAdminRow(array $row): int
-    {
-        $email = $row['email'] ?? null;
-        if (empty($email) || Admin::where('email', $email)->exists()) {
+    private function importAdminRow(
+        array $row
+    ): int {
+
+        $email =
+            $row['email']
+            ?? null;
+
+        if (
+            empty($email)
+            ||
+            Admin::where(
+                'email',
+                $email
+            )->exists()
+        ) {
             return 0;
         }
 
-        $roleId = Role::where('roles_name', $row['role'] ?? 'Admin')->value('roles_id') ?? 1;
-        $statusId = Status::where('status_name', $row['status'] ?? '')->value('status_id') ?? 1;
+        $roleId =
+            Role::where(
+                'roles_name',
+                $row['role'] ?? 'Admin'
+            )
+            ->value('roles_id')
+            ?? 1;
 
-        $admin = Admin::create([
-            'username' => $email,
-            'email' => $email,
-            'password' => Hash::make($row['password'] ?? 'Temp1234!'),
-            'mfa_totp_enabled' => 0,
-        ]);
+        $statusId =
+            Status::where(
+                'status_name',
+                $row['status'] ?? ''
+            )
+            ->value('status_id')
+            ?? 1;
+
+        $admin =
+            Admin::create([
+                'username' =>
+                    $email,
+
+                'email' =>
+                    $email,
+
+                'password' =>
+                    Hash::make(
+                        $row['password']
+                        ?? 'Temp1234!'
+                    ),
+
+                'mfa_totp_enabled' =>
+                    0,
+            ]);
 
         AdminInfo::updateOrCreate(
             ['admin_id' => $admin->id],
             [
-                'Position' => $row['position'] ?? 'Admin',
-                'firstname' => $row['firstname'] ?? '',
-                'middlename' => $row['middlename'] ?? null,
-                'lastname' => $row['lastname'] ?? '',
-                'status_id' => $statusId,
-                'role_id' => $roleId,
+                'Position' =>
+                    $row['position']
+                    ?? 'Admin',
+
+                'firstname' =>
+                    $row['firstname']
+                    ?? '',
+
+                'middlename' =>
+                    $row['middlename']
+                    ?? null,
+
+                'lastname' =>
+                    $row['lastname']
+                    ?? '',
+
+                'status_id' =>
+                    $statusId,
+
+                'role_id' =>
+                    $roleId,
             ]
         );
 
         return 1;
     }
 
-    private function importSecurityRow(array $row): int
-    {
-        $email = $row['email'] ?? null;
-        if (empty($email) || Security::where('email', $email)->exists()) {
+    private function importSecurityRow(
+        array $row
+    ): int {
+
+        $email =
+            $row['email']
+            ?? null;
+
+        if (
+            empty($email)
+            ||
+            Security::where(
+                'email',
+                $email
+            )->exists()
+        ) {
             return 0;
         }
 
-        $security = Security::create([
-            'email' => $email,
-            'password' => Hash::make($row['password'] ?? 'Temp1234!'),
-            'mfa_totp_enabled' => 0,
-        ]);
+        $security =
+            Security::create([
+                'email' =>
+                    $email,
+
+                'password' =>
+                    Hash::make(
+                        $row['password']
+                        ?? 'Temp1234!'
+                    ),
+
+                'mfa_totp_enabled' =>
+                    0,
+            ]);
 
         SecurityInfo::updateOrCreate(
             ['security_id' => $security->id],
-            $this->buildSecurityInfoData($row)
+            $this->buildSecurityInfoData(
+                $row
+            )
         );
-
 
         return 1;
     }
 
-private function buildSecurityInfoData(array $data): array
-{
-    $securityInfoData = [];
+    private function buildSecurityInfoData(
+        array $data
+    ): array {
 
-    if (Schema::hasColumn('security_info_tbl', 'firstname')) {
-        $securityInfoData['firstname'] = $data['firstname'] ?? '';
+        $securityInfoData = [];
+
+        if (
+            Schema::hasColumn(
+                'security_info_tbl',
+                'firstname'
+            )
+        ) {
+
+            $securityInfoData['firstname'] =
+                $data['firstname']
+                ?? '';
+        }
+
+        if (
+            Schema::hasColumn(
+                'security_info_tbl',
+                'middlename'
+            )
+        ) {
+
+            $securityInfoData['middlename'] =
+                $data['middlename']
+                ?? null;
+        }
+
+        if (
+            Schema::hasColumn(
+                'security_info_tbl',
+                'lastname'
+            )
+        ) {
+
+            $securityInfoData['lastname'] =
+                $data['lastname']
+                ?? '';
+        }
+
+        return $securityInfoData;
     }
 
-    if (Schema::hasColumn('security_info_tbl', 'middlename')) {
-        $securityInfoData['middlename'] = $data['middlename'] ?? null;
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Student Status Helpers
+    |--------------------------------------------------------------------------
+    */
 
-    if (Schema::hasColumn('security_info_tbl', 'lastname')) {
-        $securityInfoData['lastname'] = $data['lastname'] ?? '';
-    }
+    private function resolveStudentStatusIdFromUserStatusId(
+        ?int $statusId
+    ): ?int {
 
-    return $securityInfoData;
-}
-
-
-
-    private function resolveStudentStatusIdFromUserStatusId(?int $statusId): ?int
-    {
         if (!$statusId) {
             return null;
         }
 
-        $statusName = Status::where('status_id', $statusId)->value('status_name');
+        $statusName =
+            Status::where(
+                'status_id',
+                $statusId
+            )->value('status_name');
 
         if (!$statusName) {
             return null;
         }
 
-        return $this->resolveStudentStatusIdByName((string) $statusName);
+        return $this->resolveStudentStatusIdByName(
+            (string) $statusName
+        );
     }
 
-    private function resolveStudentStatusIdByName(?string $statusName): ?int
-    {
-        $normalized = strtolower(trim((string) $statusName));
+    private function resolveStudentStatusIdByName(
+        ?string $statusName
+    ): ?int {
+
+        $normalized =
+            strtolower(
+                trim(
+                    (string) $statusName
+                )
+            );
 
         if ($normalized === '') {
             return null;
         }
 
-        $existingId = StudentStatus::whereRaw('LOWER(status_name) = ?', [$normalized])
+        $existingId =
+            StudentStatus::whereRaw(
+                'LOWER(status_name) = ?',
+                [$normalized]
+            )
             ->value('student_status_id');
 
         if ($existingId) {
             return (int) $existingId;
         }
 
-        // Auto-provision standard statuses so imports/deactivations don't fail
-        // when student_status_tbl is missing baseline values.
-        if (in_array($normalized, ['active', 'inactive'], true)) {
-            $status = StudentStatus::firstOrCreate([
-                'status_name' => ucfirst($normalized),
-            ]);
+        if (
+            in_array(
+                $normalized,
+                [
+                    'active',
+                    'inactive'
+                ],
+                true
+            )
+        ) {
 
-            return (int) $status->student_status_id;
+            $status =
+                StudentStatus::firstOrCreate([
+                    'status_name' =>
+                        ucfirst($normalized),
+                ]);
+
+            return (int)
+                $status->student_status_id;
         }
 
         return null;
     }
 
-    private function normalizeLadderizedFlag(mixed $value): int
-    {
-        $normalized = strtolower(trim((string) $value));
+    private function normalizeLadderizedFlag(
+        mixed $value
+    ): int {
+
+        $normalized =
+            strtolower(
+                trim(
+                    (string) $value
+                )
+            );
 
         if ($normalized === '') {
             return 0;
         }
 
-        return in_array($normalized, ['1', 'yes', 'y', 'true', 'ladderized'], true)
+        return in_array(
+            $normalized,
+            [
+                '1',
+                'yes',
+                'y',
+                'true',
+                'ladderized'
+            ],
+            true
+        )
             ? 1
             : 0;
     }
 
-    /**
-     * Resolve a human-readable account identifier (student number, admin ID,
-     * or security ID) for history/user-facing messages.
-     */
-    private function resolveUserDisplayName(string $accountType, mixed $userId, ?string $email = null): string
-    {
-        if ($accountType === 'student') {
-            $student = User::query()->find($userId);
+    /*
+    |--------------------------------------------------------------------------
+    | History / Audit
+    |--------------------------------------------------------------------------
+    */
 
-            if ($student && $student->student_number) {
-                return $student->student_number . ($email ? ' (' . $email . ')' : '');
+    private function resolveUserDisplayName(
+        string $accountType,
+        mixed $userId,
+        ?string $email = null
+    ): string {
+
+        if (
+            $accountType === 'student'
+        ) {
+
+            $student =
+                User::query()
+                    ->find($userId);
+
+            if (
+                $student
+                &&
+                $student->student_number
+            ) {
+
+                return $student->student_number
+                    . (
+                        $email
+                            ? ' (' . $email . ')'
+                            : ''
+                    );
             }
 
-            return $email ?: ('Student #' . $userId);
+            return $email
+                ?: (
+                    'Student #'
+                    . $userId
+                );
         }
 
-        if ($accountType === 'admin') {
-            $admin = Admin::query()->with('adminInfo')->find($userId);
+        if (
+            $accountType === 'admin'
+        ) {
 
-            if ($admin && $admin->adminInfo) {
-                $name = trim(($admin->adminInfo->firstname ?? '') . ' ' . ($admin->adminInfo->lastname ?? ''));
+            $admin =
+                Admin::query()
+                    ->with('adminInfo')
+                    ->find($userId);
 
-                return $name ?: $admin->email;
+            if (
+                $admin
+                &&
+                $admin->adminInfo
+            ) {
+
+                $name = trim(
+                    ($admin->adminInfo->firstname ?? '')
+                    . ' '
+                    . ($admin->adminInfo->lastname ?? '')
+                );
+
+                return $name
+                    ?: $admin->email;
             }
 
-            return $email ?: ('Admin #' . $userId);
+            return $email
+                ?: (
+                    'Admin #'
+                    . $userId
+                );
         }
 
-        if ($accountType === 'security') {
-$security = Security::query()
-    ->with('securityInfo')
-    ->find($userId);
+        if (
+            $accountType === 'security'
+        ) {
 
-if ($security) {
-    $info = $security->securityInfo;
+            $security =
+                Security::query()
+                    ->with('securityInfo')
+                    ->find($userId);
 
-    $name = trim(
-        ($info->firstname ?? '') . ' ' .
-        ($info->lastname ?? '')
-    );
+            if ($security) {
 
-    return $name ?: $security->email;
-}
+                $info =
+                    $security->securityInfo;
 
-            return $email ?: ('Security #' . $userId);
+                $name = trim(
+                    ($info->firstname ?? '')
+                    . ' '
+                    . ($info->lastname ?? '')
+                );
+
+                return $name
+                    ?: $security->email;
+            }
+
+            return $email
+                ?: (
+                    'Security #'
+                    . $userId
+                );
         }
 
-        return $email ?: ('User #' . $userId);
+        return $email
+            ?: (
+                'User #'
+                . $userId
+            );
     }
 
-    /**
-     * Persist a User Management History entry and an Audit Log entry for
-     * user-management actions (create/edit/delete).
-     *
-     * $changes is a list of associative arrays:
-     *   ['field' => 'First Name', 'from' => 'Sofia', 'to' => 'Mika']
-     */
     private function logUserManagementAction(
         string $accountType,
         string $action,
@@ -1415,37 +3252,72 @@ if ($security) {
         ?string $userEmail,
         array $changes = []
     ): void {
-        $admin = Auth::guard('admin')->user();
-        $adminId = $admin instanceof Admin ? $admin->id : null;
-        $userDisplayName = $this->resolveUserDisplayName($accountType, $userId, $userEmail);
 
-        app(\App\Services\AuditLogService::class)->userAccountChange(
-            userId: $userId,
-            actorId: $adminId,
-            accountType: $accountType,
-            action: $action,
-            changes: $changes,
-            displayLabel: $userDisplayName,
+        $admin =
+            Auth::guard('admin')->user();
+
+        $adminId =
+            $admin instanceof Admin
+                ? $admin->id
+                : null;
+
+        $userDisplayName =
+            $this->resolveUserDisplayName(
+                $accountType,
+                $userId,
+                $userEmail
+            );
+
+        app(
+            \App\Services\AuditLogService::class
+        )->userAccountChange(
+            userId:
+                $userId,
+
+            actorId:
+                $adminId,
+
+            accountType:
+                $accountType,
+
+            action:
+                $action,
+
+            changes:
+                $changes,
+
+            displayLabel:
+                $userDisplayName,
         );
     }
 
-    /**
-     * Write an audit log entry for user-management actions (create/edit/delete).
-     *
-     * Writes are skipped when the audit_logs table is not present (e.g. some
-     * test/minimal environments) so account operations never fail because of
-     * an unavailable audit table.
-     */
-    private function auditUserAction(string $action, string $description): void
-    {
-        $admin = Auth::guard('admin')->user();
+    private function auditUserAction(
+        string $action,
+        string $description
+    ): void {
 
-        app(\App\Services\AuditLogService::class)->audit([
-            'actor_type' => 'admin',
-            'actor_id' => $admin instanceof Admin ? $admin->id : null,
-            'action' => $action,
-            'module' => 'User Management',
-            'description' => $description,
+        $admin =
+            Auth::guard('admin')->user();
+
+        app(
+            \App\Services\AuditLogService::class
+        )->audit([
+            'actor_type' =>
+                'admin',
+
+            'actor_id' =>
+                $admin instanceof Admin
+                    ? $admin->id
+                    : null,
+
+            'action' =>
+                $action,
+
+            'module' =>
+                'User Management',
+
+            'description' =>
+                $description,
         ]);
     }
 }
