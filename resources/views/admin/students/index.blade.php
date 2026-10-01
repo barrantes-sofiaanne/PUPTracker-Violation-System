@@ -594,13 +594,13 @@
             <div class="col-md-4"><label class="form-label">Program</label><select name="program_id" id="program_id" class="form-select" onchange="toggleEditLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
 <div class="col-md-6">
     <label for="year_id" class="form-label">Year</label>
-    <select name="year_id" id="year_id" class="form-select" required>
-        @foreach($years as $year)
-            <option value="{{ $year->year_id }}">
-                Year {{ $year->year }}
-            </option>
-        @endforeach
-    </select>
+<select name="year_id" id="year_id" class="form-select" required>
+    @foreach($years as $year)
+        <option value="{{ $year->year_id }}">
+            {{ $year->year }}
+        </option>
+    @endforeach
+</select>
 </div>          <div class="col-md-6"><label class="form-label">Section</label><select name="section_id" id="section_id" class="form-select">@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Gender</label><select name="gender_id" id="gender_id" class="form-select">@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" id="status_id" class="form-select">@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
