@@ -112,15 +112,6 @@
                                     <i class="bi bi-box-arrow-in-down-right me-1"></i>
                                     Import
                                 </button>
-                                <a href="{{ route('admin.user-management-history') }}" class="admin-btn admin-btn-neutral">
-                                    <i class="bi bi-arrow-counterclockwise me-1"></i>
-                                    History
-                                </a>
-                                <a href="{{ route('admin.students', ['tab' => 'students']) }}" class="admin-btn admin-btn-neutral">
-                                    <i class="bi bi-arrow-repeat me-1"></i>
-                                    Refresh
-                                </a>
-
 
                             </div>
                         </div>
@@ -594,13 +585,13 @@
             <div class="col-md-4"><label class="form-label">Program</label><select name="program_id" id="program_id" class="form-select" onchange="toggleEditLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
 <div class="col-md-6">
     <label for="year_id" class="form-label">Year</label>
-<select name="year_id" id="year_id" class="form-select" required>
-    @foreach($years as $year)
-        <option value="{{ $year->year_id }}">
-            {{ $year->year }}
-        </option>
-    @endforeach
-</select>
+    <select name="year_id" id="year_id" class="form-select" required>
+        @foreach($years as $year)
+            <option value="{{ $year->year_id }}">
+                Year {{ $year->year }}
+            </option>
+        @endforeach
+    </select>
 </div>          <div class="col-md-6"><label class="form-label">Section</label><select name="section_id" id="section_id" class="form-select">@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Gender</label><select name="gender_id" id="gender_id" class="form-select">@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" id="status_id" class="form-select">@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
