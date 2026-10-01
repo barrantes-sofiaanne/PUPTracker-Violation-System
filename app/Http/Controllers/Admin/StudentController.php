@@ -556,9 +556,8 @@ class StudentController extends Controller
      *
      * Inactive students are completely excluded.
      */
-    public function promoteActiveStudents(
-        Request $request
-    ) {
+    public function promoteActiveStudents(Request $request)
+    {
         $admin = Auth::guard('admin')->user();
 
         if (
@@ -572,33 +571,21 @@ class StudentController extends Controller
         }
 
         /*
-         * Retrieve the existing Year 1–4 records.
+         * Resolve the actual Year 1–4 IDs from year_tbl.
+         * Do not assume the year number is the primary key.
          */
         $yearIds = Year::query()
-            ->whereIn(
-                'year',
-                ['1', '2', '3', '4']
-            )
-            ->pluck(
-                'year_id',
-                'year'
-            )
-            ->map(
-                fn ($id) => (int) $id
-            )
+            ->whereIn('year', ['1', '2', '3', '4'])
+            ->pluck('year_id', 'year')
+            ->map(fn ($id) => (int) $id)
             ->toArray();
 
-        /*
-         * Do not continue if the required year records
-         * do not exist.
-         */
         if (
             !isset($yearIds['1']) ||
             !isset($yearIds['2']) ||
             !isset($yearIds['3']) ||
             !isset($yearIds['4'])
         ) {
-
             return redirect()
                 ->route(
                     'admin.students',
@@ -611,17 +598,16 @@ class StudentController extends Controller
         }
 
         /*
-         * Find the existing Active status.
+         * Active status comes from users_tbl.status_id.
          */
         $activeStatusId = Status::query()
             ->whereRaw(
-                'LOWER(status_name) = ?',
+                'LOWER(TRIM(status_name)) = ?',
                 ['active']
             )
             ->value('status_id');
 
         if (!$activeStatusId) {
-
             return redirect()
                 ->route(
                     'admin.students',
@@ -634,17 +620,19 @@ class StudentController extends Controller
         }
 
         /*
-         * Only students whose account status is Active
-         * and whose current year is 1–3 are selected.
+         * Select only:
+         * - Student accounts
+         * - Active account status
+         * - Students currently in Year 1, 2, or 3
          *
-         * Year 4 students are intentionally excluded.
-         *
-         * Inactive students are also excluded.
+         * Year 4 is intentionally excluded because it remains Year 4.
+         * Inactive students are excluded.
          */
         $students = User::query()
             ->with([
                 'studentInfo.year',
-                'role'
+                'role',
+                'status',
             ])
             ->where(
                 'status_id',
@@ -662,7 +650,6 @@ class StudentController extends Controller
             ->whereHas(
                 'studentInfo',
                 function ($query) use ($yearIds) {
-
                     $query->whereIn(
                         'year_id',
                         [
@@ -676,7 +663,6 @@ class StudentController extends Controller
             ->get();
 
         if ($students->isEmpty()) {
-
             return redirect()
                 ->route(
                     'admin.students',
@@ -684,7 +670,7 @@ class StudentController extends Controller
                 )
                 ->with(
                     'info',
-                    'There are no Active students eligible for year-level promotion.'
+                    'No Active students in Year 1, Year 2, or Year 3 were found for promotion.'
                 );
         }
 
@@ -720,9 +706,6 @@ class StudentController extends Controller
                         null,
                 };
 
-                /*
-                 * No valid promotion means no change.
-                 */
                 if (
                     !$newYearId ||
                     $newYearId === $currentYearId
@@ -744,15 +727,15 @@ class StudentController extends Controller
                         ?? '—';
 
                 /*
-                 * ONLY year_id is updated.
+                 * IMPORTANT:
+                 * Only student_info_tbl.year_id is changed.
                  */
                 $student->studentInfo->update([
                     'year_id' => $newYearId,
                 ]);
 
                 /*
-                 * Every individual promotion gets its own
-                 * audit-history entry.
+                 * Create one audit entry for each promotion.
                  */
                 $this->logUserManagementAction(
                     'student',
@@ -772,6 +755,21 @@ class StudentController extends Controller
             }
         });
 
+        /*
+         * Explicitly report when the operation did not change anything.
+         */
+        if ($promotedCount === 0) {
+            return redirect()
+                ->route(
+                    'admin.students',
+                    ['tab' => 'students']
+                )
+                ->with(
+                    'info',
+                    'No students were promoted. No eligible Active students were found.'
+                );
+        }
+
         return redirect()
             ->route(
                 'admin.students',
@@ -779,7 +777,7 @@ class StudentController extends Controller
             )
             ->with(
                 'success',
-                "{$promotedCount} Active student(s) were promoted to the next year level."
+                "{$promotedCount} Active student(s) were successfully promoted to the next year level."
             );
     }
 
