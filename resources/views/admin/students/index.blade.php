@@ -45,6 +45,30 @@
         <div class="card-body">
             <div class="tab-content user-management-content">
                 <div class="tab-pane fade {{ request('tab', 'students') === 'students' ? 'show active' : '' }}" id="students-pane" role="tabpanel">
+
+                    @if(session('success'))
+                        <div class="alert alert-success alert-dismissible fade show admin-alert mb-3" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            {{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show admin-alert mb-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            {{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if(session('info'))
+                        <div class="alert alert-info alert-dismissible fade show admin-alert mb-3" role="alert">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            {{ session('info') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
                     @php
                         $studentFiltersActive = request()->filled('filter_program_id')
                             || request()->filled('filter_year_id')
@@ -709,6 +733,76 @@
 
 <div
     class="modal fade admin-modal"
+    id="confirmYearLevelUpdateModal"
+    tabindex="-1"
+    aria-labelledby="confirmYearLevelUpdateModalLabel"
+    aria-hidden="true"
+>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content admin-modal-content">
+            <div class="modal-header admin-modal-header">
+                <h5 class="modal-title admin-modal-title" id="confirmYearLevelUpdateModalLabel">
+                    <i class="bi bi-shield-check me-2"></i>
+                    Confirm Year Level Update
+                </h5>
+                <button
+                    type="button"
+                    class="btn-close admin-modal-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                ></button>
+            </div>
+
+            <div class="modal-body admin-modal-body">
+                <p class="mb-3">
+                    Are you sure you want to change this student's year level?
+                </p>
+
+                <div class="border rounded p-3">
+                    <div class="fw-semibold" id="confirmYearLevelStudentName">—</div>
+                    <div class="text-muted small mt-1">
+                        Student Number:
+                        <span id="confirmYearLevelStudentNumber">—</span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 mt-3">
+                        <span class="badge bg-secondary" id="confirmYearLevelFrom">Year —</span>
+                        <i class="bi bi-arrow-right"></i>
+                        <span class="badge bg-primary" id="confirmYearLevelTo">Year —</span>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning small mt-3 mb-0">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Only the student's year level will be changed. Other student
+                    information will remain unchanged.
+                </div>
+            </div>
+
+            <div class="modal-footer admin-modal-footer">
+                <button
+                    type="button"
+                    class="admin-btn admin-btn-neutral"
+                    data-bs-dismiss="modal"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="button"
+                    class="admin-btn admin-btn-primary"
+                    id="confirmYearLevelUpdateBtn"
+                >
+                    <i class="bi bi-check-circle me-1"></i>
+                    Confirm Update
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div
+    class="modal fade admin-modal"
     id="updateYearLevelModal"
     tabindex="-1"
     aria-labelledby="updateYearLevelModalLabel"
@@ -1080,6 +1174,13 @@ if (isItAdministrator) {
             newYearSelect.value = currentYearId;
         }
 
+        const sameYearWarning =
+            document.getElementById('sameYearLevelWarning');
+
+        if (sameYearWarning) {
+            sameYearWarning.remove();
+        }
+
         const warning = document.getElementById('inactiveYearLevelWarning');
 
         if (warning) {
@@ -1104,51 +1205,113 @@ if (isItAdministrator) {
 
 
     const updateYearLevelForm =
-    document.getElementById('updateYearLevelForm');
+        document.getElementById('updateYearLevelForm');
 
-if (updateYearLevelForm) {
-    updateYearLevelForm.addEventListener('submit', function (event) {
-        const currentYear =
-            document.getElementById('currentYearLevel').value;
+    const confirmYearLevelUpdateModalElement =
+        document.getElementById('confirmYearLevelUpdateModal');
 
-        const newYearSelect =
-            document.getElementById('newYearLevel');
+    const confirmYearLevelUpdateBtn =
+        document.getElementById('confirmYearLevelUpdateBtn');
 
-        const newYear =
-            newYearSelect?.selectedOptions[0]?.textContent.trim() || '';
+    let yearLevelUpdateConfirmed = false;
 
-        if (!newYearSelect || !newYearSelect.value) {
+    if (updateYearLevelForm) {
+        updateYearLevelForm.addEventListener('submit', function (event) {
+            if (yearLevelUpdateConfirmed) {
+                yearLevelUpdateConfirmed = false;
+                return;
+            }
+
             event.preventDefault();
 
-            alert('Please select a new year level.');
+            const currentYear =
+                document.getElementById('currentYearLevel')?.value || '—';
 
-            return;
-        }
+            const newYearSelect =
+                document.getElementById('newYearLevel');
 
-        if (currentYear === newYear.replace(/^Year\s+/i, '')) {
-            event.preventDefault();
+            const newYear =
+                newYearSelect?.selectedOptions[0]?.textContent.trim() || '';
 
-            alert('The student is already assigned to this year level.');
+            if (!newYearSelect || !newYearSelect.value) {
+                new bootstrap.Modal(
+                    document.getElementById('updateYearLevelModal')
+                ).show();
 
-            return;
-        }
+                return;
+            }
 
-        const studentName =
-            document.getElementById('yearLevelStudentName').value;
+            const normalizedCurrentYear =
+                currentYear.replace(/^Year\s+/i, '').trim();
 
-        const confirmed = confirm(
-            'Are you sure you want to change ' +
-            studentName +
-            '\'s year level from Year ' +
-            currentYear +
-            ' to ' +
-            newYear +
-            '?'
-        );
+            const normalizedNewYear =
+                newYear.replace(/^Year\s+/i, '').trim();
 
-        if (!confirmed) {
-            event.preventDefault();
-        }
+            if (normalizedCurrentYear === normalizedNewYear) {
+                const modalElement =
+                    document.getElementById('updateYearLevelModal');
+
+                const warningId = 'sameYearLevelWarning';
+
+                let warning =
+                    document.getElementById(warningId);
+
+                if (!warning) {
+                    warning = document.createElement('div');
+                    warning.id = warningId;
+                    warning.className = 'alert alert-warning small mt-3 mb-0';
+                    warning.innerHTML =
+                        '<i class="bi bi-exclamation-triangle me-1"></i>' +
+                        'The student is already assigned to this year level.';
+
+                    modalElement
+                        .querySelector('.modal-body')
+                        .appendChild(warning);
+                }
+
+                return;
+            }
+
+            const studentName =
+                document.getElementById('yearLevelStudentName')?.value || 'Student';
+
+            const studentNumber =
+                document.getElementById('yearLevelStudentNumber')?.value || '—';
+
+            document.getElementById('confirmYearLevelStudentName').textContent =
+                studentName;
+
+            document.getElementById('confirmYearLevelStudentNumber').textContent =
+                studentNumber;
+
+            document.getElementById('confirmYearLevelFrom').textContent =
+                'Year ' + normalizedCurrentYear;
+
+            document.getElementById('confirmYearLevelTo').textContent =
+                'Year ' + normalizedNewYear;
+
+            if (confirmYearLevelUpdateModalElement) {
+                bootstrap.Modal
+                    .getOrCreateInstance(confirmYearLevelUpdateModalElement)
+                    .show();
+            }
+        });
+    }
+
+    if (confirmYearLevelUpdateBtn && updateYearLevelForm) {
+        confirmYearLevelUpdateBtn.addEventListener('click', function () {
+            yearLevelUpdateConfirmed = true;
+
+            const confirmModal =
+                bootstrap.Modal.getInstance(
+                    confirmYearLevelUpdateModalElement
+                );
+
+            if (confirmModal) {
+                confirmModal.hide();
+            }
+
+            updateYearLevelForm.requestSubmit();
         });
     }
 }
