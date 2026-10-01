@@ -575,10 +575,15 @@ class StudentController extends Controller
          * Do not assume the year number is the primary key.
          */
         $yearIds = Year::query()
-            ->whereIn('year', ['1', '2', '3', '4'])
-            ->pluck('year_id', 'year')
-            ->map(fn ($id) => (int) $id)
-            ->toArray();
+            ->get(['year_id', 'year'])
+            ->mapWithKeys(function (Year $year): array {
+                $label = preg_replace('/^year\s*/i', '', trim((string) $year->year));
+
+                return in_array($label, ['1', '2', '3', '4'], true)
+                    ? [$label => (int) $year->year_id]
+                    : [];
+            })
+            ->all();
 
         if (
             !isset($yearIds['1']) ||
@@ -676,22 +681,23 @@ class StudentController extends Controller
 
         $promotedCount = 0;
 
-        DB::transaction(function () use (
-            $students,
-            $yearIds,
-            &$promotedCount
-        ): void {
+        try {
+            DB::transaction(function () use (
+                $students,
+                $yearIds,
+                &$promotedCount
+            ): void {
 
-            foreach ($students as $student) {
+                foreach ($students as $student) {
 
-                if (!$student->studentInfo) {
-                    continue;
-                }
+                    if (!$student->studentInfo) {
+                        continue;
+                    }
 
-                $currentYearId =
-                    (int) $student->studentInfo->year_id;
+                    $currentYearId =
+                        (int) $student->studentInfo->year_id;
 
-                $newYearId = match ($currentYearId) {
+                    $newYearId = match ($currentYearId) {
 
                     $yearIds['1'] =>
                         $yearIds['2'],
@@ -706,54 +712,67 @@ class StudentController extends Controller
                         null,
                 };
 
-                if (
-                    !$newYearId ||
-                    $newYearId === $currentYearId
-                ) {
-                    continue;
-                }
+                    if (
+                        !$newYearId ||
+                        $newYearId === $currentYearId
+                    ) {
+                        continue;
+                    }
 
-                $oldYear =
-                    $student->studentInfo->year?->year
-                    ?? '—';
-
-                $newYear =
-                    Year::query()
-                        ->where(
-                            'year_id',
-                            $newYearId
-                        )
-                        ->value('year')
+                    $oldYear =
+                        $student->studentInfo->year?->year
                         ?? '—';
+
+                    $newYear =
+                        Year::query()
+                            ->where(
+                                'year_id',
+                                $newYearId
+                            )
+                            ->value('year')
+                            ?? '—';
 
                 /*
                  * IMPORTANT:
                  * Only student_info_tbl.year_id is changed.
                  */
-                $student->studentInfo->update([
-                    'year_id' => $newYearId,
-                ]);
+                    $student->studentInfo->update([
+                        'year_id' => $newYearId,
+                    ]);
 
                 /*
                  * Create one audit entry for each promotion.
                  */
-                $this->logUserManagementAction(
-                    'student',
-                    'Automatic Year-Level Promotion',
-                    $student->getKey(),
-                    $student->email,
-                    [
+                    $this->logUserManagementAction(
+                        'student',
+                        'Automatic Year-Level Promotion',
+                        $student->getKey(),
+                        $student->email,
                         [
-                            'field' => 'Year Level',
-                            'from' => $oldYear,
-                            'to' => $newYear,
-                        ],
-                    ]
-                );
+                            [
+                                'field' => 'Year Level',
+                                'from' => $oldYear,
+                                'to' => $newYear,
+                            ],
+                        ]
+                    );
 
-                $promotedCount++;
-            }
-        });
+                    $promotedCount++;
+                }
+            });
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return redirect()
+                ->route(
+                    'admin.students',
+                    ['tab' => 'students']
+                )
+                ->with(
+                    'error',
+                    'The student promotion could not be completed. No changes were saved.'
+                );
+        }
 
         /*
          * Explicitly report when the operation did not change anything.

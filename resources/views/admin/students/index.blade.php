@@ -120,10 +120,6 @@
                                     <i class="bi bi-arrow-repeat me-1"></i>
                                     Refresh
                                 </a>
-<a href="{{ route('admin.students', ['tab' => 'students']) }}" class="admin-btn admin-btn-neutral">
-    <i class="bi bi-arrow-repeat me-1"></i>
-    Refresh
-</a>
 
 @if($isItAdministrator)
     <button
@@ -413,7 +409,7 @@
         data-suffix="{{ $student->name_suffix }}"
         data-email="{{ $student->email }}"
         data-program="{{ $student->program_id }}"
-        data-year="{{ $student->year_id }}"
+        data-year-name="{{ $student->year?->year ?? '—' }}"
         data-section="{{ $student->section_id }}"
         data-gender="{{ $student->gender_id }}"
         data-status="{{ $student->status_id }}"
