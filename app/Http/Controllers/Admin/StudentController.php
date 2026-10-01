@@ -298,20 +298,17 @@ class StudentController extends Controller
             'program_id' =>
                 'required|exists:program_tbl,program_id',
 
-            'year_id' =>
-                'required|exists:year_tbl,year_id',
-
             'section_id' =>
                 'required|exists:section_tbl,section_id',
+
+            'year_id' =>
+                'required|exists:year_tbl,year_id',
 
             'gender_id' =>
                 'required|exists:gender_tbl,gender_id',
 
             'status_id' =>
                 'required|exists:status_tbl,status_id',
-
-            'year_id' =>
-                'required|exists:year_tbl,year_id',
 
             'ladderized' =>
                 'nullable|in:0,1',
@@ -403,384 +400,6 @@ class StudentController extends Controller
             ->with(
                 'success',
                 'Student account created successfully. The student will connect their PUP IDP account to supply their institutional email.'
-            );
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Year-Level Management
-    |--------------------------------------------------------------------------
-    |
-    | These methods are intentionally separate from the normal student
-    | update method.
-    |
-    | ONLY student_info_tbl.year_id is changed.
-    |
-    */
-
-    /**
-     * Manually update a single student's year level.
-     *
-     * IT Administrator only.
-     */
-    public function updateYearLevel(
-        Request $request,
-        string $student_number
-    ) {
-        $admin = Auth::guard('admin')->user();
-
-        if (
-            !$admin instanceof Admin ||
-            !$admin->isItAdministratorRole()
-        ) {
-            abort(
-                403,
-                'Only the IT Administrator can update student year levels.'
-            );
-        }
-
-        $validated = $request->validate([
-            'year_id' =>
-                'required|exists:year_tbl,year_id',
-        ]);
-
-        $student = User::query()
-            ->with([
-                'studentInfo.year',
-                'status'
-            ])
-            ->where(
-                'student_number',
-                $student_number
-            )
-            ->firstOrFail();
-
-        if (!$student->studentInfo) {
-
-            return redirect()
-                ->route(
-                    'admin.students',
-                    ['tab' => 'students']
-                )
-                ->with(
-                    'error',
-                    'Student information was not found.'
-                );
-        }
-
-        $oldYearId =
-            (int) $student->studentInfo->year_id;
-
-        $newYearId =
-            (int) $validated['year_id'];
-
-        if ($oldYearId === $newYearId) {
-
-            return redirect()
-                ->route(
-                    'admin.students',
-                    ['tab' => 'students']
-                )
-                ->with(
-                    'info',
-                    'The student is already assigned to the selected year level.'
-                );
-        }
-
-        $oldYear =
-            $student->studentInfo->year?->year ?? '—';
-
-        $newYear =
-            Year::query()
-                ->where(
-                    'year_id',
-                    $newYearId
-                )
-                ->value('year') ?? '—';
-
-        DB::transaction(function () use (
-            $student,
-            $newYearId
-        ): void {
-
-            /*
-             * IMPORTANT:
-             *
-             * Only year_id is changed.
-             *
-             * Program
-             * Section
-             * Status
-             * Gender
-             * Ladderized
-             * Student Number
-             *
-             * are NOT modified.
-             */
-            $student->studentInfo->update([
-                'year_id' => $newYearId,
-            ]);
-        });
-
-        $this->logUserManagementAction(
-            'student',
-            'Update Year Level',
-            $student->getKey(),
-            $student->email,
-            [
-                [
-                    'field' => 'Year Level',
-                    'from' => $oldYear,
-                    'to' => $newYear,
-                ],
-            ]
-        );
-
-        return redirect()
-            ->route(
-                'admin.students',
-                ['tab' => 'students']
-            )
-            ->with(
-                'success',
-                "Student {$student->student_number} year level updated from Year {$oldYear} to Year {$newYear}."
-            );
-    }
-
-    /**
-     * Automatically promote ACTIVE students.
-     *
-     * Active:
-     * Year 1 -> Year 2
-     * Year 2 -> Year 3
-     * Year 3 -> Year 4
-     *
-     * Year 4 remains Year 4.
-     *
-     * Inactive students are completely excluded.
-     */
-    public function promoteActiveStudents(Request $request)
-    {
-        $admin = Auth::guard('admin')->user();
-
-        if (
-            !$admin instanceof Admin ||
-            !$admin->isItAdministratorRole()
-        ) {
-            abort(
-                403,
-                'Only the IT Administrator can promote student year levels.'
-            );
-        }
-
-        /*
-         * Resolve the actual Year 1–4 IDs from year_tbl.
-         * Do not assume the year number is the primary key.
-         */
-        $yearIds = Year::query()
-            ->whereIn('year', ['1', '2', '3', '4'])
-            ->pluck('year_id', 'year')
-            ->map(fn ($id) => (int) $id)
-            ->toArray();
-
-        if (
-            !isset($yearIds['1']) ||
-            !isset($yearIds['2']) ||
-            !isset($yearIds['3']) ||
-            !isset($yearIds['4'])
-        ) {
-            return redirect()
-                ->route(
-                    'admin.students',
-                    ['tab' => 'students']
-                )
-                ->with(
-                    'error',
-                    'The required Year 1 to Year 4 records were not found.'
-                );
-        }
-
-        /*
-         * Active status comes from users_tbl.status_id.
-         */
-        $activeStatusId = Status::query()
-            ->whereRaw(
-                'LOWER(TRIM(status_name)) = ?',
-                ['active']
-            )
-            ->value('status_id');
-
-        if (!$activeStatusId) {
-            return redirect()
-                ->route(
-                    'admin.students',
-                    ['tab' => 'students']
-                )
-                ->with(
-                    'error',
-                    'The Active student status could not be found.'
-                );
-        }
-
-        /*
-         * Select only:
-         * - Student accounts
-         * - Active account status
-         * - Students currently in Year 1, 2, or 3
-         *
-         * Year 4 is intentionally excluded because it remains Year 4.
-         * Inactive students are excluded.
-         */
-        $students = User::query()
-            ->with([
-                'studentInfo.year',
-                'role',
-                'status',
-            ])
-            ->where(
-                'status_id',
-                $activeStatusId
-            )
-            ->whereHas(
-                'role',
-                function ($query) {
-                    $query->where(
-                        'roles_name',
-                        'Student'
-                    );
-                }
-            )
-            ->whereHas(
-                'studentInfo',
-                function ($query) use ($yearIds) {
-                    $query->whereIn(
-                        'year_id',
-                        [
-                            $yearIds['1'],
-                            $yearIds['2'],
-                            $yearIds['3'],
-                        ]
-                    );
-                }
-            )
-            ->get();
-
-        if ($students->isEmpty()) {
-            return redirect()
-                ->route(
-                    'admin.students',
-                    ['tab' => 'students']
-                )
-                ->with(
-                    'info',
-                    'No Active students in Year 1, Year 2, or Year 3 were found for promotion.'
-                );
-        }
-
-        $promotedCount = 0;
-
-        DB::transaction(function () use (
-            $students,
-            $yearIds,
-            &$promotedCount
-        ): void {
-
-            foreach ($students as $student) {
-
-                if (!$student->studentInfo) {
-                    continue;
-                }
-
-                $currentYearId =
-                    (int) $student->studentInfo->year_id;
-
-                $newYearId = match ($currentYearId) {
-
-                    $yearIds['1'] =>
-                        $yearIds['2'],
-
-                    $yearIds['2'] =>
-                        $yearIds['3'],
-
-                    $yearIds['3'] =>
-                        $yearIds['4'],
-
-                    default =>
-                        null,
-                };
-
-                if (
-                    !$newYearId ||
-                    $newYearId === $currentYearId
-                ) {
-                    continue;
-                }
-
-                $oldYear =
-                    $student->studentInfo->year?->year
-                    ?? '—';
-
-                $newYear =
-                    Year::query()
-                        ->where(
-                            'year_id',
-                            $newYearId
-                        )
-                        ->value('year')
-                        ?? '—';
-
-                /*
-                 * IMPORTANT:
-                 * Only student_info_tbl.year_id is changed.
-                 */
-                $student->studentInfo->update([
-                    'year_id' => $newYearId,
-                ]);
-
-                /*
-                 * Create one audit entry for each promotion.
-                 */
-                $this->logUserManagementAction(
-                    'student',
-                    'Automatic Year-Level Promotion',
-                    $student->getKey(),
-                    $student->email,
-                    [
-                        [
-                            'field' => 'Year Level',
-                            'from' => $oldYear,
-                            'to' => $newYear,
-                        ],
-                    ]
-                );
-
-                $promotedCount++;
-            }
-        });
-
-        /*
-         * Explicitly report when the operation did not change anything.
-         */
-        if ($promotedCount === 0) {
-            return redirect()
-                ->route(
-                    'admin.students',
-                    ['tab' => 'students']
-                )
-                ->with(
-                    'info',
-                    'No students were promoted. No eligible Active students were found.'
-                );
-        }
-
-        return redirect()
-            ->route(
-                'admin.students',
-                ['tab' => 'students']
-            )
-            ->with(
-                'success',
-                "{$promotedCount} Active student(s) were successfully promoted to the next year level."
             );
     }
 
@@ -1936,7 +1555,6 @@ class StudentController extends Controller
      * Update normal student information.
      *
      * Year level can be manually changed from the normal Edit Student form.
-     * Automatic promotion remains available through promoteActiveStudents().
      */
     public function update(
         Request $request,
@@ -1956,6 +1574,9 @@ class StudentController extends Controller
 
             'section_id' =>
                 'required|exists:section_tbl,section_id',
+
+            'year_id' =>
+                'required|exists:year_tbl,year_id',
 
             'gender_id' =>
                 'required|exists:gender_tbl,gender_id',
@@ -2121,10 +1742,8 @@ class StudentController extends Controller
                 'Program',
 
             /*
-             * Year is intentionally kept here only so historical
-             * changes from older records can still be represented.
-             *
-             * The current update() method does not modify year_id.
+             * Year level is editable through the normal Edit Student form,
+             * so changes to year_id are included in the audit history.
              */
             'year_id' =>
                 'Year',
