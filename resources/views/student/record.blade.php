@@ -1181,8 +1181,7 @@
                                         <div class="small text-success mb-1">
                                             <i class="bi bi-patch-check-fill me-1"></i>Proof accepted
                                         </div>
-                                        <a href="{{ route('student.proof.download', $record) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                                            <i class="bi bi-paperclip me-1"></i>View Proof
+<a href="{{ route('student.proof.download', ['studentSanctionRecord' => $record->proof_access_key]) }}" target="_blank" class="btn btn-sm btn-outline-secondary">                                            <i class="bi bi-paperclip me-1"></i>View Proof
                                         </a>
                                     @else
                                         <span class="small text-muted">Completed by administration</span>
@@ -1197,8 +1196,7 @@
                                     </div>
 
                                     @if($record->proof_path)
-                                        <a href="{{ route('student.proof.download', $record) }}" target="_blank" class="btn btn-sm btn-outline-secondary mb-1">
-                                            <i class="bi bi-paperclip me-1"></i>View Proof
+<a href="{{ route('student.proof.download', ['studentSanctionRecord' => $record->proof_access_key]) }}" target="_blank" class="btn btn-sm btn-outline-secondary mb-1">                                            <i class="bi bi-paperclip me-1"></i>View Proof
                                         </a>
                                     @endif
 
