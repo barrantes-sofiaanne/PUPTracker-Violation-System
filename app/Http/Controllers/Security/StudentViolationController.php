@@ -217,12 +217,16 @@ class StudentViolationController extends Controller
                 // reflected on the record rather than silently disappearing.
                 $this->applyRecorderScope($query, true);
 
-                // Only reviewed rows reflect on the record: Confirmed (approved)
-                // and Denied (rejected). Pending rows are still awaiting review.
-                $query->whereIn('status', [
-                    Violation::STATUS_CONFIRMED,
-                    Violation::STATUS_DENIED,
-                ]);
+// Show all current review states so the Security Officer can see the
+// same status as the Submitted Violations tab.
+//
+// Pending rows are visible for status tracking but remain excluded from
+// official/effective violation calculations by the Violation model.
+$query->whereIn('status', [
+    Violation::STATUS_PENDING,
+    Violation::STATUS_CONFIRMED,
+    Violation::STATUS_DENIED,
+]);
 
                 $query->latest('violation_date');
             }, 'violations.violationType.violationCategory'])
