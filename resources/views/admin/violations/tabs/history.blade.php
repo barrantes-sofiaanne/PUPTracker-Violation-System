@@ -225,16 +225,32 @@
 
                         <td>
 
-                            <button
-                                type="button"
-                                class="admin-btn admin-btn-view admin-btn-sm viewStudent"
-                                data-student="{{ $history->student_number }}"
-                                aria-label="View {{ $history->student?->last_name ?? 'student' }}'s violation record">
+                           <div class="d-flex gap-1 flex-wrap">
 
-                                <i class="bi bi-eye me-1"></i>
-                                View
+    <button
+        type="button"
+        class="admin-btn admin-btn-view admin-btn-sm viewStudent"
+        data-student="{{ $history->student_number }}"
+        aria-label="View {{ $history->student?->last_name ?? 'student' }}'s violation record"
+    >
+        <i class="bi bi-eye me-1"></i>
+        View
+    </button>
 
-                            </button>
+    @if(strtolower((string) $history->status) !== 'denied')
+
+        <a
+            href="{{ route('admin.violations.edit', $history) }}"
+            class="admin-btn admin-btn-sm admin-btn-primary"
+            aria-label="Correct violation #{{ $history->violation_id }}"
+        >
+            <i class="bi bi-pencil-square me-1"></i>
+            Edit
+        </a>
+
+    @endif
+
+</div>
 
                         </td>
 

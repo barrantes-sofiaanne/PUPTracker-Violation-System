@@ -146,6 +146,15 @@ class Violation extends Model
         return $this->hasMany(ViolationEvidence::class, 'violation_id', 'violation_id');
     }
 
+    public function editHistories(): HasMany
+{
+    return $this->hasMany(
+        ViolationEditHistory::class,
+        'violation_id',
+        'violation_id'
+    )->latest();
+}
+
 public function getViolationTypeDisplayAttribute(): string
 {
     $resolved = $this->resolvedViolationType();

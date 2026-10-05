@@ -359,11 +359,6 @@ Route::middleware(['auth:admin', 'session.inactivity'])
             [ViolationController::class, 'update']
         )->name('admin.violations.update');
 
-        Route::delete(
-            '/violations/{violation}',
-            [ViolationController::class, 'destroy']
-        )->name('admin.violations.destroy');
-
         Route::resource(
             'violation-types',
             ViolationTypeController::class,
