@@ -15,9 +15,14 @@ return new class extends Migration
         Schema::create('violation_edit_histories', function (Blueprint $table) {
             $table->id();
 
-            $table->unsignedBigInteger('violation_id');
-
-            $table->unsignedBigInteger('admin_id');
+            /*
+             * Foreign keys
+             *
+             * violation_tbl.violation_id = INT
+             * admins.id = INT
+             */
+            $table->integer('violation_id');
+            $table->integer('admin_id');
 
             /*
              * Original values before the correction.
