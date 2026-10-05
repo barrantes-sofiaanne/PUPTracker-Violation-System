@@ -364,9 +364,14 @@ $query->whereIn('status', [
 
             $violationData = [
                 'student_number' => $validated['student_number'],
-                'violation_type_id' => $violationType->violation_type_id,
-                'violation_date' => $validated['violation_date'],
-                'description' => trim($validated['description']),
+'violation_type_id' => $violationType->violation_type_id,
+'violation_date' => $validated['violation_date'],
+'description' => trim($validated['description']),
+
+'identity_verified' => true,
+'identity_verified_at' => now(),
+'identity_verified_by_type' => 'security',
+'identity_verified_by_id' => $securityId,
                 // recorder_id references admins.id; security accounts are in a different table.
 'recorder_type' => 'security',
 'recorder_id' => null,

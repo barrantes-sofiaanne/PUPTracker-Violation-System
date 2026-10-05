@@ -1583,6 +1583,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const violationTypeId = document.getElementById("violationType").value;
         const violationDate = document.getElementById("violationDate").value;
         const description = document.getElementById("description").value.trim();
+        const identityConfirmation = document.getElementById(
+            "identityConfirmation",
+        ).checked;
 
         if (
             !studentNumber ||
@@ -1597,12 +1600,24 @@ document.addEventListener("DOMContentLoaded", function () {
             );
             return;
         }
+        if (!identityConfirmation) {
+            showAlert(
+                "warning",
+                "Identity confirmation required",
+                "Please confirm that you have verified the selected student's identity before submitting the violation.",
+            );
+            return;
+        }
 
         const formData = new FormData();
         formData.append("student_number", studentNumber);
         formData.append("violation_type_id", violationTypeId);
         formData.append("violation_date", violationDate);
         formData.append("description", description);
+        formData.append(
+            "identity_confirmation",
+            identityConfirmation ? "1" : "0",
+        );
         // Correlate the submitted evidence to the camera/capture session.
         if (captureSessionId) {
             formData.append("capture_session_id", captureSessionId);

@@ -48,13 +48,20 @@ class Violation extends Model
         'reviewed_by_admin_id',
         'reviewed_at',
         'review_remarks',
+        'identity_verified',
+'identity_verified_at',
+'identity_verified_by_type',
+'identity_verified_by_id',
     ];
 
-    protected $casts = [
-    'violation_type_id' => 'integer',    
+protected $casts = [
+    'violation_type_id' => 'integer',
     'violation_date' => 'datetime',
-        'reviewed_at' => 'datetime',
-    ];
+    'identity_verified' => 'boolean',
+    'identity_verified_at' => 'datetime',
+    'identity_verified_by_id' => 'integer',
+    'reviewed_at' => 'datetime',
+];
 
     /*
     |--------------------------------------------------------------------------

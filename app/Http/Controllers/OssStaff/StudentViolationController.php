@@ -371,19 +371,22 @@ $exists = Violation::where('student_number', $validated['student_number'])
             $ossStaffId = $this->ossStaffId();
             $ossStaffLabel = $this->ossStaffName();
 
-            $violation = Violation::create([
-                'student_number' => $validated['student_number'],
-'violation_type_id' => $violationType->violation_type_id,                'violation_date' => $validated['violation_date'],
-                'description' => trim($validated['description']),
-                // `recorder_id` references admins.id and the OSS Staff account
-                // IS an admins row, so the identity is persisted directly.
-                'recorder_id' => $ossStaffId,
-                'recorder_type' => 'admin',
-                'recorder_name' => $ossStaffLabel,
-                // OSS-Staff-recorded violations are sent to the admin for
-                // confirmation before they count toward the student's record.
-                'status' => Violation::STATUS_PENDING,
-            ]);
+           $violation = Violation::create([
+    'student_number' => $validated['student_number'],
+    'violation_type_id' => $violationType->violation_type_id,
+    'violation_date' => $validated['violation_date'],
+    'description' => trim($validated['description']),
+
+    'identity_verified' => true,
+    'identity_verified_at' => now(),
+    'identity_verified_by_type' => 'admin',
+    'identity_verified_by_id' => $ossStaffId,
+
+    'recorder_id' => $ossStaffId,
+    'recorder_type' => 'admin',
+    'recorder_name' => $ossStaffLabel,
+    'status' => Violation::STATUS_PENDING,
+]);
 
             // `recorded_by_security_id` is intentionally NOT set: it addresses
             // the SECURITY account that recorded a row, and OSS Staff is an
@@ -484,14 +487,21 @@ $violationType = $original->resolvedViolationType();
             $ossStaffLabel = $this->ossStaffName();
 
             $violation = Violation::create([
-                'student_number' => $original->student_number,
-  'violation_type_id' => $violationType?->violation_type_id,                'violation_date' => $validated['violation_date'],
-                'description' => trim($validated['description']),
-                'recorder_id' => $ossStaffId,
-                'recorder_type' => 'admin',
-                'recorder_name' => $ossStaffLabel,
-                'status' => Violation::STATUS_PENDING,
-            ]);
+    'student_number' => $validated['student_number'],
+    'violation_type_id' => $violationType->violation_type_id,
+    'violation_date' => $validated['violation_date'],
+    'description' => trim($validated['description']),
+
+    'identity_verified' => true,
+    'identity_verified_at' => now(),
+    'identity_verified_by_type' => 'admin',
+    'identity_verified_by_id' => $ossStaffId,
+
+    'recorder_id' => $ossStaffId,
+    'recorder_type' => 'admin',
+    'recorder_name' => $ossStaffLabel,
+    'status' => Violation::STATUS_PENDING,
+]);
 
             // `recorded_by_security_id` is deliberately NOT set (see store()).
 

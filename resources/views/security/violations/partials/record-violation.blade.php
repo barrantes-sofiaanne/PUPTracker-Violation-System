@@ -552,11 +552,46 @@ background: #ffffff;
                                         </div>
                                     </div>
                                 </div>
+<div class="col-12">
 
-                                <div class="alert alert-info small mt-3 mb-0">
-                                    <i class="bi bi-shield-exclamation me-1"></i>
-                                    This report will be sent to an administrator for review and confirmation.
-                                </div>
+    <div class="preview-box p-3">
+
+        <h6 class="fw-bold mb-2">
+            <i class="bi bi-person-check me-1"></i>
+            Student Identity Verification
+        </h6>
+
+        <div class="form-check">
+            <input
+                class="form-check-input"
+                type="checkbox"
+                id="identityConfirmation"
+                name="identity_confirmation"
+                value="1"
+            >
+
+            <label
+                class="form-check-label fw-semibold"
+                for="identityConfirmation"
+            >
+                I confirm that I have verified the identity of the selected
+                student using the student's institutional identification details.
+            </label>
+        </div>
+
+        <div class="small text-muted mt-2">
+            Verify the student's identification details before submitting
+            this violation for administrative review.
+        </div>
+
+    </div>
+
+</div>
+                               <div class="alert alert-info small mt-3 mb-0">
+    <i class="bi bi-shield-exclamation me-1"></i>
+    This report will be sent to an administrator for review and confirmation.
+    Your identity verification will be recorded with this violation.
+</div>
                             </div>
                         </div>
                     </div>

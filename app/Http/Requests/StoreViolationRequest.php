@@ -47,6 +47,11 @@ class StoreViolationRequest extends FormRequest
             // Evidence is optional and reuses the existing evidence subsystem
             // (camera-captured photos + secure PDF uploads), up to 5 files,
             // 5MB each.
+
+                'identity_confirmation' => [
+        'required',
+        'accepted',
+    ],
             'evidence' => [
                 'nullable',
                 'array',
@@ -124,6 +129,8 @@ class StoreViolationRequest extends FormRequest
             'evidence.max' => 'You may attach up to 5 evidence files.',
             'evidence.*.mimes' => 'Evidence must be a JPG, PNG, or PDF file.',
             'evidence.*.max' => 'Each evidence file may not exceed 5MB.',
+            'identity_confirmation.required' => 'You must confirm the student identity before recording the violation.',
+            'identity_confirmation.accepted' => 'You must confirm that you verified the selected student identity.',
         ];
     }
 }
