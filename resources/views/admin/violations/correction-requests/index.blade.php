@@ -255,7 +255,7 @@
                                         <form
                                             method="POST"
                                             action="{{ route(
-                                                'admin.violations.correction-requests.approve',
+                                                'violation-correction-requests.approve',
                                                 [
                                                     'correctionRequest' =>
                                                         $correctionRequest->request_id
@@ -293,7 +293,7 @@
                                         <form
                                             method="POST"
                                             action="{{ route(
-                                                'admin.violations.correction-requests.reject',
+                                                'violation-correction-requests.reject',
                                                 [
                                                     'correctionRequest' =>
                                                         $correctionRequest->request_id
