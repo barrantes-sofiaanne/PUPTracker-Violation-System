@@ -8,41 +8,27 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('violation_correction_requests')) {
-            return;
-        }
-
         Schema::create('violation_correction_requests', function (Blueprint $table) {
             $table->id('request_id');
 
-            $table->unsignedBigInteger('violation_id');
+            // Existing violation_tbl.violation_id is INT
+            $table->integer('violation_id');
 
             $table->string('student_number', 50);
 
-            /*
-             * Requested values.
-             * These DO NOT directly modify violation_tbl.
-             */
-            $table->unsignedBigInteger('requested_violation_type_id')->nullable();
+            // Existing violation_type_tbl.violation_type_id is INT
+            $table->integer('requested_violation_type_id')->nullable();
 
             $table->dateTime('requested_violation_date')->nullable();
 
             $table->text('requested_description')->nullable();
 
-            /*
-             * Explanation supplied by the student.
-             */
             $table->text('reason');
 
-            /*
-             * pending | approved | rejected
-             */
             $table->string('status', 20)->default('pending');
 
-            /*
-             * Administrator who reviewed the request.
-             */
-            $table->unsignedBigInteger('reviewed_by_admin_id')->nullable();
+            // Existing admins.id is INT
+            $table->integer('reviewed_by_admin_id')->nullable();
 
             $table->dateTime('reviewed_at')->nullable();
 
@@ -50,17 +36,39 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index('violation_id');
-            $table->index('student_number');
-            $table->index('status');
-            $table->index('reviewed_by_admin_id');
+            /*
+             * Indexes
+             */
+            $table->index(
+                ['student_number', 'status'],
+                'vcr_student_status_index'
+            );
 
-            $table->foreign('violation_id')
+            $table->index(
+                ['violation_id', 'status'],
+                'vcr_violation_status_index'
+            );
+
+            /*
+             * Foreign keys
+             */
+            $table->foreign('violation_id', 'vcr_violation_fk')
                 ->references('violation_id')
                 ->on('violation_tbl')
                 ->cascadeOnDelete();
 
-            $table->foreign('reviewed_by_admin_id')
+            $table->foreign(
+                'requested_violation_type_id',
+                'vcr_violation_type_fk'
+            )
+                ->references('violation_type_id')
+                ->on('violation_type_tbl')
+                ->nullOnDelete();
+
+            $table->foreign(
+                'reviewed_by_admin_id',
+                'vcr_admin_fk'
+            )
                 ->references('id')
                 ->on('admins')
                 ->nullOnDelete();
