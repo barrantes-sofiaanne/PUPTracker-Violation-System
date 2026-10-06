@@ -114,7 +114,7 @@
                                     ?? $currentType;
 
                                 $hasAssignedSanction =
-                                    StudentSanctionRecord::where(
+                                    \App\Models\StudentSanctionRecord::where(
                                         'violation_id',
                                         $correctionRequest->violation_id
                                     )->exists();
