@@ -292,6 +292,13 @@ Route::middleware(['auth:student', 'student.profile.complete', 'session.inactivi
         Route::get('/record', [StudentRecordController::class, 'index'])
             ->name('student.record');
 
+        Route::post(
+    '/violations/{violation}/correction-request',
+    [StudentRecordController::class, 'requestCorrection']
+)
+    ->whereNumber('violation')
+    ->name('student.violations.correction-request');    
+
         Route::post('/request-sanction', [StudentRecordController::class, 'requestSanction'])
             ->name('student.request-sanction');
 
@@ -379,6 +386,23 @@ Route::middleware(['auth:admin', 'session.inactivity'])
                 'as' => 'admin'
             ]
         )->except(['create', 'edit']);
+
+        Route::get(
+    '/violation-correction-requests',
+    [App\Http\Controllers\Admin\ViolationCorrectionRequestController::class, 'index']
+)->name('violation-correction-requests');
+
+Route::post(
+    '/violation-correction-requests/{correctionRequest}/approve',
+    [App\Http\Controllers\Admin\ViolationCorrectionRequestController::class, 'approve']
+)->whereNumber('correctionRequest')
+ ->name('violation-correction-requests.approve');
+
+Route::post(
+    '/violation-correction-requests/{correctionRequest}/reject',
+    [App\Http\Controllers\Admin\ViolationCorrectionRequestController::class, 'reject']
+)->whereNumber('correctionRequest')
+ ->name('violation-correction-requests.reject');
         /*
         |--------------------------------------------------------------------------
         | Students

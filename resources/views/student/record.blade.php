@@ -867,7 +867,9 @@
                         Attachments
 
                     </th>
-
+<th>
+    Action
+</th>
                 </tr>
 
             </thead>
@@ -876,9 +878,24 @@
 
                 @forelse($violations as $violation)
 
-                    @php
-                        $isPendingLog = strtolower((string) $violation->status) === 'pending';
-                    @endphp
+@php
+    $isPendingLog =
+        strtolower((string) $violation->status) === 'pending';
+
+    $pendingCorrection =
+        $pendingCorrectionRequests[$violation->violation_id] ?? null;
+
+    $hasAssignedSanction =
+        isset($assignedSanctionViolationIds[$violation->violation_id]);
+
+    $isEffective =
+        $violation->is_effective;
+
+    $currentDate = $violation->violation_date
+        ? \Carbon\Carbon::parse($violation->violation_date)
+            ->format('Y-m-d\TH:i')
+        : '';
+@endphp
 
                     <tr>
 
@@ -887,7 +904,43 @@
                             {{ $violation->violation_type_display }}
 
                         </td>
+<td>
+    @if($isPendingLog)
 
+        <span class="text-muted small">
+            Available after confirmation
+        </span>
+
+    @elseif($pendingCorrection)
+
+        <span class="portal-badge goldenrod">
+            Correction Pending
+        </span>
+
+    @elseif($isEffective)
+
+        <button
+            type="button"
+            class="btn btn-sm btn-outline-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#correctionRequestModal"
+            data-correction-url="{{ route(
+                'student.violations.correction-request',
+                ['violation' => $violation->violation_id]
+            ) }}"
+            data-violation-id="{{ $violation->violation_id }}"
+            data-violation-type-id="{{ $violation->violation_type_id }}"
+            data-violation-date="{{ $currentDate }}"
+            data-violation-description="{{ $violation->description ?? '' }}"
+            data-has-sanction="{{ $hasAssignedSanction ? '1' : '0' }}"
+            data-violation-name="{{ $violation->violation_type_display }}"
+        >
+            <i class="bi bi-pencil-square me-1"></i>
+            Request Correction
+        </button>
+
+    @endif
+</td>
                         <td>
 
                             {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}
@@ -971,7 +1024,7 @@
                     <tr>
 
                         <td
-                            colspan="6"
+                            colspan="7"
                             class="text-center py-5">
 
                             No individual violations found.
@@ -998,6 +1051,196 @@
 
 </div>
 
+</div>
+
+{{-- ================================================= --}}
+{{-- Violation Correction Request Modal --}}
+{{-- ================================================= --}}
+
+<div
+    class="modal fade"
+    id="correctionRequestModal"
+    tabindex="-1"
+    aria-labelledby="correctionRequestModalLabel"
+    aria-hidden="true"
+>
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <form
+                method="POST"
+                id="correctionRequestForm"
+            >
+                @csrf
+
+                <div class="modal-header">
+                    <div>
+                        <h5
+                            class="modal-title fw-bold"
+                            id="correctionRequestModalLabel"
+                        >
+                            Request Violation Correction
+                        </h5>
+
+                        <small class="text-muted">
+                            This request will be reviewed by the Office of Student Services.
+                        </small>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                    ></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-1"></i>
+
+                        Submitting this form does not immediately change your
+                        violation record. Your request will be reviewed first.
+                    </div>
+
+                    <div class="alert alert-warning d-none" id="correctionSanctionWarning">
+                        <i class="bi bi-shield-exclamation me-1"></i>
+
+                        A disciplinary sanction has already been assigned to
+                        this violation. The violation type and date cannot be
+                        changed. You may request correction of the description
+                        or factual remarks.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Current Violation
+                        </label>
+
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="correctionCurrentViolation"
+                            readonly
+                        >
+                    </div>
+
+                    <div class="mb-3">
+                        <label
+                            for="requested_violation_type_id"
+                            class="form-label fw-semibold"
+                        >
+                            Corrected Violation Type
+                            <span class="text-danger">*</span>
+                        </label>
+
+                        <select
+                            class="form-select"
+                            name="requested_violation_type_id"
+                            id="requested_violation_type_id"
+                            required
+                        >
+                            <option value="">
+                                Select corrected violation type
+                            </option>
+
+                            @foreach($violationTypes as $type)
+                                <option value="{{ $type->violation_type_id }}">
+                                    {{ $type->violation_type }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label
+                            for="requested_violation_date"
+                            class="form-label fw-semibold"
+                        >
+                            Corrected Violation Date
+                            <span class="text-danger">*</span>
+                        </label>
+
+                        <input
+                            type="datetime-local"
+                            class="form-control"
+                            name="requested_violation_date"
+                            id="requested_violation_date"
+                            required
+                        >
+                    </div>
+
+                    <div class="mb-3">
+                        <label
+                            for="requested_description"
+                            class="form-label fw-semibold"
+                        >
+                            Corrected Remarks / Description
+                        </label>
+
+                        <textarea
+                            class="form-control"
+                            name="requested_description"
+                            id="requested_description"
+                            rows="4"
+                            maxlength="5000"
+                            placeholder="Enter the factual correction you are requesting."
+                        ></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label
+                            for="correction_reason"
+                            class="form-label fw-semibold"
+                        >
+                            Reason for Correction
+                            <span class="text-danger">*</span>
+                        </label>
+
+                        <textarea
+                            class="form-control"
+                            name="reason"
+                            id="correction_reason"
+                            rows="4"
+                            minlength="10"
+                            maxlength="2000"
+                            required
+                            placeholder="Explain why the existing violation information is incorrect."
+                        ></textarea>
+
+                        <div class="form-text">
+                            Please provide enough information for OSS Staff to
+                            verify the requested correction.
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        <i class="bi bi-send me-1"></i>
+                        Submit Correction Request
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
 </div>
 {{-- ================================================= --}}
 {{-- Sanction Record --}}
@@ -1256,7 +1499,7 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}"          
                         <tr>
 
                             <td
-                                colspan="6"
+                                colspan="7"
                                 class="text-center py-5 text-muted">
 
                                 No sanction records found.
@@ -1762,6 +2005,111 @@ if (officialArea) {
                 });
         });
     }
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    const correctionModal =
+        document.getElementById('correctionRequestModal');
+
+    if (!correctionModal) {
+        return;
+    }
+
+    correctionModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+
+        if (!button) {
+            return;
+        }
+
+        const form =
+            document.getElementById('correctionRequestForm');
+
+        const violationName =
+            document.getElementById('correctionCurrentViolation');
+
+        const violationType =
+            document.getElementById('requested_violation_type_id');
+
+        const violationDate =
+            document.getElementById('requested_violation_date');
+
+        const description =
+            document.getElementById('requested_description');
+
+        const reason =
+            document.getElementById('correction_reason');
+
+        const sanctionWarning =
+            document.getElementById('correctionSanctionWarning');
+
+        form.action =
+            button.dataset.correctionUrl;
+
+        violationName.value =
+            button.dataset.violationName || '';
+
+        violationType.value =
+            button.dataset.violationTypeId || '';
+
+        violationDate.value =
+            button.dataset.violationDate || '';
+
+        description.value =
+            button.dataset.violationDescription || '';
+
+        reason.value = '';
+
+        const hasSanction =
+            button.dataset.hasSanction === '1';
+
+        /*
+         * Keep the same protection already enforced by the Admin correction
+         * workflow.
+         */
+        violationType.disabled = hasSanction;
+        violationDate.disabled = hasSanction;
+
+        /*
+         * Disabled inputs are not submitted by browsers.
+         * Therefore, when a sanction exists, add hidden fields carrying the
+         * original values so the server receives them for validation.
+         */
+        document
+            .querySelectorAll('.correction-original-value')
+            .forEach(element => element.remove());
+
+        if (hasSanction) {
+            sanctionWarning.classList.remove('d-none');
+
+            const hiddenType =
+                document.createElement('input');
+
+            hiddenType.type = 'hidden';
+            hiddenType.name = 'requested_violation_type_id';
+            hiddenType.value =
+                button.dataset.violationTypeId || '';
+            hiddenType.className =
+                'correction-original-value';
+
+            form.appendChild(hiddenType);
+
+            const hiddenDate =
+                document.createElement('input');
+
+            hiddenDate.type = 'hidden';
+            hiddenDate.name = 'requested_violation_date';
+            hiddenDate.value =
+                button.dataset.violationDate || '';
+            hiddenDate.className =
+                'correction-original-value';
+
+            form.appendChild(hiddenDate);
+
+        } else {
+            sanctionWarning.classList.add('d-none');
+        }
+    });
 });
 </script>
 

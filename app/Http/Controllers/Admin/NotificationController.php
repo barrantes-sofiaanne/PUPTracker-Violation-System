@@ -111,13 +111,32 @@ class NotificationController extends Controller
             // The underlying record no longer exists (e.g. the sanction request
             // was removed). Never dead-end the admin on a raw 404 — take them
             // to the relevant list so they can still act on what remains.
-            $fallback = match ($notification->target_type) {
-                'sanction_request' => route('admin.sanctions.index', ['sanctions_tab' => 'sanction-requests']),
-                'sanction_record' => route('admin.sanctions.index', ['sanctions_tab' => 'student-sanctions']),
-                'email_incident' => route('admin.super-admin.email-incidents.index'),
-                'violation' => route('admin.violations.confirmations'),
-                default => route('admin.notifications'),
-            };
+$fallback = match ($notification->target_type) {
+
+    'sanction_request' => route(
+        'admin.sanctions.index',
+        ['sanctions_tab' => 'sanction-requests']
+    ),
+
+    'sanction_record' => route(
+        'admin.sanctions.index',
+        ['sanctions_tab' => 'student-sanctions']
+    ),
+
+    'email_incident' => route(
+        'admin.super-admin.email-incidents.index'
+    ),
+
+    'violation' => route(
+        'admin.violations.confirmations'
+    ),
+
+    'violation_correction_request' => route(
+        'admin.violations.correction-requests'
+    ),
+
+    default => route('admin.notifications'),
+};
 
             $notification->update(['is_read' => true]);
 

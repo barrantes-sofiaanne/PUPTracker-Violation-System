@@ -9,6 +9,10 @@ class ViolationEditHistory extends Model
 {
     protected $table = 'violation_edit_histories';
 
+    protected $primaryKey = 'history_id';
+
+    public $timestamps = false;
+
     protected $fillable = [
         'violation_id',
         'admin_id',
@@ -27,6 +31,7 @@ class ViolationEditHistory extends Model
     protected $casts = [
         'old_violation_date' => 'datetime',
         'new_violation_date' => 'datetime',
+        'created_at' => 'datetime',
     ];
 
     public function violation(): BelongsTo
@@ -44,24 +49,6 @@ class ViolationEditHistory extends Model
             Admin::class,
             'admin_id',
             'id'
-        );
-    }
-
-    public function oldViolationType(): BelongsTo
-    {
-        return $this->belongsTo(
-            ViolationType::class,
-            'old_violation_type_id',
-            'violation_type_id'
-        );
-    }
-
-    public function newViolationType(): BelongsTo
-    {
-        return $this->belongsTo(
-            ViolationType::class,
-            'new_violation_type_id',
-            'violation_type_id'
         );
     }
 }

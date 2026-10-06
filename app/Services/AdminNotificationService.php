@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use App\Models\ViolationCorrectionRequest;
 
 class AdminNotificationService
 {
@@ -191,15 +192,74 @@ return $notification;
     public function openUrl(AdminNotification $notification): ?string
     {
         return match ($notification->target_type) {
-            'sanction_request' => $this->sanctionRequestUrl((int) $notification->target_id),
-            'email_incident' => $this->emailIncidentUrl((int) $notification->target_id),
-            'violation' => $this->violationUrl((int) $notification->target_id),
-            'oss_staff_violation' => $this->ossStaffViolationUrl((int) $notification->target_id),
-            'backup' => $this->backupUrl((int) $notification->target_id),
-            'sanction_record' => $this->sanctionRecordUrl((int) $notification->target_id),
-            default => null,
-        };
+
+    'sanction_request' =>
+        $this->sanctionRequestUrl(
+            (int) $notification->target_id
+        ),
+
+    'email_incident' =>
+        $this->emailIncidentUrl(
+            (int) $notification->target_id
+        ),
+
+    'violation' =>
+        $this->violationUrl(
+            (int) $notification->target_id
+        ),
+
+    'oss_staff_violation' =>
+        $this->ossStaffViolationUrl(
+            (int) $notification->target_id
+        ),
+
+    'backup' =>
+        $this->backupUrl(
+            (int) $notification->target_id
+        ),
+
+    'sanction_record' =>
+        $this->sanctionRecordUrl(
+            (int) $notification->target_id
+        ),
+
+    'violation_correction_request' =>
+        $this->violationCorrectionRequestUrl(
+            (int) $notification->target_id
+        ),
+
+    default => null,
+};
     }
+
+    /**
+ * Resolve a student violation correction request to the
+ * administrator correction-request queue.
+ */
+private function violationCorrectionRequestUrl(
+    int $targetId
+): ?string {
+
+    if (
+        ! Route::has(
+            'admin.violations.correction-requests'
+        )
+    ) {
+        return null;
+    }
+
+    $correctionRequest =
+        ViolationCorrectionRequest::query()
+            ->find($targetId);
+
+    if (! $correctionRequest) {
+        return null;
+    }
+
+    return route(
+        'admin.violations.correction-requests'
+    );
+}
 
     /**
      * Resolve an OSS-Staff violation target to the OSS Staff module.
