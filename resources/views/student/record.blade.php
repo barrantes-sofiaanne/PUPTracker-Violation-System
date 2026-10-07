@@ -463,50 +463,73 @@
 }
 
 /* =========================================================
-   Individual Violations Log table
+   Violation Record tables
    ========================================================= */
+
+.summary-violations-table {
+    width: 100%;
+    min-width: 1180px;
+    table-layout: fixed;
+}
+
+.summary-violations-table th,
+.summary-violations-table td {
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+}
+
+.summary-violations-table th {
+    white-space: normal;
+}
+
+.summary-category-col { width: 14%; }
+.summary-violation-type-col { width: 20%; }
+.summary-offense-col { width: 11%; }
+.summary-status-col { width: 12%; }
+.summary-remarks-col { width: 13%; }
+.summary-sanction-col { width: 17%; }
+.summary-action-col { width: 13%; min-width: 220px; }
+
+.summary-action-col .summary-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.summary-action-col .summary-action-buttons .btn {
+    white-space: nowrap;
+}
 
 .individual-violations-table {
     width: 100%;
+    min-width: 980px;
     table-layout: fixed;
 }
 
 .individual-violations-table th,
 .individual-violations-table td {
     vertical-align: middle;
-}
-
-.individual-violations-table .violation-type-col {
-    width: 24%;
-}
-
-.individual-violations-table .violation-date-col {
-    width: 14%;
-}
-
-.individual-violations-table .category-col {
-    width: 17%;
-}
-
-.individual-violations-table .status-col {
-    width: 14%;
-}
-
-.individual-violations-table .remarks-col {
-    width: 18%;
-}
-
-.individual-violations-table .attachments-col {
-    width: 13%;
-}
-
-.individual-violations-table td {
     overflow-wrap: anywhere;
 }
+
+.individual-violations-table .violation-type-col { width: 24%; }
+.individual-violations-table .violation-date-col { width: 14%; }
+.individual-violations-table .category-col { width: 17%; }
+.individual-violations-table .status-col { width: 14%; }
+.individual-violations-table .remarks-col { width: 18%; }
+.individual-violations-table .attachments-col { width: 13%; }
 
 .individual-violations-table .violation-date-col {
     line-height: 1.45;
 }
+
+@media (max-width: 1200px) {
+    .summary-action-col {
+        min-width: 220px;
+    }
+}
+
 </style>
 @endpush
 
@@ -631,67 +654,62 @@
 
                             <div class="table-responsive">
 
-<table class="table table-hover align-middle mb-0 portal-table individual-violations-table">
+                                <table class="table table-hover align-middle mb-0 portal-table summary-violations-table">
 
-    <thead>
-        <tr>
+                                <thead>
 
-            <th class="category-col">
-                Category
-            </th>
+                                    <tr>
 
-            <th class="violation-type-col">
-                Violation Type
-            </th>
+                                        <th class="summary-category-col">
+                                            Category
+                                        </th>
 
-            <th>
-                Offense Level
-            </th>
+                                        <th class="summary-violation-type-col">
+                                            Violation Type
+                                        </th>
 
-            <th class="status-col">
-                Status
-            </th>
+                                        <th class="summary-offense-col">
+                                            Offense Level
+                                        </th>
 
-            <th class="remarks-col">
-                Remarks
-            </th>
+                                        <th class="summary-status-col">
+                                            Status
+                                        </th>
 
-            <th>
-                Disciplinary Sanction
-            </th>
+                                        <th class="summary-remarks-col">
+                                            Remarks
+                                        </th>
 
-            <th>
-                Action
-            </th>
+                                        <th class="summary-sanction-col">
+                                            Disciplinary Sanction
+                                        </th>
 
-        </tr>
-    </thead>
+                                        <th class="summary-action-col">
+                                            Action
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
 
                                 <tbody>
                                     @forelse($violationSummary as $summary)
 
 <tr>
 
-    <td>
-
+    <td class="summary-category-col">
         {{ $summary['category'] }}
-
     </td>
 
-    <td>
-
+    <td class="summary-violation-type-col">
         {{ $summary['type'] }}
-
     </td>
 
-    <td>
-
+    <td class="summary-offense-col">
         {{ $summary['offense_level'] }}
-
     </td>
 
-    <td>
-
+    <td class="summary-status-col">
         @if(!empty($summary['has_pending']))
 
             <span class="portal-badge goldenrod">
@@ -720,20 +738,122 @@
 
     </td>
 
-    <td>
-
+    <td class="summary-remarks-col">
         {{ $summary['remarks'] }}
-
     </td>
 
-    <td style="max-width:300px; white-space:normal;">
-
+    <td class="summary-sanction-col">
         {{ $summary['disciplinary_sanction'] }}
-
     </td>
 
-    <td>
+    <td class="summary-action-col">
+        <div class="summary-action-buttons">
 
+            {{-- Sanction action --}}
+            @if($summary['workflow_status'] === 'PendingConfirmation')
+
+                <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    disabled
+                >
+                    <i class="bi bi-hourglass-split me-1"></i>
+                    Pending Confirmation
+                </button>
+
+            @elseif($summary['workflow_status'] === 'Requested')
+
+                <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    disabled
+                >
+                    <i class="bi bi-clock-history me-1"></i>
+                    Requested
+                </button>
+
+            @elseif($summary['workflow_status'] === 'Pending')
+
+                <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    disabled
+                >
+                    <i class="bi bi-hourglass-split me-1"></i>
+                    Pending
+                </button>
+
+            @elseif($summary['workflow_status'] === 'Approved')
+
+                <button
+                    type="button"
+                    class="btn btn-success btn-sm"
+                    disabled
+                >
+                    <i class="bi bi-check-circle me-1"></i>
+                    Approved
+                </button>
+
+            @elseif($summary['violation_status'] === 'Sanction')
+
+                <button
+                    type="button"
+                    class="btn portal-btn btn-sm request-sanction-btn"
+                    data-violation-type-id="{{ $summary['violation_type_id'] }}"
+                >
+                    <i class="bi bi-send me-1"></i>
+                    Request Sanction
+                </button>
+
+            @endif
+
+            {{-- Correction action --}}
+            @if(
+                $summary['workflow_status'] !== 'PendingConfirmation' &&
+                !empty($summary['correction_violation_id'])
+            )
+
+                @if(!empty($summary['has_pending_correction']))
+
+                    <button
+                        type="button"
+                        class="btn btn-secondary btn-sm"
+                        disabled
+                    >
+                        <i class="bi bi-clock-history me-1"></i>
+                        Correction Pending
+                    </button>
+
+                @else
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-primary btn-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#correctionRequestModal"
+                        data-correction-url="{{ route(
+                            'student.violations.correction-request',
+                            ['violation' => $summary['correction_violation_id']]
+                        ) }}"
+                        data-violation-id="{{ $summary['correction_violation_id'] }}"
+                        data-violation-type-id="{{ $summary['correction_violation_type_id'] }}"
+                        data-violation-date="{{ $summary['correction_violation_date']
+                            ? \Carbon\Carbon::parse($summary['correction_violation_date'])->format('Y-m-d\TH:i')
+                            : ''
+                        }}"
+                        data-violation-description="{{ $summary['correction_description'] ?? '' }}"
+                        data-has-sanction="{{ $summary['has_assigned_sanction'] ? '1' : '0' }}"
+                        data-violation-name="{{ $summary['type'] }}"
+                    >
+                        <i class="bi bi-pencil-square me-1"></i>
+                        Request Correction
+                    </button>
+
+                @endif
+
+            @endif
+
+        </div>
     </td>
 
 </tr>
@@ -784,7 +904,7 @@
 
         <div class="table-responsive">
 
-        <table class="table table-hover align-middle mb-0 portal-table">
+        <table class="table table-hover align-middle mb-0 portal-table individual-violations-table">
 
             <thead>
 
@@ -825,7 +945,7 @@
                         Attachments
 
                     </th>
-         </tr>
+                </tr>
 
             </thead>
 
@@ -836,69 +956,46 @@
 @php
     $isPendingLog =
         strtolower((string) $violation->status) === 'pending';
-
-    $pendingCorrection =
-        $pendingCorrectionRequests[$violation->violation_id] ?? null;
-
-    $hasAssignedSanction =
-        isset($assignedSanctionViolationIds[$violation->violation_id]);
-
-    $isEffective =
-        $violation->is_effective;
-
-    $currentDate = $violation->violation_date
-        ? \Carbon\Carbon::parse($violation->violation_date)
-            ->format('Y-m-d\TH:i')
-        : '';
 @endphp
 
- <tr>
+                    <tr>
 
-    {{-- Violation Type --}}
-    <td class="violation-type-col">
-        {{ $violation->violation_type_display }}
-    </td>
+                        <td class="violation-type-col">
+                            {{ $violation->violation_type_display }}
+                        </td>
+                        <td class="violation-date-col">
+                            {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}
+                        </td>
 
-    {{-- Date --}}
-    <td class="violation-date-col">
-        {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}
-    </td>
+                        <td class="category-col">
+                            {{ $violation->violation_category_display }}
+                        </td>
 
-    {{-- Category --}}
-    <td class="category-col">
-        {{ $violation->violation_category_display }}
-    </td>
+                        <td class="status-col">
+                            @if($isPendingLog)
 
-    {{-- Status --}}
-    <td class="status-col">
+                                <span class="portal-badge goldenrod">
+                                    Pending Confirmation
+                                </span>
 
-        @if($isPendingLog)
+                            @else
 
-            <span class="portal-badge goldenrod">
-                Pending Confirmation
-            </span>
+                                {{-- Presentation label only: a non-pending row is a
+                                     confirmed violation. The stored status value is
+                                     unchanged. --}}
+                                <span class="portal-badge success">
+                                    Confirmed
+                                </span>
 
-        @else
+                            @endif
 
-            {{-- Presentation label only: a non-pending row is a
-                 confirmed violation. The stored status value is
-                 unchanged. --}}
-            <span class="portal-badge success">
-                Confirmed
-            </span>
+                        </td>
 
-        @endif
+                        <td class="remarks-col">
+                            {{ $violation->description ?: 'No remarks' }}
+                        </td>
 
-    </td>
-
-    {{-- Remarks --}}
-    <td class="remarks-col">
-        {{ $violation->description ?: 'No remarks' }}
-    </td>
-
-    {{-- Attachments --}}
-    <td class="attachments-col">
-
+                        <td class="attachments-col">
                             @if($isPendingLog)
 
                                 <span class="text-muted small">
@@ -1000,7 +1097,7 @@
                         </h5>
 
                         <small class="text-muted">
-                            This request will be reviewed by the Office of Student Services.
+                            This request will be reviewed by an Administrator.
                         </small>
                     </div>
 
@@ -1127,7 +1224,7 @@
                         ></textarea>
 
                         <div class="form-text">
-                            Please provide enough information for OSS Staff to
+                            Please provide enough information for an Administrator to
                             verify the requested correction.
                         </div>
                     </div>
