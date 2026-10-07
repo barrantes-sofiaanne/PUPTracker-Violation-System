@@ -461,6 +461,52 @@
         width: 100%;
     }
 }
+
+/* =========================================================
+   Individual Violations Log table
+   ========================================================= */
+
+.individual-violations-table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.individual-violations-table th,
+.individual-violations-table td {
+    vertical-align: middle;
+}
+
+.individual-violations-table .violation-type-col {
+    width: 24%;
+}
+
+.individual-violations-table .violation-date-col {
+    width: 14%;
+}
+
+.individual-violations-table .category-col {
+    width: 17%;
+}
+
+.individual-violations-table .status-col {
+    width: 14%;
+}
+
+.individual-violations-table .remarks-col {
+    width: 18%;
+}
+
+.individual-violations-table .attachments-col {
+    width: 13%;
+}
+
+.individual-violations-table td {
+    overflow-wrap: anywhere;
+}
+
+.individual-violations-table .violation-date-col {
+    line-height: 1.45;
+}
 </style>
 @endpush
 
@@ -585,57 +631,37 @@
 
                             <div class="table-responsive">
 
-                                <table class="table table-hover align-middle mb-0 portal-table">
+<table class="table table-hover align-middle mb-0 portal-table individual-violations-table">
 
-                                <thead>
+    <thead>
+        <tr>
 
-                                    <tr>
+            <th class="violation-type-col">
+                Violation Type
+            </th>
 
-                                        <th>
+            <th class="violation-date-col">
+                Date
+            </th>
 
-                                            Category
+            <th class="category-col">
+                Category
+            </th>
 
-                                        </th>
+            <th class="status-col">
+                Status
+            </th>
 
-                                        <th>
+            <th class="remarks-col">
+                Remarks
+            </th>
 
-                                            Violation Type
+            <th class="attachments-col">
+                Attachments
+            </th>
 
-                                        </th>
-
-                                        <th>
-
-                                            Offense Level
-
-                                        </th>
-
-                                        <th>
-
-                                            Status
-
-                                        </th>
-
-                                        <th>
-
-                                            Remarks
-
-                                        </th>
-
-                                        <th>
-
-                                            Disciplinary Sanction
-
-                                        </th>
-
-                                        <th>
-
-                                            Action
-
-                                        </th>
-
-                                    </tr>
-
-                                </thead>
+        </tr>
+    </thead>
 
                                 <tbody>
                                     @forelse($violationSummary as $summary)
@@ -825,50 +851,52 @@
         : '';
 @endphp
 
-                    <tr>
+ <tr>
 
-                        <td>
+    {{-- Violation Type --}}
+    <td class="violation-type-col">
+        {{ $violation->violation_type_display }}
+    </td>
 
-                            {{ $violation->violation_type_display }}
+    {{-- Date --}}
+    <td class="violation-date-col">
+        {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}
+    </td>
 
-                            {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}
+    {{-- Category --}}
+    <td class="category-col">
+        {{ $violation->violation_category_display }}
+    </td>
 
-                        </td>
+    {{-- Status --}}
+    <td class="status-col">
 
-                        <td>
+        @if($isPendingLog)
 
-                            {{ $violation->violation_category_display }}
+            <span class="portal-badge goldenrod">
+                Pending Confirmation
+            </span>
 
-                        </td>
+        @else
 
-                        <td>
+            {{-- Presentation label only: a non-pending row is a
+                 confirmed violation. The stored status value is
+                 unchanged. --}}
+            <span class="portal-badge success">
+                Confirmed
+            </span>
 
-                            @if($isPendingLog)
+        @endif
 
-                                <span class="portal-badge goldenrod">
-                                    Pending Confirmation
-                                </span>
+    </td>
 
-                            @else
+    {{-- Remarks --}}
+    <td class="remarks-col">
+        {{ $violation->description ?: 'No remarks' }}
+    </td>
 
-                                {{-- Presentation label only: a non-pending row is a
-                                     confirmed violation. The stored status value is
-                                     unchanged. --}}
-                                <span class="portal-badge success">
-                                    Confirmed
-                                </span>
-
-                            @endif
-
-                        </td>
-
-                        <td>
-
-                            {{ $violation->description ?: 'No remarks' }}
-
-                        </td>
-
-                        <td>
+    {{-- Attachments --}}
+    <td class="attachments-col">
 
                             @if($isPendingLog)
 
