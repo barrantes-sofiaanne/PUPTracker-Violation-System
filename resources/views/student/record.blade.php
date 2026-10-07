@@ -473,39 +473,82 @@
    Violation Record tables
    ========================================================= */
 
+/* =========================================================
+   Summary by Violation
+   ========================================================= */
+
 .summary-violations-table {
-    width: 100%;
-    min-width: 1180px;
-    table-layout: fixed;
+    width: 100% !important;
+    min-width: 1100px !important;
+    table-layout: fixed !important;
 }
 
-.summary-violations-table th,
-.summary-violations-table td {
+/* Exact column widths */
+.summary-violations-table .summary-category-col {
+    width: 14%;
+}
+
+.summary-violations-table .summary-violation-type-col {
+    width: 23%;
+}
+
+.summary-violations-table .summary-offense-col {
+    width: 11%;
+}
+
+.summary-violations-table .summary-status-col {
+    width: 11%;
+}
+
+.summary-violations-table .summary-remarks-col {
+    width: 13%;
+}
+
+.summary-violations-table .summary-sanction-col {
+    width: 15%;
+}
+
+.summary-violations-table .summary-action-col {
+    width: 13%;
+}
+
+/* Header */
+.summary-violations-table thead th {
+    text-align: center;
     vertical-align: middle;
+    white-space: normal !important;
+    overflow-wrap: break-word;
+    word-break: normal;
+    line-height: 1.25;
+    padding: 0.9rem 0.6rem !important;
+}
+
+/* Body */
+.summary-violations-table tbody td {
+    vertical-align: middle;
+    white-space: normal !important;
     overflow-wrap: anywhere;
+    word-break: normal;
+    padding: 0.9rem 0.6rem !important;
 }
 
-.summary-violations-table th {
-    white-space: normal;
+/* Action buttons */
+.summary-action-col {
+    text-align: center;
 }
-
-.summary-category-col { width: 14%; }
-.summary-violation-type-col { width: 20%; }
-.summary-offense-col { width: 11%; }
-.summary-status-col { width: 12%; }
-.summary-remarks-col { width: 13%; }
-.summary-sanction-col { width: 17%; }
-.summary-action-col { width: 13%; min-width: 220px; }
 
 .summary-action-col .summary-action-buttons {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
     gap: 0.5rem;
-    align-items: center;
 }
 
 .summary-action-col .summary-action-buttons .btn {
-    white-space: nowrap;
+    width: 100%;
+    white-space: normal !important;
+    text-align: center;
 }
 
 .individual-violations-table {
