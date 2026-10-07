@@ -387,7 +387,7 @@ class ViolationCorrectionRequestController extends Controller
                         'Correction Request Approved',
 
                     message:
-                        'Your violation correction request has been approved by the administrator and the violation record has been updated.',
+                        'Your violation correction request has been approved by the administrator. The requested correction has been applied to your violation record.',
 
                     targetType:
                         'violation_correction_request',

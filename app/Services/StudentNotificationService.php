@@ -101,8 +101,17 @@ if (
     (
         $type === 'announcement'
         && $title === 'New Announcement'
+    )    ||
+    (
+        $type === 'violation_correction'
+        && in_array($title, [
+            'Correction Request Pending',
+            'Correction Request Approved',
+            'Correction Request Rejected',
+        ], true)
     )
-) {
+)
+{
     try {
         $this->sendDecisionEmail(
             notification: $notification,
@@ -291,7 +300,12 @@ private function sendDecisionEmail(
                 notificationMessage: (string) $notification->message,
                 recipientName: $studentName,
                 actionUrl: $actionUrl,
-                actionText: 'View Student Record',
+                actionText: str_starts_with(
+    (string) ($notification->title ?? ''),
+    'Correction Request'
+)
+    ? 'View Correction Status'
+    : 'View Student Record',
             )
         );
     } catch (\Throwable $e) {

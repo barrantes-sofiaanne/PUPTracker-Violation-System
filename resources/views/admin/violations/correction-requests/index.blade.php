@@ -252,16 +252,19 @@
                                     <div class="d-flex flex-column gap-2">
 
                                         {{-- APPROVE --}}
-                                        <form
-                                            method="POST"
-                                            action="{{ route(
-                                                'violation-correction-requests.approve',
-                                                [
-                                                    'correctionRequest' =>
-                                                        $correctionRequest->request_id
-                                                ]
-                                            ) }}"
-                                        >
+                                    <form
+    method="POST"
+    action="{{ route(
+        'violation-correction-requests.approve',
+        [
+            'correctionRequest' =>
+                $correctionRequest->request_id
+        ]
+    ) }}"
+    data-confirm="Approve this correction request and update the violation record?"
+    data-confirm-title="Approve Correction Request?"
+    data-confirm-confirm-label="Approve & Correct"
+>
 
                                             @csrf
 
@@ -273,13 +276,10 @@
                                                 placeholder="Optional approval remarks"
                                             ></textarea>
 
-                                            <button
-                                                type="submit"
-                                                class="btn btn-sm btn-success w-100"
-                                                onclick="return confirm(
-                                                    'Approve this correction request and update the violation record?'
-                                                );"
-                                            >
+<button
+    type="submit"
+    class="btn btn-sm btn-success w-100"
+>
 
                                                 <i class="bi bi-check-circle me-1"></i>
 
@@ -290,16 +290,19 @@
                                         </form>
 
                                         {{-- REJECT --}}
-                                        <form
-                                            method="POST"
-                                            action="{{ route(
-                                                'violation-correction-requests.reject',
-                                                [
-                                                    'correctionRequest' =>
-                                                        $correctionRequest->request_id
-                                                ]
-                                            ) }}"
-                                        >
+<form
+    method="POST"
+    action="{{ route(
+        'violation-correction-requests.reject',
+        [
+            'correctionRequest' =>
+                $correctionRequest->request_id
+        ]
+    ) }}"
+    data-confirm="Reject this correction request? The violation record will not be changed."
+    data-confirm-title="Reject Correction Request?"
+    data-confirm-confirm-label="Reject Request"
+>
 
                                             @csrf
 
@@ -313,13 +316,10 @@
                                                 placeholder="Reason for rejection (required)"
                                             ></textarea>
 
-                                            <button
-                                                type="submit"
-                                                class="btn btn-sm btn-outline-danger w-100"
-                                                onclick="return confirm(
-                                                    'Reject this correction request?'
-                                                );"
-                                            >
+<button
+    type="submit"
+    class="btn btn-sm btn-outline-danger w-100"
+>
 
                                                 <i class="bi bi-x-circle me-1"></i>
 

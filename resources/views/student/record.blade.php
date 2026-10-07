@@ -704,78 +704,6 @@
 
     <td>
 
-        @if($summary['workflow_status'] === 'PendingConfirmation')
-
-            <button
-                class="btn btn-secondary btn-sm"
-                disabled>
-
-                <i class="bi bi-hourglass-split"></i>
-
-                Pending Confirmation
-
-            </button>
-
-        @elseif($summary['workflow_status'] === 'Requested')
-
-            <button
-                class="btn btn-secondary btn-sm"
-                disabled>
-
-                <i class="bi bi-clock-history"></i>
-
-                Requested
-
-            </button>
-
-        @elseif($summary['workflow_status'] === 'Pending')
-
-            <button
-                class="btn btn-secondary btn-sm"
-                disabled>
-
-                <i class="bi bi-hourglass-split"></i>
-
-                Pending
-
-            </button>
-
-        @elseif($summary['workflow_status'] === 'Approved')
-
-            <button
-                class="btn btn-success btn-sm"
-                disabled>
-
-                <i class="bi bi-check-circle"></i>
-
-                Approved
-
-            </button>
-
-        @else
-
-            @if($summary['violation_status'] !== 'Sanction')
-
-                <span class="badge bg-secondary-subtle text-secondary-emphasis border">
-                    No Request Needed
-                </span>
-
-            @else
-
-                <button
-                    class="btn portal-btn btn-sm request-sanction-btn"
-                    data-violation-type-id="{{ $summary['violation_type_id'] }}">
-
-                    <i class="bi bi-send"></i>
-
-                    Request Sanction
-
-                </button>
-
-            @endif
-
-        @endif
-
     </td>
 
 </tr>
@@ -903,46 +831,6 @@
 
                             {{ $violation->violation_type_display }}
 
-                        </td>
-<td>
-    @if($isPendingLog)
-
-        <span class="text-muted small">
-            Available after confirmation
-        </span>
-
-    @elseif($pendingCorrection)
-
-        <span class="portal-badge goldenrod">
-            Correction Pending
-        </span>
-
-    @elseif($isEffective)
-
-        <button
-            type="button"
-            class="btn btn-sm btn-outline-primary"
-            data-bs-toggle="modal"
-            data-bs-target="#correctionRequestModal"
-            data-correction-url="{{ route(
-                'student.violations.correction-request',
-                ['violation' => $violation->violation_id]
-            ) }}"
-            data-violation-id="{{ $violation->violation_id }}"
-            data-violation-type-id="{{ $violation->violation_type_id }}"
-            data-violation-date="{{ $currentDate }}"
-            data-violation-description="{{ $violation->description ?? '' }}"
-            data-has-sanction="{{ $hasAssignedSanction ? '1' : '0' }}"
-            data-violation-name="{{ $violation->violation_type_display }}"
-        >
-            <i class="bi bi-pencil-square me-1"></i>
-            Request Correction
-        </button>
-
-    @endif
-</td>
-                        <td>
-
                             {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}
 
                         </td>
@@ -1024,7 +912,7 @@
                     <tr>
 
                         <td
-                            colspan="7"
+                            colspan="6"
                             class="text-center py-5">
 
                             No individual violations found.
