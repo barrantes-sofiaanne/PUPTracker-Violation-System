@@ -636,16 +636,16 @@
     <thead>
         <tr>
 
+            <th class="category-col">
+                Category
+            </th>
+
             <th class="violation-type-col">
                 Violation Type
             </th>
 
-            <th class="violation-date-col">
-                Date
-            </th>
-
-            <th class="category-col">
-                Category
+            <th>
+                Offense Level
             </th>
 
             <th class="status-col">
@@ -656,8 +656,12 @@
                 Remarks
             </th>
 
-            <th class="attachments-col">
-                Attachments
+            <th>
+                Disciplinary Sanction
+            </th>
+
+            <th>
+                Action
             </th>
 
         </tr>
@@ -821,10 +825,7 @@
                         Attachments
 
                     </th>
-<th>
-    Action
-</th>
-                </tr>
+         </tr>
 
             </thead>
 
