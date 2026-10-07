@@ -3,7 +3,14 @@
 @section('title', 'Student Record')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/student.css') }}"> 
+
+{{-- Student Record-specific styles --}}
+<link rel="stylesheet" href="{{ asset('css/student.css') }}">
+
+{{-- Re-apply the shared Student Portal UI after student.css --}}
+<link rel="stylesheet" href="{{ asset('css/portal.css') }}">
+<link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
+
 <style>
 /* ==========================================================================
    Submit Proof of Completion modal (scoped to this page)
