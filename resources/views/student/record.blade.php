@@ -1298,22 +1298,29 @@
                                     $visibleEvidence = collect($violation->evidence ?? [])
                                         ->filter(fn ($e) => ! empty($e->disk_path));
                                 @endphp
-
-                                @if ($visibleEvidence->isNotEmpty())
-                                    @foreach ($visibleEvidence as $item)
-                                        <a
-                                            href="{{ route('student.violations.evidence', [
-    'evidence' => $item->access_key,
-]) }}"
-                                            target="_blank"
-                                            rel="noopener"
-                                            class="btn btn-sm btn-outline-secondary me-1 mb-1"
-                                            title="Open {{ $item->original_name ?: 'evidence' }}">
-                                            <i class="bi bi-paperclip"></i>
-                                            {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
-                                        </a>
-                                    @endforeach
-                                @else
+@if ($visibleEvidence->isNotEmpty())
+    @foreach ($visibleEvidence as $item)
+        @if (!empty($item->access_key))
+            <a
+                href="{{ route('student.violations.evidence', [
+                    'evidence' => $item->access_key,
+                ]) }}"
+                target="_blank"
+                rel="noopener"
+                class="btn btn-sm btn-outline-secondary me-1 mb-1"
+                title="Open {{ $item->original_name ?: 'evidence' }}">
+                <i class="bi bi-paperclip"></i>
+                {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
+            </a>
+        @else
+            <span class="btn btn-sm btn-outline-secondary me-1 mb-1 disabled"
+                  title="Evidence access key unavailable">
+                <i class="bi bi-paperclip"></i>
+                {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
+            </span>
+        @endif
+    @endforeach
+@else
                                     <span class="text-muted">—</span>
                                 @endif
 
