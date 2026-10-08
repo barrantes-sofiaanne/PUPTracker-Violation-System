@@ -26,7 +26,6 @@ use App\Models\StudentSanctionRecord;
 use App\Models\AuditLog;
 use App\Models\EvidenceSecurityEvent;
 use App\Services\EvidenceSecurityService;
-use App\Models\ViolationEditHistory;
 
 class ViolationController extends Controller
 {
@@ -284,203 +283,6 @@ $students = User::with([
 
         return redirect()->route('admin.violations.index', $params);
     }
-
-    public function edit(Violation $violation)
-{
-    $violation->load([
-        'student.studentInfo.program',
-        'student.studentInfo.year',
-        'student.studentInfo.section',
-        'violationType.violationCategory',
-        'evidence',
-        'editHistories.admin',
-    ]);
-
-    $violationTypes = ViolationType::with('violationCategory')
-        ->orderBy('violation_type')
-        ->get();
-
-    /*
-     * Once a sanction has already been assigned, changing the
-     * violation type/date could alter the basis used to determine
-     * that sanction.
-     *
-     * We therefore protect those fields when a sanction exists.
-     */
-    $hasAssignedSanction = StudentSanctionRecord::where(
-        'violation_id',
-        $violation->violation_id
-    )->exists();
-
-    return view('admin.violations.edit', [
-        'violation' => $violation,
-        'violationTypes' => $violationTypes,
-        'hasAssignedSanction' => $hasAssignedSanction,
-    ]);
-}
-
-public function update(Request $request, Violation $violation): \Illuminate\Http\RedirectResponse
-{
-    $adminId = Auth::guard('admin')->id();
-
-    if (!$adminId) {
-        abort(403, 'Administrator authentication is required.');
-    }
-
-    $hasAssignedSanction = StudentSanctionRecord::where(
-        'violation_id',
-        $violation->violation_id
-    )->exists();
-
-    $rules = [
-        'description' => [
-            'nullable',
-            'string',
-            'max:5000',
-        ],
-
-        'reason' => [
-            'required',
-            'string',
-            'min:10',
-            'max:2000',
-        ],
-    ];
-
-    /*
-     * Violation type and date may normally be corrected.
-     * However, once a sanction is already assigned, changing
-     * either field could invalidate the sanction calculation.
-     */
-    if (!$hasAssignedSanction) {
-        $rules['violation_type_id'] = [
-            'required',
-            'integer',
-            'exists:violation_type_tbl,violation_type_id',
-        ];
-
-        $rules['violation_date'] = [
-            'required',
-            'date',
-        ];
-    }
-
-    $validated = $request->validate($rules);
-
-    /*
-     * Never accept student_number from the request.
-     *
-     * The student attached to the original violation remains
-     * the student attached to the record.
-     */
-    $oldViolationTypeId = $violation->violation_type_id;
-    $oldViolationDate = $violation->violation_date;
-    $oldDescription = $violation->description;
-
-    $newViolationTypeId = $hasAssignedSanction
-        ? $oldViolationTypeId
-        : (int) $validated['violation_type_id'];
-
-    $newViolationDate = $hasAssignedSanction
-        ? $oldViolationDate
-        : $validated['violation_date'];
-
-    $newDescription = isset($validated['description'])
-        ? trim((string) $validated['description'])
-        : null;
-
-    /*
-     * Prevent an empty correction from creating meaningless
-     * history entries.
-     */
-    $hasChanges =
-        (string) $oldViolationTypeId !== (string) $newViolationTypeId
-        || optional($oldViolationDate)->format('Y-m-d H:i:s') !==
-            \Carbon\Carbon::parse($newViolationDate)->format('Y-m-d H:i:s')
-        || (string) $oldDescription !== (string) $newDescription;
-
-    if (!$hasChanges) {
-        return back()
-            ->withErrors([
-                'violation' => 'No changes were made to this violation.',
-            ])
-            ->withInput();
-    }
-
-    DB::transaction(function () use (
-        $violation,
-        $adminId,
-        $validated,
-        $oldViolationTypeId,
-        $oldViolationDate,
-        $oldDescription,
-        $newViolationTypeId,
-        $newViolationDate,
-        $newDescription,
-        $hasAssignedSanction
-    ): void {
-
-        /*
-         * Create the permanent correction history BEFORE
-         * changing the live violation.
-         */
-        ViolationEditHistory::create([
-            'violation_id' => $violation->violation_id,
-            'admin_id' => $adminId,
-
-            'old_violation_type_id' => $oldViolationTypeId,
-            'old_violation_date' => $oldViolationDate,
-            'old_description' => $oldDescription,
-
-            'new_violation_type_id' => $newViolationTypeId,
-            'new_violation_date' => $newViolationDate,
-            'new_description' => $newDescription,
-
-            'reason' => trim($validated['reason']),
-        ]);
-
-        /*
-         * Update only fields that are actually allowed.
-         */
-        $updateData = [
-            'description' => $newDescription,
-        ];
-
-        if (!$hasAssignedSanction) {
-            $updateData['violation_type_id'] = $newViolationTypeId;
-            $updateData['violation_date'] = $newViolationDate;
-        }
-
-        $violation->update($updateData);
-
-        /*
-         * Existing audit system.
-         */
-        AuditLog::create([
-            'actor_type' => 'admin',
-            'actor_id' => $adminId,
-            'action' => 'Edit Violation',
-            'module' => 'Violations',
-            'description' =>
-                'Corrected violation #' .
-                $violation->violation_id .
-                ' for student ' .
-                ($violation->student_number ?? 'unknown') .
-                '. Reason: ' .
-                trim($validated['reason']) .
-                '.',
-        ]);
-    });
-
-    return redirect()
-        ->route('admin.violations.index', [
-            'tab' => 'history',
-        ])
-        ->with(
-            'success',
-            'Violation corrected successfully. The original values were preserved in the correction history.'
-        );
-}
 
     public function confirmViolation(Violation $violation): \Illuminate\Http\RedirectResponse
     {
@@ -1106,6 +908,15 @@ $previousCount = Violation::where(
 public function store(\App\Http\Requests\StoreViolationRequest $request): JsonResponse
 {
     $validated = $request->validated();
+
+    // Administrator recordings must include an explicit student-identity
+    // confirmation. Security and OSS Staff use the same FormRequest, so this
+    // rule is intentionally enforced here rather than globally in the request.
+    if (! $request->boolean('identity_confirmed')) {
+        return response()->json([
+            'message' => 'You must confirm the student identity before recording the violation.',
+        ], 422);
+    }
 
     $violationType = ViolationType::findOrFail(
         $validated['violation_type_id']
