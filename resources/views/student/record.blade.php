@@ -528,101 +528,133 @@
 }
 
 /* =========================================================
-   Summary by Violation table
+   Violation Record tables
    ========================================================= */
 
+/* ---------------------------------------------------------
+   Summary by Violation
+   --------------------------------------------------------- */
 .summary-violations-table {
     width: 100% !important;
     min-width: 0 !important;
-    max-width: 100%;
-    table-layout: fixed;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse;
 }
+
+/* Eight columns = 100% total */
+.summary-category-col { width: 14%; }
+.summary-violation-type-col { width: 20%; }
+.summary-offense-col { width: 10%; }
+.summary-status-col { width: 11%; }
+.summary-remarks-col { width: 10%; }
+.summary-evidence-col { width: 10%; }
+.summary-sanction-col { width: 13%; }
+.summary-action-col { width: 12%; min-width: 0 !important; }
 
 .summary-violations-table th,
 .summary-violations-table td {
-    vertical-align: middle;
-    overflow-wrap: break-word;
-    word-break: normal;
+    vertical-align: middle !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
 }
 
-.summary-violations-table th {
+.summary-violations-table thead th {
+    text-align: center !important;
     white-space: normal !important;
-    text-align: center;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
     line-height: 1.2;
+    font-size: 0.82rem;
     padding: 0.8rem 0.45rem !important;
 }
 
-/* 100% total width */
-.summary-category-col {
-    width: 11%;
-}
-
-.summary-violation-type-col {
-    width: 18%;
-}
-
-.summary-offense-col {
-    width: 9%;
-}
-
-.summary-status-col {
-    width: 10%;
-}
-
-.summary-remarks-col {
-    width: 11%;
-}
-
-.summary-evidence-col {
-    width: 13%;
-}
-
-.summary-sanction-col {
-    width: 15%;
-}
-
-.summary-action-col {
-    width: 13%;
-    min-width: 0 !important;
-}
-
-/* Action buttons */
-.summary-action-col .summary-action-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    align-items: stretch;
-    width: 100%;
-}
-
-.summary-action-col .summary-action-buttons .btn {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-
-    /* Prevent letters from being split apart */
+.summary-violations-table tbody td {
     white-space: normal !important;
-    overflow-wrap: normal;
-    word-break: normal;
-    hyphens: none;
-
-    text-align: center;
-    line-height: 1.25;
-
-    padding: 0.65rem 0.45rem;
-    font-size: 0.9rem;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    line-height: 1.45;
+    padding: 1rem 0.55rem !important;
 }
 
-/* Evidence buttons */
-.summary-evidence-col .btn {
-    width: 100%;
-    white-space: normal;
-    overflow-wrap: normal;
-    word-break: normal;
+/* Keep category and violation names intact; wrap only at spaces. */
+.summary-violations-table .summary-category-col,
+.summary-violations-table .summary-violation-type-col,
+.summary-violations-table .summary-offense-col,
+.summary-violations-table .summary-remarks-col,
+.summary-violations-table .summary-sanction-col {
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+}
+
+/* Status */
+.summary-violations-table .summary-status-col {
+    text-align: center;
+}
+
+.summary-violations-table .summary-status-col .portal-badge,
+.summary-violations-table .summary-status-col .badge {
+    display: inline-block;
+    max-width: 100%;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* Evidence */
+.summary-violations-table .summary-evidence-col {
+    text-align: center;
+}
+
+.summary-violations-table .summary-evidence-col .btn {
+    display: inline-block;
+    max-width: 100%;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
     line-height: 1.25;
     padding: 0.45rem 0.35rem;
 }
 
+/* Action */
+.summary-violations-table .summary-action-col {
+    text-align: center;
+    vertical-align: middle !important;
+}
+
+.summary-action-col .summary-action-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    width: 100%;
+    gap: 0.5rem;
+}
+
+.summary-action-col .summary-action-buttons .btn {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+    text-align: center;
+    line-height: 1.25;
+    padding: 0.65rem 0.4rem;
+    font-size: 0.85rem;
+}
+
+/* ---------------------------------------------------------
+   Individual Violations Log
+   --------------------------------------------------------- */
 .individual-violations-table {
     width: 100%;
     min-width: 980px;
@@ -651,10 +683,21 @@
         min-width: 0 !important;
     }
 
+    .summary-violations-table thead th {
+        font-size: 0.78rem;
+        padding-left: 0.35rem !important;
+        padding-right: 0.35rem !important;
+    }
+
+    .summary-violations-table tbody td {
+        padding-left: 0.4rem !important;
+        padding-right: 0.4rem !important;
+    }
+
     .summary-action-col .summary-action-buttons .btn {
-        font-size: 0.82rem;
-        padding-left: 0.35rem;
-        padding-right: 0.35rem;
+        font-size: 0.8rem;
+        padding-left: 0.3rem;
+        padding-right: 0.3rem;
     }
 }
 
@@ -2253,7 +2296,7 @@ document.addEventListener('DOMContentLoaded', function () {
         offenseOutput.value = 'Loading…';
         sanctionOutput.value = 'Loading…';
         try {
-            const url = "{{ url('/student/violations') }}/" + encodeURIComponent(violationId) + '/correction-options?violation_type_id=' + encodeURIComponent(typeId);
+            const url = "{{ url('/student/violations') }}/" + encodeURIComponent(violationId) + "/correction-options?violation_type_id=" + encodeURIComponent(typeId);
             const response = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
             if (!response.ok) throw new Error('Unable to load correction options.');
             const data = await response.json();
