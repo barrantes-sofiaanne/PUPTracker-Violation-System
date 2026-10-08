@@ -1075,7 +1075,7 @@
                     Approved
                 </button>
 
-            @elseif($summary['violation_status'] === 'Sanction')
+            @elseif($summary['violation_status'] === 'Sanction' && !empty($summary['requires_sanction_request']))
 
                 <button
                     type="button"
@@ -2236,9 +2236,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 // The official form is only relevant for Community Service /
                 // Campus Service sanctions. Show the download link only when
                 // the assigned sanction is one of those; hide it for others.
-// The official form is relevant to service sanctions.
-// Show the download link for Community Service, Campus Service,
-// and Student-Assistance Service.
+// The official form is relevant only to Community Service / Campus Service.
+// Student-Assistance Service uses the existing OSS consultation notice and
+// does not require a proof upload.
 const officialArea = document.getElementById('officialFormArea');
 
 if (officialArea) {

@@ -179,18 +179,36 @@ class StudentSanctionRecord extends Model
      */
     public function getIsServiceSanctionAttribute(): bool
     {
-           return $this->is_community_service
-        || $this->is_campus_service
-        || $this->is_student_assistance_service;
+        // Only Community Service and Campus Service require the student to
+        // submit proof and use the sanction-request/scheduling workflow.
+        // Student-Assistance Service is handled through the existing OSS
+        // consultation notice and must NOT show Submit Proof or Request Sanction.
+        return $this->is_community_service
+            || $this->is_campus_service;
+    }
+
+    /**
+     * Whether a configured sanction requires the student to request the
+     * sanction so the administration can schedule/assign the service.
+     *
+     * Keep this rule text-based because the current disciplinary-sanction table
+     * stores the sanction description and does not have a separate workflow
+     * type column. The actual configured note is intentionally unchanged.
+     */
+    public static function requiresStudentSanctionRequest(?string $sanctionText): bool
+    {
+        $text = strtolower(trim((string) $sanctionText));
+
+        return str_contains($text, 'community service')
+            || str_contains($text, 'campus service');
     }
 
     /**
      * Whether the student must submit a Proof of Completion for this sanction.
      *
      * ONLY Community Service and Campus Service sanctions require a proof
-     * upload. Every other sanction (suspension, counseling referral, ...) is
-     * processed through a personal consultation at the Office of Student
-     * Services and must therefore NOT offer the student a proof submission.
+     * upload. Student-Assistance Service and every other sanction that uses the
+     * OSS consultation workflow must NOT offer the student a proof submission.
      */
     public function getRequiresProofOfCompletionAttribute(): bool
     {

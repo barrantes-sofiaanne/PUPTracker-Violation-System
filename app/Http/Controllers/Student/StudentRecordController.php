@@ -302,6 +302,10 @@ foreach ($groupedViolations as $records) {
 
         'disciplinary_sanction' => $disciplinarySanction,
 
+        // Only sanctions that require administration scheduling (Community or
+        // Campus Service) expose Request Sanction in the student UI.
+        'requires_sanction_request' => StudentSanctionRecord::requiresStudentSanctionRequest($disciplinarySanction),
+
         'violation_status' => $status,
 
         'workflow_status' => $workflowStatus,
@@ -335,6 +339,211 @@ return view(
     )
 );
     }
+
+public function requestSanction(Request $request)
+{
+    $request->validate([
+        'violation_type_id' => 'required|integer'
+    ]);
+
+    /** @var \App\Models\User $user */
+    $user = Auth::user();
+
+    /*
+     * Inactive students cannot create new sanction requests.
+     * This is enforced server-side even if the browser UI is bypassed.
+     */
+    if (! $user instanceof \App\Models\User || ! $user->isActiveAccount()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'A sanction request cannot be created because your PUPTracker account is inactive.',
+        ], 403);
+    }
+
+    $violationType = \App\Models\ViolationType::find($request->violation_type_id);
+
+    if (!$violationType) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Violation type was not found.'
+        ], 422);
+    }
+
+$offenseCount = Violation::where('student_number', $user->student_number)
+    ->where('violation_type_id', $violationType->violation_type_id)
+    ->effective()
+    ->count();
+
+    if ($offenseCount < 1) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No matching violation record found for this request.'
+        ], 422);
+    }
+
+    $offenseLevel = match ($offenseCount) {
+        1 => '1st Offense',
+        2 => '2nd Offense',
+        3 => '3rd Offense',
+        default => $offenseCount . 'th Offense',
+    };
+
+    $assignedSanction = DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
+        ->where('offense_level', $offenseLevel)
+        ->first()
+        ?? DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
+            ->orderBy('disciplinary_sanction_id')
+            ->first();
+
+    if (!$assignedSanction) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No disciplinary sanction is configured for this violation yet.'
+        ], 422);
+    }
+
+    $sanctionText = strtolower((string) ($assignedSanction?->disciplinary_sanction ?? ''));
+    if ($sanctionText !== '' && str_contains($sanctionText, 'warning')) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Warning-level violations remain in the violation log and cannot be moved to sanction records.'
+        ], 422);
+    }
+
+    // Only Community Service / Campus Service sanctions require a student
+    // sanction request because the administration must schedule/assign the
+    // service. Student-Assistance Service and other OSS-consultation sanctions
+    // are already assigned and must be handled through the Sanction Record tab.
+    if (! StudentSanctionRecord::requiresStudentSanctionRequest($assignedSanction?->disciplinary_sanction)) {
+        return response()->json([
+            'success' => false,
+            'message' => StudentSanctionRecord::CONSULTATION_NOTICE,
+        ], 422);
+    }
+
+    $existing = SanctionRequest::where(
+        'student_number',
+        $user->student_number
+    )
+    ->where(
+        'violation_type_id',
+        $request->violation_type_id
+    )
+    ->where(
+        'is_active',
+        1
+    )
+    ->first();
+
+    if ($existing) {
+
+        return response()->json([
+
+            'success' => false,
+
+            'message' => 'You already have an active request.'
+
+        ]);
+
+    }
+
+    DB::beginTransaction();
+
+    try {
+
+        $sanctionRequest = SanctionRequest::create([
+
+            'student_number' => $user->student_number,
+
+            'violation_type_id' => $request->violation_type_id,
+
+            'request_date' => now(),
+
+            'is_active' => true,
+
+            'status' => 'Pending',
+
+            'approved_by_admin_id' => null,
+
+            'approved_at' => null,
+
+        ]);
+
+        // Validate the student has a matching confirmed violation before
+        // queueing the request. The actual StudentSanctionRecord is NOT created
+        // here — it is created only after an administrator approves the request
+        // (with the authenticated admin id and deadline). This keeps pending
+        // requests out of the sanction tab / graduation screens until approved.
+$latestViolation = Violation::where('student_number', $user->student_number)
+    ->where('violation_type_id', $violationType->violation_type_id)
+    ->effective()
+    ->latest('violation_date')
+    ->first();
+
+        if (!$latestViolation) {
+            throw new \RuntimeException('Unable to locate the latest violation for this sanction request.');
+        }
+
+        app(AdminNotificationService::class)->create(
+            type: 'disciplinary_sanction_request',
+            title: 'Disciplinary Sanction Request',
+            message: $user->first_name . ' ' . $user->last_name . ' requested a disciplinary sanction.',
+            targetType: 'sanction_request',
+            targetId: (int) $sanctionRequest->request_id,
+        );
+
+        // Notify the student that their request is now pending (target-aware).
+        try {
+            app(\App\Services\StudentNotificationService::class)->create(
+                studentNumber: $user->student_number,
+                type: 'sanction',
+                title: 'Sanction Request Pending',
+                message: 'Your sanction request is now pending review. You will be notified once it is approved or declined.',
+                targetType: 'sanction_request',
+                targetId: (int) $sanctionRequest->request_id,
+            );
+        } catch (\Throwable $e) {
+            // Notification must never break the request submission.
+        }
+
+        DB::commit();
+
+        return response()->json([
+
+            'success' => true,
+
+            'message' => 'Request submitted successfully. It is now pending review by the administration.',
+
+            'request_id' => $sanctionRequest->request_id,
+
+        ]);
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        Log::error('Student sanction request failed', [
+            'student_number' => $user->student_number ?? null,
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ]);
+
+        return \App\Support\Responses::unexpectedErrorFlag();
+
+    }
+}
+
+    /**
+     * Submit a proof of completion for a pending disciplinary sanction.
+     *
+     * The uploaded file and optional notes are attached to the sanction record
+     * and an administrator is notified so they can accept or reject the proof.
+     *
+     * ONLY Community Service / Campus Service sanctions accept a proof. For
+     * every other sanction the student is instead directed to the Office of
+     * Student Services for a personal consultation (see
+     * StudentSanctionRecord::CONSULTATION_NOTICE).
 
 /**
  * Return authoritative Category -> Violation Type -> Offense Level ->
