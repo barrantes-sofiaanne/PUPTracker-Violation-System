@@ -528,34 +528,65 @@
 }
 
 /* =========================================================
-   Violation Record tables
+   Summary by Violation table
    ========================================================= */
 
 .summary-violations-table {
-    width: 100%;
-    min-width: 1180px;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100%;
     table-layout: fixed;
 }
 
 .summary-violations-table th,
 .summary-violations-table td {
     vertical-align: middle;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
 }
 
 .summary-violations-table th {
-    white-space: normal;
+    white-space: normal !important;
+    text-align: center;
+    line-height: 1.2;
+    padding: 0.8rem 0.45rem !important;
 }
 
-.summary-category-col { width: 12%; }
-.summary-violation-type-col { width: 19%; }
-.summary-offense-col { width: 10%; }
-.summary-status-col { width: 11%; }
-.summary-remarks-col { width: 12%; }
-.summary-evidence-col { width: 12%; }
-.summary-sanction-col { width: 13%; }
-.summary-action-col { width: 11%; min-width: 0; }
+/* 100% total width */
+.summary-category-col {
+    width: 11%;
+}
 
+.summary-violation-type-col {
+    width: 18%;
+}
+
+.summary-offense-col {
+    width: 9%;
+}
+
+.summary-status-col {
+    width: 10%;
+}
+
+.summary-remarks-col {
+    width: 11%;
+}
+
+.summary-evidence-col {
+    width: 13%;
+}
+
+.summary-sanction-col {
+    width: 15%;
+}
+
+.summary-action-col {
+    width: 13%;
+    min-width: 0 !important;
+}
+
+/* Action buttons */
 .summary-action-col .summary-action-buttons {
     display: flex;
     flex-direction: column;
@@ -568,15 +599,28 @@
     width: 100%;
     max-width: 100%;
     min-width: 0;
+
+    /* Prevent letters from being split apart */
     white-space: normal !important;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+
     text-align: center;
+    line-height: 1.25;
+
+    padding: 0.65rem 0.45rem;
+    font-size: 0.9rem;
 }
 
+/* Evidence buttons */
 .summary-evidence-col .btn {
     width: 100%;
     white-space: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+    word-break: normal;
+    line-height: 1.25;
+    padding: 0.45rem 0.35rem;
 }
 
 .individual-violations-table {
@@ -603,8 +647,14 @@
 }
 
 @media (max-width: 1200px) {
-    .summary-action-col {
-        min-width: 220px;
+    .summary-violations-table {
+        min-width: 0 !important;
+    }
+
+    .summary-action-col .summary-action-buttons .btn {
+        font-size: 0.82rem;
+        padding-left: 0.35rem;
+        padding-right: 0.35rem;
     }
 }
 
