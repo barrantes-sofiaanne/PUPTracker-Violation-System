@@ -64,7 +64,7 @@
                             </th>
 
                             <th>
-                                Violation
+                                Violation Category
                             </th>
 
                             <th>
@@ -143,12 +143,12 @@
 
                                 </td>
 
-                                {{-- Violation --}}
-                                <td>
+                                {{-- Violation Category --}}
+                                <td style="min-width: 190px;">
 
                                     <span class="badge bg-light text-dark">
 
-                                        #{{ $correctionRequest->violation_id }}
+                                        {{ $violation?->violation_category_display ?? 'N/A' }}
 
                                     </span>
 
@@ -247,13 +247,13 @@
                                 </td>
 
                                 {{-- Actions --}}
-                                <td style="min-width: 180px;">
+                                <td style="min-width: 190px;">
 
                                     <div class="d-flex flex-column gap-2">
 
                                         <button
                                             type="button"
-                                            class="btn btn-sm btn-success w-100"
+                                            class="admin-btn admin-btn-success admin-btn-sm w-100"
                                             data-bs-toggle="modal"
                                             data-bs-target="#approveCorrectionModal{{ $correctionRequest->request_id }}"
                                         >
@@ -263,7 +263,7 @@
 
                                         <button
                                             type="button"
-                                            class="btn btn-sm btn-outline-danger w-100"
+                                            class="admin-btn admin-btn-danger admin-btn-sm w-100"
                                             data-bs-toggle="modal"
                                             data-bs-target="#rejectCorrectionModal{{ $correctionRequest->request_id }}"
                                         >
@@ -276,6 +276,152 @@
                                 </td>
 
                             </tr>
+
+                            {{-- Approve Correction Modal --}}
+                            <div class="modal fade admin-modal" id="approveCorrectionModal{{ $correctionRequest->request_id }}" tabindex="-1" aria-labelledby="approveCorrectionModalLabel{{ $correctionRequest->request_id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-lg modal-dialog-centered">
+                                    <div class="modal-content admin-modal-content">
+                                        <div class="modal-header admin-modal-header">
+                                            <h5 class="modal-title admin-modal-title" id="approveCorrectionModalLabel{{ $correctionRequest->request_id }}">
+                                                Approve Correction Request
+                                            </h5>
+                                            <button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+
+                                        <form method="POST" action="{{ route('violation-correction-requests.approve', ['correctionRequest' => $correctionRequest->request_id]) }}">
+                                            @csrf
+
+                                            <div class="modal-body admin-modal-body">
+                                                <div class="row g-3 mb-3">
+                                                    <div class="col-md-8">
+                                                        <span class="admin-filter-label d-block">Student</span>
+                                                        <strong>
+                                                            {{ trim(($student?->first_name ?? '') . ' ' . ($student?->last_name ?? '')) ?: 'Student' }}
+                                                        </strong>
+                                                        <div class="text-muted small">{{ $correctionRequest->student_number }}</div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <span class="admin-filter-label d-block">Violation #</span>
+                                                        <strong>{{ $correctionRequest->violation_id }}</strong>
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <span class="admin-filter-label d-block">Student's Reason</span>
+                                                    <div class="border rounded p-3 bg-light" style="white-space: pre-line;">{{ $correctionRequest->reason ?: 'No reason provided.' }}</div>
+                                                </div>
+
+                                                <div class="row g-3 mb-3">
+                                                    <div class="col-md-6">
+                                                        <span class="admin-filter-label d-block">Current Violation</span>
+                                                        <strong>{{ $currentType }}</strong>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <span class="admin-filter-label d-block">Requested Correction</span>
+                                                        <strong>{{ $requestedType }}</strong>
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-0">
+                                                    <label for="approveRemarks{{ $correctionRequest->request_id }}" class="form-label fw-semibold">
+                                                        Approval Remarks <span class="text-muted fw-normal">(optional)</span>
+                                                    </label>
+                                                    <textarea
+                                                        id="approveRemarks{{ $correctionRequest->request_id }}"
+                                                        name="review_remarks"
+                                                        class="form-control"
+                                                        rows="4"
+                                                        maxlength="2000"
+                                                        placeholder="Enter any remarks about the approved correction..."
+                                                    ></textarea>
+                                                    <div class="form-text">These remarks will be recorded with the correction decision.</div>
+                                                </div>
+                                            </div>
+
+                                            <div class="modal-footer admin-modal-footer">
+                                                <button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">
+                                                    Cancel
+                                                </button>
+                                                <button type="submit" class="admin-btn admin-btn-success">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    Approve & Correct
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Reject Correction Modal --}}
+                            <div class="modal fade admin-modal" id="rejectCorrectionModal{{ $correctionRequest->request_id }}" tabindex="-1" aria-labelledby="rejectCorrectionModalLabel{{ $correctionRequest->request_id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-lg modal-dialog-centered">
+                                    <div class="modal-content admin-modal-content">
+                                        <div class="modal-header admin-modal-header">
+                                            <h5 class="modal-title admin-modal-title" id="rejectCorrectionModalLabel{{ $correctionRequest->request_id }}">
+                                                Reject Correction Request
+                                            </h5>
+                                            <button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+
+                                        <form method="POST" action="{{ route('violation-correction-requests.reject', ['correctionRequest' => $correctionRequest->request_id]) }}">
+                                            @csrf
+
+                                            <div class="modal-body admin-modal-body">
+                                                <div class="row g-3 mb-3">
+                                                    <div class="col-md-8">
+                                                        <span class="admin-filter-label d-block">Student</span>
+                                                        <strong>
+                                                            {{ trim(($student?->first_name ?? '') . ' ' . ($student?->last_name ?? '')) ?: 'Student' }}
+                                                        </strong>
+                                                        <div class="text-muted small">{{ $correctionRequest->student_number }}</div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <span class="admin-filter-label d-block">Violation #</span>
+                                                        <strong>{{ $correctionRequest->violation_id }}</strong>
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <span class="admin-filter-label d-block">Student's Reason</span>
+                                                    <div class="border rounded p-3 bg-light" style="white-space: pre-line;">{{ $correctionRequest->reason ?: 'No reason provided.' }}</div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <span class="admin-filter-label d-block">Requested Correction</span>
+                                                    <div class="border rounded p-3 bg-light">{{ $requestedType }}</div>
+                                                </div>
+
+                                                <div class="mb-0">
+                                                    <label for="rejectReason{{ $correctionRequest->request_id }}" class="form-label fw-semibold">
+                                                        Reason for Rejection <span class="text-danger">*</span>
+                                                    </label>
+                                                    <textarea
+                                                        id="rejectReason{{ $correctionRequest->request_id }}"
+                                                        name="review_remarks"
+                                                        class="form-control"
+                                                        rows="4"
+                                                        minlength="10"
+                                                        maxlength="2000"
+                                                        required
+                                                        placeholder="Explain why this correction request is being rejected..."
+                                                    ></textarea>
+                                                    <div class="form-text">Please provide at least 10 characters so the student understands the decision.</div>
+                                                </div>
+                                            </div>
+
+                                            <div class="modal-footer admin-modal-footer">
+                                                <button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">
+                                                    Cancel
+                                                </button>
+                                                <button type="submit" class="admin-btn admin-btn-danger">
+                                                    <i class="bi bi-x-circle me-1"></i>
+                                                    Reject Request
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
 
                         @empty
 
@@ -303,254 +449,6 @@
                 </table>
 
             </div>
-
-            {{-- Action modals --}}
-            @foreach($requests as $correctionRequest)
-
-                @php
-                    $violation = $correctionRequest->violation;
-                    $student = $violation?->student;
-                    $currentType = $violation?->violation_type_display ?? 'Unknown Violation';
-                    $requestedType = $correctionRequest->requestedViolationType?->violation_type ?? $currentType;
-                @endphp
-
-                {{-- Approve modal --}}
-                <div
-                    class="modal fade"
-                    id="approveCorrectionModal{{ $correctionRequest->request_id }}"
-                    tabindex="-1"
-                    aria-labelledby="approveCorrectionModalLabel{{ $correctionRequest->request_id }}"
-                    aria-hidden="true"
-                >
-                    <div class="modal-dialog modal-dialog-centered modal-lg">
-                        <div class="modal-content border-0 shadow-lg">
-
-                            <form
-                                method="POST"
-                                action="{{ route('violation-correction-requests.approve', ['correctionRequest' => $correctionRequest->request_id]) }}"
-                            >
-                                @csrf
-
-                                <div class="modal-header bg-success text-white">
-                                    <div>
-                                        <h5
-                                            class="modal-title mb-1"
-                                            id="approveCorrectionModalLabel{{ $correctionRequest->request_id }}"
-                                        >
-                                            <i class="bi bi-check-circle me-2"></i>
-                                            Approve Correction Request
-                                        </h5>
-                                        <div class="small opacity-75">
-                                            Review the request before applying the correction.
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        class="btn-close btn-close-white"
-                                        data-bs-dismiss="modal"
-                                        aria-label="Close"
-                                    ></button>
-                                </div>
-
-                                <div class="modal-body">
-                                    <div class="row g-3 mb-3">
-                                        <div class="col-md-6">
-                                            <div class="small text-muted mb-1">Student</div>
-                                            <div class="fw-semibold">
-                                                {{ trim(($student?->first_name ?? '') . ' ' . ($student?->last_name ?? '')) ?: 'Student' }}
-                                            </div>
-                                            <div class="small text-muted">
-                                                {{ $correctionRequest->student_number }}
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="small text-muted mb-1">Violation #</div>
-                                            <div class="fw-semibold">
-                                                {{ $correctionRequest->violation_id }}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="p-3 rounded border bg-light mb-3">
-                                        <div class="small text-muted mb-1">Student's reason</div>
-                                        <div class="fw-semibold text-dark">
-                                            {{ $correctionRequest->reason ?: 'No reason provided.' }}
-                                        </div>
-                                    </div>
-
-                                    <div class="row g-3 mb-3">
-                                        <div class="col-md-6">
-                                            <div class="small text-muted mb-1">Current violation</div>
-                                            <div class="fw-semibold">{{ $currentType }}</div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="small text-muted mb-1">Requested correction</div>
-                                            <div class="fw-semibold">{{ $requestedType }}</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-2">
-                                        <label
-                                            for="approveRemarks{{ $correctionRequest->request_id }}"
-                                            class="form-label fw-semibold"
-                                        >
-                                            Approval remarks
-                                            <span class="text-muted fw-normal">(optional)</span>
-                                        </label>
-                                        <textarea
-                                            id="approveRemarks{{ $correctionRequest->request_id }}"
-                                            name="review_remarks"
-                                            class="form-control"
-                                            rows="5"
-                                            maxlength="2000"
-                                            placeholder="Enter any remarks about the approved correction..."
-                                        ></textarea>
-                                        <div class="form-text">
-                                            These remarks will be recorded with the correction decision.
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="modal-footer">
-                                    <button
-                                        type="button"
-                                        class="btn btn-light border"
-                                        data-bs-dismiss="modal"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        class="btn btn-success"
-                                    >
-                                        <i class="bi bi-check-circle me-1"></i>
-                                        Approve & Correct
-                                    </button>
-                                </div>
-                            </form>
-
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Reject modal --}}
-                <div
-                    class="modal fade"
-                    id="rejectCorrectionModal{{ $correctionRequest->request_id }}"
-                    tabindex="-1"
-                    aria-labelledby="rejectCorrectionModalLabel{{ $correctionRequest->request_id }}"
-                    aria-hidden="true"
-                >
-                    <div class="modal-dialog modal-dialog-centered modal-lg">
-                        <div class="modal-content border-0 shadow-lg">
-
-                            <form
-                                method="POST"
-                                action="{{ route('violation-correction-requests.reject', ['correctionRequest' => $correctionRequest->request_id]) }}"
-                            >
-                                @csrf
-
-                                <div class="modal-header bg-danger text-white">
-                                    <div>
-                                        <h5
-                                            class="modal-title mb-1"
-                                            id="rejectCorrectionModalLabel{{ $correctionRequest->request_id }}"
-                                        >
-                                            <i class="bi bi-x-circle me-2"></i>
-                                            Reject Correction Request
-                                        </h5>
-                                        <div class="small opacity-75">
-                                            Provide the reason for rejecting this request.
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        class="btn-close btn-close-white"
-                                        data-bs-dismiss="modal"
-                                        aria-label="Close"
-                                    ></button>
-                                </div>
-
-                                <div class="modal-body">
-                                    <div class="row g-3 mb-3">
-                                        <div class="col-md-6">
-                                            <div class="small text-muted mb-1">Student</div>
-                                            <div class="fw-semibold">
-                                                {{ trim(($student?->first_name ?? '') . ' ' . ($student?->last_name ?? '')) ?: 'Student' }}
-                                            </div>
-                                            <div class="small text-muted">
-                                                {{ $correctionRequest->student_number }}
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="small text-muted mb-1">Violation #</div>
-                                            <div class="fw-semibold">
-                                                {{ $correctionRequest->violation_id }}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="p-3 rounded border bg-light mb-3">
-                                        <div class="small text-muted mb-1">Student's reason</div>
-                                        <div class="fw-semibold text-dark">
-                                            {{ $correctionRequest->reason ?: 'No reason provided.' }}
-                                        </div>
-                                    </div>
-
-                                    <div class="p-3 rounded border bg-light mb-3">
-                                        <div class="small text-muted mb-1">Requested correction</div>
-                                        <div class="fw-semibold text-dark">
-                                            {{ $requestedType }}
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-2">
-                                        <label
-                                            for="rejectRemarks{{ $correctionRequest->request_id }}"
-                                            class="form-label fw-semibold"
-                                        >
-                                            Reason for rejection
-                                            <span class="text-danger">*</span>
-                                        </label>
-                                        <textarea
-                                            id="rejectRemarks{{ $correctionRequest->request_id }}"
-                                            name="review_remarks"
-                                            class="form-control"
-                                            rows="5"
-                                            minlength="10"
-                                            maxlength="2000"
-                                            required
-                                            placeholder="Explain why this correction request is being rejected..."
-                                        ></textarea>
-                                        <div class="form-text">
-                                            Please provide at least 10 characters so the student understands the decision.
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="modal-footer">
-                                    <button
-                                        type="button"
-                                        class="btn btn-light border"
-                                        data-bs-dismiss="modal"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        class="btn btn-danger"
-                                    >
-                                        <i class="bi bi-x-circle me-1"></i>
-                                        Reject Request
-                                    </button>
-                                </div>
-                            </form>
-
-                        </div>
-                    </div>
-                </div>
-
-            @endforeach
 
         </div>
 
