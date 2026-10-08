@@ -103,54 +103,7 @@
             </a>
 
         </li>
-@php
-    $pendingCorrectionRequestCount = 0;
 
-    try {
-        if (
-            \Illuminate\Support\Facades\Schema::hasTable(
-                'violation_correction_requests'
-            )
-        ) {
-            $pendingCorrectionRequestCount =
-                \App\Models\ViolationCorrectionRequest::where(
-                    'status',
-                    \App\Models\ViolationCorrectionRequest::STATUS_PENDING
-                )->count();
-        }
-    } catch (\Throwable $e) {
-        $pendingCorrectionRequestCount = 0;
-    }
-@endphp
-
-<li>
-
-    <a
-        href="{{ route('admin.violations.correction-requests') }}"
-        class="{{ request()->routeIs('admin.violations.correction-requests*') ? 'active' : '' }}"
-    >
-
-        <i class="bi bi-pencil-square"></i>
-
-        Correction Requests
-
-        @if($pendingCorrectionRequestCount > 0)
-
-            <span
-                class="sidebar-badge ms-auto"
-                title="{{ $pendingCorrectionRequestCount }} correction request(s) awaiting review"
-            >
-                {{ $pendingCorrectionRequestCount > 9
-                    ? '9+'
-                    : $pendingCorrectionRequestCount
-                }}
-            </span>
-
-        @endif
-
-    </a>
-
-</li>
         <li>
 
             <a href="{{ route('admin.sanctions.index') }}" class="{{ request()->routeIs('admin.sanctions*') || request()->routeIs('admin.disciplinary-sanctions*') ? 'active' : '' }}">
@@ -158,6 +111,34 @@
                 <i class="bi bi-shield-check"></i>
 
                 Sanctions
+
+            </a>
+
+        </li>
+
+        @php
+            $pendingCorrectionRequestCount = 0;
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('violation_correction_requests')
+                    && \Illuminate\Support\Facades\Schema::hasColumn('violation_correction_requests', 'status')) {
+                    $pendingCorrectionRequestCount = \App\Models\ViolationCorrectionRequest::where('status', 'pending')->count();
+                }
+            } catch (\Throwable $e) {
+                $pendingCorrectionRequestCount = 0;
+            }
+        @endphp
+
+        <li>
+
+            <a href="{{ route('violation-correction-requests') }}" class="{{ request()->routeIs('violation-correction-requests*') ? 'active' : '' }}">
+
+                <i class="bi bi-pencil-square"></i>
+
+                Correction Requests
+
+                @if($pendingCorrectionRequestCount > 0)
+                    <span class="sidebar-badge ms-auto" title="{{ $pendingCorrectionRequestCount }} correction request(s) awaiting review">{{ $pendingCorrectionRequestCount > 9 ? '9+' : $pendingCorrectionRequestCount }}</span>
+                @endif
 
             </a>
 
