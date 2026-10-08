@@ -678,11 +678,10 @@
     line-height: 1.45;
 }
 
+/* ---------------------------------------------------------
+   Tablet / desktop tightening
+   --------------------------------------------------------- */
 @media (max-width: 1200px) {
-    .summary-violations-table {
-        min-width: 0 !important;
-    }
-
     .summary-violations-table thead th {
         font-size: 0.78rem;
         padding-left: 0.35rem !important;
@@ -698,6 +697,90 @@
         font-size: 0.8rem;
         padding-left: 0.3rem;
         padding-right: 0.3rem;
+    }
+}
+
+/* ---------------------------------------------------------
+   Mobile: keep multi-column records readable.
+   Do NOT squeeze 8 columns into the phone viewport.
+   The table becomes horizontally scrollable instead.
+   --------------------------------------------------------- */
+@media (max-width: 767.98px) {
+    .summary-table-responsive,
+    .individual-table-responsive {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto !important;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+    }
+
+    .summary-violations-table {
+        width: 1050px !important;
+        min-width: 1050px !important;
+        max-width: none !important;
+        table-layout: fixed !important;
+    }
+
+    .summary-violations-table th,
+    .summary-violations-table td {
+        word-break: normal !important;
+        overflow-wrap: normal !important;
+        hyphens: none !important;
+    }
+
+    .summary-violations-table thead th {
+        font-size: 0.78rem !important;
+        line-height: 1.2 !important;
+        padding: 0.75rem 0.5rem !important;
+    }
+
+    .summary-violations-table tbody td {
+        font-size: 0.88rem !important;
+        line-height: 1.4 !important;
+        padding: 1rem 0.55rem !important;
+    }
+
+    .summary-action-col .summary-action-buttons {
+        gap: 0.45rem;
+    }
+
+    .summary-action-col .summary-action-buttons .btn {
+        font-size: 0.82rem !important;
+        line-height: 1.25 !important;
+        padding: 0.65rem 0.45rem !important;
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow-wrap: normal !important;
+    }
+
+    .individual-violations-table {
+        width: 980px !important;
+        min-width: 980px !important;
+        max-width: none !important;
+        table-layout: fixed !important;
+    }
+
+    .individual-violations-table th,
+    .individual-violations-table td {
+        word-break: normal !important;
+        overflow-wrap: normal !important;
+        hyphens: none !important;
+        white-space: normal !important;
+    }
+
+    .individual-violations-table thead th {
+        font-size: 0.8rem !important;
+        line-height: 1.2 !important;
+        padding: 0.7rem 0.5rem !important;
+        white-space: normal !important;
+    }
+
+    .individual-violations-table tbody td {
+        font-size: 0.84rem !important;
+        line-height: 1.35 !important;
+        padding: 0.8rem 0.5rem !important;
     }
 }
 
@@ -823,7 +906,7 @@
 
                         <div class="card-body p-0">
 
-                            <div class="table-responsive">
+                            <div class="table-responsive summary-table-responsive">
 
                                 <table class="table table-hover align-middle mb-0 portal-table summary-violations-table">
 
@@ -1107,7 +1190,7 @@
 
     <div class="card-body p-0">
 
-        <div class="table-responsive">
+        <div class="table-responsive individual-table-responsive">
 
         <table class="table table-hover align-middle mb-0 portal-table individual-violations-table">
 
@@ -2296,7 +2379,7 @@ document.addEventListener('DOMContentLoaded', function () {
         offenseOutput.value = 'Loading…';
         sanctionOutput.value = 'Loading…';
         try {
-            const url = "{{ url('/student/violations') }}/" + encodeURIComponent(violationId) + "/correction-options?violation_type_id=" + encodeURIComponent(typeId);
+            const url = "{{ url('/student/violations') }}/" + encodeURIComponent(violationId) + '/correction-options?violation_type_id=' + encodeURIComponent(typeId);
             const response = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
             if (!response.ok) throw new Error('Unable to load correction options.');
             const data = await response.json();
