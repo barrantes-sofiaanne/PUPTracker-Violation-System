@@ -150,7 +150,8 @@ $candidates = array_filter([
 // Individual Violations Log / Sanction Record tabs).
 $groupedViolations = Violation::with([
         'violationType.violationCategory',
-        'violationType.disciplinarySanctions'
+        'violationType.disciplinarySanctions',
+        'evidence',
     ])
     ->where('student_number', $user->student_number)
     ->notDenied()
@@ -165,6 +166,9 @@ $groupedViolations = Violation::with([
 return 'unknown:' . $violation->violation_id;    });
 
 foreach ($groupedViolations as $records) {
+
+    // Keep the newest effective incident first so Summary actions point to a concrete record.
+    $records = $records->sortByDesc('violation_date')->values();
 
     // Split this type's records into pending (awaiting admin confirmation)
     // and effective (confirmed/legacy) so offense levels are computed only
@@ -283,6 +287,22 @@ foreach ($groupedViolations as $records) {
         'correction_description' => $correctionViolation?->description,
         'has_pending_correction' => $hasPendingCorrection,
         'has_assigned_sanction' => $hasAssignedSanction,
+        'correction_violation_category_id' => $correctionViolation?->resolvedViolationType()?->violation_category_id,
+        'correction_violation_category' => $correctionViolation?->violation_category_display,
+        'correction_violation_offense_level' => $offenseLevel,
+        'correction_violation_sanction' => $disciplinarySanction,
+        'evidence' => collect($correctionViolation?->evidence ?? [])
+            ->filter(fn ($item) => $correctionViolation
+                && (string) $correctionViolation->status === Violation::STATUS_CONFIRMED
+                && !empty($item->access_key))
+            ->map(fn ($item) => [
+                'access_key' => $item->access_key,
+                'original_name' => $item->original_name ?: 'Evidence',
+                'mime_type' => $item->mime_type,
+                'is_image' => $item->is_image,
+            ])
+            ->values()
+            ->all(),
 
         'offense_level' => $offenseLevel,
 
@@ -325,6 +345,62 @@ return view(
     )
 );
     }
+
+/**
+ * Return authoritative Category -> Violation Type -> Offense Level ->
+ * Disciplinary Sanction data for the correction modal.
+ */
+public function correctionOptions(Request $request, Violation $violation)
+{
+    $user = Auth::user();
+
+    abort_unless(
+        $user instanceof User
+            && (string) $violation->student_number === (string) $user->student_number
+            && $violation->is_effective,
+        403
+    );
+
+    $validated = $request->validate([
+        'violation_type_id' => ['required', 'integer', 'exists:violation_type_tbl,violation_type_id'],
+    ]);
+
+    $type = ViolationType::with(['violationCategory', 'disciplinarySanctions'])
+        ->findOrFail((int) $validated['violation_type_id']);
+
+    abort_unless($type->violationCategory !== null, 422, 'The selected violation type has no category.');
+
+    $effectiveCount = Violation::query()
+        ->where('student_number', $user->student_number)
+        ->where('violation_type_id', $type->violation_type_id)
+        ->where('violation_id', '!=', $violation->violation_id)
+        ->notDenied()
+        ->where(function ($query) {
+            $query->whereNull('status')
+                ->orWhere('status', '!=', Violation::STATUS_PENDING);
+        })
+        ->count() + 1;
+
+    $offenseLevel = match ($effectiveCount) {
+        1 => '1st Offense',
+        2 => '2nd Offense',
+        3 => '3rd Offense',
+        default => $effectiveCount . 'th Offense',
+    };
+
+    $sanction = $type->disciplinarySanctions
+        ->firstWhere('offense_level', $offenseLevel)
+        ?? $type->disciplinarySanctions->sortBy('disciplinary_sanction_id')->first();
+
+    return response()->json([
+        'category_id' => $type->violationCategory->violation_category_id,
+        'category' => $type->violationCategory->category_name,
+        'violation_type_id' => $type->violation_type_id,
+        'violation_type' => $type->violation_type,
+        'offense_level' => $offenseLevel,
+        'disciplinary_sanction' => $sanction?->disciplinary_sanction ?? 'N/A',
+    ]);
+}
 
 public function requestCorrection(
     Request $request,
@@ -397,6 +473,12 @@ public function requestCorrection(
             'exists:violation_type_tbl,violation_type_id',
         ],
 
+        'requested_violation_category_id' => [
+            'required',
+            'integer',
+            'exists:violation_category_tbl,violation_category_id',
+        ],
+
         'requested_violation_date' => [
             'required',
             'date',
@@ -427,6 +509,20 @@ public function requestCorrection(
         'reason.min' =>
             'The correction reason must contain at least 10 characters.',
     ]);
+
+    $requestedType = ViolationType::with('violationCategory')
+        ->findOrFail((int) $validated['requested_violation_type_id']);
+
+    if (
+        ! $requestedType->violationCategory
+        || (int) $requestedType->violationCategory->violation_category_id
+            !== (int) $validated['requested_violation_category_id']
+    ) {
+        return back()->withErrors([
+            'correction_request' =>
+                'The selected violation type does not belong to the selected category.',
+        ])->withInput();
+    }
 
     /*
      * If a sanction has already been assigned to this violation, changing
@@ -519,9 +615,9 @@ public function requestCorrection(
     ]);
 
     /*
-     * Notify OSS Staff.
+     * Notify the Administrator.
      *
-     * OSS Staff accounts are operational ADMIN accounts in this project.
+     * The correction queue is reviewed by the Administrator.
      */
     try {
         app(\App\Services\AdminNotificationService::class)->create(
@@ -554,7 +650,7 @@ public function requestCorrection(
             type: 'violation_correction',
             title: 'Correction Request Pending',
             message:
-                'Your violation correction request has been submitted and is now pending review by the Office of Student Services.',
+                'Your violation correction request has been submitted and is now pending review by the Administrator.',
             targetType: 'violation_correction_request',
             targetId: (int) $correctionRequest->request_id,
             userId: (int) $user->user_id,
@@ -572,7 +668,7 @@ public function requestCorrection(
 
     return back()->with(
         'success',
-        'Your correction request has been submitted. The Office of Student Services will review it.'
+        'Your correction request has been submitted. The Administrator will review it.'
     );
 }
 

@@ -94,6 +94,22 @@ if (
         ]);
     }
 }
+// Email the operational Admins when a student submits a violation correction request.
+if (
+    $audience === AdminNotification::AUDIENCE_ADMIN
+    && $type === 'violation_correction_request'
+    && $targetType === 'violation_correction_request'
+) {
+    try {
+        $this->sendViolationCorrectionRequestEmail($notification);
+    } catch (\Throwable $e) {
+        Log::warning('Failed to send violation correction request notification email', [
+            'notification_id' => $notification->admin_notification_id,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
+
 // Email the operational Admins when a student submits a sanction request.
 if (
     $audience === AdminNotification::AUDIENCE_ADMIN
@@ -155,29 +171,6 @@ if (
             'notification_id' => $notification->admin_notification_id,
             'error' => $e->getMessage(),
         ]);
-    }
-}
-
-// Email the operational Admins when a student submits a
-// violation correction request.
-if (
-    $audience === AdminNotification::AUDIENCE_ADMIN
-    && $type === 'violation_correction_request'
-    && $targetType === 'violation_correction_request'
-) {
-    try {
-        $this->sendViolationCorrectionRequestEmail($notification);
-    } catch (\Throwable $e) {
-        Log::warning(
-            'Failed to send violation correction request email',
-            [
-                'notification_id' =>
-                    $notification->admin_notification_id,
-
-                'error' =>
-                    $e->getMessage(),
-            ]
-        );
     }
 }
 
@@ -506,6 +499,53 @@ $admins = Admin::query()
     }
 }
 
+private function sendViolationCorrectionRequestEmail(AdminNotification $notification): void
+{
+    $admins = Admin::query()
+        ->with('adminInfo')
+        ->get()
+        ->filter(function (Admin $admin): bool {
+            return ! $admin->isItAdministrator()
+                && ! $admin->isOssStaff();
+        });
+
+    if ($notification->recipient_id !== null) {
+        $admins = $admins->filter(
+            fn (Admin $admin): bool =>
+                (int) $admin->id === (int) $notification->recipient_id
+        );
+    }
+
+    foreach ($admins as $admin) {
+        $email = trim((string) $admin->email);
+
+        if ($email === '') {
+            continue;
+        }
+
+        try {
+            Mail::to($email)->send(
+                new SystemNotification(
+                    notificationTitle: (string) (
+                        $notification->title ?? 'Violation Correction Request'
+                    ),
+                    notificationMessage: (string) $notification->message,
+                    recipientName: (string) ($admin->username ?: 'Administrator'),
+                    actionUrl: $this->openUrl($notification),
+                    actionText: 'Review Correction Request',
+                )
+            );
+        } catch (\Throwable $e) {
+            app(EmailIncidentService::class)->record(
+                emailType: 'Violation Correction Request Notification',
+                errorMessage: $e->getMessage(),
+                relatedRecordType: 'AdminNotification',
+                relatedRecordId: $notification->admin_notification_id,
+            );
+        }
+    }
+}
+
 private function sendSanctionRequestEmail(AdminNotification $notification): void
 {
     $admins = Admin::query()
@@ -716,92 +756,6 @@ private function sendOssStaffDecisionEmail(AdminNotification $notification): voi
             relatedRecordType: 'AdminNotification',
             relatedRecordId: $notification->admin_notification_id,
         );
-    }
-}
-
-/**
- * Send an email to operational Administrators when a student
- * submits a violation correction request.
- *
- * OSS Staff and IT Administrators are excluded.
- */
-private function sendViolationCorrectionRequestEmail(
-    AdminNotification $notification
-): void {
-
-    $admins = Admin::query()
-        ->with('adminInfo')
-        ->get()
-        ->filter(function (Admin $admin): bool {
-
-            // Correction requests are reviewed by Administrators.
-            // Do not send these to OSS Staff or IT Administrators.
-            return ! $admin->isItAdministrator()
-                && ! $admin->isOssStaff();
-        });
-
-    // If addressed to one specific administrator,
-    // only send to that administrator.
-    if ($notification->recipient_id !== null) {
-        $admins = $admins->filter(
-            fn (Admin $admin): bool =>
-                (int) $admin->id
-                ===
-                (int) $notification->recipient_id
-        );
-    }
-
-    foreach ($admins as $admin) {
-
-        $email = trim((string) $admin->email);
-
-        if ($email === '') {
-            continue;
-        }
-
-        try {
-
-            Mail::to($email)->send(
-                new SystemNotification(
-                    notificationTitle:
-                        (string) (
-                            $notification->title
-                            ?? 'Violation Correction Request'
-                        ),
-
-                    notificationMessage:
-                        (string) $notification->message,
-
-                    recipientName:
-                        (string) (
-                            $admin->username
-                            ?: 'Administrator'
-                        ),
-
-                    actionUrl:
-                        $this->openUrl($notification),
-
-                    actionText:
-                        'Review Correction Request',
-                )
-            );
-
-        } catch (\Throwable $e) {
-
-            app(EmailIncidentService::class)->record(
-                emailType:
-                    'Violation Correction Request Notification',
-
-                errorMessage:
-                    $e->getMessage(),
-
-                relatedRecordType:
-                    'AdminNotification',
-
-                relatedRecordId:
-                    $notification->admin_notification_id,
-            );
-        }
     }
 }
 }

@@ -2,6 +2,15 @@
 
 @section('title', 'Student Record')
 
+@php
+    $violationCategories = $violationTypes
+        ->pluck('violationCategory')
+        ->filter()
+        ->unique('violation_category_id')
+        ->sortBy('category_name')
+        ->values();
+@endphp
+
 @push('styles')
 
 {{-- Student Record-specific styles --}}
@@ -470,87 +479,104 @@
 }
 
 /* =========================================================
+   Violation correction modal
+   ========================================================= */
+#correctionRequestModal .modal-dialog {
+    max-width: 900px;
+}
+
+#correctionRequestModal .modal-content {
+    border-radius: 1rem;
+}
+
+#correctionRequestModal .correction-record-panel,
+#correctionRequestModal .correction-request-panel {
+    border: 1px solid var(--border-color);
+    border-radius: 0.85rem;
+    padding: 1rem;
+    background: var(--card-bg, #fff);
+}
+
+#correctionRequestModal .correction-record-panel {
+    background: rgba(128, 0, 0, 0.025);
+}
+
+#correctionRequestModal .correction-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.9rem;
+    color: var(--pup-maroon, #800000);
+    font-weight: 700;
+}
+
+#correctionRequestModal .correction-evidence-box {
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+}
+
+#correctionRequestModal .correction-evidence-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0 0.5rem 0.5rem 0;
+}
+
+#correctionRequestModal input[readonly],
+#correctionRequestModal textarea[readonly] {
+    background: #f7f7f7;
+}
+
+/* =========================================================
    Violation Record tables
    ========================================================= */
 
-/* =========================================================
-   Summary by Violation
-   ========================================================= */
-
 .summary-violations-table {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    table-layout: fixed !important;
+    width: 100%;
+    min-width: 1180px;
+    table-layout: fixed;
 }
 
-/* Exact column widths */
-.summary-violations-table .summary-category-col {
-    width: 14%;
-}
-
-.summary-violations-table .summary-violation-type-col {
-    width: 23%;
-}
-
-.summary-violations-table .summary-offense-col {
-    width: 11%;
-}
-
-.summary-violations-table .summary-status-col {
-    width: 11%;
-}
-
-.summary-violations-table .summary-remarks-col {
-    width: 13%;
-}
-
-.summary-violations-table .summary-sanction-col {
-    width: 15%;
-}
-
-.summary-violations-table .summary-action-col {
-    width: 13%;
-}
-
-/* Header */
-.summary-violations-table thead th {
-    text-align: center;
+.summary-violations-table th,
+.summary-violations-table td {
     vertical-align: middle;
-    white-space: normal !important;
-    overflow-wrap: break-word;
-    word-break: normal;
-    line-height: 1.25;
-    padding: 0.9rem 0.6rem !important;
-}
-
-/* Body */
-.summary-violations-table tbody td {
-    vertical-align: middle;
-    white-space: normal !important;
     overflow-wrap: anywhere;
-    word-break: normal;
-    padding: 0.9rem 0.6rem !important;
 }
 
-/* Action buttons */
-.summary-action-col {
-    width: 13%;
-    min-width: 0;
+.summary-violations-table th {
+    white-space: normal;
 }
+
+.summary-category-col { width: 12%; }
+.summary-violation-type-col { width: 19%; }
+.summary-offense-col { width: 10%; }
+.summary-status-col { width: 11%; }
+.summary-remarks-col { width: 12%; }
+.summary-evidence-col { width: 12%; }
+.summary-sanction-col { width: 13%; }
+.summary-action-col { width: 11%; min-width: 0; }
 
 .summary-action-col .summary-action-buttons {
     display: flex;
     flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
     gap: 0.5rem;
+    align-items: stretch;
+    width: 100%;
 }
 
 .summary-action-col .summary-action-buttons .btn {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     white-space: normal !important;
+    overflow-wrap: anywhere;
     text-align: center;
+}
+
+.summary-evidence-col .btn {
+    width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .individual-violations-table {
@@ -732,6 +758,10 @@
                                             Remarks
                                         </th>
 
+                                        <th class="summary-evidence-col">
+                                            Evidence
+                                        </th>
+
                                         <th class="summary-sanction-col">
                                             Disciplinary Sanction
                                         </th>
@@ -792,6 +822,27 @@
 
     <td class="summary-remarks-col">
         {{ $summary['remarks'] }}
+    </td>
+
+    <td class="summary-evidence-col">
+        @if(!empty($summary['has_pending']) && empty($summary['evidence']))
+            <span class="text-muted small">Available after confirmation</span>
+        @elseif(!empty($summary['evidence']))
+            @foreach($summary['evidence'] as $item)
+                <a
+                    href="{{ route('student.violations.evidence', ['evidence' => $item['access_key']]) }}"
+                    target="_blank"
+                    rel="noopener"
+                    class="btn btn-sm btn-outline-secondary mb-1"
+                    title="Open {{ $item['original_name'] }}"
+                >
+                    <i class="bi bi-eye me-1"></i>
+                    {{ Str::limit($item['original_name'], 16) }}
+                </a>
+            @endforeach
+        @else
+            <span class="text-muted">—</span>
+        @endif
     </td>
 
     <td class="summary-sanction-col">
@@ -889,13 +940,22 @@
                         ) }}"
                         data-violation-id="{{ $summary['correction_violation_id'] }}"
                         data-violation-type-id="{{ $summary['correction_violation_type_id'] }}"
+                        data-violation-category-id="{{ $summary['correction_violation_category_id'] ?? '' }}"
+                        data-violation-category="{{ $summary['correction_violation_category'] ?? $summary['category'] }}"
+                        data-violation-offense="{{ $summary['correction_violation_offense_level'] ?? $summary['offense_level'] }}"
+                        data-violation-sanction="{{ $summary['correction_violation_sanction'] ?? $summary['disciplinary_sanction'] }}"
                         data-violation-date="{{ $summary['correction_violation_date']
                             ? \Carbon\Carbon::parse($summary['correction_violation_date'])->format('Y-m-d\TH:i')
                             : ''
                         }}"
+                        data-violation-date-display="{{ $summary['correction_violation_date']
+                            ? \Carbon\Carbon::parse($summary['correction_violation_date'])->format('M d, Y h:i A')
+                            : '—'
+                        }}"
                         data-violation-description="{{ $summary['correction_description'] ?? '' }}"
                         data-has-sanction="{{ $summary['has_assigned_sanction'] ? '1' : '0' }}"
                         data-violation-name="{{ $summary['type'] }}"
+                        data-evidence="{{ htmlspecialchars(json_encode($summary['evidence'] ?? []), ENT_QUOTES, 'UTF-8') }}"
                     >
                         <i class="bi bi-pencil-square me-1"></i>
                         Request Correction
@@ -915,7 +975,7 @@
 <tr>
 
     <td
-        colspan="7"
+        colspan="8"
         class="text-center py-5 text-muted">
 
         No outstanding violations found.
@@ -1179,108 +1239,117 @@
                         or factual remarks.
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">
-                            Current Violation
-                        </label>
-
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="correctionCurrentViolation"
-                            readonly
-                        >
-                    </div>
-
-                    <div class="mb-3">
-                        <label
-                            for="requested_violation_type_id"
-                            class="form-label fw-semibold"
-                        >
-                            Corrected Violation Type
-                            <span class="text-danger">*</span>
-                        </label>
-
-                        <select
-                            class="form-select"
-                            name="requested_violation_type_id"
-                            id="requested_violation_type_id"
-                            required
-                        >
-                            <option value="">
-                                Select corrected violation type
-                            </option>
-
-                            @foreach($violationTypes as $type)
-                                <option value="{{ $type->violation_type_id }}">
-                                    {{ $type->violation_type }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label
-                            for="requested_violation_date"
-                            class="form-label fw-semibold"
-                        >
-                            Corrected Violation Date
-                            <span class="text-danger">*</span>
-                        </label>
-
-                        <input
-                            type="datetime-local"
-                            class="form-control"
-                            name="requested_violation_date"
-                            id="requested_violation_date"
-                            required
-                        >
-                    </div>
-
-                    <div class="mb-3">
-                        <label
-                            for="requested_description"
-                            class="form-label fw-semibold"
-                        >
-                            Corrected Remarks / Description
-                        </label>
-
-                        <textarea
-                            class="form-control"
-                            name="requested_description"
-                            id="requested_description"
-                            rows="4"
-                            maxlength="5000"
-                            placeholder="Enter the factual correction you are requesting."
-                        ></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label
-                            for="correction_reason"
-                            class="form-label fw-semibold"
-                        >
-                            Reason for Correction
-                            <span class="text-danger">*</span>
-                        </label>
-
-                        <textarea
-                            class="form-control"
-                            name="reason"
-                            id="correction_reason"
-                            rows="4"
-                            minlength="10"
-                            maxlength="2000"
-                            required
-                            placeholder="Explain why the existing violation information is incorrect."
-                        ></textarea>
-
-                        <div class="form-text">
-                            Please provide enough information for an Administrator to
-                            verify the requested correction.
+                    <section class="correction-record-panel mb-4">
+                        <div class="correction-section-title">
+                            <i class="bi bi-file-earmark-text"></i>
+                            Current Violation Record
                         </div>
-                    </div>
 
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Category</label>
+                                <input type="text" class="form-control" id="correctionCurrentCategory" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Violation Type</label>
+                                <input type="text" class="form-control" id="correctionCurrentViolation" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Offense Level</label>
+                                <input type="text" class="form-control" id="correctionCurrentOffense" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Violation Date</label>
+                                <input type="text" class="form-control" id="correctionCurrentDate" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Current Sanction</label>
+                                <input type="text" class="form-control" id="correctionCurrentSanction" readonly>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Current Remarks / Description</label>
+                                <textarea class="form-control" id="correctionCurrentDescription" rows="3" readonly></textarea>
+                            </div>
+                        </div>
+
+                        <div class="correction-evidence-box mt-3">
+                            <div class="correction-section-title mb-2">
+                                <i class="bi bi-paperclip"></i>
+                                Evidence Supporting This Violation
+                            </div>
+                            <p class="small text-muted mb-3">
+                                Evidence is provided for review only. You cannot edit, replace, delete,
+                                or upload evidence through a correction request.
+                            </p>
+                            <div id="correctionEvidenceList">
+                                <span class="text-muted">No evidence is available for this violation.</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="correction-request-panel">
+                        <div class="correction-section-title">
+                            <i class="bi bi-pencil-square"></i>
+                            Requested Correction
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="requested_violation_category_id" class="form-label fw-semibold">
+                                Category <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" name="requested_violation_category_id" id="requested_violation_category_id" required>
+                                <option value="">Select category</option>
+                                @foreach($violationTypes->pluck('violationCategory')->filter()->unique('violation_category_id')->sortBy('category_name') as $category)
+                                    <option value="{{ $category->violation_category_id }}">{{ $category->category_name }}</option>
+                                @endforeach
+                            </select>
+                            <div class="form-text">The selected category determines which violation types are available.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="requested_violation_type_id" class="form-label fw-semibold">
+                                Violation Type <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" name="requested_violation_type_id" id="requested_violation_type_id" required>
+                                <option value="">Select a category first</option>
+                                @foreach($violationTypes as $type)
+                                    @if($type->violationCategory)
+                                        <option value="{{ $type->violation_type_id }}" data-category-id="{{ $type->violation_category_id }}">
+                                            {{ $type->violation_type }}
+                                        </option>
+                                    @endif
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Resulting Offense Level</label>
+                                <input type="text" class="form-control" id="correctionResultingOffense" readonly value="—">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Disciplinary Sanction</label>
+                                <input type="text" class="form-control" id="correctionResultingSanction" readonly value="Select a violation type">
+                                <div class="form-text">The sanction is automatically determined by the selected violation type and resulting offense level. It cannot be edited.</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 mt-3">
+                            <label for="requested_violation_date" class="form-label fw-semibold">Corrected Violation Date <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" name="requested_violation_date" id="requested_violation_date" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="requested_description" class="form-label fw-semibold">Corrected Remarks / Description</label>
+                            <textarea class="form-control" name="requested_description" id="requested_description" rows="4" maxlength="5000" placeholder="Enter the factual correction you are requesting."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="correction_reason" class="form-label fw-semibold">Reason for Correction <span class="text-danger">*</span></label>
+                            <textarea class="form-control" name="reason" id="correction_reason" rows="4" minlength="10" maxlength="2000" required placeholder="Explain why the existing violation information or evidence does not support the recorded violation."></textarea>
+                            <div class="form-text">Explain the specific factual issue you want the Administrator to review, including why the available evidence does not support the violation when applicable.</div>
+                        </div>
+                    </section>
                 </div>
 
                 <div class="modal-footer">
@@ -2074,107 +2143,138 @@ if (officialArea) {
 });
 
 document.addEventListener('DOMContentLoaded', function () {
-    const correctionModal =
-        document.getElementById('correctionRequestModal');
+    const correctionModal = document.getElementById('correctionRequestModal');
+    if (!correctionModal) return;
 
-    if (!correctionModal) {
-        return;
+    const form = document.getElementById('correctionRequestForm');
+    const currentCategory = document.getElementById('correctionCurrentCategory');
+    const currentViolation = document.getElementById('correctionCurrentViolation');
+    const currentOffense = document.getElementById('correctionCurrentOffense');
+    const currentDate = document.getElementById('correctionCurrentDate');
+    const currentSanction = document.getElementById('correctionCurrentSanction');
+    const currentDescription = document.getElementById('correctionCurrentDescription');
+    const evidenceList = document.getElementById('correctionEvidenceList');
+    const categorySelect = document.getElementById('requested_violation_category_id');
+    const typeSelect = document.getElementById('requested_violation_type_id');
+    const offenseOutput = document.getElementById('correctionResultingOffense');
+    const sanctionOutput = document.getElementById('correctionResultingSanction');
+    const violationDate = document.getElementById('requested_violation_date');
+    const description = document.getElementById('requested_description');
+    const reason = document.getElementById('correction_reason');
+    const sanctionWarning = document.getElementById('correctionSanctionWarning');
+
+    function filterViolationTypes() {
+        const categoryId = categorySelect.value;
+        Array.from(typeSelect.options).forEach(function (option, index) {
+            if (index === 0) return;
+            const matches = !!categoryId && option.dataset.categoryId === categoryId;
+            option.hidden = !matches;
+            option.disabled = !matches;
+        });
+        if (!typeSelect.value || typeSelect.selectedOptions[0]?.hidden) typeSelect.value = '';
+        offenseOutput.value = '—';
+        sanctionOutput.value = categoryId ? 'Select a violation type' : 'Select a category first';
     }
+
+    function renderEvidence(encodedJson) {
+        evidenceList.innerHTML = '';
+        let items = [];
+        try { items = encodedJson ? JSON.parse(encodedJson) : []; } catch (error) { items = []; }
+        if (!Array.isArray(items) || items.length === 0) {
+            evidenceList.innerHTML = '<span class="text-muted">No evidence is available for this violation.</span>';
+            return;
+        }
+        items.forEach(function (item) {
+            const link = document.createElement('a');
+            link.className = 'btn btn-sm btn-outline-secondary correction-evidence-item';
+            link.href = "{{ url('/student/violations/evidence') }}/" + encodeURIComponent(item.access_key);
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.innerHTML = '<i class="bi bi-eye"></i><span></span>';
+            link.querySelector('span').textContent = item.original_name || 'View Evidence';
+            evidenceList.appendChild(link);
+        });
+    }
+
+    async function loadCorrectionOptions() {
+        const violationId = form.dataset.violationId;
+        const typeId = typeSelect.value;
+        if (!violationId || !typeId) return;
+        offenseOutput.value = 'Loading…';
+        sanctionOutput.value = 'Loading…';
+        try {
+            const url = "{{ url('/student/violations') }}/" + encodeURIComponent(violationId) + '/correction-options?violation_type_id=' + encodeURIComponent(typeId);
+            const response = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!response.ok) throw new Error('Unable to load correction options.');
+            const data = await response.json();
+            offenseOutput.value = data.offense_level || '—';
+            sanctionOutput.value = data.disciplinary_sanction || 'N/A';
+        } catch (error) {
+            offenseOutput.value = '—';
+            sanctionOutput.value = 'Unable to determine sanction';
+        }
+    }
+
+    categorySelect.addEventListener('change', function () {
+        filterViolationTypes();
+        loadCorrectionOptions();
+    });
+    typeSelect.addEventListener('change', loadCorrectionOptions);
 
     correctionModal.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
+        if (!button) return;
 
-        if (!button) {
-            return;
-        }
+        form.action = button.dataset.correctionUrl || '';
+        form.dataset.violationId = button.dataset.violationId || '';
 
-        const form =
-            document.getElementById('correctionRequestForm');
+        currentCategory.value = button.dataset.violationCategory || '—';
+        currentViolation.value = button.dataset.violationName || '';
+        currentOffense.value = button.dataset.violationOffense || '—';
+        currentDate.value = button.dataset.violationDateDisplay || '—';
+        currentSanction.value = button.dataset.violationSanction || '—';
+        currentDescription.value = button.dataset.violationDescription || '';
 
-        const violationName =
-            document.getElementById('correctionCurrentViolation');
-
-        const violationType =
-            document.getElementById('requested_violation_type_id');
-
-        const violationDate =
-            document.getElementById('requested_violation_date');
-
-        const description =
-            document.getElementById('requested_description');
-
-        const reason =
-            document.getElementById('correction_reason');
-
-        const sanctionWarning =
-            document.getElementById('correctionSanctionWarning');
-
-        form.action =
-            button.dataset.correctionUrl;
-
-        violationName.value =
-            button.dataset.violationName || '';
-
-        violationType.value =
-            button.dataset.violationTypeId || '';
-
-        violationDate.value =
-            button.dataset.violationDate || '';
-
-        description.value =
-            button.dataset.violationDescription || '';
-
+        categorySelect.value = button.dataset.violationCategoryId || '';
+        filterViolationTypes();
+        typeSelect.value = button.dataset.violationTypeId || '';
+        violationDate.value = button.dataset.violationDate || '';
+        description.value = button.dataset.violationDescription || '';
         reason.value = '';
+        renderEvidence(button.dataset.evidence || '');
 
-        const hasSanction =
-            button.dataset.hasSanction === '1';
-
-        /*
-         * Keep the same protection already enforced by the Admin correction
-         * workflow.
-         */
-        violationType.disabled = hasSanction;
+        const hasSanction = button.dataset.hasSanction === '1';
+        sanctionWarning.classList.toggle('d-none', !hasSanction);
+        categorySelect.disabled = hasSanction;
+        typeSelect.disabled = hasSanction;
         violationDate.disabled = hasSanction;
 
-        /*
-         * Disabled inputs are not submitted by browsers.
-         * Therefore, when a sanction exists, add hidden fields carrying the
-         * original values so the server receives them for validation.
-         */
-        document
-            .querySelectorAll('.correction-original-value')
-            .forEach(element => element.remove());
-
+        document.querySelectorAll('.correction-original-value').forEach(function (element) { element.remove(); });
         if (hasSanction) {
-            sanctionWarning.classList.remove('d-none');
+            const hiddenCategory = document.createElement('input');
+            hiddenCategory.type = 'hidden'; hiddenCategory.name = 'requested_violation_category_id';
+            hiddenCategory.value = button.dataset.violationCategoryId || ''; hiddenCategory.className = 'correction-original-value';
+            form.appendChild(hiddenCategory);
 
-            const hiddenType =
-                document.createElement('input');
-
-            hiddenType.type = 'hidden';
-            hiddenType.name = 'requested_violation_type_id';
-            hiddenType.value =
-                button.dataset.violationTypeId || '';
-            hiddenType.className =
-                'correction-original-value';
-
+            const hiddenType = document.createElement('input');
+            hiddenType.type = 'hidden'; hiddenType.name = 'requested_violation_type_id';
+            hiddenType.value = button.dataset.violationTypeId || ''; hiddenType.className = 'correction-original-value';
             form.appendChild(hiddenType);
 
-            const hiddenDate =
-                document.createElement('input');
-
-            hiddenDate.type = 'hidden';
-            hiddenDate.name = 'requested_violation_date';
-            hiddenDate.value =
-                button.dataset.violationDate || '';
-            hiddenDate.className =
-                'correction-original-value';
-
+            const hiddenDate = document.createElement('input');
+            hiddenDate.type = 'hidden'; hiddenDate.name = 'requested_violation_date';
+            hiddenDate.value = button.dataset.violationDate || ''; hiddenDate.className = 'correction-original-value';
             form.appendChild(hiddenDate);
-
-        } else {
-            sanctionWarning.classList.add('d-none');
         }
+
+        loadCorrectionOptions();
+    });
+
+    correctionModal.addEventListener('hidden.bs.modal', function () {
+        document.querySelectorAll('.correction-original-value').forEach(function (element) { element.remove(); });
+        categorySelect.disabled = false;
+        typeSelect.disabled = false;
+        violationDate.disabled = false;
     });
 });
 </script>
