@@ -479,7 +479,8 @@
 
 .summary-violations-table {
     width: 100% !important;
-    min-width: 1100px !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
     table-layout: fixed !important;
 }
 
@@ -534,7 +535,8 @@
 
 /* Action buttons */
 .summary-action-col {
-    text-align: center;
+    width: 13%;
+    min-width: 0;
 }
 
 .summary-action-col .summary-action-buttons {
