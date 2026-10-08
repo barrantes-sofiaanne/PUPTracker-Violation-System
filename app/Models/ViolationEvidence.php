@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * @property int $evidence_id
  * @property string|null $evidence_code   unique display code EVD-YYYY-NNNNNN
+ * @property string|null $access_key       private authorization key for evidence access
  * @property string|null $capture_session_id  correlating CAM-SESSION-YYYY-NNNNNN
  * @property int|null $violation_id
  * @property string|null $disk_path
@@ -39,6 +41,20 @@ class ViolationEvidence extends Model
 
     public const CAPTURE_CAMERA = 'camera';
     public const CAPTURE_UPLOAD = 'upload';
+
+    /**
+     * Generate the private evidence access key automatically for every new
+     * evidence record. This prevents newly-created evidence from reaching
+     * views/routes with a null access key.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $evidence): void {
+            if (empty($evidence->access_key)) {
+                $evidence->access_key = Str::random(64);
+            }
+        });
+    }
 
     protected $fillable = [
         'evidence_code',
