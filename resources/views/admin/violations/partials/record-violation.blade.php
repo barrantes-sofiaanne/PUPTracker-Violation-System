@@ -613,28 +613,6 @@ background: #800000 !important;
 
                                 </div>
 
-                                <!-- Student identity confirmation -->
-                                <div id="studentIdentityConfirmation" class="mt-4 border rounded-3 p-3" style="background:#fffaf0; border-color:#e6c85c !important;">
-                                    <div class="d-flex align-items-start gap-3">
-                                        <div class="flex-shrink-0">
-                                            <i class="bi bi-shield-check text-danger fs-4"></i>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <h6 class="fw-bold mb-2">Student Identity Confirmation</h6>
-                                            <p class="small mb-3 text-muted">
-                                                Before recording this violation, verify that the selected student is the correct student.
-                                                Check the student number, name, program, year level, and section shown above.
-                                            </p>
-                                            <div class="form-check">
-                                                <input type="checkbox" class="form-check-input" id="studentIdentityConfirm">
-                                                <label class="form-check-label fw-semibold" for="studentIdentityConfirm">
-                                                    I confirm that I have verified the student's identity and selected the correct student.
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
                             </div>
 
                         </div>
@@ -1462,6 +1440,33 @@ background: #800000 !important;
                                         </div>
 
                                     </div>
+
+                                </div>
+
+                                <div class="alert alert-warning small mt-3 mb-0">
+
+                                    <i class="bi bi-person-check me-1"></i>
+
+                                    Please verify the student's identity before recording this violation.
+
+                                </div>
+
+                                <div class="form-check mt-3 p-3 border rounded-3 bg-white">
+
+                                    <input
+                                        class="form-check-input"
+                                        type="checkbox"
+                                        id="identityConfirmed"
+                                        name="identity_confirmed"
+                                        value="1">
+
+                                    <label
+                                        class="form-check-label fw-semibold"
+                                        for="identityConfirmed">
+
+                                        I confirm that I have verified the student's identity and that the student information shown above belongs to the student being recorded.
+
+                                    </label>
 
                                 </div>
 

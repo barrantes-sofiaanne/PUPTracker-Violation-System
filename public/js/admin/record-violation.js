@@ -20,9 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const categorySelect = document.getElementById("violationCategory");
     const violationTypeSelect = document.getElementById("violationType");
     const evidenceInput = document.getElementById("evidenceInput");
-    const studentIdentityConfirm = document.getElementById(
-        "studentIdentityConfirm",
-    );
+    const identityConfirmed = document.getElementById("identityConfirmed");
 
     const securityNoticeModalEl = document.getElementById(
         "securityNoticeModal",
@@ -74,7 +72,7 @@ document.addEventListener("DOMContentLoaded", function () {
         !categorySelect ||
         !violationTypeSelect ||
         !evidenceInput ||
-        !studentIdentityConfirm
+        !identityConfirmed
     ) {
         return;
     }
@@ -1156,9 +1154,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         document.getElementById("selectedStudentInfo").classList.add("d-none");
         document.getElementById("noStudentSelected").classList.remove("d-none");
-        studentIdentityConfirm.checked = false;
 
         evidenceItems = [];
+        if (identityConfirmed) {
+            identityConfirmed.checked = false;
+        }
         if (evidenceInput) {
             evidenceInput.value = "";
         }
@@ -1243,16 +1243,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 );
                 return false;
             }
-
-            if (!studentIdentityConfirm.checked) {
-                showAlert(
-                    "warning",
-                    "Confirm student identity",
-                    "You must verify and confirm the selected student's identity before recording the violation.",
-                );
-                return false;
-            }
-
             return true;
         }
         if (stepNumber === 2) {
@@ -1420,9 +1410,6 @@ document.addEventListener("DOMContentLoaded", function () {
             student.year?.year_name ?? "-";
         document.getElementById("studentSection").value =
             student.section?.section_name ?? "-";
-
-        // A newly selected student must always be verified again.
-        studentIdentityConfirm.checked = false;
 
         document.getElementById("noStudentSelected").classList.add("d-none");
         document
@@ -1618,15 +1605,23 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        if (!identityConfirmed.checked) {
+            showAlert(
+                "warning",
+                "Confirm Student Identity",
+                "You must confirm the student identity before recording the violation.",
+            );
+            return;
+        }
+
         const formData = new FormData();
         formData.append("student_number", studentNumber);
         formData.append("violation_type_id", violationTypeId);
         formData.append("violation_date", violationDate);
         formData.append("description", description);
-        // Server-side identity confirmation for Admin recordings.
         formData.append(
             "identity_confirmed",
-            studentIdentityConfirm.checked ? "1" : "0",
+            identityConfirmed.checked ? "1" : "0",
         );
         // Correlate the submitted evidence to the camera/capture session.
         if (captureSessionId) {
