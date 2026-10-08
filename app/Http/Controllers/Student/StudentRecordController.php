@@ -65,9 +65,10 @@ $assignedSanctionViolationIds = StudentSanctionRecord::where(
     'evidence',
 ])
            ->where('student_number', $user->student_number)
-           // Individual Violations Log: show confirmed, legacy (NULL), AND
-           // pending (awaiting admin confirmation). Denied rows are excluded.
-           ->notDenied()
+           // Student Record must expose only violations that have been
+           // explicitly confirmed by an Administrator. Pending, denied, and
+           // legacy/unconfirmed records are not visible to the student.
+           ->where('status', Violation::STATUS_CONFIRMED)
            ->orderByDesc('violation_date')
            ->paginate(10);
 /*
@@ -141,20 +142,20 @@ $candidates = array_filter([
     return false;
 };
 
-// Group ALL of the student's non-denied violations by violation type so the
-// Summary can distinguish:
-//   - pending violations (awaiting admin confirmation)  -> show as pending
-//   - effective violations that still need action       -> sanctionable
-// Types whose only disciplinary outcome is a Warning, or that already have a
-// COMPLETED sanction, are removed from the Summary table (they remain in the
-// Individual Violations Log / Sanction Record tabs).
+// Group ONLY administrator-confirmed violations by violation type.
+// The Student Record must never expose a pending/unconfirmed violation.
+// Warning-only violations, or violation types that already entered the
+// sanction workflow, are removed from the Summary table.
 $groupedViolations = Violation::with([
         'violationType.violationCategory',
         'violationType.disciplinarySanctions',
         'evidence',
     ])
     ->where('student_number', $user->student_number)
-    ->notDenied()
+    // Only Administrator-confirmed violations are eligible for the
+    // student-facing Summary by Violation. Pending/denied/unconfirmed
+    // records must remain invisible to the student.
+    ->where('status', Violation::STATUS_CONFIRMED)
     ->get()
     ->groupBy(function ($violation) {
         $resolvedType = $violation->resolvedViolationType();
@@ -170,9 +171,8 @@ foreach ($groupedViolations as $records) {
     // Keep the newest effective incident first so Summary actions point to a concrete record.
     $records = $records->sortByDesc('violation_date')->values();
 
-    // Split this type's records into pending (awaiting admin confirmation)
-    // and effective (confirmed/legacy) so offense levels are computed only
-    // from confirmed records.
+    // All records in this collection are Administrator-confirmed, so the
+    // offense level is computed only from records the student is allowed to see.
     $pendingRecords = $records->filter(function ($v) {
         return strtolower((string) $v->status) === Violation::STATUS_PENDING;
     })->values();
@@ -208,21 +208,16 @@ foreach ($groupedViolations as $records) {
         ? isset($assignedSanctionViolationIds[$correctionViolation->violation_id])
         : false;
 
-    // No confirmed record yet -> the whole type is awaiting confirmation.
-    if (! $hasEffective) {
-        $first = $pendingRecords->first();
-        $count = 0;
-        $offenseLevel = '—';
-    } else {
-        $first = $effectiveRecords->first();
-        $count = $effectiveRecords->count();
-        $offenseLevel = match ($count) {
-            1 => '1st Offense',
-            2 => '2nd Offense',
-            3 => '3rd Offense',
-            default => $count . 'th Offense'
-        };
-    }
+    // There are no pending records in this student-facing collection.
+    // Every Summary row therefore represents at least one confirmed violation.
+    $first = $effectiveRecords->first();
+    $count = $effectiveRecords->count();
+    $offenseLevel = match ($count) {
+        1 => '1st Offense',
+        2 => '2nd Offense',
+        3 => '3rd Offense',
+        default => $count . 'th Offense'
+    };
 
     $resolvedType = $first->resolvedViolationType();
 
@@ -261,16 +256,11 @@ foreach ($groupedViolations as $records) {
         continue;
     }
 
-    // Pending-confirmation rows are shown in the Summary so the student sees
-    // the violation is awaiting admin review; they cannot request a sanction
-    // until the violation is confirmed.
-    if (! $hasEffective) {
-        $workflowStatus = 'PendingConfirmation';
-    } else {
-        $workflowStatus = $matchesViolationType($first, $activeRequests)
-            ? 'Requested'
-            : 'Actionable';
-    }
+    // At this point the violation is confirmed and has a disciplinary
+    // sanction, so the student may see the Summary row.
+    $workflowStatus = $matchesViolationType($first, $activeRequests)
+        ? 'Requested'
+        : 'Actionable';
 
     $violationSummary[] = [
         // Using ?-> prevents the "reading property on null" error
