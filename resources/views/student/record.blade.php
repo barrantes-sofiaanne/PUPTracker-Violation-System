@@ -534,64 +534,68 @@
 /* ---------------------------------------------------------
    Summary by Violation
    --------------------------------------------------------- */
+.summary-table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
 .summary-violations-table {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
+    width: 1200px !important;
+    min-width: 1200px !important;
+    max-width: none !important;
     table-layout: fixed !important;
     border-collapse: collapse;
 }
 
-/* Eight columns = 100% total */
-.summary-category-col { width: 14%; }
+/* Eight columns = 100% */
+.summary-category-col { width: 13%; }
 .summary-violation-type-col { width: 20%; }
 .summary-offense-col { width: 10%; }
-.summary-status-col { width: 11%; }
-.summary-remarks-col { width: 10%; }
-.summary-evidence-col { width: 10%; }
+.summary-status-col { width: 12%; }
+.summary-remarks-col { width: 11%; }
+.summary-evidence-col { width: 11%; }
 .summary-sanction-col { width: 13%; }
-.summary-action-col { width: 12%; min-width: 0 !important; }
+.summary-action-col { width: 10%; min-width: 0 !important; }
 
 .summary-violations-table th,
 .summary-violations-table td {
+    box-sizing: border-box;
     vertical-align: middle !important;
+    white-space: normal !important;
     word-break: normal !important;
-    overflow-wrap: normal !important;
+    overflow-wrap: break-word !important;
     hyphens: none !important;
 }
 
 .summary-violations-table thead th {
     text-align: center !important;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: normal !important;
-    line-height: 1.2;
-    font-size: 0.82rem;
-    padding: 0.8rem 0.45rem !important;
+    line-height: 1.2 !important;
+    font-size: 0.82rem !important;
+    padding: 0.8rem 0.55rem !important;
 }
 
 .summary-violations-table tbody td {
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: normal !important;
-    line-height: 1.45;
-    padding: 1rem 0.55rem !important;
+    line-height: 1.4 !important;
+    padding: 1rem 0.65rem !important;
 }
 
-/* Keep category and violation names intact; wrap only at spaces. */
+/* Keep normal words intact; only allow emergency breaking of a very long
+   unbroken value. */
 .summary-violations-table .summary-category-col,
 .summary-violations-table .summary-violation-type-col,
 .summary-violations-table .summary-offense-col,
 .summary-violations-table .summary-remarks-col,
 .summary-violations-table .summary-sanction-col {
     word-break: normal !important;
-    overflow-wrap: normal !important;
-    hyphens: none !important;
+    overflow-wrap: break-word !important;
 }
 
 /* Status */
 .summary-violations-table .summary-status-col {
-    text-align: center;
+    text-align: center !important;
 }
 
 .summary-violations-table .summary-status-col .portal-badge,
@@ -600,15 +604,14 @@
     max-width: 100%;
     white-space: normal !important;
     word-break: normal !important;
-    overflow-wrap: normal !important;
-    hyphens: none !important;
+    overflow-wrap: break-word !important;
     text-align: center;
-    line-height: 1.2;
+    line-height: 1.2 !important;
 }
 
 /* Evidence */
 .summary-violations-table .summary-evidence-col {
-    text-align: center;
+    text-align: center !important;
 }
 
 .summary-violations-table .summary-evidence-col .btn {
@@ -616,15 +619,14 @@
     max-width: 100%;
     white-space: normal !important;
     word-break: normal !important;
-    overflow-wrap: normal !important;
-    hyphens: none !important;
-    line-height: 1.25;
-    padding: 0.45rem 0.35rem;
+    overflow-wrap: break-word !important;
+    line-height: 1.25 !important;
+    padding: 0.45rem 0.35rem !important;
 }
 
 /* Action */
 .summary-violations-table .summary-action-col {
-    text-align: center;
+    text-align: center !important;
     vertical-align: middle !important;
 }
 
@@ -644,12 +646,12 @@
     min-width: 0;
     white-space: normal !important;
     word-break: normal !important;
-    overflow-wrap: normal !important;
+    overflow-wrap: break-word !important;
     hyphens: none !important;
     text-align: center;
-    line-height: 1.25;
-    padding: 0.65rem 0.4rem;
-    font-size: 0.85rem;
+    line-height: 1.25 !important;
+    padding: 0.65rem 0.45rem !important;
+    font-size: 0.85rem !important;
 }
 
 /* ---------------------------------------------------------
@@ -717,8 +719,8 @@
     }
 
     .summary-violations-table {
-        width: 1050px !important;
-        min-width: 1050px !important;
+        width: 1200px !important;
+        min-width: 1200px !important;
         max-width: none !important;
         table-layout: fixed !important;
     }
