@@ -1,5 +1,4 @@
-
-FROM php:8.2-cli
+FROM public.ecr.aws/docker/library/php:8.2-cli
 
 # Install system packages and PHP extensions
 RUN apt-get update && apt-get install -y \
@@ -27,9 +26,6 @@ RUN apt-get update && apt-get install -y \
         bcmath \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-# Install Composer without pulling the composer:2 Docker image
-COPY --from=php:8.2-cli /usr/local/bin/php /usr/local/bin/php
 
 RUN set -eux; \
     curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php; \
