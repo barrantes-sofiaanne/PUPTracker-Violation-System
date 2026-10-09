@@ -503,6 +503,101 @@ background: #800000 !important;
         }
     }
 
+    /* FINAL ADMIN MOBILE MODAL FIX
+       The modal-body is inside #violationForm, not directly inside
+       .modal-content. The form must be the flex column for the body to
+       shrink and scroll while keeping the footer reachable. */
+    .admin-record-modal .modal-dialog {
+        display: flex;
+        align-items: center;
+        min-height: calc(100% - var(--bs-modal-margin, .5rem) * 2);
+    }
+
+    .admin-record-modal .modal-content {
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        max-height: calc(100vh - 2rem) !important;
+        max-height: calc(100dvh - 2rem) !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .admin-record-modal #violationForm {
+        display: flex !important;
+        flex: 1 1 auto !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .admin-record-modal #violationForm > .modal-body {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        overscroll-behavior-y: contain;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+    }
+
+    .admin-record-modal #violationForm > .modal-footer {
+        flex: 0 0 auto !important;
+        position: relative;
+        z-index: 10;
+    }
+
+    @media (max-width: 575.98px) {
+        .admin-record-modal .modal-dialog {
+            width: calc(100% - 1rem) !important;
+            max-width: none !important;
+            margin: .5rem auto !important;
+            min-height: calc(100% - 1rem);
+        }
+
+        .admin-record-modal .modal-content {
+            width: 100%;
+            max-height: calc(100vh - 1rem) !important;
+            max-height: calc(100dvh - 1rem) !important;
+            border-radius: .85rem !important;
+        }
+
+        .admin-record-modal #violationForm > .modal-body {
+            padding: .75rem !important;
+        }
+
+        .admin-record-modal #violationForm > .modal-footer,
+        .admin-record-modal #violationForm > .modal-footer.justify-content-between {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: .5rem !important;
+            padding: .7rem .75rem calc(.7rem + env(safe-area-inset-bottom, 0px)) !important;
+        }
+
+        .admin-record-modal #violationForm > .modal-footer > #backStep,
+        .admin-record-modal #violationForm > .modal-footer > .ms-auto,
+        .admin-record-modal #violationForm > .modal-footer > .ms-auto > .admin-btn {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+        }
+
+        .admin-record-modal #violationForm > .modal-footer > .ms-auto {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: .5rem !important;
+        }
+
+        .admin-record-modal #violationForm > .modal-footer .admin-btn {
+            min-height: 44px;
+            justify-content: center;
+            white-space: normal;
+        }
+    }
+
 </style>
 
 <div class="modal fade admin-record-modal"
