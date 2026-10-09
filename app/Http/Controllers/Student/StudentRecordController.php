@@ -71,6 +71,31 @@ $assignedSanctionViolationIds = StudentSanctionRecord::where(
            ->where('status', Violation::STATUS_CONFIRMED)
            ->orderByDesc('violation_date')
            ->paginate(10);
+
+// Mark only individual violation rows whose configured sanction genuinely
+// requires a student request (Community/Campus Service). Other sanctions are
+// assigned automatically when the violation is confirmed.
+$violations->getCollection()->transform(function ($violation) use ($user) {
+    $typeId = $violation->resolvedViolationType()?->violation_type_id;
+    $violation->student_requires_sanction_request = false;
+    if (!$typeId) {
+        return $violation;
+    }
+    $count = Violation::where('student_number', $user->student_number)
+        ->where('violation_type_id', $typeId)
+        ->where('status', Violation::STATUS_CONFIRMED)
+        ->where('violation_date', '<=', $violation->violation_date)
+        ->count();
+    $level = match ($count) {
+        1 => '1st Offense', 2 => '2nd Offense', 3 => '3rd Offense',
+        default => $count . 'th Offense',
+    };
+    $sanction = DisciplinarySanction::where('violation_type_id', $typeId)
+        ->where('offense_level', $level)->first()
+        ?? DisciplinarySanction::where('violation_type_id', $typeId)->orderBy('disciplinary_sanction_id')->first();
+    $violation->student_requires_sanction_request = StudentSanctionRecord::requiresStudentSanctionRequest($sanction?->disciplinary_sanction);
+    return $violation;
+});
 /*
 |--------------------------------------------------------------------------
 | Summary by Violation

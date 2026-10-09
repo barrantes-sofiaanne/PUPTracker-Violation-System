@@ -944,9 +944,6 @@
                                             Disciplinary Sanction
                                         </th>
 
-                                        <th class="summary-action-col">
-                                            Action
-                                        </th>
 
                                     </tr>
 
@@ -1027,124 +1024,7 @@
         {{ $summary['disciplinary_sanction'] }}
     </td>
 
-    <td class="summary-action-col">
-        <div class="summary-action-buttons">
 
-            {{-- Sanction action --}}
-            @if($summary['workflow_status'] === 'PendingConfirmation')
-
-                <button
-                    type="button"
-                    class="btn btn-secondary btn-sm"
-                    disabled
-                >
-                    <i class="bi bi-hourglass-split me-1"></i>
-                    Pending Confirmation
-                </button>
-
-            @elseif($summary['workflow_status'] === 'Requested')
-
-                <button
-                    type="button"
-                    class="btn btn-secondary btn-sm"
-                    disabled
-                >
-                    <i class="bi bi-clock-history me-1"></i>
-                    Requested
-                </button>
-
-            @elseif($summary['workflow_status'] === 'Pending')
-
-                <button
-                    type="button"
-                    class="btn btn-secondary btn-sm"
-                    disabled
-                >
-                    <i class="bi bi-hourglass-split me-1"></i>
-                    Pending
-                </button>
-
-            @elseif($summary['workflow_status'] === 'Approved')
-
-                <button
-                    type="button"
-                    class="btn btn-success btn-sm"
-                    disabled
-                >
-                    <i class="bi bi-check-circle me-1"></i>
-                    Approved
-                </button>
-
-            @elseif($summary['violation_status'] === 'Sanction' && !empty($summary['requires_sanction_request']))
-
-                <button
-                    type="button"
-                    class="btn portal-btn btn-sm request-sanction-btn"
-                    data-violation-type-id="{{ $summary['violation_type_id'] }}"
-                >
-                    <i class="bi bi-send me-1"></i>
-                    Request Sanction
-                </button>
-
-            @endif
-
-            {{-- Correction action --}}
-            @if(
-                $summary['workflow_status'] !== 'PendingConfirmation' &&
-                !empty($summary['correction_violation_id'])
-            )
-
-                @if(!empty($summary['has_pending_correction']))
-
-                    <button
-                        type="button"
-                        class="btn btn-secondary btn-sm"
-                        disabled
-                    >
-                        <i class="bi bi-clock-history me-1"></i>
-                        Correction Pending
-                    </button>
-
-                @else
-
-                    <button
-                        type="button"
-                        class="btn btn-outline-primary btn-sm"
-                        data-bs-toggle="modal"
-                        data-bs-target="#correctionRequestModal"
-                        data-correction-url="{{ route(
-                            'student.violations.correction-request',
-                            ['violation' => $summary['correction_violation_id']]
-                        ) }}"
-                        data-violation-id="{{ $summary['correction_violation_id'] }}"
-                        data-violation-type-id="{{ $summary['correction_violation_type_id'] }}"
-                        data-violation-category-id="{{ $summary['correction_violation_category_id'] ?? '' }}"
-                        data-violation-category="{{ $summary['correction_violation_category'] ?? $summary['category'] }}"
-                        data-violation-offense="{{ $summary['correction_violation_offense_level'] ?? $summary['offense_level'] }}"
-                        data-violation-sanction="{{ $summary['correction_violation_sanction'] ?? $summary['disciplinary_sanction'] }}"
-                        data-violation-date="{{ $summary['correction_violation_date']
-                            ? \Carbon\Carbon::parse($summary['correction_violation_date'])->format('Y-m-d\TH:i')
-                            : ''
-                        }}"
-                        data-violation-date-display="{{ $summary['correction_violation_date']
-                            ? \Carbon\Carbon::parse($summary['correction_violation_date'])->format('M d, Y h:i A')
-                            : '—'
-                        }}"
-                        data-violation-description="{{ $summary['correction_description'] ?? '' }}"
-                        data-has-sanction="{{ $summary['has_assigned_sanction'] ? '1' : '0' }}"
-                        data-violation-name="{{ $summary['type'] }}"
-                        data-evidence="{{ htmlspecialchars(json_encode($summary['evidence'] ?? []), ENT_QUOTES, 'UTF-8') }}"
-                    >
-                        <i class="bi bi-pencil-square me-1"></i>
-                        Request Correction
-                    </button>
-
-                @endif
-
-            @endif
-
-        </div>
-    </td>
 
 </tr>
 
@@ -1153,7 +1033,7 @@
 <tr>
 
     <td
-        colspan="8"
+        colspan="7"
         class="text-center py-5 text-muted">
 
         No outstanding violations found.
@@ -1235,6 +1115,8 @@
                         Attachments
 
                     </th>
+
+                    <th>Actions</th>
                 </tr>
 
             </thead>
@@ -1298,34 +1180,65 @@
                                     $visibleEvidence = collect($violation->evidence ?? [])
                                         ->filter(fn ($e) => ! empty($e->disk_path));
                                 @endphp
-@if ($visibleEvidence->isNotEmpty())
-    @foreach ($visibleEvidence as $item)
-        @if (!empty($item->access_key))
-            <a
-                href="{{ route('student.violations.evidence', [
-                    'evidence' => $item->access_key,
-                ]) }}"
-                target="_blank"
-                rel="noopener"
-                class="btn btn-sm btn-outline-secondary me-1 mb-1"
-                title="Open {{ $item->original_name ?: 'evidence' }}">
-                <i class="bi bi-paperclip"></i>
-                {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
-            </a>
-        @else
-            <span class="btn btn-sm btn-outline-secondary me-1 mb-1 disabled"
-                  title="Evidence access key unavailable">
-                <i class="bi bi-paperclip"></i>
-                {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
-            </span>
-        @endif
-    @endforeach
-@else
+
+                                @if ($visibleEvidence->isNotEmpty())
+                                    @foreach ($visibleEvidence as $item)
+                                        <a
+                                            href="{{ route('student.violations.evidence', [
+    'evidence' => $item->access_key,
+]) }}"
+                                            target="_blank"
+                                            rel="noopener"
+                                            class="btn btn-sm btn-outline-secondary me-1 mb-1"
+                                            title="Open {{ $item->original_name ?: 'evidence' }}">
+                                            <i class="bi bi-paperclip"></i>
+                                            {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
+                                        </a>
+                                    @endforeach
+                                @else
                                     <span class="text-muted">—</span>
                                 @endif
 
                             @endif
 
+                        </td>
+
+                        <td class="individual-actions-col">
+                            @if(!$isPendingLog)
+                                <div class="d-flex flex-column gap-2">
+                                    @if(!empty($violation->student_requires_sanction_request) && !isset($assignedSanctionViolationIds[$violation->violation_id]))
+                                        <button type="button" class="btn portal-btn btn-sm request-sanction-btn" data-violation-type-id="{{ $violation->violation_type_id }}">
+                                            <i class="bi bi-send me-1"></i>Request Sanction
+                                        </button>
+                                    @endif
+                                    @php
+                                        $logEvidence = collect($violation->evidence ?? [])->filter(fn ($e) => !empty($e->access_key))->map(fn ($e) => [
+                                            'access_key' => $e->access_key,
+                                            'original_name' => $e->original_name ?: 'Evidence',
+                                            'mime_type' => $e->mime_type,
+                                            'is_image' => $e->is_image,
+                                        ])->values()->all();
+                                    @endphp
+                                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#correctionRequestModal"
+                                        data-correction-url="{{ route('student.violations.correction-request', ['violation' => $violation->violation_id]) }}"
+                                        data-violation-id="{{ $violation->violation_id }}"
+                                        data-violation-type-id="{{ $violation->violation_type_id }}"
+                                        data-violation-category-id="{{ $violation->resolvedViolationType()?->violation_category_id ?? '' }}"
+                                        data-violation-category="{{ $violation->violation_category_display }}"
+                                        data-violation-offense="{{ $violation->offense_level_display ?? '' }}"
+                                        data-violation-sanction="{{ $violation->resolvedViolationType()?->disciplinarySanctions?->first()?->disciplinary_sanction ?? '' }}"
+                                        data-violation-date="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d\TH:i') : '' }}"
+                                        data-violation-date-display="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') : '—' }}"
+                                        data-violation-description="{{ $violation->description ?? '' }}"
+                                        data-has-sanction="{{ isset($assignedSanctionViolationIds[$violation->violation_id]) ? '1' : '0' }}"
+                                        data-violation-name="{{ $violation->violation_type_display }}"
+                                        data-evidence="{{ htmlspecialchars(json_encode($logEvidence), ENT_QUOTES, 'UTF-8') }}">
+                                        <i class="bi bi-pencil-square me-1"></i>Request Correction
+                                    </button>
+                                </div>
+                            @else
+                                <span class="text-muted small">Available after confirmation</span>
+                            @endif
                         </td>
 
                     </tr>
@@ -1335,7 +1248,7 @@
                     <tr>
 
                         <td
-                            colspan="6"
+                            colspan="7"
                             class="text-center py-5">
 
                             No individual violations found.
