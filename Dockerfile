@@ -1,3 +1,4 @@
+```dockerfile
 FROM php:8.2-cli
 
 # Install system packages and PHP extensions
@@ -5,7 +6,7 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     unzip \
-        default-mysql-client \
+    default-mysql-client \
     zip \
     libzip-dev \
     libpng-dev \
@@ -27,37 +28,43 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Install Composer without pulling the composer:2 Docker image
+COPY --from=php:8.2-cli /usr/local/bin/php /usr/local/bin/php
 
-# Allow Composer plugins to run (build runs as root) and give downloads
-# a generous timeout. This avoids "Plugins have been disabled" warnings and
-# intermittent GitHub/API timeouts aborting the build.
+RUN set -eux; \
+    curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php; \
+    php /tmp/composer-setup.php \
+        --install-dir=/usr/local/bin \
+        --filename=composer; \
+    rm -f /tmp/composer-setup.php; \
+    composer --version
+
+# Allow Composer plugins to run and configure process timeout
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
     COMPOSER_PROCESS_TIMEOUT=1200
 
-# Install Node.js
+# Install Node.js 22
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs
+    && apt-get update \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy the entire Laravel application first
+# Copy the entire Laravel application
 COPY . .
 
-# Install PHP dependencies with retries — package downloads from
-# api.github.com / packagist are flaky and a single transient 504 must
-# not abort the whole build.
+# Install PHP dependencies with retries
 RUN set -eux; \
-    install_cmd="composer install --no-dev --optimize-autoloader --no-interaction"; \
     attempts=0; \
-    until eval "$install_cmd"; do \
+    until composer install --no-dev --optimize-autoloader --no-interaction; do \
         attempts=$((attempts + 1)); \
         if [ "$attempts" -ge 5 ]; then \
-            echo "composer install failed after $attempts attempts" >&2; \
+            echo "Composer install failed after $attempts attempts" >&2; \
             exit 1; \
         fi; \
-        echo "composer install attempt $attempts failed (network?) - retrying in 5s..." >&2; \
+        echo "Composer install attempt $attempts failed; retrying in 5 seconds..." >&2; \
         sleep 5; \
     done
 
@@ -78,9 +85,8 @@ RUN mkdir -p \
 # Set permissions
 RUN chmod -R 775 storage bootstrap/cache
 
-
 EXPOSE 8080
 
-# JSON-array (exec) form via sh -c so OS signals are handled correctly while
-# still allowing the shell features (env expansion + conditional artisan up).
+# Start Laravel
 CMD ["sh", "-c", "if [ \"${CLEAR_MAINTENANCE_ON_DEPLOY:-false}\" = \"true\" ]; then php artisan up; fi; exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
+```
