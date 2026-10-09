@@ -301,6 +301,12 @@ $students = User::with([
                 'reviewed_at' => now(),
             ]);
 
+            // Confirmation is the point at which a security/OSS-recorded
+            // violation becomes eligible for its automatic note-only sanction.
+            // The direct Admin recording flow has its own equivalent assignment;
+            // this also covers violations that were pending review first.
+            $this->assignAutomaticConsultationSanction($violation, $adminId);
+
             $this->notifyViolationOutcome($violation, 'confirmed');
 
             AuditLog::create([
@@ -349,6 +355,80 @@ $students = User::with([
         });
 
         return back()->with('success', 'Violation denied. The student and recording security officer were notified.');
+    }
+
+    /**
+     * Assign configured note-only sanctions after an administrator confirms a
+     * violation. Service sanctions are excluded because those require a
+     * separate student request and administrative scheduling.
+     */
+    private function assignAutomaticConsultationSanction(Violation $violation, int $adminId): void
+    {
+        if (StudentSanctionRecord::where('violation_id', $violation->violation_id)->exists()) {
+            return;
+        }
+
+        $violation->loadMissing('violationType');
+        $typeId = (int) ($violation->resolvedViolationType()?->violation_type_id
+            ?? $violation->violation_type_id
+            ?? 0);
+        if ($typeId <= 0 || empty($violation->student_number)) {
+            return;
+        }
+
+        $confirmedCount = Violation::where('student_number', $violation->student_number)
+            ->where('violation_type_id', $typeId)
+            ->where('status', Violation::STATUS_CONFIRMED)
+            ->count();
+        $offenseLevel = match ($confirmedCount) {
+            1 => '1st Offense',
+            2 => '2nd Offense',
+            3 => '3rd Offense',
+            default => $confirmedCount . 'th Offense',
+        };
+
+        $configuredSanction = DisciplinarySanction::where('violation_type_id', $typeId)
+            ->where('offense_level', $offenseLevel)
+            ->first()
+            ?? DisciplinarySanction::where('violation_type_id', $typeId)
+                ->orderBy('disciplinary_sanction_id')
+                ->first();
+
+        $sanctionText = trim((string) ($configuredSanction?->disciplinary_sanction ?? ''));
+        if (!$configuredSanction || $sanctionText === ''
+            || str_contains(strtolower($sanctionText), 'warning')
+            || StudentSanctionRecord::requiresStudentSanctionRequest($sanctionText)) {
+            return;
+        }
+
+        $record = StudentSanctionRecord::create([
+            'student_number' => $violation->student_number,
+            'violation_id' => $violation->violation_id,
+            'assigned_sanction_id' => $configuredSanction->disciplinary_sanction_id,
+            'assigned_by_admin_id' => $adminId,
+            'status' => StudentSanctionRecord::STATUS_PENDING,
+            'date_assigned' => now(),
+        ]);
+
+        try {
+            app(\App\Services\StudentNotificationService::class)->create(
+                studentNumber: $violation->student_number,
+                type: 'sanction',
+                title: 'Disciplinary Sanction Assigned',
+                message: 'A disciplinary sanction has been assigned for your confirmed violation: '
+                    . ($violation->violationType?->violation_type ?? 'your violation') . '. '
+                    . StudentSanctionRecord::CONSULTATION_NOTICE
+                    . ' Please review the Sanction tab in your Student Record.',
+                targetType: 'sanction_record',
+                targetId: (int) $record->record_id,
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Automatic sanction notification failed after violation confirmation.', [
+                'violation_id' => $violation->violation_id,
+                'sanction_record_id' => $record->record_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

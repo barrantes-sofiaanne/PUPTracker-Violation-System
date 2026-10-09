@@ -656,25 +656,52 @@
 
 /* ---------------------------------------------------------
    Individual Violations Log
+   Give the Actions column enough room for readable controls. On narrow
+   screens the table scrolls horizontally instead of breaking button labels.
    --------------------------------------------------------- */
-.individual-violations-table {
+.individual-table-responsive {
     width: 100%;
-    min-width: 980px;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.individual-violations-table {
+    width: 1200px !important;
+    min-width: 1200px !important;
+    max-width: none !important;
     table-layout: fixed;
 }
 
 .individual-violations-table th,
 .individual-violations-table td {
+    box-sizing: border-box;
     vertical-align: middle;
-    overflow-wrap: anywhere;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+    hyphens: none;
+    padding: 0.9rem 0.65rem;
 }
 
-.individual-violations-table .violation-type-col { width: 24%; }
+.individual-violations-table .violation-type-col { width: 22%; }
 .individual-violations-table .violation-date-col { width: 14%; }
-.individual-violations-table .category-col { width: 17%; }
-.individual-violations-table .status-col { width: 14%; }
-.individual-violations-table .remarks-col { width: 18%; }
-.individual-violations-table .attachments-col { width: 13%; }
+.individual-violations-table .category-col { width: 16%; }
+.individual-violations-table .status-col { width: 12%; }
+.individual-violations-table .remarks-col { width: 15%; }
+.individual-violations-table .attachments-col { width: 9%; }
+.individual-violations-table .individual-actions-col { width: 12%; text-align: center; }
+.individual-violations-table .individual-actions-col .btn {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+    line-height: 1.25;
+    padding: 0.55rem 0.5rem;
+}
 
 .individual-violations-table .violation-date-col {
     line-height: 1.45;
@@ -758,8 +785,8 @@
     }
 
     .individual-violations-table {
-        width: 980px !important;
-        min-width: 980px !important;
+        width: 1200px !important;
+        min-width: 1200px !important;
         max-width: none !important;
         table-layout: fixed !important;
     }
@@ -767,9 +794,14 @@
     .individual-violations-table th,
     .individual-violations-table td {
         word-break: normal !important;
-        overflow-wrap: normal !important;
+        overflow-wrap: break-word !important;
         hyphens: none !important;
         white-space: normal !important;
+    }
+
+    .individual-violations-table .individual-actions-col .btn {
+        font-size: 0.85rem !important;
+        padding: 0.6rem 0.5rem !important;
     }
 
     .individual-violations-table thead th {
