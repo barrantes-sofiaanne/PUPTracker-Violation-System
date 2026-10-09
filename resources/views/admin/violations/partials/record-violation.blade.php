@@ -1,7 +1,3 @@
-<!-- ========================================================= -->
-<!-- Record Violation Modal -->
-<!-- ========================================================= -->
-
 <style>
     .admin-record-modal .modal-dialog {
         max-width: 1160px;
@@ -1995,4 +1991,29 @@ background: #ffffff;
   .admin-record-modal .modal-body { font-size: .95rem; }
 }
 
+
+
+/* Unified Record Violation footer: keep Back and Next/Submit side-by-side on phones. */
+@media (max-width: 575.98px) {
+  .admin-record-modal .modal-footer,
+  .oss-staff-record-modal .modal-footer,
+  .security-record-modal .modal-footer {
+    display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: .5rem;
+    padding: .65rem max(.65rem, env(safe-area-inset-right)) calc(.65rem + env(safe-area-inset-bottom)) max(.65rem, env(safe-area-inset-left));
+  }
+  .admin-record-modal .modal-footer #backStep,
+  .oss-staff-record-modal .modal-footer #backStep,
+  .security-record-modal .modal-footer #backStep,
+  .admin-record-modal .modal-footer #nextStep,
+  .oss-staff-record-modal .modal-footer #nextStep,
+  .security-record-modal .modal-footer #nextStep,
+  .admin-record-modal .modal-footer #saveViolation,
+  .oss-staff-record-modal .modal-footer #saveViolation,
+  .security-record-modal .modal-footer #saveViolation {
+    flex: 0 1 auto !important; width: auto !important; min-width: 0; max-width: 100%; white-space: nowrap;
+  }
+  .admin-record-modal .modal-footer #saveViolation,
+  .oss-staff-record-modal .modal-footer #saveViolation,
+  .security-record-modal .modal-footer #saveViolation { order: 0 !important; }
+}
 </style>

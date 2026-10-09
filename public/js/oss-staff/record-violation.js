@@ -844,11 +844,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const ctx = canvas.getContext("2d");
 
-        // Keep the original capture safety check before using the canvas context.
-        if (!ctx) {
-            throw new Error("Unable to create capture canvas.");
-        }
-
         // ------------------------------------------------------------
         // 1. Draw original camera frame
         // ------------------------------------------------------------
