@@ -613,3 +613,246 @@ background: #800000;
         </div>
     </div>
 </div>
+
+<style>
+/* Shared Security module visual baseline */
+.oss-staff-record-modal .modal-dialog {
+        max-width: 1160px;
+    }
+
+    .oss-staff-record-modal .modal-content {
+        border: 1px solid rgba(122, 15, 30, 0.12);
+        border-radius: var(--portal-radius-lg);
+        overflow: hidden;
+        max-height: calc(100vh - 2rem);
+    }
+
+.oss-staff-record-modal .modal-header {
+    position: relative;
+    background: #800000;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 1.1rem 4.5rem 1.1rem 1.25rem;
+}
+
+.oss-staff-record-modal .modal-header .btn-close {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
+
+    width: 44px;
+    height: 44px;
+
+    margin: 0 !important;
+    padding: 0;
+
+    z-index: 10;
+
+    background-color: transparent !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 1 1-1.414 1.414L8 9.414l-6.293 6.293-1.414 1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414-1.414z'/%3e%3c/svg%3e") !important;
+
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 1rem auto !important;
+
+    filter: none !important;
+    opacity: 0.9;
+}
+
+.oss-staff-record-modal .modal-header .btn-close:hover,
+.oss-staff-record-modal .modal-header .btn-close:focus-visible {
+    opacity: 1;
+}
+
+    .oss-staff-record-modal .modal-header .modal-title,
+    .oss-staff-record-modal .modal-header .modal-title i,
+    .oss-staff-record-modal .modal-header small {
+        color: #fff !important;
+    }
+
+    .oss-staff-record-modal .modal-body {
+background: #ffffff;
+        overflow-y: auto;
+        max-height: calc(100vh - 220px);
+    }
+
+    .oss-staff-record-modal .modal-footer {
+        background: #fffdf6;
+        border-top: 1px solid rgba(122, 15, 30, 0.12);
+        padding: 0.8rem 1rem;
+        /* Wrap rather than clip — buttons must never be cut off or overlap. */
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* The body scrolls independently so a tall step never pushes the header or
+       footer out of view. */
+    .oss-staff-record-modal .modal-body {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .oss-staff-record-modal .modal-content {
+        max-height: calc(100vh - 1rem);
+    }
+
+    /* Small screens: the primary CTA takes its own full-width row. */
+    @media (max-width: 575.98px) {
+        .oss-staff-record-modal .modal-dialog {
+            margin: 0.5rem;
+        }
+
+        .oss-staff-record-modal .modal-footer > .ms-auto {
+            margin-left: 0 !important;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .oss-staff-record-modal .modal-footer > .ms-auto > .portal-btn,
+        .oss-staff-record-modal .modal-footer > .ms-auto > .admin-btn {
+            flex: 1 1 auto;
+        }
+
+        .oss-staff-record-modal .modal-footer #saveViolation {
+            order: 3;
+            flex: 1 1 100%;
+        }
+    }
+
+    .oss-staff-record-modal .wizard-bubble {
+        width: 52px;
+        height: 52px;
+        border-radius: 999px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 6px 12px rgba(122, 15, 30, 0.15);
+        border: 2px solid transparent;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    /* ------------------------------------------------------------------
+       Wizard step states — PUPTracker MAROON + GOLD ONLY.
+
+       These previously used Bootstrap's bg-success (GREEN) and bg-danger
+       (Bootstrap red). Replaced with palette-only states so the Security
+       wizard matches the Admin wizard exactly.
+       ------------------------------------------------------------------ */
+    .oss-staff-record-modal .wizard-bubble.wizard-step-current {
+        background: #7a0f1e;
+        border-color: #7a0f1e;
+        color: #fff;
+        box-shadow: 0 6px 14px rgba(122, 15, 30, 0.3);
+    }
+
+    .oss-staff-record-modal .wizard-bubble.wizard-step-completed {
+        background: #daa520;
+        border-color: #daa520;
+        color: #4a0209;
+    }
+
+    .oss-staff-record-modal .wizard-bubble.wizard-step-upcoming {
+        background: #fff8e8;
+        border-color: rgba(122, 15, 30, 0.28);
+        color: #7a0f1e;
+    }
+
+    .oss-staff-record-modal .wizard-card {
+        border: 1px solid rgba(122, 15, 30, 0.12);
+        border-radius: var(--portal-radius-lg);
+        box-shadow: var(--portal-shadow);
+    }
+
+    .oss-staff-record-modal .wizard-card .card-header {
+        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
+        border-bottom: 1px solid rgba(122, 15, 30, 0.12);
+        color: #4a0209;
+        padding: 0.9rem 1.1rem;
+    }
+
+    .oss-staff-record-modal .wizard-card .card-header i {
+        color: #7a0f1e !important;
+    }
+
+    .oss-staff-record-modal .form-control,
+    .oss-staff-record-modal .form-select {
+        border-color: rgba(122, 15, 30, 0.2);
+        border-radius: 0.72rem;
+    }
+
+    .oss-staff-record-modal .form-control:focus,
+    .oss-staff-record-modal .form-select:focus {
+        border-color: rgba(122, 15, 30, 0.5);
+        box-shadow: 0 0 0 0.2rem rgba(122, 15, 30, 0.12);
+    }
+
+    .oss-staff-record-modal .preview-box {
+        border: 1px solid rgba(122, 15, 30, 0.1);
+        border-radius: 0.9rem;
+        background: #fffdf7;
+    }
+
+    .oss-staff-record-modal .preview-box strong {
+        color: #4a0209;
+    }
+
+    /* Controlled camera capture */
+    .oss-staff-record-modal #cameraPreview {
+        filter: none;
+        transition: filter 0.15s ease;
+        background: #000;
+    }
+
+    .oss-staff-record-modal #cameraPreview.camera-obscured {
+        filter: blur(18px) brightness(0.5);
+    }
+
+    .oss-staff-record-modal #cameraWrap.video-interrupted #cameraPreview {
+        filter: blur(18px) brightness(0.5);
+    }
+
+    .security-notice-modal .modal-content {
+        border-radius: 1rem;
+    }
+
+    /* Disabled buttons stay readable — keep the maroon/gold tone visible. */
+    .oss-staff-record-modal .modal-footer .btn:disabled,
+    .oss-staff-record-modal .modal-footer .btn.disabled {
+        opacity: 0.75;
+        filter: saturate(0.85);
+        cursor: not-allowed;
+    }
+
+    .oss-staff-record-modal .modal-footer .portal-btn:disabled {
+        color: #fff;
+        background: linear-gradient(135deg, #a24a55 0%, #8a3a44 100%);
+        border-color: #a24a55;
+        box-shadow: none;
+    }
+
+/* Shared Security-inspired mobile layout: independent scrolling and reachable actions */
+@media (max-width: 767.98px) {
+  .oss-staff-record-modal .modal-dialog { width: calc(100% - 1rem); max-width: none; margin: .5rem auto; }
+  .oss-staff-record-modal .modal-content { height: calc(100dvh - 1rem); max-height: calc(100dvh - 1rem); min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .oss-staff-record-modal .modal-header { flex: 0 0 auto; padding: .9rem 3.5rem .9rem 1rem; }
+  .oss-staff-record-modal .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto !important; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; padding: .85rem !important; }
+  .oss-staff-record-modal .modal-footer { flex: 0 0 auto; position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem max(.75rem, env(safe-area-inset-right)) calc(.75rem + env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left)); }
+  .oss-staff-record-modal .modal-footer .btn { min-height: 44px; max-width: 100%; }
+  .oss-staff-record-modal .modal-body .row { --bs-gutter-x: .75rem; }
+  .oss-staff-record-modal .modal-body input, .oss-staff-record-modal .modal-body select, .oss-staff-record-modal .modal-body textarea { max-width: 100%; }
+  .oss-staff-record-modal .modal-body img, .oss-staff-record-modal .modal-body canvas, .oss-staff-record-modal .modal-body video { max-width: 100%; height: auto; }
+}
+@media (max-width: 420px) {
+  .oss-staff-record-modal .modal-footer { justify-content: stretch; }
+  .oss-staff-record-modal .modal-footer .btn { flex: 1 1 auto; }
+  .oss-staff-record-modal .modal-title { font-size: 1rem; }
+  .oss-staff-record-modal .modal-body { font-size: .95rem; }
+}
+
+</style>
