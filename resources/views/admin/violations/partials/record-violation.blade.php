@@ -272,34 +272,100 @@ background: #800000 !important;
         gap: 0.5rem;
     }
 
-    /* Small screens: the primary CTA takes its own full-width row so
-       Back / Cancel / Record Violation can never be cut off or overlap. */
+    /* Keep the footer visible and make every action reachable on phones. */
+    .admin-record-modal .modal-content {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .admin-record-modal .modal-body {
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-record-modal .modal-footer {
+        position: relative;
+        z-index: 5;
+        flex: 0 0 auto;
+    }
+
     @media (max-width: 575.98px) {
-        .admin-record-modal .modal-header {
-            padding: 0.9rem 1rem;
+        .admin-record-modal .modal-dialog {
+            margin: 0.5rem;
+            max-width: calc(100% - 1rem);
         }
 
-        .admin-record-modal .modal-footer {
-            padding: 0.75rem 0.85rem;
+        .admin-record-modal .modal-content {
+            max-height: calc(100dvh - 1rem);
+        }
+
+        .admin-record-modal .modal-header {
+            padding: 0.8rem 0.9rem;
+            flex: 0 0 auto;
+        }
+
+        .admin-record-modal .modal-header .modal-title {
+            font-size: 1.1rem;
+            line-height: 1.3;
+        }
+
+        .admin-record-modal .modal-body {
+            max-height: none;
+            padding: 0.85rem;
+        }
+
+        .admin-record-modal .modal-footer,
+        .admin-record-modal .modal-footer.justify-content-between {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.55rem;
+            padding: 0.7rem 0.85rem calc(0.7rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        .admin-record-modal .modal-footer > #backStep {
+            grid-row: 1;
+            width: 100%;
+            margin: 0;
+            justify-content: center;
         }
 
         .admin-record-modal .modal-footer > .ms-auto {
-            /* The wrapper holding Cancel + Continue/Record becomes full width. */
-            margin-left: 0 !important;
+            grid-row: 2;
+            margin: 0 !important;
             width: 100%;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
+            min-width: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.55rem;
         }
 
         .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
-            flex: 1 1 auto;
+            width: 100%;
+            min-width: 0;
+            margin: 0 !important;
+            justify-content: center;
+            white-space: normal;
         }
 
-        .admin-record-modal .modal-footer #saveViolation {
-            /* Record Violation is the primary action → its own row. */
-            order: 3;
-            flex: 1 1 100%;
+        /* The submit CTA must remain visible on step 4, on its own row. */
+        .admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
+            display: inline-flex !important;
+            grid-row: 3;
+            width: 100%;
+            min-height: 46px;
+        }
+
+        .admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none) {
+            grid-row: 3;
+            min-height: 46px;
+        }
+
+        .admin-record-modal .modal-footer > .ms-auto > #cancelViolationBtn {
+            grid-row: 1;
+            min-height: 44px;
         }
     }
 </style>

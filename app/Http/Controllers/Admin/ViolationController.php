@@ -301,12 +301,6 @@ $students = User::with([
                 'reviewed_at' => now(),
             ]);
 
-            // Confirmation is the point at which a security/OSS-recorded
-            // violation becomes eligible for its automatic note-only sanction.
-            // The direct Admin recording flow has its own equivalent assignment;
-            // this also covers violations that were pending review first.
-            $this->assignAutomaticConsultationSanction($violation, $adminId);
-
             $this->notifyViolationOutcome($violation, 'confirmed');
 
             AuditLog::create([
@@ -355,80 +349,6 @@ $students = User::with([
         });
 
         return back()->with('success', 'Violation denied. The student and recording security officer were notified.');
-    }
-
-    /**
-     * Assign configured note-only sanctions after an administrator confirms a
-     * violation. Service sanctions are excluded because those require a
-     * separate student request and administrative scheduling.
-     */
-    private function assignAutomaticConsultationSanction(Violation $violation, int $adminId): void
-    {
-        if (StudentSanctionRecord::where('violation_id', $violation->violation_id)->exists()) {
-            return;
-        }
-
-        $violation->loadMissing('violationType');
-        $typeId = (int) ($violation->resolvedViolationType()?->violation_type_id
-            ?? $violation->violation_type_id
-            ?? 0);
-        if ($typeId <= 0 || empty($violation->student_number)) {
-            return;
-        }
-
-        $confirmedCount = Violation::where('student_number', $violation->student_number)
-            ->where('violation_type_id', $typeId)
-            ->where('status', Violation::STATUS_CONFIRMED)
-            ->count();
-        $offenseLevel = match ($confirmedCount) {
-            1 => '1st Offense',
-            2 => '2nd Offense',
-            3 => '3rd Offense',
-            default => $confirmedCount . 'th Offense',
-        };
-
-        $configuredSanction = DisciplinarySanction::where('violation_type_id', $typeId)
-            ->where('offense_level', $offenseLevel)
-            ->first()
-            ?? DisciplinarySanction::where('violation_type_id', $typeId)
-                ->orderBy('disciplinary_sanction_id')
-                ->first();
-
-        $sanctionText = trim((string) ($configuredSanction?->disciplinary_sanction ?? ''));
-        if (!$configuredSanction || $sanctionText === ''
-            || str_contains(strtolower($sanctionText), 'warning')
-            || StudentSanctionRecord::requiresStudentSanctionRequest($sanctionText)) {
-            return;
-        }
-
-        $record = StudentSanctionRecord::create([
-            'student_number' => $violation->student_number,
-            'violation_id' => $violation->violation_id,
-            'assigned_sanction_id' => $configuredSanction->disciplinary_sanction_id,
-            'assigned_by_admin_id' => $adminId,
-            'status' => StudentSanctionRecord::STATUS_PENDING,
-            'date_assigned' => now(),
-        ]);
-
-        try {
-            app(\App\Services\StudentNotificationService::class)->create(
-                studentNumber: $violation->student_number,
-                type: 'sanction',
-                title: 'Disciplinary Sanction Assigned',
-                message: 'A disciplinary sanction has been assigned for your confirmed violation: '
-                    . ($violation->violationType?->violation_type ?? 'your violation') . '. '
-                    . StudentSanctionRecord::CONSULTATION_NOTICE
-                    . ' Please review the Sanction tab in your Student Record.',
-                targetType: 'sanction_record',
-                targetId: (int) $record->record_id,
-            );
-        } catch (\Throwable $e) {
-            Log::warning('Automatic sanction notification failed after violation confirmation.', [
-                'violation_id' => $violation->violation_id,
-                'sanction_record_id' => $record->record_id,
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 
     /**
@@ -814,9 +734,18 @@ public function searchStudents(Request $request)
             'year' => [
                 'year_name' => $student->studentInfo?->year?->year,
             ],
+            // Resolve the section from the student's linked section record.
+            // The explicit lookup is a fallback for older/inconsistent Eloquent
+            // relationship hydration while keeping the existing JSON shape.
             'section' => [
-                'section_name' => $student->studentInfo?->section?->section_name,
+                'section_name' => $student->studentInfo?->section?->section_name
+                    ?? Section::where('section_id', $student->studentInfo?->section_id)
+                        ->value('section_name'),
             ],
+            // Also expose a flat value for any client code that expects it.
+            'section_name' => $student->studentInfo?->section?->section_name
+                ?? Section::where('section_id', $student->studentInfo?->section_id)
+                    ->value('section_name'),
         ];
     }));
 }
@@ -1079,42 +1008,14 @@ $exists = Violation::where(
                 'reviewed_at' => now(),
             ]);
 
-            // Persist captured/uploaded evidence in the same transaction.
+            // Persist any captured/uploaded evidence using the existing
+            // evidence subsystem (private storage, evidence codes, security
+            // events). Runs inside the same transaction so a storage failure
+            // rolls back the violation too.
             $captureSessionId = $request->input('capture_session_id')
                 ? (string) $request->input('capture_session_id')
                 : null;
             $this->storeEvidence($violation, $request, (int) Auth::guard('admin')->id(), $captureSessionId);
-
-            // Auto-assign sanctions that use the OSS consultation note. Only
-            // service sanctions (Community/Campus Service) require a student
-            // request and later scheduling. Never duplicate a sanction record.
-            $confirmedCount = Violation::where('student_number', $validated['student_number'])
-                ->where('violation_type_id', $violationType->violation_type_id)
-                ->where('status', Violation::STATUS_CONFIRMED)
-                ->count();
-            $offenseLevel = match ($confirmedCount) {
-                1 => '1st Offense', 2 => '2nd Offense', 3 => '3rd Offense',
-                default => $confirmedCount . 'th Offense',
-            };
-            $configuredSanction = DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
-                ->where('offense_level', $offenseLevel)->first()
-                ?? DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
-                    ->orderBy('disciplinary_sanction_id')->first();
-            $sanctionText = trim((string) ($configuredSanction?->disciplinary_sanction ?? ''));
-            $autoAssignedSanctionRecord = null;
-            if ($configuredSanction && $sanctionText !== ''
-                && !str_contains(strtolower($sanctionText), 'warning')
-                && !StudentSanctionRecord::requiresStudentSanctionRequest($sanctionText)
-                && !StudentSanctionRecord::where('violation_id', $violation->violation_id)->exists()) {
-                $autoAssignedSanctionRecord = StudentSanctionRecord::create([
-                    'student_number' => $validated['student_number'],
-                    'violation_id' => $violation->violation_id,
-                    'assigned_sanction_id' => $configuredSanction->disciplinary_sanction_id,
-                    'assigned_by_admin_id' => Auth::guard('admin')->id(),
-                    'status' => StudentSanctionRecord::STATUS_PENDING,
-                    'date_assigned' => now(),
-                ]);
-            }
 
             DB::commit();
 
@@ -1124,27 +1025,12 @@ $exists = Violation::where(
                     studentNumber: $validated['student_number'],
                     type: 'violation',
                     title: 'Violation Notice',
-                    message: 'A violation has been recorded against your record: ' . $violationType->violation_type . '. Please review your Student Record. If you believe the record is incorrect, you may request a correction. If the violation requires a disciplinary sanction request, you may submit one through your account for administrative review.',
+                    message: 'A violation has been recorded against your record: ' . $violationType->violation_type . '. Please review your Student Record.',
                     targetType: 'violation',
                     targetId: (int) $violation->violation_id,
                 );
             } catch (\Throwable $e) {
                 // Notification must never break the violation recording.
-            }
-
-            if ($autoAssignedSanctionRecord) {
-                try {
-                    app(\App\Services\StudentNotificationService::class)->create(
-                        studentNumber: $validated['student_number'],
-                        type: 'sanction',
-                        title: 'Disciplinary Sanction Assigned',
-                        message: 'A disciplinary sanction has been assigned for your confirmed violation: ' . $violationType->violation_type . '. ' . StudentSanctionRecord::CONSULTATION_NOTICE . ' Please review the Sanction tab in your Student Record.',
-                        targetType: 'sanction_record',
-                        targetId: (int) $autoAssignedSanctionRecord->record_id,
-                    );
-                } catch (\Throwable $e) {
-                    // Notification/email failure must not roll back a recorded violation.
-                }
             }
 
             return response()->json([

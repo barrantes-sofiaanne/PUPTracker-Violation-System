@@ -1319,6 +1319,8 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById("studentProgram").value || "-";
         document.getElementById("reviewStudentYear").textContent =
             document.getElementById("studentYear").value || "-";
+        document.getElementById("reviewStudentSection").textContent =
+            document.getElementById("studentSection").value || "-";
         document.getElementById("reviewCategory").textContent =
             document.getElementById("previewCategory").textContent || "-";
         document.getElementById("reviewViolationType").textContent =
@@ -1408,8 +1410,10 @@ document.addEventListener("DOMContentLoaded", function () {
             student.program?.program_name ?? "-";
         document.getElementById("studentYear").value =
             student.year?.year_name ?? "-";
-        document.getElementById("studentSection").value =
-            student.section?.section_name ?? "-";
+        const sectionName =
+            student.section?.section_name ?? student.section_name ?? "-";
+
+        document.getElementById("studentSection").value = sectionName;
 
         document.getElementById("noStudentSelected").classList.add("d-none");
         document
