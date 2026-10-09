@@ -292,6 +292,10 @@ Route::middleware(['auth:student', 'student.profile.complete', 'session.inactivi
         Route::get('/record', [StudentRecordController::class, 'index'])
             ->name('student.record');
 
+        Route::post('/violations/{violation}/deletion-request', [StudentRecordController::class, 'requestDeletion'])
+            ->whereNumber('violation')
+            ->name('student.violations.deletion-request');
+
         Route::post(
     '/violations/{violation}/correction-request',
     [StudentRecordController::class, 'requestCorrection']
@@ -411,6 +415,9 @@ Route::post(
     [App\Http\Controllers\Admin\ViolationCorrectionRequestController::class, 'approve']
 )->whereNumber('correctionRequest')
  ->name('violation-correction-requests.approve');
+
+Route::get('/violation-change-requests/{correctionRequest}/evidence/{fileIndex}', [App\Http\Controllers\Admin\ViolationCorrectionRequestController::class, 'downloadDeletionEvidence'])
+    ->whereNumber('correctionRequest')->whereNumber('fileIndex')->name('violation-change-requests.evidence');
 
 Route::post(
     '/violation-correction-requests/{correctionRequest}/reject',

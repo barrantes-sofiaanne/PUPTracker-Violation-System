@@ -134,7 +134,7 @@
 
                 <i class="bi bi-pencil-square"></i>
 
-                Correction Requests
+                Violation Change Requests
 
                 @if($pendingCorrectionRequestCount > 0)
                     <span class="sidebar-badge ms-auto" title="{{ $pendingCorrectionRequestCount }} correction request(s) awaiting review">{{ $pendingCorrectionRequestCount > 9 ? '9+' : $pendingCorrectionRequestCount }}</span>

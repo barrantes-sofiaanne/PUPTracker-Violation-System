@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ViolationCorrectionRequestController extends Controller
 {
@@ -58,12 +59,12 @@ class ViolationCorrectionRequestController extends Controller
             'Administrator authentication is required.'
         );
 
+        if ($correctionRequest->isDeletionRequest()) {
+            return $this->approveDeletion($request, $correctionRequest, $adminId);
+        }
+
         $validated = $request->validate([
-            'review_remarks' => [
-                'nullable',
-                'string',
-                'max:2000',
-            ],
+            'review_remarks' => ['nullable', 'string', 'max:2000'],
         ]);
 
         try {
@@ -556,10 +557,10 @@ class ViolationCorrectionRequestController extends Controller
                         'violation_correction',
 
                     title:
-                        'Correction Request Rejected',
+                        $updatedRequest->isDeletionRequest() ? 'Deletion Request Rejected' : 'Correction Request Rejected',
 
                     message:
-                        'Your violation correction request was reviewed by the administrator and was not approved. Please review the administrator remarks.',
+                        $updatedRequest->isDeletionRequest() ? 'Your violation deletion request was not approved. The violation record remains unchanged. Please review the administrator remarks.' : 'Your violation correction request was reviewed by the administrator and was not approved. Please review the administrator remarks.',
 
                     targetType:
                         'violation_correction_request',
@@ -613,4 +614,100 @@ class ViolationCorrectionRequestController extends Controller
             ]);
         }
     }
+
+    /** Approve deletion only after preserving a durable audit snapshot. */
+    private function approveDeletion(Request $request, ViolationCorrectionRequest $correctionRequest, int $adminId): RedirectResponse
+    {
+        $validated = $request->validate(['review_remarks' => ['nullable', 'string', 'max:2000']]);
+        try {
+            $result = DB::transaction(function () use ($correctionRequest, $adminId, $validated) {
+                $locked = ViolationCorrectionRequest::query()->lockForUpdate()->findOrFail($correctionRequest->request_id);
+                if ($locked->status !== ViolationCorrectionRequest::STATUS_PENDING || !$locked->isDeletionRequest()) {
+                    throw new \RuntimeException('This deletion request has already been reviewed.');
+                }
+                $violation = Violation::query()->lockForUpdate()->findOrFail($locked->violation_id);
+                if ((string) $violation->student_number !== (string) $locked->student_number || !$violation->is_effective) {
+                    throw new \RuntimeException('The violation is no longer eligible for deletion.');
+                }
+                $snapshot = [
+                    'violation_id' => $violation->violation_id,
+                    'student_number' => $violation->student_number,
+                    'violation_type_id' => $violation->violation_type_id,
+                    'violation_type' => $violation->violation_type_display,
+                    'violation_category' => $violation->violation_category_display,
+                    'violation_date' => optional($violation->violation_date)->toDateTimeString(),
+                    'description' => $violation->description,
+                    'status' => $violation->status,
+                    'recorder_type' => $violation->recorder_type,
+                    'recorder_id' => $violation->recorder_id,
+                    'request_id' => $locked->request_id,
+                    'student_reason' => $locked->reason,
+                    'request_evidence' => $locked->deletion_evidence,
+                    'approved_at' => now()->toDateTimeString(),
+                    'approved_by_admin_id' => $adminId,
+                ];
+                $originalId = (int) $violation->violation_id;
+                $locked->update([
+                    'original_violation_id' => $originalId,
+                    'violation_id' => null,
+                    'status' => ViolationCorrectionRequest::STATUS_APPROVED,
+                    'reviewed_by_admin_id' => $adminId,
+                    'reviewed_at' => now(),
+                    'review_remarks' => isset($validated['review_remarks']) ? trim($validated['review_remarks']) : null,
+                ]);
+                AuditLog::create([
+                    'actor_type' => 'admin', 'actor_id' => $adminId,
+                    'action' => 'Approve Violation Deletion Request', 'module' => 'Violations',
+                    'description' => 'Approved deletion request #' . $locked->request_id . '. Archived snapshot: ' . json_encode($snapshot, JSON_UNESCAPED_UNICODE) . '. Administrator remarks: ' . trim((string) ($validated['review_remarks'] ?? 'None')),
+                ]);
+                // This removes the active violation from official records. The
+                // request and full deletion snapshot remain in the audit trail.
+                $violation->delete();
+                return $locked;
+            });
+            try {
+                app(StudentNotificationService::class)->create(
+                    studentNumber: $result->student_number, type: 'violation_deletion',
+                    title: 'Violation Deletion Request Approved',
+                    message: 'Your request to delete the violation record was approved. The record has been removed from your active violation record.',
+                    targetType: 'violation_change_request', targetId: (int) $result->request_id
+                );
+            } catch (\Throwable $e) { Log::warning('Deletion approval notification failed.', ['request_id' => $result->request_id, 'error' => $e->getMessage()]); }
+            return back()->with('success', 'The deletion request was approved. The violation was removed from active records and the decision was preserved in the audit log.');
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['correction_request' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            Log::error('Violation deletion approval failed.', ['request_id' => $correctionRequest->request_id, 'error' => $e->getMessage()]);
+            return back()->withErrors(['correction_request' => 'The deletion request could not be approved. No violation data was changed.']);
+        }
+    }
+
+    /** Securely stream evidence attached to a deletion request to an admin. */
+    public function downloadDeletionEvidence(ViolationCorrectionRequest $correctionRequest, int $fileIndex)
+    {
+        abort_unless(auth('admin')->check(), 403);
+        abort_unless($correctionRequest->isDeletionRequest(), 404);
+        $files = $correctionRequest->deletion_evidence ?? [];
+        abort_unless(isset($files[$fileIndex]['path']), 404);
+        $file = $files[$fileIndex];
+        abort_unless(Storage::disk('local')->exists($file['path']), 404);
+        $downloadName = $file['name'] ?? 'deletion-evidence';
+
+        return response()->streamDownload(function () use ($file): void {
+            $stream = Storage::disk('local')->readStream($file['path']);
+
+            if (! is_resource($stream)) {
+                abort(404, 'The evidence file could not be opened.');
+            }
+
+            try {
+                fpassthru($stream);
+            } finally {
+                fclose($stream);
+            }
+        }, $downloadName);
+    }
+
+
+
 }

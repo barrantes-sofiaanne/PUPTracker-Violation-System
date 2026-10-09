@@ -26,16 +26,32 @@ class ViolationCorrectionRequest extends Model
         'reviewed_by_admin_id',
         'reviewed_at',
         'review_remarks',
+        'request_type',
+        'deletion_evidence',
+        'original_violation_id',
+        'request_type',
+        'deletion_evidence',
+        'original_violation_id',
     ];
 
     protected $casts = [
         'requested_violation_date' => 'datetime',
         'reviewed_at' => 'datetime',
+        'deletion_evidence' => 'array',
+        'deletion_evidence' => 'array',
     ];
 
     public const STATUS_PENDING = 'pending';
     public const STATUS_APPROVED = 'approved';
     public const STATUS_REJECTED = 'rejected';
+
+    public const TYPE_CORRECTION = 'correction';
+    public const TYPE_DELETION = 'deletion';
+
+    public function isDeletionRequest(): bool
+    {
+        return ($this->request_type ?? self::TYPE_CORRECTION) === self::TYPE_DELETION;
+    }
 
     public function violation(): BelongsTo
     {

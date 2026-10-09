@@ -13,6 +13,8 @@ use App\Models\SanctionRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Services\AdminNotificationService;
 use App\Models\ViolationEvidence;
 use App\Models\ViolationCorrectionRequest;
@@ -71,31 +73,6 @@ $assignedSanctionViolationIds = StudentSanctionRecord::where(
            ->where('status', Violation::STATUS_CONFIRMED)
            ->orderByDesc('violation_date')
            ->paginate(10);
-
-// Mark only individual violation rows whose configured sanction genuinely
-// requires a student request (Community/Campus Service). Other sanctions are
-// assigned automatically when the violation is confirmed.
-$violations->getCollection()->transform(function ($violation) use ($user) {
-    $typeId = $violation->resolvedViolationType()?->violation_type_id;
-    $violation->student_requires_sanction_request = false;
-    if (!$typeId) {
-        return $violation;
-    }
-    $count = Violation::where('student_number', $user->student_number)
-        ->where('violation_type_id', $typeId)
-        ->where('status', Violation::STATUS_CONFIRMED)
-        ->where('violation_date', '<=', $violation->violation_date)
-        ->count();
-    $level = match ($count) {
-        1 => '1st Offense', 2 => '2nd Offense', 3 => '3rd Offense',
-        default => $count . 'th Offense',
-    };
-    $sanction = DisciplinarySanction::where('violation_type_id', $typeId)
-        ->where('offense_level', $level)->first()
-        ?? DisciplinarySanction::where('violation_type_id', $typeId)->orderBy('disciplinary_sanction_id')->first();
-    $violation->student_requires_sanction_request = StudentSanctionRecord::requiresStudentSanctionRequest($sanction?->disciplinary_sanction);
-    return $violation;
-});
 /*
 |--------------------------------------------------------------------------
 | Summary by Violation
@@ -378,7 +355,7 @@ public function requestSanction(Request $request)
      * Inactive students cannot create new sanction requests.
      * This is enforced server-side even if the browser UI is bypassed.
      */
-    if (! $user instanceof \App\Models\User || ! $user->isActiveAccount()) {
+    if (! $user instanceof \App\Models\User || ! $this->isStudentAccountActive($user)) {
         return response()->json([
             'success' => false,
             'message' => 'A sanction request cannot be created because your PUPTracker account is inactive.',
@@ -626,6 +603,81 @@ public function correctionOptions(Request $request, Violation $violation)
     ]);
 }
 
+
+    /** Submit a deletion request for an individual confirmed violation. */
+    public function requestDeletion(Request $request, Violation $violation)
+    {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 403);
+        abort_unless((string) $violation->student_number === (string) $user->student_number, 403);
+        abort_unless($this->isStudentAccountActive($user), 403, 'Your account is inactive.');
+        abort_unless($violation->is_effective, 422, 'Only confirmed violations can be submitted for deletion review.');
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'min:10', 'max:2000'],
+            'evidence_files' => ['nullable', 'array', 'max:5'],
+            'evidence_files.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,webp,pdf'],
+            'camera_image' => ['nullable', 'string', 'max:12000000'],
+        ]);
+
+        $pending = ViolationCorrectionRequest::where('violation_id', $violation->violation_id)
+            ->where('student_number', $user->student_number)
+            ->where('status', ViolationCorrectionRequest::STATUS_PENDING)->exists();
+        if ($pending) {
+            return back()->withErrors(['correction_request' => 'A change request for this violation is already pending review.']);
+        }
+
+        $files = [];
+        try {
+            foreach ($request->file('evidence_files', []) as $file) {
+                $path = $file->store('private/violation-change-requests/' . $violation->violation_id, 'local');
+                $files[] = ['path' => $path, 'name' => $file->getClientOriginalName(), 'mime' => $file->getMimeType()];
+            }
+            if (!empty($validated['camera_image'])) {
+                if (!preg_match('/^data:image\/(png|jpeg|webp);base64,/', $validated['camera_image'], $matches)) {
+                    throw new \RuntimeException('The camera image format is invalid.');
+                }
+                $raw = substr($validated['camera_image'], strpos($validated['camera_image'], ',') + 1);
+                $binary = base64_decode($raw, true);
+                if ($binary === false || strlen($binary) > 8 * 1024 * 1024) {
+                    throw new \RuntimeException('The captured image is invalid or too large.');
+                }
+                $extension = $matches[1] === 'jpeg' ? 'jpg' : $matches[1];
+                $path = 'private/violation-change-requests/' . $violation->violation_id . '/' . Str::uuid() . '.' . $extension;
+                Storage::disk('local')->put($path, $binary);
+                $files[] = ['path' => $path, 'name' => 'Camera evidence.' . $extension, 'mime' => 'image/' . $matches[1]];
+            }
+
+            ViolationCorrectionRequest::create([
+                'violation_id' => $violation->violation_id,
+                'student_number' => $user->student_number,
+                'request_type' => ViolationCorrectionRequest::TYPE_DELETION,
+                'reason' => trim($validated['reason']),
+                'deletion_evidence' => $files,
+                'status' => ViolationCorrectionRequest::STATUS_PENDING,
+            ]);
+
+            try {
+                app(AdminNotificationService::class)->create(
+                    type: 'violation_deletion_request',
+                    title: 'Violation Deletion Request',
+                    message: $user->first_name . ' ' . $user->last_name . ' (' . $user->student_number . ') submitted a deletion request for violation #' . $violation->violation_id . '.',
+                    targetType: 'violation_correction_request',
+                    targetId: (int) ViolationCorrectionRequest::where('student_number', $user->student_number)->where('violation_id', $violation->violation_id)->latest('request_id')->value('request_id'),
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Unable to send admin notification for deletion request.', ['error' => $e->getMessage()]);
+            }
+
+            return redirect()->route('student.record')->with('success', 'Your deletion request and supporting evidence were submitted to the Administrator for review.');
+        } catch (\Throwable $e) {
+            foreach ($files as $file) Storage::disk('local')->delete($file['path']);
+            Log::error('Student deletion request failed.', ['violation_id' => $violation->violation_id, 'error' => $e->getMessage()]);
+            return back()->withErrors(['correction_request' => 'The deletion request could not be submitted. Please try again.']);
+        }
+    }
+
+
 public function requestCorrection(
     Request $request,
     Violation $violation
@@ -651,7 +703,7 @@ public function requestCorrection(
     /*
      * Inactive student accounts cannot create new requests.
      */
-    if (! $user->isActiveAccount()) {
+    if (! $this->isStudentAccountActive($user)) {
         return back()->withErrors([
             'correction_request' =>
                 'A correction request cannot be submitted because your account is inactive.',
@@ -1223,5 +1275,19 @@ public function requestCorrection(
             $evidence->original_name,
             ['evidence_id' => $evidence->evidence_id ?? null]
         );
+    }
+
+    private function isStudentAccountActive(User $user): bool
+    {
+        $active = $user->getAttribute('is_active');
+
+        if ($active !== null) {
+            return (bool) $active;
+        }
+
+        $status = $user->getAttribute('account_status') ?? $user->getAttribute('status');
+
+        return $status === null
+            || ! in_array(strtolower(trim((string) $status)), ['inactive', 'disabled', 'deactivated'], true);
     }
 }
