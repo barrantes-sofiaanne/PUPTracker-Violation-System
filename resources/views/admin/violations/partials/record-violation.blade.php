@@ -368,6 +368,141 @@ background: #800000 !important;
             min-height: 44px;
         }
     }
+
+    /* ==========================================================
+       MOBILE SCROLL FIX
+       Keep the header and action footer visible while the wizard
+       step content scrolls independently on small screens.
+       ========================================================== */
+    .admin-record-modal .modal-dialog {
+        width: calc(100% - 2rem);
+        max-width: 1160px;
+        margin: 1rem auto;
+    }
+
+    .admin-record-modal .modal-content {
+        display: flex !important;
+        flex-direction: column;
+        height: auto;
+        max-height: calc(100vh - 2rem);
+        max-height: calc(100dvh - 2rem);
+        min-height: 0;
+        overflow: hidden !important;
+    }
+
+    .admin-record-modal .modal-header {
+        flex: 0 0 auto;
+    }
+
+    .admin-record-modal .modal-body {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        overscroll-behavior-y: contain;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+    }
+
+    .admin-record-modal .modal-footer {
+        position: relative;
+        z-index: 10;
+        flex: 0 0 auto !important;
+        min-width: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        padding-bottom: max(0.8rem, env(safe-area-inset-bottom, 0px));
+        background: #fffdf6;
+    }
+
+    .admin-record-modal .modal-footer button {
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 575.98px) {
+        .admin-record-modal .modal-dialog {
+            width: calc(100% - 1rem);
+            max-width: none;
+            margin: 0.5rem auto;
+        }
+
+        .admin-record-modal .modal-content {
+            max-height: calc(100vh - 1rem);
+            max-height: calc(100dvh - 1rem);
+            border-radius: 0.85rem !important;
+        }
+
+        .admin-record-modal .modal-header {
+            padding: 0.75rem;
+        }
+
+        .admin-record-modal .modal-header .modal-title {
+            font-size: 1rem;
+            line-height: 1.3;
+            overflow-wrap: anywhere;
+        }
+
+        .admin-record-modal .modal-body {
+            padding: 0.75rem;
+        }
+
+        .admin-record-modal .modal-footer,
+        .admin-record-modal .modal-footer.justify-content-between {
+            display: flex !important;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.5rem;
+            padding: 0.7rem 0.75rem
+                calc(0.7rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        .admin-record-modal .modal-footer > #backStep {
+            width: 100%;
+            margin: 0 !important;
+            justify-content: center;
+        }
+
+        .admin-record-modal .modal-footer > .ms-auto {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            min-width: 0;
+            gap: 0.5rem;
+            margin: 0 !important;
+        }
+
+        .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
+            width: 100%;
+            min-width: 0;
+            margin: 0 !important;
+            justify-content: center;
+            white-space: normal;
+        }
+
+        .admin-record-modal .modal-footer
+            > .ms-auto > #saveViolation:not(.d-none) {
+            display: inline-flex !important;
+            width: 100%;
+            min-height: 46px;
+        }
+
+        .admin-record-modal .modal-footer
+            > .ms-auto > #continueStep:not(.d-none) {
+            min-height: 46px;
+        }
+
+        .admin-record-modal .wizard-bubble {
+            width: 42px;
+            height: 42px;
+            font-size: 0.9rem;
+        }
+    }
+
 </style>
 
 <div class="modal fade admin-record-modal"
