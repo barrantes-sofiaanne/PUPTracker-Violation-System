@@ -1583,7 +1583,7 @@ background: #800000 !important;
                             id="continueStep"
                             class="admin-btn admin-btn-primary">
 
-                            Continue
+                            Next
 
                             <i class="bi bi-arrow-right ms-2"></i>
 
@@ -1993,27 +1993,91 @@ background: #ffffff;
 
 
 
-/* Unified Record Violation footer: keep Back and Next/Submit side-by-side on phones. */
-@media (max-width: 575.98px) {
-  .admin-record-modal .modal-footer,
-  .oss-staff-record-modal .modal-footer,
-  .security-record-modal .modal-footer {
-    display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: .5rem;
-    padding: .65rem max(.65rem, env(safe-area-inset-right)) calc(.65rem + env(safe-area-inset-bottom)) max(.65rem, env(safe-area-inset-left));
-  }
-  .admin-record-modal .modal-footer #backStep,
-  .oss-staff-record-modal .modal-footer #backStep,
-  .security-record-modal .modal-footer #backStep,
-  .admin-record-modal .modal-footer #nextStep,
-  .oss-staff-record-modal .modal-footer #nextStep,
-  .security-record-modal .modal-footer #nextStep,
-  .admin-record-modal .modal-footer #saveViolation,
-  .oss-staff-record-modal .modal-footer #saveViolation,
-  .security-record-modal .modal-footer #saveViolation {
-    flex: 0 1 auto !important; width: auto !important; min-width: 0; max-width: 100%; white-space: nowrap;
-  }
-  .admin-record-modal .modal-footer #saveViolation,
-  .oss-staff-record-modal .modal-footer #saveViolation,
-  .security-record-modal .modal-footer #saveViolation { order: 0 !important; }
+/* UI alignment with the Security Record Violation modal.
+   Presentation-only overrides: do not change wizard or submission handlers. */
+.admin-record-modal .modal-header {
+    background: #800000 !important;
+    color: #fff !important;
 }
+.admin-record-modal .modal-header .modal-title,
+.admin-record-modal .modal-header .modal-title i,
+.admin-record-modal .modal-header small {
+    color: #fff !important;
+}
+.admin-record-modal .modal-footer {
+    background: #fffdf6 !important;
+    border-top: 1px solid rgba(122, 15, 30, .12) !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: .5rem !important;
+}
+.admin-record-modal .modal-footer > .ms-auto {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    gap: .5rem !important;
+}
+.admin-record-modal .modal-footer #cancelViolationBtn {
+    display: none !important;
+}
+.admin-record-modal .modal-footer #backStep,
+.admin-record-modal .modal-footer #continueStep,
+.admin-record-modal .modal-footer #saveViolation {
+    min-height: 44px;
+    margin: 0 !important;
+    white-space: nowrap;
+}
+.admin-record-modal .modal-footer #continueStep,
+.admin-record-modal .modal-footer #saveViolation {
+    color: #fff !important;
+    background: #800000 !important;
+    border-color: #800000 !important;
+}
+.admin-record-modal .modal-footer #backStep {
+    flex: 0 1 45% !important;
+}
+.admin-record-modal .modal-footer #continueStep,
+.admin-record-modal .modal-footer #saveViolation {
+    flex: 0 1 55% !important;
+}
+@media (max-width: 575.98px) {
+    .admin-record-modal .modal-footer {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: .5rem !important;
+        padding: .75rem max(.75rem, env(safe-area-inset-right)) calc(.75rem + env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left)) !important;
+    }
+    .admin-record-modal .modal-footer > #backStep {
+        flex: 1 1 45% !important;
+        width: auto !important;
+        grid-row: auto !important;
+    }
+    .admin-record-modal .modal-footer > .ms-auto {
+        flex: 1 1 55% !important;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        width: auto !important;
+        margin: 0 !important;
+        gap: .5rem !important;
+    }
+    .admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none),
+    .admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        grid-row: auto !important;
+    }
+    .admin-record-modal .modal-footer > .ms-auto > #cancelViolationBtn {
+        display: none !important;
+    }
+}
+
 </style>
