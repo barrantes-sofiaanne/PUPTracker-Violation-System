@@ -1,4 +1,4 @@
-```dockerfile
+
 FROM php:8.2-cli
 
 # Install system packages and PHP extensions
@@ -89,4 +89,3 @@ EXPOSE 8080
 
 # Start Laravel
 CMD ["sh", "-c", "if [ \"${CLEAR_MAINTENANCE_ON_DEPLOY:-false}\" = \"true\" ]; then php artisan up; fi; exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
-```
