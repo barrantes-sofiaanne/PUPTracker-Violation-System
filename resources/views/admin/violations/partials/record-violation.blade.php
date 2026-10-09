@@ -2081,3 +2081,59 @@ background: #ffffff;
 }
 
 </style>
+
+
+{{-- Final UI parity overrides: review identity confirmation and compact footer --}}
+<style>
+/* Keep the Admin identity confirmation readable and visually aligned with Security. */
+.admin-record-modal #identityConfirmed {
+    width: 1.15rem; height: 1.15rem; margin-top: .2rem; flex: 0 0 auto;
+    accent-color: #850000; cursor: pointer;
+}
+.admin-record-modal .form-check:has(#identityConfirmed) {
+    display: flex; align-items: flex-start; gap: .7rem;
+    padding: 1rem !important; margin-top: 1rem !important;
+    border: 1px solid #eadfdb !important; border-radius: 14px !important;
+    background: #fff !important;
+}
+.admin-record-modal .form-check:has(#identityConfirmed) .form-check-input {
+    float: none !important; margin-left: 0 !important;
+}
+.admin-record-modal .form-check:has(#identityConfirmed) .form-check-label {
+    display: block; line-height: 1.55; font-size: clamp(.95rem, 2.8vw, 1.05rem);
+}
+.admin-record-modal .modal-footer {
+    display: flex !important; align-items: stretch !important;
+    justify-content: space-between !important; gap: .65rem !important;
+}
+.admin-record-modal .modal-footer > #backStep,
+.admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none),
+.admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
+    min-height: 52px !important; height: 52px !important;
+    padding: .7rem 1rem !important; border-radius: 14px !important;
+    font-size: 1rem !important; font-weight: 700 !important;
+    flex: 1 1 0 !important; width: auto !important; min-width: 0 !important;
+}
+.admin-record-modal .modal-footer > .ms-auto {
+    display: flex !important; flex: 1 1 0 !important;
+    flex-direction: row !important; flex-wrap: nowrap !important;
+    gap: .65rem !important; width: auto !important; margin: 0 !important;
+}
+.admin-record-modal .modal-footer > #backStep { flex: 1 1 0 !important; }
+.admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none),
+.admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
+    background: #850000 !important; border-color: #850000 !important; color: #fff !important;
+}
+@media (max-width: 576px) {
+    .admin-record-modal .modal-footer {
+        display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
+        padding: .7rem max(.7rem, env(safe-area-inset-right)) calc(.7rem + env(safe-area-inset-bottom)) max(.7rem, env(safe-area-inset-left)) !important;
+    }
+    .admin-record-modal .modal-footer > #backStep,
+    .admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none),
+    .admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
+        min-height: 48px !important; height: 48px !important; padding: .6rem .5rem !important;
+        font-size: .92rem !important;
+    }
+}
+</style>
