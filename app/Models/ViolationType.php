@@ -15,7 +15,7 @@ class ViolationType extends Model
     public $timestamps = false;
 
  protected $fillable = [
-    'violation_type',
+    'violation_type_id',
     'violation_category_id',
     'resolution_number',
     'violation_description',
@@ -35,7 +35,7 @@ public function violationCategory(): BelongsTo
     {
         return $this->hasMany(
             Violation::class,
-            'violation_type',
+            'violation_type_id',
             'violation_type_id'
         );
     }

@@ -45,6 +45,30 @@
         <div class="card-body">
             <div class="tab-content user-management-content">
                 <div class="tab-pane fade {{ request('tab', 'students') === 'students' ? 'show active' : '' }}" id="students-pane" role="tabpanel">
+
+                    @if(session('success'))
+                        <div class="alert alert-success alert-dismissible fade show admin-alert mb-3" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            {{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show admin-alert mb-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            {{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if(session('info'))
+                        <div class="alert alert-info alert-dismissible fade show admin-alert mb-3" role="alert">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            {{ session('info') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
                     @php
                         $studentFiltersActive = request()->filled('filter_program_id')
                             || request()->filled('filter_year_id')
@@ -88,18 +112,7 @@
                                     <i class="bi bi-box-arrow-in-down-right me-1"></i>
                                     Import
                                 </button>
-                                <a href="{{ route('admin.user-management-history') }}" class="admin-btn admin-btn-neutral">
-                                    <i class="bi bi-arrow-counterclockwise me-1"></i>
-                                    History
-                                </a>
-                                <a href="{{ route('admin.students', ['tab' => 'students']) }}" class="admin-btn admin-btn-neutral">
-                                    <i class="bi bi-arrow-repeat me-1"></i>
-                                    Refresh
-                                </a>
-                                <button type="button" class="admin-btn admin-btn-danger" data-bs-toggle="modal" data-bs-target="#createStudentModal">
-                                    <i class="bi bi-plus-lg me-1"></i>
-                                    Add Student
-                                </button>
+
                             </div>
                         </div>
 
@@ -232,32 +245,37 @@
                                             @endif
                                         </td>
                                         <td class="text-end user-action-cell">
-                                            <div class="user-action-group">
-                                                <button
-                                                    class="admin-btn admin-btn-view admin-btn-sm user-action-btn editStudentBtn"
-                                                    data-id="{{ $student->student_number }}"
-                                                    data-first="{{ $student->first_name }}"
-                                                    data-middle="{{ $student->middle_name }}"
-                                                    data-last="{{ $student->last_name }}"
-                                                    data-suffix="{{ $student->name_suffix }}"
-                                                    data-email="{{ $student->email }}"
-                                                    data-program="{{ $student->program_id }}"
-                                                    data-year="{{ $student->year_id }}"
-                                                    data-section="{{ $student->section_id }}"
-                                                    data-gender="{{ $student->gender_id }}"
-                                                    data-status="{{ $student->status_id }}"
-                                                    data-ladderized="{{ $student->studentInfo?->ladderized ?? 0 }}">
-                                                    <i class="bi bi-pencil-square me-1"></i>
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteStudentBtn"
-                                                    data-id="{{ $student->student_number }}"
-                                                    data-name="{{ $student->first_name }} {{ $student->last_name }}">
-                                                    <i class="bi bi-trash me-1"></i>
-                                                    Delete
-                                                </button>
-                                            </div>
+<div class="user-action-group">
+
+    <button
+        class="admin-btn admin-btn-view admin-btn-sm user-action-btn editStudentBtn"
+        data-id="{{ $student->student_number }}"
+        data-first="{{ $student->first_name }}"
+        data-middle="{{ $student->middle_name }}"
+        data-last="{{ $student->last_name }}"
+        data-suffix="{{ $student->name_suffix }}"
+        data-email="{{ $student->email }}"
+        data-program="{{ $student->program_id }}"
+        data-year="{{ $student->studentInfo?->year_id }}"
+        data-section="{{ $student->section_id }}"
+        data-gender="{{ $student->gender_id }}"
+        data-status="{{ $student->status_id }}"
+        data-ladderized="{{ $student->studentInfo?->ladderized ?? 0 }}"
+    >
+        <i class="bi bi-pencil-square me-1"></i>
+        Edit
+    </button>
+
+    <button
+        class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteStudentBtn"
+        data-id="{{ $student->student_number }}"
+        data-name="{{ $student->first_name }} {{ $student->last_name }}"
+    >
+        <i class="bi bi-trash me-1"></i>
+        Delete
+    </button>
+
+</div>
                                         </td>
                                     </tr>
                                 @empty
@@ -565,8 +583,16 @@
             <div class="col-md-4"><label class="form-label">Name Suffix</label><input type="text" id="name_suffix" class="form-control" placeholder="—" readonly></div>
             <div class="col-md-4"><label class="form-label">Email</label><input type="email" id="email" class="form-control" readonly></div>
             <div class="col-md-4"><label class="form-label">Program</label><select name="program_id" id="program_id" class="form-select" onchange="toggleEditLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
-            <div class="col-md-6"><label class="form-label">Year</label><select name="year_id" id="year_id" class="form-select">@foreach($years as $year)<option value="{{ $year->year_id }}">{{ $year->year }}</option>@endforeach</select></div>
-            <div class="col-md-6"><label class="form-label">Section</label><select name="section_id" id="section_id" class="form-select">@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
+<div class="col-md-6">
+    <label for="year_id" class="form-label">Year</label>
+    <select name="year_id" id="year_id" class="form-select" required>
+        @foreach($years as $year)
+            <option value="{{ $year->year_id }}">
+                Year {{ $year->year }}
+            </option>
+        @endforeach
+    </select>
+</div>          <div class="col-md-6"><label class="form-label">Section</label><select name="section_id" id="section_id" class="form-select">@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Gender</label><select name="gender_id" id="gender_id" class="form-select">@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
             <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" id="status_id" class="form-select">@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
             <div class="col-12 d-none" id="editLadderizedWrap">
@@ -711,9 +737,9 @@ document.querySelectorAll('.editStudentBtn').forEach(function (button) {
         document.getElementById('last_name').value = this.dataset.last;
         document.getElementById('name_suffix').value = this.dataset.suffix || '';
         document.getElementById('email').value = this.dataset.email;
-        document.getElementById('program_id').value = this.dataset.program;
-        document.getElementById('year_id').value = this.dataset.year;
-        document.getElementById('section_id').value = this.dataset.section;
+document.getElementById('program_id').value = this.dataset.program;
+document.getElementById('year_id').value = this.dataset.year;
+document.getElementById('section_id').value = this.dataset.section;
         document.getElementById('gender_id').value = this.dataset.gender;
         document.getElementById('status_id').value = this.dataset.status;
 
@@ -856,8 +882,8 @@ const importGuides = {
         help: 'Role and status values can use readable names (e.g., Admin, IT Administrator, Active).',
     },
     security_create_activate: {
-        columns: ['email', 'firstname', 'middlename', 'lastname', 'position', 'contact_number', 'address', 'password'],
-        help: 'Firstname and lastname are required. Position, contact number, and address are optional but recommended for complete profiles.',
+        columns: ['email', 'firstname', 'middlename', 'lastname', 'position', 'password'],
+        help: 'Firstname and lastname are required. Position is optional but recommended for complete profiles.',
     },
 };
 

@@ -218,8 +218,7 @@
             </td>
 
             <td>
-                {{ $violation->violation_type }}
-            </td>
+{{ $violation->violation_type_display }}            </td>
 
             <td>
                 {{ $violation->description }}

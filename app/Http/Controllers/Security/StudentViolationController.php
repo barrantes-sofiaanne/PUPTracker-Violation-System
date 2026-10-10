@@ -217,12 +217,16 @@ class StudentViolationController extends Controller
                 // reflected on the record rather than silently disappearing.
                 $this->applyRecorderScope($query, true);
 
-                // Only reviewed rows reflect on the record: Confirmed (approved)
-                // and Denied (rejected). Pending rows are still awaiting review.
-                $query->whereIn('status', [
-                    Violation::STATUS_CONFIRMED,
-                    Violation::STATUS_DENIED,
-                ]);
+// Show all current review states so the Security Officer can see the
+// same status as the Submitted Violations tab.
+//
+// Pending rows are visible for status tracking but remain excluded from
+// official/effective violation calculations by the Violation model.
+$query->whereIn('status', [
+    Violation::STATUS_PENDING,
+    Violation::STATUS_CONFIRMED,
+    Violation::STATUS_DENIED,
+]);
 
                 $query->latest('violation_date');
             }, 'violations.violationType.violationCategory'])
@@ -267,7 +271,7 @@ class StudentViolationController extends Controller
             ->limit(10)
             ->get();
 
-        return response()->json($students->map(function ($student) {
+        return response()->json($students->map(function (User $student) {
             return [
                 'id' => $student->student_number,
                 'student_number' => $student->student_number,
@@ -335,8 +339,10 @@ class StudentViolationController extends Controller
         try {
             $exists = Violation::where('student_number', $validated['student_number'])
                 ->where(function ($query) use ($violationType) {
-                    $query->where('violation_type', (string) $violationType->violation_type_id)
-                        ->orWhere('violation_type', $violationType->violation_type);
+                    $query->where(
+    'violation_type_id',
+    $violationType->violation_type_id
+);
                 })
                 ->whereDate('violation_date', Carbon::parse($validated['violation_date'])->toDateString())
                 // A denied violation should not block re-recording the same real
@@ -358,13 +364,18 @@ class StudentViolationController extends Controller
 
             $violationData = [
                 'student_number' => $validated['student_number'],
-                'violation_type' => $violationType->violation_type_id,
-                'violation_date' => $validated['violation_date'],
-                'description' => trim($validated['description']),
+'violation_type_id' => $violationType->violation_type_id,
+'violation_date' => $validated['violation_date'],
+'description' => trim($validated['description']),
+
+'identity_verified' => true,
+'identity_verified_at' => now(),
+'identity_verified_by_type' => 'security',
+'identity_verified_by_id' => $securityId,
                 // recorder_id references admins.id; security accounts are in a different table.
-                'recorder_type' => 'security',
-'recorder_id' => $security->id,
-                'recorder_name' => $securityLabel,
+'recorder_type' => 'security',
+'recorder_id' => null,
+'recorder_name' => $securityLabel,
                 // Security-recorded violations are sent to the admin for
                 // confirmation before they count toward the student's record.
                 'status' => Violation::STATUS_PENDING,
@@ -423,7 +434,7 @@ class StudentViolationController extends Controller
                 'line' => $exception->getLine(),
             ]);
 
-            return \App\Support\Responses::unexpectedError();
+return \App\Support\Responses::unexpectedError();
         }
     }
 
@@ -465,8 +476,7 @@ class StudentViolationController extends Controller
             'evidence.*' => ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ]);
 
-        $violationType = $original->resolvedViolationType() ?? ViolationType::find($original->violation_type);
-
+$violationType = $original->resolvedViolationType();
         DB::beginTransaction();
 
         try {
@@ -475,12 +485,11 @@ class StudentViolationController extends Controller
 
             $violationData = [
                 'student_number' => $original->student_number,
-                'violation_type' => $violationType?->violation_type_id ?? $original->violation_type,
-                'violation_date' => $validated['violation_date'],
+'violation_type_id' => $violationType?->violation_type_id,                'violation_date' => $validated['violation_date'],
                 'description' => trim($validated['description']),
-                'recorder_type' => 'security',
-'recorder_id' => $security->id,
-                'recorder_name' => $securityLabel,
+'recorder_type' => 'security',
+'recorder_id' => null,
+'recorder_name' => $securityLabel,
                 'status' => Violation::STATUS_PENDING,
             ];
 
@@ -663,10 +672,10 @@ class StudentViolationController extends Controller
 
         $severityCounts = (clone $violations)
             ->leftJoin(
-                'violation_type_tbl',
-                'violation_tbl.violation_type',
-                '=',
-                'violation_type_tbl.violation_type_id'
+    'violation_type_tbl',
+    'violation_tbl.violation_type_id',
+    '=',
+    'violation_type_tbl.violation_type_id'
             )
             ->selectRaw('COALESCE(violation_type_tbl.severity_level, 0) as severity_level, COUNT(*) as count')
             ->groupBy('severity_level')
@@ -721,13 +730,12 @@ class StudentViolationController extends Controller
             return 'Security Account';
         }
 
-        $info = $security->securityInfo;
-        $legacyInfo = $security->securityProfile;
+$info = $security->securityInfo;
 
-        $fullName = trim(implode(' ', array_filter([
-            $info?->firstname ?? $legacyInfo?->firstname,
-            $info?->middlename ?? $legacyInfo?->middlename,
-            $info?->lastname ?? $legacyInfo?->lastname,
+$fullName = trim(implode(' ', array_filter([
+    $info?->firstname,
+    $info?->middlename,
+    $info?->lastname,
         ], fn ($value) => !empty($value))));
 
         if ($fullName !== '') {

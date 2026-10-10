@@ -2,8 +2,24 @@
 
 @section('title', 'Student Record')
 
+@php
+    $violationCategories = $violationTypes
+        ->pluck('violationCategory')
+        ->filter()
+        ->unique('violation_category_id')
+        ->sortBy('category_name')
+        ->values();
+@endphp
+
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/student.css') }}"> 
+
+{{-- Student Record-specific styles --}}
+<link rel="stylesheet" href="{{ asset('css/student.css') }}">
+
+{{-- Re-apply the shared Student Portal UI after student.css --}}
+<link rel="stylesheet" href="{{ asset('css/portal.css') }}">
+<link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
+
 <style>
 /* ==========================================================================
    Submit Proof of Completion modal (scoped to this page)
@@ -461,6 +477,306 @@
         width: 100%;
     }
 }
+
+/* =========================================================
+   Violation Record tables
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Summary by Violation
+   --------------------------------------------------------- */
+.summary-table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.summary-violations-table {
+    width: 1200px !important;
+    min-width: 1200px !important;
+    max-width: none !important;
+    table-layout: fixed !important;
+    border-collapse: collapse;
+}
+
+/* Six summary columns = 100%. Evidence belongs in the individual log. */
+.summary-category-col { width: 16%; }
+.summary-violation-type-col { width: 24%; }
+.summary-offense-col { width: 12%; }
+.summary-status-col { width: 14%; }
+.summary-remarks-col { width: 16%; }
+.summary-sanction-col { width: 18%; }
+
+.summary-violations-table th,
+.summary-violations-table td {
+    box-sizing: border-box;
+    vertical-align: middle !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: none !important;
+}
+
+.summary-violations-table thead th {
+    text-align: center !important;
+    line-height: 1.2 !important;
+    font-size: 0.82rem !important;
+    padding: 0.8rem 0.55rem !important;
+}
+
+.summary-violations-table tbody td {
+    line-height: 1.4 !important;
+    padding: 1rem 0.65rem !important;
+}
+
+/* Keep normal words intact; only allow emergency breaking of a very long
+   unbroken value. */
+.summary-violations-table .summary-category-col,
+.summary-violations-table .summary-violation-type-col,
+.summary-violations-table .summary-offense-col,
+.summary-violations-table .summary-remarks-col,
+.summary-violations-table .summary-sanction-col {
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+}
+
+/* Status */
+.summary-violations-table .summary-status-col {
+    text-align: center !important;
+}
+
+.summary-violations-table .summary-status-col .portal-badge,
+.summary-violations-table .summary-status-col .badge {
+    display: inline-block;
+    max-width: 100%;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    text-align: center;
+    line-height: 1.2 !important;
+}
+
+/* Action */
+.summary-violations-table .summary-action-col {
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+
+.summary-action-col .summary-action-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    width: 100%;
+    gap: 0.5rem;
+}
+
+.summary-action-col .summary-action-buttons .btn {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: none !important;
+    text-align: center;
+    line-height: 1.25 !important;
+    padding: 0.65rem 0.45rem !important;
+    font-size: 0.85rem !important;
+}
+
+/* ---------------------------------------------------------
+   Individual Violations Log
+   Give the Actions column enough room for readable controls. On narrow
+   screens the table scrolls horizontally instead of breaking button labels.
+   --------------------------------------------------------- */
+.individual-table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+.individual-violations-table {
+    width: 1400px !important;
+    min-width: 1400px !important;
+    max-width: none !important;
+    table-layout: fixed !important;
+}
+
+.individual-violations-table th,
+.individual-violations-table td {
+    box-sizing: border-box;
+    vertical-align: middle;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+    hyphens: none;
+    padding: 0.9rem 0.65rem;
+}
+
+.individual-violations-table .violation-type-col { width: 19%; }
+.individual-violations-table .violation-date-col { width: 13%; }
+.individual-violations-table .category-col { width: 15%; }
+.individual-violations-table .status-col { width: 11%; }
+.individual-violations-table .remarks-col { width: 13%; }
+.individual-violations-table .attachments-col { width: 11%; }
+.individual-violations-table .individual-actions-col { width: 18%; min-width: 230px; text-align: center; }
+.individual-violations-table .individual-actions-col > div {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem !important;
+    width: 100%;
+    max-width: 230px;
+    margin-inline: auto;
+}
+.individual-violations-table .individual-actions-col .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    width: 100%;
+    max-width: 230px;
+    min-width: 0;
+    min-height: 44px;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.25;
+    padding: 0.65rem 0.75rem;
+    margin: 0;
+}
+
+.individual-violations-table .violation-date-col {
+    line-height: 1.45;
+}
+
+/* ---------------------------------------------------------
+   Tablet / desktop tightening
+   --------------------------------------------------------- */
+@media (max-width: 1200px) {
+    .summary-violations-table thead th {
+        font-size: 0.78rem;
+        padding-left: 0.35rem !important;
+        padding-right: 0.35rem !important;
+    }
+
+    .summary-violations-table tbody td {
+        padding-left: 0.4rem !important;
+        padding-right: 0.4rem !important;
+    }
+
+    .summary-action-col .summary-action-buttons .btn {
+        font-size: 0.8rem;
+        padding-left: 0.3rem;
+        padding-right: 0.3rem;
+    }
+}
+
+/* ---------------------------------------------------------
+   Mobile: keep multi-column records readable.
+   Do NOT squeeze the summary columns into the phone viewport.
+   The table becomes horizontally scrollable instead.
+   --------------------------------------------------------- */
+@media (max-width: 767.98px) {
+    .summary-table-responsive,
+    .individual-table-responsive {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto !important;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+    }
+
+    .summary-violations-table {
+        width: 1200px !important;
+        min-width: 1200px !important;
+        max-width: none !important;
+        table-layout: fixed !important;
+    }
+
+    .summary-violations-table th,
+    .summary-violations-table td {
+        word-break: normal !important;
+        overflow-wrap: normal !important;
+        hyphens: none !important;
+    }
+
+    .summary-violations-table thead th {
+        font-size: 0.78rem !important;
+        line-height: 1.2 !important;
+        padding: 0.75rem 0.5rem !important;
+    }
+
+    .summary-violations-table tbody td {
+        font-size: 0.88rem !important;
+        line-height: 1.4 !important;
+        padding: 1rem 0.55rem !important;
+    }
+
+    .summary-action-col .summary-action-buttons {
+        gap: 0.45rem;
+    }
+
+    .summary-action-col .summary-action-buttons .btn {
+        font-size: 0.82rem !important;
+        line-height: 1.25 !important;
+        padding: 0.65rem 0.45rem !important;
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow-wrap: normal !important;
+    }
+
+    .individual-violations-table {
+        width: 1400px !important;
+        min-width: 1400px !important;
+        max-width: none !important;
+        table-layout: fixed !important;
+    }
+
+    .individual-violations-table th,
+    .individual-violations-table td {
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
+        hyphens: none !important;
+        white-space: normal !important;
+    }
+
+    .individual-violations-table .individual-actions-col > div {
+        max-width: 230px;
+    }
+
+    .individual-violations-table .individual-actions-col .btn {
+        width: 100%;
+        max-width: 230px;
+        min-height: 44px;
+        font-size: 0.85rem !important;
+        line-height: 1.25 !important;
+        padding: 0.6rem 0.65rem !important;
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+    }
+
+    .individual-violations-table thead th {
+        font-size: 0.8rem !important;
+        line-height: 1.2 !important;
+        padding: 0.7rem 0.5rem !important;
+        white-space: normal !important;
+    }
+
+    .individual-violations-table tbody td {
+        font-size: 0.84rem !important;
+        line-height: 1.35 !important;
+        padding: 0.8rem 0.5rem !important;
+    }
+}
+
 </style>
 @endpush
 
@@ -583,55 +899,39 @@
 
                         <div class="card-body p-0">
 
-                            <div class="table-responsive">
+                            <div class="table-responsive summary-table-responsive">
 
-                                <table class="table table-hover align-middle mb-0 portal-table">
+                                <table class="table table-hover align-middle mb-0 portal-table summary-violations-table">
 
                                 <thead>
 
                                     <tr>
 
-                                        <th>
-
+                                        <th class="summary-category-col">
                                             Category
-
                                         </th>
 
-                                        <th>
-
+                                        <th class="summary-violation-type-col">
                                             Violation Type
-
                                         </th>
 
-                                        <th>
-
+                                        <th class="summary-offense-col">
                                             Offense Level
-
                                         </th>
 
-                                        <th>
-
+                                        <th class="summary-status-col">
                                             Status
-
                                         </th>
 
-                                        <th>
-
+                                        <th class="summary-remarks-col">
                                             Remarks
-
                                         </th>
 
-                                        <th>
 
+                                        <th class="summary-sanction-col">
                                             Disciplinary Sanction
-
                                         </th>
 
-                                        <th>
-
-                                            Action
-
-                                        </th>
 
                                     </tr>
 
@@ -642,26 +942,19 @@
 
 <tr>
 
-    <td>
-
+    <td class="summary-category-col">
         {{ $summary['category'] }}
-
     </td>
 
-    <td>
-
+    <td class="summary-violation-type-col">
         {{ $summary['type'] }}
-
     </td>
 
-    <td>
-
+    <td class="summary-offense-col">
         {{ $summary['offense_level'] }}
-
     </td>
 
-    <td>
-
+    <td class="summary-status-col">
         @if(!empty($summary['has_pending']))
 
             <span class="portal-badge goldenrod">
@@ -690,93 +983,15 @@
 
     </td>
 
-    <td>
-
+    <td class="summary-remarks-col">
         {{ $summary['remarks'] }}
-
     </td>
 
-    <td style="max-width:300px; white-space:normal;">
-
+    <td class="summary-sanction-col">
         {{ $summary['disciplinary_sanction'] }}
-
     </td>
 
-    <td>
 
-        @if($summary['workflow_status'] === 'PendingConfirmation')
-
-            <button
-                class="btn btn-secondary btn-sm"
-                disabled>
-
-                <i class="bi bi-hourglass-split"></i>
-
-                Pending Confirmation
-
-            </button>
-
-        @elseif($summary['workflow_status'] === 'Requested')
-
-            <button
-                class="btn btn-secondary btn-sm"
-                disabled>
-
-                <i class="bi bi-clock-history"></i>
-
-                Requested
-
-            </button>
-
-        @elseif($summary['workflow_status'] === 'Pending')
-
-            <button
-                class="btn btn-secondary btn-sm"
-                disabled>
-
-                <i class="bi bi-hourglass-split"></i>
-
-                Pending
-
-            </button>
-
-        @elseif($summary['workflow_status'] === 'Approved')
-
-            <button
-                class="btn btn-success btn-sm"
-                disabled>
-
-                <i class="bi bi-check-circle"></i>
-
-                Approved
-
-            </button>
-
-        @else
-
-            @if($summary['violation_status'] !== 'Sanction')
-
-                <span class="badge bg-secondary-subtle text-secondary-emphasis border">
-                    No Request Needed
-                </span>
-
-            @else
-
-                <button
-                    class="btn portal-btn btn-sm request-sanction-btn"
-                    data-violation-type-id="{{ $summary['violation_type_id'] }}">
-
-                    <i class="bi bi-send"></i>
-
-                    Request Sanction
-
-                </button>
-
-            @endif
-
-        @endif
-
-    </td>
 
 </tr>
 
@@ -785,7 +1000,7 @@
 <tr>
 
     <td
-        colspan="7"
+        colspan="6"
         class="text-center py-5 text-muted">
 
         No outstanding violations found.
@@ -824,9 +1039,9 @@
 
     <div class="card-body p-0">
 
-        <div class="table-responsive">
+        <div class="table-responsive individual-table-responsive">
 
-        <table class="table table-hover align-middle mb-0 portal-table">
+        <table class="table table-hover align-middle mb-0 portal-table individual-violations-table">
 
             <thead>
 
@@ -868,6 +1083,7 @@
 
                     </th>
 
+                    <th>Actions</th>
                 </tr>
 
             </thead>
@@ -876,32 +1092,25 @@
 
                 @forelse($violations as $violation)
 
-                    @php
-                        $isPendingLog = strtolower((string) $violation->status) === 'pending';
-                    @endphp
+@php
+    $isPendingLog =
+        strtolower((string) $violation->status) === 'pending';
+@endphp
 
                     <tr>
 
-                        <td>
-
+                        <td class="violation-type-col">
                             {{ $violation->violation_type_display }}
-
                         </td>
-
-                        <td>
-
+                        <td class="violation-date-col">
                             {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}
-
                         </td>
 
-                        <td>
-
+                        <td class="category-col">
                             {{ $violation->violation_category_display }}
-
                         </td>
 
-                        <td>
-
+                        <td class="status-col">
                             @if($isPendingLog)
 
                                 <span class="portal-badge goldenrod">
@@ -921,14 +1130,11 @@
 
                         </td>
 
-                        <td>
-
+                        <td class="remarks-col">
                             {{ $violation->description ?: 'No remarks' }}
-
                         </td>
 
-                        <td>
-
+                        <td class="attachments-col">
                             @if($isPendingLog)
 
                                 <span class="text-muted small">
@@ -964,6 +1170,23 @@
 
                         </td>
 
+                        <td class="individual-actions-col">
+                            @if(!$isPendingLog)
+                                @if(!isset($assignedSanctionViolationIds[$violation->violation_id]))
+                                    <button type="button"
+                                        class="btn portal-btn btn-sm w-100 request-sanction-btn"
+                                        data-violation-type-id="{{ $violation->violation_type_id }}">
+                                        <i class="bi bi-send me-1"></i>Request Sanction
+                                    </button>
+                                @else
+                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" disabled>
+                                        <i class="bi bi-check-circle me-1"></i>Sanction Assigned
+                                    </button>
+                                @endif
+                            @else
+                                <span class="text-muted small">Available after confirmation</span>
+                            @endif
+                        </td>
                     </tr>
 
                 @empty
@@ -971,7 +1194,7 @@
                     <tr>
 
                         <td
-                            colspan="6"
+                            colspan="7"
                             class="text-center py-5">
 
                             No individual violations found.
@@ -999,6 +1222,7 @@
 </div>
 
 </div>
+
 {{-- ================================================= --}}
 {{-- Sanction Record --}}
 {{-- ================================================= --}}
@@ -1181,9 +1405,13 @@
                                         <div class="small text-success mb-1">
                                             <i class="bi bi-patch-check-fill me-1"></i>Proof accepted
                                         </div>
-                                        <a href="{{ route('student.proof.download', $record) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                                            <i class="bi bi-paperclip me-1"></i>View Proof
-                                        </a>
+                                        @if($record->proof_access_key)
+                                            <a href="{{ route('student.proof.download', ['studentSanctionRecord' => $record->proof_access_key]) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-paperclip me-1"></i>View Proof
+                                            </a>
+                                        @else
+                                            <span class="small text-muted">Proof file link unavailable. Please contact the Office of Student Services.</span>
+                                        @endif
                                     @else
                                         <span class="small text-muted">Completed by administration</span>
                                     @endif
@@ -1196,10 +1424,12 @@
                                         <i class="bi bi-hourglass-split me-1"></i>Proof submitted — awaiting admin review.
                                     </div>
 
-                                    @if($record->proof_path)
-                                        <a href="{{ route('student.proof.download', $record) }}" target="_blank" class="btn btn-sm btn-outline-secondary mb-1">
+                                    @if($record->proof_path && $record->proof_access_key)
+                                        <a href="{{ route('student.proof.download', ['studentSanctionRecord' => $record->proof_access_key]) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary mb-1">
                                             <i class="bi bi-paperclip me-1"></i>View Proof
                                         </a>
+                                    @elseif($record->proof_path)
+                                        <span class="small text-muted">Proof file link unavailable. Please contact the Office of Student Services.</span>
                                     @endif
 
                                     @if($record->completion_remarks)
@@ -1232,8 +1462,7 @@
                                             data-office="{{ $record->designated_office ?? '' }}"
                                             data-starting-date="{{ optional($record->starting_date)->format('M d, Y') ?? '' }}"
                                             data-required-hours="{{ $record->required_hours ?? '' }}"
-                                            data-community-service="{{ $record->is_service_sanction ? '1' : '0' }}">
-                                            <i class="bi bi-upload me-1"></i>Submit Proof
+data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}"                                            <i class="bi bi-upload me-1"></i>Submit Proof
                                         </button>
                                     @else
                                         {{-- Every other sanction is settled through a personal
@@ -1259,7 +1488,7 @@
                         <tr>
 
                             <td
-                                colspan="6"
+                                colspan="7"
                                 class="text-center py-5 text-muted">
 
                                 No sanction records found.
@@ -1285,6 +1514,7 @@
 
         </div>
 
+
 <div class="modal fade" id="requestSanctionConfirmModal" tabindex="-1" aria-labelledby="requestSanctionConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -1292,15 +1522,10 @@
                 <h5 class="modal-title" id="requestSanctionConfirmModalLabel">Confirm Sanction Request</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                Are you sure you want to request this disciplinary sanction?
-            </div>
+            <div class="modal-body">Are you sure you want to request this disciplinary sanction?</div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn portal-btn" id="confirmRequestSanctionBtn">
-                    <i class="bi bi-send"></i>
-                    Yes, Request Sanction
-                </button>
+                <button type="button" class="btn portal-btn" id="confirmRequestSanctionBtn"><i class="bi bi-send me-1"></i>Yes, Request Sanction</button>
             </div>
         </div>
     </div>
@@ -1683,11 +1908,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 // The official form is only relevant for Community Service /
                 // Campus Service sanctions. Show the download link only when
                 // the assigned sanction is one of those; hide it for others.
-                const officialArea = document.getElementById('officialFormArea');
-                if (officialArea) {
-                    const isCommunityService = String(button.dataset.communityService || '0') === '1';
-                    officialArea.classList.toggle('d-none', !isCommunityService);
-                }
+// The official form is relevant only to Community Service / Campus Service.
+// Student-Assistance Service uses the existing OSS consultation notice and
+// does not require a proof upload.
+const officialArea = document.getElementById('officialFormArea');
+
+if (officialArea) {
+    const isServiceSanction =
+        String(button.dataset.serviceSanction || '0') === '1';
+
+    officialArea.classList.toggle('d-none', !isServiceSanction);
+}
 
                 submitProofModal.show();
             });
@@ -1760,6 +1991,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
 </script>
 
 <script src="{{ asset('js/student-record.js') }}"></script>

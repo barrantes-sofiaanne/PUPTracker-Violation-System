@@ -17,7 +17,10 @@ return new class extends Migration
         }
 
         DB::table('violation_evidence_tbl')
-            ->whereNull('access_key')
+            ->where(function ($query): void {
+                $query->whereNull('access_key')
+                    ->orWhere('access_key', '');
+            })
             ->orderBy('evidence_id')
             ->chunkById(100, function ($evidences): void {
                 foreach ($evidences as $evidence) {

@@ -1223,14 +1223,9 @@ h6 {
 
 .violation-history-modal-header {
     position: relative;
-    background: linear-gradient(
-        120deg,
-        rgba(128, 0, 0, 0.95) 0%,
-        rgba(92, 0, 0, 0.95) 62%,
-        rgba(218, 165, 32, 0.95) 180%
-    ) !important;
+    background: #800000 !important;
     color: #fff !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
     padding-right: 4.5rem;
 }
 
@@ -1402,7 +1397,7 @@ h6 {
     flex: 0 0 auto;
     min-width: 44px;
     min-height: 44px;
-    margin: 0;
+    margin: 0 0 0 auto;
     padding: 0;
     background-position: center;
     background-repeat: no-repeat;
@@ -1410,9 +1405,15 @@ h6 {
     border-radius: 999px;
 }
 
-/* Keep the × clear of the title: the heading flexes, the button does not. */
 .modal-header {
+    display: flex;
+    align-items: center;
     gap: 0.75rem;
+}
+
+.modal-header > .modal-title {
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 .modal-header > .modal-title,
@@ -1633,14 +1634,9 @@ thead.secondary-light th,
 
 .evidence-capture-modal-header {
     position: relative;
-    background: linear-gradient(
-        120deg,
-        rgba(128, 0, 0, 0.95) 0%,
-        rgba(92, 0, 0, 0.95) 62%,
-        rgba(218, 165, 32, 0.95) 180%
-    ) !important;
+    background: #800000 !important;
     color: #fff !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
     padding-right: 4.5rem;
 }
 
@@ -1735,4 +1731,62 @@ thead.secondary-light th,
     .report-chart-card .card-header h5 {
         font-size: 0.95rem;
     }
+}
+
+/* =========================================================
+   GLOBAL DARK MODAL HEADER STANDARD
+   Solid maroon + white X + right aligned close button.
+   ========================================================= */
+
+.admin-modal-header,
+.violation-history-modal-header,
+.evidence-capture-modal-header,
+.announcement-modal-header {
+    background: #800000 !important;
+    color: #ffffff !important;
+}
+
+.admin-modal-header .modal-title,
+.violation-history-modal-header .modal-title,
+.evidence-capture-modal-header .modal-title,
+.announcement-modal-header .modal-title {
+    color: #ffffff !important;
+}
+
+.admin-modal-header .btn-close,
+.violation-history-modal-header .btn-close,
+.evidence-capture-modal-header .btn-close,
+.announcement-modal-header .btn-close {
+    position: absolute;
+
+    top: 50%;
+    right: 1rem;
+
+    transform: translateY(-50%);
+
+    width: 44px;
+    height: 44px;
+
+    margin: 0 !important;
+    padding: 0;
+
+    background-color: transparent !important;
+
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 1 1-1.414 1.414L8 9.414l-6.293 6.293-1.414 1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414-1.414z'/%3e%3c/svg%3e") !important;
+
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 1rem auto !important;
+
+    filter: none !important;
+    opacity: 0.9;
+
+    z-index: 10;
+}
+
+.admin-modal-header .btn-close:hover,
+.violation-history-modal-header .btn-close:hover,
+.evidence-capture-modal-header .btn-close:hover,
+.announcement-modal-header .btn-close:hover {
+    opacity: 1;
 }

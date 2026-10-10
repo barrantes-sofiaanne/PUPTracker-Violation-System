@@ -12,7 +12,7 @@ use App\Models\ViolationType;
 /**
  * @property int $violation_id
  * @property string|null $student_number
- * @property string|int|null $violation_type
+ * @property string|int|null $violation_type_id
  * @property \Illuminate\Support\Carbon|null $violation_date
  * @property string|null $description
  * @property int|null $recorder_id
@@ -37,7 +37,7 @@ class Violation extends Model
 
     protected $fillable = [
         'student_number',
-        'violation_type',
+        'violation_type_id',
         'violation_date',
         'description',
         'recorder_id',
@@ -48,12 +48,20 @@ class Violation extends Model
         'reviewed_by_admin_id',
         'reviewed_at',
         'review_remarks',
+        'identity_verified',
+'identity_verified_at',
+'identity_verified_by_type',
+'identity_verified_by_id',
     ];
 
-    protected $casts = [
-        'violation_date' => 'datetime',
-        'reviewed_at' => 'datetime',
-    ];
+protected $casts = [
+    'violation_type_id' => 'integer',
+    'violation_date' => 'datetime',
+    'identity_verified' => 'boolean',
+    'identity_verified_at' => 'datetime',
+    'identity_verified_by_id' => 'integer',
+    'reviewed_at' => 'datetime',
+];
 
     /*
     |--------------------------------------------------------------------------
@@ -145,20 +153,25 @@ class Violation extends Model
         return $this->hasMany(ViolationEvidence::class, 'violation_id', 'violation_id');
     }
 
-    public function getViolationTypeDisplayAttribute(): string
-    {
-        $resolved = $this->resolvedViolationType();
-        if (!empty($resolved?->violation_type)) {
-            return $resolved->violation_type;
-        }
+    public function editHistories(): HasMany
+{
+    return $this->hasMany(
+        ViolationEditHistory::class,
+        'violation_id',
+        'violation_id'
+    )->latest();
+}
 
-        $raw = trim((string) $this->violation_type);
-        if ($raw !== '' && !ctype_digit($raw)) {
-            return $raw;
-        }
+public function getViolationTypeDisplayAttribute(): string
+{
+    $resolved = $this->resolvedViolationType();
 
-        return 'Unknown Violation';
+    if (!empty($resolved?->violation_type)) {
+        return $resolved->violation_type;
     }
+
+    return 'Unknown Violation';
+}
 
     public function getViolationCategoryDisplayAttribute(): string
     {
@@ -166,57 +179,42 @@ class Violation extends Model
         return (string) ($resolved?->violationCategory?->category_name ?? 'N/A');
     }
 
-    public function getOffenseLevelAttribute(): string
-    {
-        if (!empty($this->attributes['offense_level'])) {
-            return (string) $this->attributes['offense_level'];
-        }
-
-        if (empty($this->student_number) || empty($this->violation_id)) {
-            return '';
-        }
-
-        $rawType = trim((string) $this->violation_type);
-        if ($rawType === '') {
-            return '';
-        }
-
-        $resolved = $this->resolvedViolationType();
-
-        $count = self::where('student_number', $this->student_number)
-            ->where('violation_id', '<=', $this->violation_id)
-            ->where(function ($query) use ($rawType, $resolved) {
-                $query->where('violation_type', $rawType);
-
-                if ($resolved?->violation_type_id !== null) {
-                    $query->orWhere('violation_type', (string) $resolved->violation_type_id);
-                }
-
-                if (!empty($resolved?->violation_type)) {
-                    $query->orWhere('violation_type', $resolved->violation_type);
-                }
-            })
-            // Only confirmed/legacy violations count toward the offense level;
-            // pending (awaiting admin confirmation) and denied rows do not.
-            ->effective()
-            ->count();
-
-        return $this->formatOffenseLevel((int) $count);
+public function getOffenseLevelAttribute(): string
+{
+    if (!empty($this->attributes['offense_level'])) {
+        return (string) $this->attributes['offense_level'];
     }
+
+    if (empty($this->student_number) || empty($this->violation_id)) {
+        return '';
+    }
+
+    if (empty($this->violation_type_id)) {
+        return '';
+    }
+
+    $count = self::where('student_number', $this->student_number)
+        ->where('violation_type_id', $this->violation_type_id)
+        ->where('violation_id', '<=', $this->violation_id)
+        ->effective()
+        ->count();
+
+    return $this->formatOffenseLevel((int) $count);
+}
 
     public function getRecordedByDisplayAttribute(): string
     {
         if (!empty($this->recorder_name)) {
             if (str_starts_with($this->recorder_name, 'Security: ')) {
                 $security = Security::where('email', substr($this->recorder_name, 10))
-                    ->with(['securityInfo', 'securityProfile'])
+                    ->with('securityInfo')
                     ->first();
 
                 $fullName = trim(implode(' ', array_filter([
-                    $security?->securityInfo?->firstname ?? $security?->securityProfile?->firstname,
-                    $security?->securityInfo?->middlename ?? $security?->securityProfile?->middlename,
-                    $security?->securityInfo?->lastname ?? $security?->securityProfile?->lastname,
-                ], fn ($value) => !empty($value))));
+    $security?->securityInfo?->firstname,
+    $security?->securityInfo?->middlename,
+    $security?->securityInfo?->lastname,
+], fn ($value) => !empty($value))));
 
                 if ($fullName !== '') {
                     return $fullName;
@@ -263,14 +261,14 @@ class Violation extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function violationType(): BelongsTo
-    {
-        return $this->belongsTo(
-            ViolationType::class,
-            'violation_type',
-            'violation_type_id'
-        );
-    }
+public function violationType(): BelongsTo
+{
+    return $this->belongsTo(
+        ViolationType::class,
+        'violation_type_id',
+        'violation_type_id'
+    );
+}
 
     /*
     |--------------------------------------------------------------------------
@@ -301,25 +299,19 @@ public function recordingSecurity(): BelongsTo
     );
 }
 
-    public function resolvedViolationType(): ?ViolationType
-    {
-        if ($this->relationLoaded('violationType') && $this->violationType) {
-            return $this->violationType;
-        }
-
-        $raw = trim((string) $this->violation_type);
-        if ($raw === '') {
-            return null;
-        }
-
-        if (ctype_digit($raw)) {
-            return ViolationType::with('violationCategory')->find((int) $raw);
-        }
-
-        return ViolationType::with('violationCategory')
-            ->where('violation_type', $raw)
-            ->first();
+public function resolvedViolationType(): ?ViolationType
+{
+    if ($this->relationLoaded('violationType')) {
+        return $this->violationType;
     }
+
+    if (!$this->violation_type_id) {
+        return null;
+    }
+
+    return ViolationType::with('violationCategory')
+        ->find($this->violation_type_id);
+}
 
     private function formatOffenseLevel(int $count): string
     {

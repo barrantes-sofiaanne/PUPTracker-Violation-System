@@ -1,18 +1,20 @@
 @php
     $securityUser = auth('security')->user();
+
     $securityDisplayName = $securityUser?->email ?? 'Security';
     $securityDisplaySub = $securityUser?->email ?? '';
 
-    // Guarded lookup: security profile tables may not exist in some environments/tests.
-    try {
-        if ($securityUser && \Illuminate\Support\Facades\Schema::hasTable('security_info')) {
-            $profile = $securityUser->securityProfile;
-            $securityDisplayName = trim(
-                ($profile->firstname ?? '') . ' ' . ($profile->lastname ?? '')
-            ) ?: $securityDisplayName;
+    if ($securityUser) {
+        $securityInfo = $securityUser->securityInfo;
+
+        $securityName = trim(
+            ($securityInfo?->firstname ?? '') . ' ' .
+            ($securityInfo?->lastname ?? '')
+        );
+
+        if ($securityName !== '') {
+            $securityDisplayName = $securityName;
         }
-    } catch (\Throwable $e) {
-        // keep defaults
     }
 @endphp
 

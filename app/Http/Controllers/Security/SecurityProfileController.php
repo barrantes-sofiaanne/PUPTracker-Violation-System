@@ -7,16 +7,13 @@ use Illuminate\Support\Facades\Auth;
 
 class SecurityProfileController extends Controller
 {
-    public function index()
-    {
-        /** @var \App\Models\Security $security */
-        $security = Auth::guard('security')->user();
+public function index()
+{
+    /** @var \App\Models\Security $security */
+    $security = Auth::guard('security')->user();
 
-        $security->load([
-            'securityInfo',
-            'securityProfile',
-        ]);
+    $security->load('securityInfo');
 
-        return view('security.profile', compact('security'));
-    }
+    return view('security.profile', compact('security'));
+} 
 }

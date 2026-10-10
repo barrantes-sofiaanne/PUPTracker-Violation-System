@@ -210,13 +210,6 @@ Route::get('/password/reset/{guard}/{token}', [ForgotPasswordController::class, 
     ->whereIn('guard', ['student', 'admin', 'security'])
     ->name('password.reset.form');
 
-// OTP step for privileged (admin/security) password resets.
-// The in-app lock caps verification attempts at 5; the network throttle is a
-// looser backstop so a user with a couple of typos isn't blocked by IP.
-Route::post('/password/reset/{guard}/otp', [ForgotPasswordController::class, 'verifyOtp'])
-    ->whereIn('guard', ['student', 'admin', 'security'])
-    ->middleware('throttle:10,15')
-    ->name('password.reset.otp');
 
 Route::post('/password/reset/{guard}', [ForgotPasswordController::class, 'reset'])
     ->whereIn('guard', ['student', 'admin', 'security'])
@@ -299,14 +292,41 @@ Route::middleware(['auth:student', 'student.profile.complete', 'session.inactivi
         Route::get('/record', [StudentRecordController::class, 'index'])
             ->name('student.record');
 
+        Route::post('/violations/{violation}/deletion-request', [StudentRecordController::class, 'requestDeletion'])
+            ->whereNumber('violation')
+            ->name('student.violations.deletion-request');
+
+        Route::post(
+    '/violations/{violation}/correction-request',
+    [StudentRecordController::class, 'requestCorrection']
+)
+    ->whereNumber('violation')
+    ->name('student.violations.correction-request');
+
+        Route::get(
+    '/violations/{violation}/correction-options',
+    [StudentRecordController::class, 'correctionOptions']
+)
+    ->whereNumber('violation')
+    ->name('student.violations.correction-options');
+
+        Route::get(
+    '/violations/{violation}/correction-options',
+    [StudentRecordController::class, 'correctionOptions']
+)
+    ->whereNumber('violation')
+    ->name('student.violations.correction-options');
+
         Route::post('/request-sanction', [StudentRecordController::class, 'requestSanction'])
             ->name('student.request-sanction');
 
         Route::post('/submit-proof', [StudentRecordController::class, 'submitProof'])
             ->name('student.submit-proof');
 
-        Route::get('/sanction-records/{studentSanctionRecord:proof_access_key}/proof', [StudentRecordController::class, 'downloadProof'])
-            ->name('student.proof.download');
+Route::get(
+    '/sanction-records/{studentSanctionRecord:proof_access_key}/proof',
+    [StudentRecordController::class, 'downloadProof']
+)->name('student.proof.download');
 
 Route::get('/violations/evidence/{evidence:access_key}', [StudentRecordController::class, 'downloadEvidence'])            ->name('student.violations.evidence');
 
@@ -364,11 +384,6 @@ Route::middleware(['auth:admin', 'session.inactivity'])
             [ViolationController::class, 'update']
         )->name('admin.violations.update');
 
-        Route::delete(
-            '/violations/{violation}',
-            [ViolationController::class, 'destroy']
-        )->name('admin.violations.destroy');
-
         Route::resource(
             'violation-types',
             ViolationTypeController::class,
@@ -389,6 +404,26 @@ Route::middleware(['auth:admin', 'session.inactivity'])
                 'as' => 'admin'
             ]
         )->except(['create', 'edit']);
+
+        Route::get(
+    '/violation-correction-requests',
+    [App\Http\Controllers\Admin\ViolationCorrectionRequestController::class, 'index']
+)->name('violation-correction-requests');
+
+Route::post(
+    '/violation-correction-requests/{correctionRequest}/approve',
+    [App\Http\Controllers\Admin\ViolationCorrectionRequestController::class, 'approve']
+)->whereNumber('correctionRequest')
+ ->name('violation-correction-requests.approve');
+
+Route::get('/violation-change-requests/{correctionRequest}/evidence/{fileIndex}', [App\Http\Controllers\Admin\ViolationCorrectionRequestController::class, 'downloadDeletionEvidence'])
+    ->whereNumber('correctionRequest')->whereNumber('fileIndex')->name('violation-change-requests.evidence');
+
+Route::post(
+    '/violation-correction-requests/{correctionRequest}/reject',
+    [App\Http\Controllers\Admin\ViolationCorrectionRequestController::class, 'reject']
+)->whereNumber('correctionRequest')
+ ->name('violation-correction-requests.reject');
         /*
         |--------------------------------------------------------------------------
         | Students
@@ -400,6 +435,7 @@ Route::middleware(['auth:admin', 'session.inactivity'])
 
         Route::post('/students', [StudentController::class, 'store'])
             ->name('admin.students.store');
+
 
         Route::get('/students/{student_number}/edit', [StudentController::class, 'edit'])
             ->name('admin.students.edit');
@@ -520,8 +556,10 @@ Route::get('/violations/evidence/{evidence:access_key}', [ViolationController::c
         Route::post('/sanctions/records/{studentSanctionRecord}/service-assignment', [SanctionController::class, 'updateServiceAssignment'])
             ->name('admin.sanctions.records.update-service-assignment');
 
-        Route::get('/sanctions/records/{studentSanctionRecord:proof_access_key}/proof', [SanctionController::class, 'downloadProof'])
-            ->name('admin.sanctions.proof.download');
+Route::get(
+    '/sanctions/records/{studentSanctionRecord:proof_access_key}/proof',
+    [SanctionController::class, 'downloadProof']
+)->name('admin.sanctions.proof.download');
 
         Route::get(
             '/violations/student/{student_number}',

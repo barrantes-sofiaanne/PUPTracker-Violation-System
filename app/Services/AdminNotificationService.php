@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use App\Models\ViolationCorrectionRequest;
 
 class AdminNotificationService
 {
@@ -93,6 +94,22 @@ if (
         ]);
     }
 }
+// Email the operational Admins when a student submits a violation correction request.
+if (
+    $audience === AdminNotification::AUDIENCE_ADMIN
+    && $type === 'violation_correction_request'
+    && $targetType === 'violation_correction_request'
+) {
+    try {
+        $this->sendViolationCorrectionRequestEmail($notification);
+    } catch (\Throwable $e) {
+        Log::warning('Failed to send violation correction request notification email', [
+            'notification_id' => $notification->admin_notification_id,
+            'error' => $e->getMessage(),
+        ]);
+    }
+}
+
 // Email the operational Admins when a student submits a sanction request.
 if (
     $audience === AdminNotification::AUDIENCE_ADMIN
@@ -191,15 +208,74 @@ return $notification;
     public function openUrl(AdminNotification $notification): ?string
     {
         return match ($notification->target_type) {
-            'sanction_request' => $this->sanctionRequestUrl((int) $notification->target_id),
-            'email_incident' => $this->emailIncidentUrl((int) $notification->target_id),
-            'violation' => $this->violationUrl((int) $notification->target_id),
-            'oss_staff_violation' => $this->ossStaffViolationUrl((int) $notification->target_id),
-            'backup' => $this->backupUrl((int) $notification->target_id),
-            'sanction_record' => $this->sanctionRecordUrl((int) $notification->target_id),
-            default => null,
-        };
+
+    'sanction_request' =>
+        $this->sanctionRequestUrl(
+            (int) $notification->target_id
+        ),
+
+    'email_incident' =>
+        $this->emailIncidentUrl(
+            (int) $notification->target_id
+        ),
+
+    'violation' =>
+        $this->violationUrl(
+            (int) $notification->target_id
+        ),
+
+    'oss_staff_violation' =>
+        $this->ossStaffViolationUrl(
+            (int) $notification->target_id
+        ),
+
+    'backup' =>
+        $this->backupUrl(
+            (int) $notification->target_id
+        ),
+
+    'sanction_record' =>
+        $this->sanctionRecordUrl(
+            (int) $notification->target_id
+        ),
+
+    'violation_correction_request' =>
+        $this->violationCorrectionRequestUrl(
+            (int) $notification->target_id
+        ),
+
+    default => null,
+};
     }
+
+    /**
+ * Resolve a student violation correction request to the
+ * administrator correction-request queue.
+ */
+private function violationCorrectionRequestUrl(
+    int $targetId
+): ?string {
+
+    if (
+        ! Route::has(
+            'admin.violations.correction-requests'
+        )
+    ) {
+        return null;
+    }
+
+    $correctionRequest =
+        ViolationCorrectionRequest::query()
+            ->find($targetId);
+
+    if (! $correctionRequest) {
+        return null;
+    }
+
+    return route(
+        'admin.violations.correction-requests'
+    );
+}
 
     /**
      * Resolve an OSS-Staff violation target to the OSS Staff module.
@@ -415,6 +491,53 @@ $admins = Admin::query()
             // operation to fail.
             app(EmailIncidentService::class)->record(
                 emailType: 'Violation Confirmation Notification',
+                errorMessage: $e->getMessage(),
+                relatedRecordType: 'AdminNotification',
+                relatedRecordId: $notification->admin_notification_id,
+            );
+        }
+    }
+}
+
+private function sendViolationCorrectionRequestEmail(AdminNotification $notification): void
+{
+    $admins = Admin::query()
+        ->with('adminInfo')
+        ->get()
+        ->filter(function (Admin $admin): bool {
+            return ! $admin->isItAdministrator()
+                && ! $admin->isOssStaff();
+        });
+
+    if ($notification->recipient_id !== null) {
+        $admins = $admins->filter(
+            fn (Admin $admin): bool =>
+                (int) $admin->id === (int) $notification->recipient_id
+        );
+    }
+
+    foreach ($admins as $admin) {
+        $email = trim((string) $admin->email);
+
+        if ($email === '') {
+            continue;
+        }
+
+        try {
+            Mail::to($email)->send(
+                new SystemNotification(
+                    notificationTitle: (string) (
+                        $notification->title ?? 'Violation Correction Request'
+                    ),
+                    notificationMessage: (string) $notification->message,
+                    recipientName: (string) ($admin->username ?: 'Administrator'),
+                    actionUrl: $this->openUrl($notification),
+                    actionText: 'Review Correction Request',
+                )
+            );
+        } catch (\Throwable $e) {
+            app(EmailIncidentService::class)->record(
+                emailType: 'Violation Correction Request Notification',
                 errorMessage: $e->getMessage(),
                 relatedRecordType: 'AdminNotification',
                 relatedRecordId: $notification->admin_notification_id,

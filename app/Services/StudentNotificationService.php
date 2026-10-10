@@ -101,8 +101,17 @@ if (
     (
         $type === 'announcement'
         && $title === 'New Announcement'
+    )    ||
+    (
+        $type === 'violation_correction'
+        && in_array($title, [
+            'Correction Request Pending',
+            'Correction Request Approved',
+            'Correction Request Rejected',
+        ], true)
     )
-) {
+)
+{
     try {
         $this->sendDecisionEmail(
             notification: $notification,
@@ -148,13 +157,61 @@ return $notification;
      */
     public function openUrl(Notification $notification): ?string
     {
-        return match ($notification->target_type) {
-            'violation' => $this->violationUrl((int) $notification->target_id, $notification->student_number),
-            'sanction_request' => $this->sanctionRequestUrl((int) $notification->target_id, $notification->student_number),
-            'announcement' => $this->announcementUrl((int) $notification->target_id),
-            default => $notification->link ?: null,
-        };
+return match ($notification->target_type) {
+
+    'violation' => $this->violationUrl(
+        (int) $notification->target_id,
+        $notification->student_number
+    ),
+
+    'sanction_request' => $this->sanctionRequestUrl(
+        (int) $notification->target_id,
+        $notification->student_number
+    ),
+
+    'violation_correction_request' =>
+        $this->violationCorrectionRequestUrl(
+            (int) $notification->target_id,
+            $notification->student_number
+        ),
+
+    'announcement' => $this->announcementUrl(
+        (int) $notification->target_id
+    ),
+
+    default => $notification->link ?: null,
+};
     }
+
+    private function violationCorrectionRequestUrl(
+    int $targetId,
+    string $studentNumber
+): ?string {
+
+    if (! Route::has('student.record')) {
+        return null;
+    }
+
+    $request =
+        \App\Models\ViolationCorrectionRequest::query()
+            ->where(
+                'request_id',
+                $targetId
+            )
+            ->where(
+                'student_number',
+                $studentNumber
+            )
+            ->first();
+
+    if (! $request) {
+        return null;
+    }
+
+    return route(
+        'student.record'
+    ) . '#violation-tab';
+}
 
     private function violationUrl(int $targetId, string $studentNumber): ?string
     {
@@ -243,7 +300,12 @@ private function sendDecisionEmail(
                 notificationMessage: (string) $notification->message,
                 recipientName: $studentName,
                 actionUrl: $actionUrl,
-                actionText: 'View Student Record',
+                actionText: str_starts_with(
+    (string) ($notification->title ?? ''),
+    'Correction Request'
+)
+    ? 'View Correction Status'
+    : 'View Student Record',
             )
         );
     } catch (\Throwable $e) {

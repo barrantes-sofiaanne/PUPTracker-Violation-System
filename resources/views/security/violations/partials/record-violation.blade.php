@@ -10,12 +10,43 @@
         max-height: calc(100vh - 2rem);
     }
 
-    .security-record-modal .modal-header {
-        background: linear-gradient(120deg, #7a0f1e 0%, #4a0209 65%, #c9981f 180%);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-        color: #fff;
-        padding: 1.1rem 1.25rem;
-    }
+.security-record-modal .modal-header {
+    position: relative;
+    background: #800000;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 1.1rem 4.5rem 1.1rem 1.25rem;
+}
+
+.security-record-modal .modal-header .btn-close {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
+
+    width: 44px;
+    height: 44px;
+
+    margin: 0 !important;
+    padding: 0;
+
+    z-index: 10;
+
+    background-color: transparent !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 1 1-1.414 1.414L8 9.414l-6.293 6.293-1.414 1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414-1.414z'/%3e%3c/svg%3e") !important;
+
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 1rem auto !important;
+
+    filter: none !important;
+    opacity: 0.9;
+}
+
+.security-record-modal .modal-header .btn-close:hover,
+.security-record-modal .modal-header .btn-close:focus-visible {
+    opacity: 1;
+}
 
     .security-record-modal .modal-header .modal-title,
     .security-record-modal .modal-header .modal-title i,
@@ -24,7 +55,7 @@
     }
 
     .security-record-modal .modal-body {
-        background: linear-gradient(180deg, #fffefa 0%, #fff7e3 100%);
+background: #ffffff;
         overflow-y: auto;
         max-height: calc(100vh - 220px);
     }
@@ -187,6 +218,31 @@
         border-color: #a24a55;
         box-shadow: none;
     }
+
+
+/* Unified Record Violation footer: keep Back and Next/Submit side-by-side on phones. */
+@media (max-width: 575.98px) {
+  .admin-record-modal .modal-footer,
+  .oss-staff-record-modal .modal-footer,
+  .security-record-modal .modal-footer {
+    display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: .5rem;
+    padding: .65rem max(.65rem, env(safe-area-inset-right)) calc(.65rem + env(safe-area-inset-bottom)) max(.65rem, env(safe-area-inset-left));
+  }
+  .admin-record-modal .modal-footer #backStep,
+  .oss-staff-record-modal .modal-footer #backStep,
+  .security-record-modal .modal-footer #backStep,
+  .admin-record-modal .modal-footer #nextStep,
+  .oss-staff-record-modal .modal-footer #nextStep,
+  .security-record-modal .modal-footer #nextStep,
+  .admin-record-modal .modal-footer #saveViolation,
+  .oss-staff-record-modal .modal-footer #saveViolation,
+  .security-record-modal .modal-footer #saveViolation {
+    flex: 0 1 auto !important; width: auto !important; min-width: 0; max-width: 100%; white-space: nowrap;
+  }
+  .admin-record-modal .modal-footer #saveViolation,
+  .oss-staff-record-modal .modal-footer #saveViolation,
+  .security-record-modal .modal-footer #saveViolation { order: 0 !important; }
+}
 </style>
 
 <div class="modal fade security-record-modal"
@@ -521,11 +577,46 @@
                                         </div>
                                     </div>
                                 </div>
+<div class="col-12">
 
-                                <div class="alert alert-info small mt-3 mb-0">
-                                    <i class="bi bi-shield-exclamation me-1"></i>
-                                    This report will be sent to an administrator for review and confirmation.
-                                </div>
+    <div class="preview-box p-3">
+
+        <h6 class="fw-bold mb-2">
+            <i class="bi bi-person-check me-1"></i>
+            Student Identity Verification
+        </h6>
+
+        <div class="form-check">
+            <input
+                class="form-check-input"
+                type="checkbox"
+                id="identityConfirmation"
+                name="identity_confirmation"
+                value="1"
+            >
+
+            <label
+                class="form-check-label fw-semibold"
+                for="identityConfirmation"
+            >
+                I confirm that I have verified the identity of the selected
+                student using the student's institutional identification details.
+            </label>
+        </div>
+
+        <div class="small text-muted mt-2">
+            Verify the student's identification details before submitting
+            this violation for administrative review.
+        </div>
+
+    </div>
+
+</div>
+                               <div class="alert alert-info small mt-3 mb-0">
+    <i class="bi bi-shield-exclamation me-1"></i>
+    This report will be sent to an administrator for review and confirmation.
+    Your identity verification will be recorded with this violation.
+</div>
                             </div>
                         </div>
                     </div>
@@ -545,7 +636,7 @@
 <div class="modal fade security-notice-modal" id="securityNoticeModal" tabindex="-1" aria-labelledby="securityNoticeModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header" style="background:linear-gradient(120deg,#7a0f1e 0%,#4a0209 65%,#c9981f 180%);">
+            <div class="modal-header" style="background:#800000;">
                 <h5 class="modal-title text-white fw-bold" id="securityNoticeModalLabel">
                     <i class="bi bi-shield-exclamation me-2"></i>Security Notice
                 </h5>

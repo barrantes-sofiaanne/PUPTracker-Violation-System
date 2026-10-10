@@ -1,7 +1,3 @@
-<!-- ========================================================= -->
-<!-- Record Violation Modal -->
-<!-- ========================================================= -->
-
 <style>
     .admin-record-modal .modal-dialog {
         max-width: 1160px;
@@ -14,7 +10,7 @@
     }
 
     .admin-record-modal .modal-header {
-        background: linear-gradient(120deg, #800000 0%, #5f0000 65%, #daa520 180%) !important;
+background: #800000 !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.15);
         color: #fff;
     }
@@ -26,7 +22,7 @@
     }
 
     .admin-record-modal .modal-body {
-        background: linear-gradient(180deg, #fffefa 0%, #fff7e3 100%);
+background: #ffffff;
         max-height: calc(100vh - 220px);
         overflow-y: auto;
     }
@@ -208,7 +204,7 @@
     /* Header/footer chrome — literally the Security values (its radius token
        is 1rem and its border tone is rgba(122, 15, 30, ...)). */
     .admin-record-modal .modal-header {
-        background: linear-gradient(120deg, #7a0f1e 0%, #4a0209 65%, #c9981f 180%) !important;
+background: #800000 !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.15);
         color: #fff;
         padding: 1.1rem 1.25rem;
@@ -272,34 +268,100 @@
         gap: 0.5rem;
     }
 
-    /* Small screens: the primary CTA takes its own full-width row so
-       Back / Cancel / Record Violation can never be cut off or overlap. */
+    /* Keep the footer visible and make every action reachable on phones. */
+    .admin-record-modal .modal-content {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .admin-record-modal .modal-body {
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-record-modal .modal-footer {
+        position: relative;
+        z-index: 5;
+        flex: 0 0 auto;
+    }
+
     @media (max-width: 575.98px) {
-        .admin-record-modal .modal-header {
-            padding: 0.9rem 1rem;
+        .admin-record-modal .modal-dialog {
+            margin: 0.5rem;
+            max-width: calc(100% - 1rem);
         }
 
-        .admin-record-modal .modal-footer {
-            padding: 0.75rem 0.85rem;
+        .admin-record-modal .modal-content {
+            max-height: calc(100dvh - 1rem);
+        }
+
+        .admin-record-modal .modal-header {
+            padding: 0.8rem 0.9rem;
+            flex: 0 0 auto;
+        }
+
+        .admin-record-modal .modal-header .modal-title {
+            font-size: 1.1rem;
+            line-height: 1.3;
+        }
+
+        .admin-record-modal .modal-body {
+            max-height: none;
+            padding: 0.85rem;
+        }
+
+        .admin-record-modal .modal-footer,
+        .admin-record-modal .modal-footer.justify-content-between {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.55rem;
+            padding: 0.7rem 0.85rem calc(0.7rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        .admin-record-modal .modal-footer > #backStep {
+            grid-row: 1;
+            width: 100%;
+            margin: 0;
+            justify-content: center;
         }
 
         .admin-record-modal .modal-footer > .ms-auto {
-            /* The wrapper holding Cancel + Continue/Record becomes full width. */
-            margin-left: 0 !important;
+            grid-row: 2;
+            margin: 0 !important;
             width: 100%;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
+            min-width: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.55rem;
         }
 
         .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
-            flex: 1 1 auto;
+            width: 100%;
+            min-width: 0;
+            margin: 0 !important;
+            justify-content: center;
+            white-space: normal;
         }
 
-        .admin-record-modal .modal-footer #saveViolation {
-            /* Record Violation is the primary action → its own row. */
-            order: 3;
-            flex: 1 1 100%;
+        /* The submit CTA must remain visible on step 4, on its own row. */
+        .admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
+            display: inline-flex !important;
+            grid-row: 3;
+            width: 100%;
+            min-height: 46px;
+        }
+
+        .admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none) {
+            grid-row: 3;
+            min-height: 46px;
+        }
+
+        .admin-record-modal .modal-footer > .ms-auto > #cancelViolationBtn {
+            grid-row: 1;
+            min-height: 44px;
         }
     }
 </style>
@@ -1443,6 +1505,33 @@
 
                                 </div>
 
+                                <div class="alert alert-warning small mt-3 mb-0">
+
+                                    <i class="bi bi-person-check me-1"></i>
+
+                                    Please verify the student's identity before recording this violation.
+
+                                </div>
+
+                                <div class="form-check mt-3 p-3 border rounded-3 bg-white">
+
+                                    <input
+                                        class="form-check-input"
+                                        type="checkbox"
+                                        id="identityConfirmed"
+                                        name="identity_confirmed"
+                                        value="1">
+
+                                    <label
+                                        class="form-check-label fw-semibold"
+                                        for="identityConfirmed">
+
+                                        I confirm that I have verified the student's identity and that the student information shown above belongs to the student being recorded.
+
+                                    </label>
+
+                                </div>
+
                                 <div class="alert alert-info small mt-3 mb-0">
 
                                     <i class="bi bi-shield-check me-1"></i>
@@ -1494,7 +1583,7 @@
                             id="continueStep"
                             class="admin-btn admin-btn-primary">
 
-                            Continue
+                            Next
 
                             <i class="bi bi-arrow-right ms-2"></i>
 
@@ -1660,3 +1749,391 @@
     </div>
 
 </div>
+
+<style>
+/* Shared Security module visual baseline */
+.admin-record-modal .modal-dialog {
+        max-width: 1160px;
+    }
+
+    .admin-record-modal .modal-content {
+        border: 1px solid rgba(122, 15, 30, 0.12);
+        border-radius: var(--portal-radius-lg);
+        overflow: hidden;
+        max-height: calc(100vh - 2rem);
+    }
+
+.admin-record-modal .modal-header {
+    position: relative;
+    background: #800000;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 1.1rem 4.5rem 1.1rem 1.25rem;
+}
+
+.admin-record-modal .modal-header .btn-close {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
+
+    width: 44px;
+    height: 44px;
+
+    margin: 0 !important;
+    padding: 0;
+
+    z-index: 10;
+
+    background-color: transparent !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 1 1-1.414 1.414L8 9.414l-6.293 6.293-1.414 1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414-1.414z'/%3e%3c/svg%3e") !important;
+
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 1rem auto !important;
+
+    filter: none !important;
+    opacity: 0.9;
+}
+
+.admin-record-modal .modal-header .btn-close:hover,
+.admin-record-modal .modal-header .btn-close:focus-visible {
+    opacity: 1;
+}
+
+    .admin-record-modal .modal-header .modal-title,
+    .admin-record-modal .modal-header .modal-title i,
+    .admin-record-modal .modal-header small {
+        color: #fff !important;
+    }
+
+    .admin-record-modal .modal-body {
+background: #ffffff;
+        overflow-y: auto;
+        max-height: calc(100vh - 220px);
+    }
+
+    .admin-record-modal .modal-footer {
+        background: #fffdf6;
+        border-top: 1px solid rgba(122, 15, 30, 0.12);
+        padding: 0.8rem 1rem;
+        /* Wrap rather than clip — buttons must never be cut off or overlap. */
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* The body scrolls independently so a tall step never pushes the header or
+       footer out of view. */
+    .admin-record-modal .modal-body {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .admin-record-modal .modal-content {
+        max-height: calc(100vh - 1rem);
+    }
+
+    /* Small screens: the primary CTA takes its own full-width row. */
+    @media (max-width: 575.98px) {
+        .admin-record-modal .modal-dialog {
+            margin: 0.5rem;
+        }
+
+        .admin-record-modal .modal-footer > .ms-auto {
+            margin-left: 0 !important;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .admin-record-modal .modal-footer > .ms-auto > .portal-btn,
+        .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
+            flex: 1 1 auto;
+        }
+
+        .admin-record-modal .modal-footer #saveViolation {
+            order: 3;
+            flex: 1 1 100%;
+        }
+    }
+
+    .admin-record-modal .wizard-bubble {
+        width: 52px;
+        height: 52px;
+        border-radius: 999px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 6px 12px rgba(122, 15, 30, 0.15);
+        border: 2px solid transparent;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    /* ------------------------------------------------------------------
+       Wizard step states — PUPTracker MAROON + GOLD ONLY.
+
+       These previously used Bootstrap's bg-success (GREEN) and bg-danger
+       (Bootstrap red). Replaced with palette-only states so the Security
+       wizard matches the Admin wizard exactly.
+       ------------------------------------------------------------------ */
+    .admin-record-modal .wizard-bubble.wizard-step-current {
+        background: #7a0f1e;
+        border-color: #7a0f1e;
+        color: #fff;
+        box-shadow: 0 6px 14px rgba(122, 15, 30, 0.3);
+    }
+
+    .admin-record-modal .wizard-bubble.wizard-step-completed {
+        background: #daa520;
+        border-color: #daa520;
+        color: #4a0209;
+    }
+
+    .admin-record-modal .wizard-bubble.wizard-step-upcoming {
+        background: #fff8e8;
+        border-color: rgba(122, 15, 30, 0.28);
+        color: #7a0f1e;
+    }
+
+    .admin-record-modal .wizard-card {
+        border: 1px solid rgba(122, 15, 30, 0.12);
+        border-radius: var(--portal-radius-lg);
+        box-shadow: var(--portal-shadow);
+    }
+
+    .admin-record-modal .wizard-card .card-header {
+        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
+        border-bottom: 1px solid rgba(122, 15, 30, 0.12);
+        color: #4a0209;
+        padding: 0.9rem 1.1rem;
+    }
+
+    .admin-record-modal .wizard-card .card-header i {
+        color: #7a0f1e !important;
+    }
+
+    .admin-record-modal .form-control,
+    .admin-record-modal .form-select {
+        border-color: rgba(122, 15, 30, 0.2);
+        border-radius: 0.72rem;
+    }
+
+    .admin-record-modal .form-control:focus,
+    .admin-record-modal .form-select:focus {
+        border-color: rgba(122, 15, 30, 0.5);
+        box-shadow: 0 0 0 0.2rem rgba(122, 15, 30, 0.12);
+    }
+
+    .admin-record-modal .preview-box {
+        border: 1px solid rgba(122, 15, 30, 0.1);
+        border-radius: 0.9rem;
+        background: #fffdf7;
+    }
+
+    .admin-record-modal .preview-box strong {
+        color: #4a0209;
+    }
+
+    /* Controlled camera capture */
+    .admin-record-modal #cameraPreview {
+        filter: none;
+        transition: filter 0.15s ease;
+        background: #000;
+    }
+
+    .admin-record-modal #cameraPreview.camera-obscured {
+        filter: blur(18px) brightness(0.5);
+    }
+
+    .admin-record-modal #cameraWrap.video-interrupted #cameraPreview {
+        filter: blur(18px) brightness(0.5);
+    }
+
+    .security-notice-modal .modal-content {
+        border-radius: 1rem;
+    }
+
+    /* Disabled buttons stay readable — keep the maroon/gold tone visible. */
+    .admin-record-modal .modal-footer .btn:disabled,
+    .admin-record-modal .modal-footer .btn.disabled {
+        opacity: 0.75;
+        filter: saturate(0.85);
+        cursor: not-allowed;
+    }
+
+    .admin-record-modal .modal-footer .portal-btn:disabled {
+        color: #fff;
+        background: linear-gradient(135deg, #a24a55 0%, #8a3a44 100%);
+        border-color: #a24a55;
+        box-shadow: none;
+    }
+
+/* Shared Security-inspired mobile layout: independent scrolling and reachable actions */
+@media (max-width: 767.98px) {
+  .admin-record-modal .modal-dialog { width: calc(100% - 1rem); max-width: none; margin: .5rem auto; }
+  .admin-record-modal .modal-content { height: calc(100dvh - 1rem); max-height: calc(100dvh - 1rem); min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .admin-record-modal .modal-header { flex: 0 0 auto; padding: .9rem 3.5rem .9rem 1rem; }
+  .admin-record-modal .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto !important; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; padding: .85rem !important; }
+  .admin-record-modal .modal-footer { flex: 0 0 auto; position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem max(.75rem, env(safe-area-inset-right)) calc(.75rem + env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left)); }
+  .admin-record-modal .modal-footer .btn { min-height: 44px; max-width: 100%; }
+  .admin-record-modal .modal-body .row { --bs-gutter-x: .75rem; }
+  .admin-record-modal .modal-body input, .admin-record-modal .modal-body select, .admin-record-modal .modal-body textarea { max-width: 100%; }
+  .admin-record-modal .modal-body img, .admin-record-modal .modal-body canvas, .admin-record-modal .modal-body video { max-width: 100%; height: auto; }
+}
+@media (max-width: 420px) {
+  .admin-record-modal .modal-footer { justify-content: stretch; }
+  .admin-record-modal .modal-footer .btn { flex: 1 1 auto; }
+  .admin-record-modal .modal-title { font-size: 1rem; }
+  .admin-record-modal .modal-body { font-size: .95rem; }
+}
+
+
+
+/* UI alignment with the Security Record Violation modal.
+   Presentation-only overrides: do not change wizard or submission handlers. */
+.admin-record-modal .modal-header {
+    background: #800000 !important;
+    color: #fff !important;
+}
+.admin-record-modal .modal-header .modal-title,
+.admin-record-modal .modal-header .modal-title i,
+.admin-record-modal .modal-header small {
+    color: #fff !important;
+}
+.admin-record-modal .modal-footer {
+    background: #fffdf6 !important;
+    border-top: 1px solid rgba(122, 15, 30, .12) !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: .5rem !important;
+}
+.admin-record-modal .modal-footer > .ms-auto {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    gap: .5rem !important;
+}
+.admin-record-modal .modal-footer #cancelViolationBtn {
+    display: none !important;
+}
+.admin-record-modal .modal-footer #backStep,
+.admin-record-modal .modal-footer #continueStep,
+.admin-record-modal .modal-footer #saveViolation {
+    min-height: 44px;
+    margin: 0 !important;
+    white-space: nowrap;
+}
+.admin-record-modal .modal-footer #continueStep,
+.admin-record-modal .modal-footer #saveViolation {
+    color: #fff !important;
+    background: #800000 !important;
+    border-color: #800000 !important;
+}
+.admin-record-modal .modal-footer #backStep {
+    flex: 0 1 45% !important;
+}
+.admin-record-modal .modal-footer #continueStep,
+.admin-record-modal .modal-footer #saveViolation {
+    flex: 0 1 55% !important;
+}
+@media (max-width: 575.98px) {
+    .admin-record-modal .modal-footer {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: .5rem !important;
+        padding: .75rem max(.75rem, env(safe-area-inset-right)) calc(.75rem + env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left)) !important;
+    }
+    .admin-record-modal .modal-footer > #backStep {
+        flex: 1 1 45% !important;
+        width: auto !important;
+        grid-row: auto !important;
+    }
+    .admin-record-modal .modal-footer > .ms-auto {
+        flex: 1 1 55% !important;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        width: auto !important;
+        margin: 0 !important;
+        gap: .5rem !important;
+    }
+    .admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none),
+    .admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        grid-row: auto !important;
+    }
+    .admin-record-modal .modal-footer > .ms-auto > #cancelViolationBtn {
+        display: none !important;
+    }
+}
+
+</style>
+
+
+{{-- Final UI parity overrides: review identity confirmation and compact footer --}}
+<style>
+/* Keep the Admin identity confirmation readable and visually aligned with Security. */
+.admin-record-modal #identityConfirmed {
+    width: 1.15rem; height: 1.15rem; margin-top: .2rem; flex: 0 0 auto;
+    accent-color: #850000; cursor: pointer;
+}
+.admin-record-modal .form-check:has(#identityConfirmed) {
+    display: flex; align-items: flex-start; gap: .7rem;
+    padding: 1rem !important; margin-top: 1rem !important;
+    border: 1px solid #eadfdb !important; border-radius: 14px !important;
+    background: #fff !important;
+}
+.admin-record-modal .form-check:has(#identityConfirmed) .form-check-input {
+    float: none !important; margin-left: 0 !important;
+}
+.admin-record-modal .form-check:has(#identityConfirmed) .form-check-label {
+    display: block; line-height: 1.55; font-size: clamp(.95rem, 2.8vw, 1.05rem);
+}
+.admin-record-modal .modal-footer {
+    display: flex !important; align-items: stretch !important;
+    justify-content: space-between !important; gap: .65rem !important;
+}
+.admin-record-modal .modal-footer > #backStep,
+.admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none),
+.admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
+    min-height: 52px !important; height: 52px !important;
+    padding: .7rem 1rem !important; border-radius: 14px !important;
+    font-size: 1rem !important; font-weight: 700 !important;
+    flex: 1 1 0 !important; width: auto !important; min-width: 0 !important;
+}
+.admin-record-modal .modal-footer > .ms-auto {
+    display: flex !important; flex: 1 1 0 !important;
+    flex-direction: row !important; flex-wrap: nowrap !important;
+    gap: .65rem !important; width: auto !important; margin: 0 !important;
+}
+.admin-record-modal .modal-footer > #backStep { flex: 1 1 0 !important; }
+.admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none),
+.admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
+    background: #850000 !important; border-color: #850000 !important; color: #fff !important;
+}
+@media (max-width: 576px) {
+    .admin-record-modal .modal-footer {
+        display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
+        padding: .7rem max(.7rem, env(safe-area-inset-right)) calc(.7rem + env(safe-area-inset-bottom)) max(.7rem, env(safe-area-inset-left)) !important;
+    }
+    .admin-record-modal .modal-footer > #backStep,
+    .admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none),
+    .admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
+        min-height: 48px !important; height: 48px !important; padding: .6rem .5rem !important;
+        font-size: .92rem !important;
+    }
+}
+</style>

@@ -844,80 +844,148 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const ctx = canvas.getContext("2d");
 
-        if (!ctx) {
-            throw new Error("Unable to create capture canvas.");
-        }
+        // ------------------------------------------------------------
+        // 1. Draw original camera frame
+        // ------------------------------------------------------------
 
-        // ---------------------------------------------------------------
-        // 1. Draw the raw camera frame.
-        // ---------------------------------------------------------------
         ctx.drawImage(video, 0, 0, width, height);
 
-        // ---------------------------------------------------------------
-        // 2. Apply face blur BEFORE drawing the watermark.
-        //
-        // This uses the same face-blur implementation already used
-        // by the Security module.
-        // ---------------------------------------------------------------
-        const faceBlur = await initializePrivacyFaceBlur();
+        // ------------------------------------------------------------
+        // 2. Face detection + privacy blur
+        // ------------------------------------------------------------
 
+        // Preserve this module's required privacy gate: do not capture evidence
+        // unless face-blur initialization succeeds. Blur happens before watermark.
+        const faceBlur = await initializePrivacyFaceBlur();
         await faceBlur.blurFacesOnCanvas(canvas);
 
-        // ---------------------------------------------------------------
-        // 3. Draw the watermark AFTER face anonymization.
-        //
-        // Student ID is intentionally NOT placed in the watermark.
-        // It remains available to the backend/database.
-        // ---------------------------------------------------------------
-        const lines = [
-            "PUPTracker",
-            "Captured: " + formatPhTimestamp(),
-            "For Official Use Only",
-        ];
+        // ------------------------------------------------------------
+        // 3. Professional PUPTracker watermark
+        // ------------------------------------------------------------
 
-        let fontSize = 26;
+        const timestamp = formatPhTimestamp();
 
-        const maxLineWidth = Math.round(width * 0.86);
+        // Scale watermark based on image width.
+        const scale = Math.max(0.75, Math.min(1.5, width / 1280));
 
-        ctx.font = "600 " + fontSize + "px Arial, sans-serif";
+        const padding = Math.round(18 * scale);
 
-        while (
-            fontSize > 12 &&
-            ctx.measureText(lines[1] + "  " + lines[2]).width > maxLineWidth
-        ) {
-            fontSize -= 1;
+        const headerHeight = Math.round(105 * scale);
 
-            ctx.font = "600 " + fontSize + "px Arial, sans-serif";
-        }
+        const footerHeight = Math.round(48 * scale);
 
-        const padX = 16;
+        // ------------------------------------------------------------
+        // TOP HEADER
+        // ------------------------------------------------------------
 
-        const lineHeight = Math.round(fontSize * 1.45);
+        ctx.save();
 
-        const blockTop = 14;
+        ctx.fillStyle = "rgba(0, 0, 0, 0.68)";
 
-        const blockBottom = blockTop + lines.length * lineHeight + 16;
+        ctx.fillRect(0, 0, width, headerHeight);
 
-        const blockLeft = padX;
+        // ------------------------------------------------------------
+        // PUPTracker title
+        // ------------------------------------------------------------
 
-        // Semi-transparent watermark background.
-        ctx.fillStyle = "rgba(0,0,0,0.55)";
-
-        ctx.fillRect(0, blockTop - 6, width, blockBottom);
-
-        ctx.textBaseline = "top";
         ctx.textAlign = "left";
+        ctx.textBaseline = "top";
 
         ctx.fillStyle = "#ffffff";
 
-        ctx.shadowColor = "rgba(0,0,0,0.8)";
-        ctx.shadowBlur = 4;
+        ctx.font = `bold ${Math.round(30 * scale)}px Arial, sans-serif`;
 
-        lines.forEach(function (line, i) {
-            ctx.fillText(line, blockLeft, blockTop + i * lineHeight);
-        });
+        ctx.fillText("PUPTRACKER", padding, Math.round(18 * scale));
 
-        ctx.shadowBlur = 0;
+        // ------------------------------------------------------------
+        // Organization
+        // ------------------------------------------------------------
+
+        ctx.font = `${Math.round(13 * scale)}px Arial, sans-serif`;
+
+        ctx.fillStyle = "#f5f5f5";
+
+        ctx.fillText(
+            "POLYTECHNIC UNIVERSITY OF THE PHILIPPINES",
+            padding,
+            Math.round(53 * scale),
+        );
+
+        ctx.fillText(
+            "VIOLATION MONITORING SYSTEM",
+            padding,
+            Math.round(72 * scale),
+        );
+
+        // ------------------------------------------------------------
+        // Header divider
+        // ------------------------------------------------------------
+
+        const dividerX = Math.round(width * 0.7);
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+
+        ctx.fillRect(
+            dividerX,
+            Math.round(16 * scale),
+            1,
+            headerHeight - Math.round(32 * scale),
+        );
+
+        // ------------------------------------------------------------
+        // Capture information
+        // ------------------------------------------------------------
+
+        const infoX = dividerX + Math.round(22 * scale);
+
+        ctx.font = `${Math.round(13 * scale)}px Arial, sans-serif`;
+
+        ctx.fillStyle = "#ffffff";
+
+        ctx.fillText(`Captured: ${timestamp}`, infoX, Math.round(25 * scale));
+
+        ctx.fillText("Device: Web Camera", infoX, Math.round(49 * scale));
+
+        ctx.fillText("For Official Use Only", infoX, Math.round(73 * scale));
+
+        ctx.restore();
+
+        // ------------------------------------------------------------
+        // BOTTOM FOOTER
+        // ------------------------------------------------------------
+
+        ctx.save();
+
+        ctx.fillStyle = "rgba(128, 0, 0, 0.88)";
+
+        ctx.fillRect(0, height - footerHeight, width, footerHeight);
+
+        // Left footer
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+
+        ctx.fillStyle = "#ffffff";
+
+        ctx.font = `bold ${Math.round(15 * scale)}px Arial, sans-serif`;
+
+        ctx.fillText(
+            "PUPTRACKER EVIDENCE RECORD",
+            padding,
+            height - footerHeight / 2,
+        );
+
+        // Right footer
+        ctx.textAlign = "right";
+
+        ctx.font = `${Math.round(12 * scale)}px Arial, sans-serif`;
+
+        ctx.fillText(
+            "DISCIPLINE  |  INTEGRITY  |  SERVICE",
+            width - padding,
+            height - footerHeight / 2,
+        );
+
+        ctx.restore();
 
         return canvas;
     };
@@ -1583,6 +1651,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const violationTypeId = document.getElementById("violationType").value;
         const violationDate = document.getElementById("violationDate").value;
         const description = document.getElementById("description").value.trim();
+        const identityConfirmation = document.getElementById(
+            "identityConfirmation",
+        ).checked;
 
         if (
             !studentNumber ||
@@ -1597,12 +1668,24 @@ document.addEventListener("DOMContentLoaded", function () {
             );
             return;
         }
+        if (!identityConfirmation) {
+            showAlert(
+                "warning",
+                "Identity confirmation required",
+                "Please confirm that you have verified the selected student's identity before submitting the violation.",
+            );
+            return;
+        }
 
         const formData = new FormData();
         formData.append("student_number", studentNumber);
         formData.append("violation_type_id", violationTypeId);
         formData.append("violation_date", violationDate);
         formData.append("description", description);
+        formData.append(
+            "identity_confirmation",
+            identityConfirmation ? "1" : "0",
+        );
         // Correlate the submitted evidence to the camera/capture session.
         if (captureSessionId) {
             formData.append("capture_session_id", captureSessionId);

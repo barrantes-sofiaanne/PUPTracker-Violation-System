@@ -34,24 +34,43 @@
             font-size: 11px;
         }
 
-        .report-header {
-            text-align: center;
-            margin-bottom: 10px;
-        }
+.report-header {
+    margin-bottom: 10px;
+}
 
-        .report-header img {
-            width: 42px;
-            height: 42px;
-            object-fit: contain;
-            display: block;
-            margin: 0 auto 6px;
-        }
+.report-header-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
 
-        .report-title {
-            font-size: 20px;
-            font-weight: 800;
-            margin: 0;
-        }
+.report-header-table td {
+    border: none;
+    padding: 0;
+    vertical-align: middle;
+}
+
+.report-logo-cell {
+    width: 80px;
+    text-align: left;
+}
+
+.report-logo {
+    width: 70px;
+    height: auto;
+    display: block;
+}
+
+.report-title-cell {
+    text-align: center;
+}
+
+.report-title {
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0;
+    line-height: 1.2;
+}
 
         .meta-line {
             margin-bottom: 8px;
@@ -121,21 +140,36 @@
 </head>
 <body>
 <div class="report-shell">
-    <div class="report-header">
-        {{-- Embedded from disk (base64) rather than asset(), so mPDF never has
-             to make an HTTP request to render the report. --}}
-        @php
-            $logoPath = public_path('assets/images/Tracker-logo.png');
-            $logoData = is_file($logoPath)
-                ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
-                : null;
-        @endphp
 
-        @if($logoData)
-            <img src="{{ $logoData }}" alt="Tracker logo">
-        @endif
-        <h1 class="report-title">PUPT Student Violation Report</h1>
-    </div>
+<div class="report-header">
+    {{-- Embedded from disk (base64) so mPDF does not make an HTTP request. --}}
+    @php
+        $logoPath = public_path('assets/images/Tracker-logo.png');
+        $logoData = is_file($logoPath)
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+    @endphp
+
+    <table class="report-header-table">
+        <tr>
+            <td class="report-logo-cell">
+                @if($logoData)
+                    <img
+                        src="{{ $logoData }}"
+                        alt="PUPTracker Logo"
+                        class="report-logo">
+                @endif
+            </td>
+
+            <td class="report-title-cell">
+                <h1 class="report-title">PUPT Student Violation Report</h1>
+            </td>
+
+            {{-- Empty cell keeps the title mathematically centered. --}}
+            <td class="report-logo-cell"></td>
+        </tr>
+    </table>
+</div>
 
     <div class="meta-line">
         <div><strong>Report Generated On:</strong> {{ $generatedAt->format('F j, Y, h:i a') }}</div>

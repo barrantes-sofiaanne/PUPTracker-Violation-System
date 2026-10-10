@@ -8,8 +8,8 @@
 <div class="modal fade" id="resubmitViolationModal" tabindex="-1" aria-labelledby="resubmitViolationModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header text-white" style="background: linear-gradient(135deg, #7a0f1e 0%, #4a0209 100%);">
-                <h5 class="modal-title fw-bold" id="resubmitViolationModalLabel">
+<div class="modal-header text-white" style="background: #800000;">
+                    <h5 class="modal-title fw-bold" id="resubmitViolationModalLabel">
                     <i class="bi bi-arrow-repeat me-2"></i>Resubmit Violation
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>

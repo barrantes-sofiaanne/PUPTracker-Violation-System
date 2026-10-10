@@ -1,4 +1,4 @@
-    {{-- Header --}}
+}}
     <div class="d-flex justify-content-between align-items-center mb-4">
 
         <div>
@@ -163,13 +163,24 @@
 
                             {{-- EVIDENCE: links to the existing private, authorization-protected
                                  evidence endpoint. Never a raw storage path. --}}
-                            @php $evidenceCount = $history->evidence->count(); @endphp
+                            @php
+                                $evidence = $history->evidence;
+                                $evidenceCount = $evidence->count();
+                                $viewableEvidence = $evidence->filter(fn ($item) => !empty($item->access_key));
+                                $viewableEvidenceCount = $viewableEvidence->count();
+                            @endphp
 
                             @if($evidenceCount === 0)
                                 <span class="text-muted">-</span>
-                            @elseif($evidenceCount === 1)
+                            @elseif($viewableEvidenceCount === 0)
+                                <span class="text-muted" title="The evidence record does not have a valid access key.">
+                                    <i class="bi bi-paperclip me-1"></i>
+                                    Evidence unavailable
+                                </span>
+                            @elseif($viewableEvidenceCount === 1)
+                                @php $evidenceItem = $viewableEvidence->first(); @endphp
                                 <a href="{{ route('admin.violations.evidence', [
-    'evidence' => $history->evidence->first()->access_key,
+    'evidence' => $evidenceItem->access_key,
 ]) }}"
                                    class="admin-btn admin-btn-view admin-btn-sm"
                                    target="_blank"
@@ -181,13 +192,13 @@
 
                                 </a>
                             @else
-                                {{-- Multiple files: open the evidence list modal. The URLs are the
-                                     same authorized endpoint; each is re-checked server-side when
-                                     clicked, so the DOM cannot be used to bypass authorization. --}}
+                                {{-- Multiple files: only generate authorized URLs for evidence rows
+                                     that have a valid access key. Missing keys must never break
+                                     the entire History page. --}}
                                 <button
                                     type="button"
                                     class="admin-btn admin-btn-view admin-btn-sm viewViolationEvidence"
-                                    data-evidence="{{ $history->evidence->map(fn ($e) => [
+                                    data-evidence="{{ $viewableEvidence->map(fn ($e) => [
                                         'url' => route('admin.violations.evidence', [
     'evidence' => $e->access_key,
 ]),
@@ -195,12 +206,18 @@
                                         'code' => $e->evidence_code,
                                         'method' => $e->capture_method,
                                     ])->values()->toJson() }}"
-                                    aria-label="View {{ $evidenceCount }} evidence files for this violation">
+                                    aria-label="View {{ $viewableEvidenceCount }} evidence files for this violation">
 
                                     <i class="bi bi-paperclip me-1"></i>
-                                    View {{ $evidenceCount }} Evidence Files
+                                    View {{ $viewableEvidenceCount }} Evidence Files
 
                                 </button>
+
+                                @if($viewableEvidenceCount < $evidenceCount)
+                                    <span class="text-muted ms-1" title="One or more evidence records do not have a valid access key.">
+                                        (+{{ $evidenceCount - $viewableEvidenceCount }} unavailable)
+                                    </span>
+                                @endif
                             @endif
 
                         </td>
@@ -225,16 +242,32 @@
 
                         <td>
 
-                            <button
-                                type="button"
-                                class="admin-btn admin-btn-view admin-btn-sm viewStudent"
-                                data-student="{{ $history->student_number }}"
-                                aria-label="View {{ $history->student?->last_name ?? 'student' }}'s violation record">
+                           <div class="d-flex gap-1 flex-wrap">
 
-                                <i class="bi bi-eye me-1"></i>
-                                View
+    <button
+        type="button"
+        class="admin-btn admin-btn-view admin-btn-sm viewStudent"
+        data-student="{{ $history->student_number }}"
+        aria-label="View {{ $history->student?->last_name ?? 'student' }}'s violation record"
+    >
+        <i class="bi bi-eye me-1"></i>
+        View
+    </button>
 
-                            </button>
+    @if(strtolower((string) $history->status) !== 'denied')
+
+        <a
+            href="{{ route('admin.violations.edit', $history) }}"
+            class="admin-btn admin-btn-sm admin-btn-primary"
+            aria-label="Correct violation #{{ $history->violation_id }}"
+        >
+            <i class="bi bi-pencil-square me-1"></i>
+            Edit
+        </a>
+
+    @endif
+
+</div>
 
                         </td>
 

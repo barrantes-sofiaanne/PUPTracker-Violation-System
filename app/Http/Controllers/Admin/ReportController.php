@@ -182,19 +182,13 @@ class ReportController extends Controller
                 $query->whereHas('violationType', fn ($q) => $q->where('violation_category_id', $request->category));
             }
 
-            if ($request->filled('violation_type')) {
-                $selectedViolationType = (string) $request->violation_type;
+if ($request->filled('violation_type')) {
+    $selectedViolationType = (string) $request->violation_type;
 
-                $query->where(function ($violationQuery) use ($selectedViolationType): void {
-                    // Support both data styles in violation_tbl.violation_type:
-                    // some records store the ID, others store the violation type text.
-                    $violationQuery->where('violation_type', $selectedViolationType)
-                        ->orWhereHas('violationType', function ($typeQuery) use ($selectedViolationType): void {
-                            $typeQuery->where('violation_type_id', $selectedViolationType)
-                                ->orWhere('violation_type', $selectedViolationType);
-                        });
-                });
-            }
+    $query->whereHas('violationType', function ($typeQuery) use ($selectedViolationType): void {
+        $typeQuery->where('violation_type_id', $selectedViolationType);
+    });
+}
 
             if ($request->filled('start_date')) {
                 $query->whereDate('violation_date', '>=', $request->start_date);
@@ -709,7 +703,7 @@ $violationCounts = $reports->groupBy(
                 trim((string) ($report->student?->last_name ?? '') . ', ' . (string) ($report->student?->first_name ?? ''))
             );
             $sheet->setCellValue('C' . $row, optional($report->student?->studentInfo?->program)->program_name ?? '-');
-            $sheet->setCellValue('D' . $row, optional($report->violationType)->violation_type ?: ($report->violation_type ?: '-'));
+            $sheet->setCellValue('D' . $row, optional($report->violationType)->violation_type ?: '-');
             $sheet->setCellValue('E' . $row, optional($report->violationType?->violationCategory)->category_name ?? '-');
             $sheet->setCellValue('F' . $row, optional($report->violationType)->severity_level ?? '-');
             $sheet->setCellValue('G' . $row, optional($report->sanction)->disciplinary_sanction ?? '-');

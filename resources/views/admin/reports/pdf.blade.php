@@ -185,7 +185,7 @@
                     <td>{{ $report->student?->student_number ?? '-' }}</td>
                     <td>{{ trim((string) ($report->student?->last_name ?? '') . ', ' . (string) ($report->student?->first_name ?? '')) }}</td>
                     <td>{{ optional($report->student?->studentInfo?->program)->program_name ?? '-' }}</td>
-                    <td>{{ optional($report->violationType)->violation_type ?: ($report->violation_type ?: '-') }}</td>
+                    <td>{{ optional($report->violationType)->violation_type ?: '-' }}</td>
                     <td>{{ optional($report->violationType?->violationCategory)->category_name ?? '-' }}</td>
                     <td>{{ $report->violation_date ? \Carbon\Carbon::parse($report->violation_date)->format('M d, Y') : '-' }}</td>
                     <td>{{ $report->recorded_by_display ?? '-' }}</td>

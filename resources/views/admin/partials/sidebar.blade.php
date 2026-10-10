@@ -115,6 +115,34 @@
             </a>
 
         </li>
+
+        @php
+            $pendingCorrectionRequestCount = 0;
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('violation_correction_requests')
+                    && \Illuminate\Support\Facades\Schema::hasColumn('violation_correction_requests', 'status')) {
+                    $pendingCorrectionRequestCount = \App\Models\ViolationCorrectionRequest::where('status', 'pending')->count();
+                }
+            } catch (\Throwable $e) {
+                $pendingCorrectionRequestCount = 0;
+            }
+        @endphp
+
+        <li>
+
+            <a href="{{ route('violation-correction-requests') }}" class="{{ request()->routeIs('violation-correction-requests*') ? 'active' : '' }}">
+
+                <i class="bi bi-pencil-square"></i>
+
+                Violation Change Requests
+
+                @if($pendingCorrectionRequestCount > 0)
+                    <span class="sidebar-badge ms-auto" title="{{ $pendingCorrectionRequestCount }} correction request(s) awaiting review">{{ $pendingCorrectionRequestCount > 9 ? '9+' : $pendingCorrectionRequestCount }}</span>
+                @endif
+
+            </a>
+
+        </li>
         @endunless
 
         <li class="sidebar-section-label">Communication</li>

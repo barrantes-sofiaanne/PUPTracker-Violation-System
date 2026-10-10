@@ -381,15 +381,32 @@
                             $reviewStatus = strtolower((string) $violation->status);
                         @endphp
 
-                        @if($reviewStatus === \App\Models\Violation::STATUS_DENIED)
-                            <span class="badge bg-danger ms-2">Rejected</span>
-                        @elseif($reviewStatus === \App\Models\Violation::STATUS_PENDING)
-                            <span class="badge bg-warning text-dark ms-2">Pending Review</span>
-                        @else
-                            {{-- Confirmed, plus legacy rows that carry no status
-                                 (which the model also treats as effective). --}}
-                            <span class="badge bg-success ms-2">Confirmed</span>
-                        @endif
+@if($reviewStatus === \App\Models\Violation::STATUS_DENIED)
+
+    <span class="badge bg-danger ms-2">
+        Rejected
+    </span>
+
+@elseif($reviewStatus === \App\Models\Violation::STATUS_PENDING)
+
+    <span class="badge bg-warning text-dark ms-2">
+        Pending
+    </span>
+
+@elseif($reviewStatus === \App\Models\Violation::STATUS_CONFIRMED)
+
+    <span class="badge bg-success ms-2">
+        Approved
+    </span>
+
+@else
+
+    {{-- Legacy rows with no explicit status are treated as effective. --}}
+    <span class="badge bg-success ms-2">
+        Approved
+    </span>
+
+@endif
                     </div>
                     <div class="violation-meta">
                         <i class="bi bi-calendar"></i>

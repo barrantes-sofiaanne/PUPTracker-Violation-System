@@ -49,7 +49,7 @@
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y') : '-' }}</td>
                                 <td>{{ $violation->student->last_name ?? $violation->student_number }}, {{ $violation->student->first_name ?? '' }}</td>
-                                <td>{{ optional($violation->violationType)->violation_type ?? $violation->violation_type }}</td>
+                                <td>{{ optional($violation->violationType)->violation_type ?? '-' }}</td>
                                 <td>{{ $violation->recorded_by_display }}</td>
                                 <td>
                                     @php $vStatus = strtolower((string) $violation->status); @endphp

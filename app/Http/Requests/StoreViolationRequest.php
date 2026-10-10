@@ -44,6 +44,13 @@ class StoreViolationRequest extends FormRequest
                 'string',
                 'max:1000',
             ],
+            // Optional at the shared request layer because Security and OSS
+            // Staff use the same request class. The Admin controller enforces
+            // this flag for administrator-recorded violations.
+            'identity_confirmed' => [
+                'nullable',
+                'boolean',
+            ],
             // Evidence is optional and reuses the existing evidence subsystem
             // (camera-captured photos + secure PDF uploads), up to 5 files,
             // 5MB each.

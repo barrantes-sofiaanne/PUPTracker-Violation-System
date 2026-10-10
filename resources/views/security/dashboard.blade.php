@@ -151,6 +151,85 @@
             font-size: 1rem;
         }
     }
+
+    .violation-guide-wrapper {
+    width: 100%;
+}
+
+.violation-guide-wrapper > .card {
+    width: 100%;
+    margin: 0;
+}
+/* =========================================================
+   VIOLATION DETAILS MODAL
+   ========================================================= */
+
+.violation-detail-modal-header {
+    background: linear-gradient(135deg, #7a0f1e 0%, #4a0209 100%);
+    color: #fff;
+
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.violation-detail-modal-header .modal-title,
+.violation-detail-modal-header .modal-title i {
+    color: #fff !important;
+}
+
+.violation-detail-modal-header .modal-title {
+    margin: 0;
+    min-width: 0;
+}
+
+.violation-detail-modal-close {
+    margin-left: auto !important;
+    margin-right: 0 !important;
+
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+
+    opacity: 1 !important;
+}
+
+/* Keep the modal comfortable on smaller screens */
+@media (max-width: 767.98px) {
+    #violationDetailModal .modal-dialog {
+        margin: 0.75rem;
+        max-width: none;
+    }
+
+    #violationDetailModal .modal-content {
+        border-radius: 0.9rem;
+        overflow: hidden;
+    }
+
+    #violationDetailModal .modal-header {
+        padding: 0.85rem 1rem;
+    }
+
+    #violationDetailModal .modal-title {
+        font-size: 1rem;
+    }
+
+    #violationDetailModal .modal-body {
+        padding: 1rem;
+    }
+
+    #violationDetailModal .modal-footer {
+        padding: 0.75rem 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    #violationDetailModal .modal-footer > a,
+    #violationDetailModal .modal-footer > button {
+        flex: 1 1 auto;
+    }
+}
 </style>
 @endpush
 
@@ -323,6 +402,17 @@
                         </table>
                     </div>
                 </div>
+ </div>
+                </div>
+
+                {{-- Violation and Sanction Guide --}}
+                <div class="violation-guide-wrapper mt-3">
+                    @include('partials.violation-sanction-guide', [
+                        'guideId' => 'securityGuide',
+                        'guideTitle' => 'Violation and Sanction Guide',
+                    ])
+                </div>
+
             </div>
         </div>
 
@@ -390,12 +480,19 @@ data-progress-width="{{ $totalViolations > 0 ? round(($category->count / $totalV
 <div class="modal fade" id="violationDetailModal" tabindex="-1" aria-labelledby="violationDetailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header" style="background: linear-gradient(135deg, #7a0f1e 0%, #4a0209 100%); color: #fff;">
-                <h5 class="modal-title fw-bold" id="violationDetailModalLabel">
-                    <i class="bi bi-file-earmark-text me-2"></i>Violation Details
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+<div class="modal-header violation-detail-modal-header">
+    <h5 class="modal-title fw-bold" id="violationDetailModalLabel">
+        <i class="bi bi-file-earmark-text me-2"></i>
+        <span>Violation Details</span>
+    </h5>
+
+    <button
+        type="button"
+        class="btn-close btn-close-white violation-detail-modal-close"
+        data-bs-dismiss="modal"
+        aria-label="Close">
+    </button>
+</div>
             <div class="modal-body">
                 <div class="row g-3">
                     <div class="col-md-6">
@@ -435,16 +532,6 @@ data-progress-width="{{ $totalViolations > 0 ? round(($category->count / $totalV
                 <button type="button" class="btn portal-btn-outline" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
-    </div>
-</div>
-
-{{-- Violation and Sanction Guide --}}
-<div class="row g-3 mb-4">
-    <div class="col-12">
-        @include('partials.violation-sanction-guide', [
-            'guideId' => 'securityGuide',
-            'guideTitle' => 'Violation and Sanction Guide',
-        ])
     </div>
 </div>
 

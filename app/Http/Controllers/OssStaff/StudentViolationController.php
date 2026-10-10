@@ -351,16 +351,14 @@ class StudentViolationController extends Controller
         DB::beginTransaction();
 
         try {
-            $exists = Violation::where('student_number', $validated['student_number'])
-                ->where(function ($query) use ($violationType) {
-                    $query->where('violation_type', (string) $violationType->violation_type_id)
-                        ->orWhere('violation_type', $violationType->violation_type);
-                })
-                ->whereDate('violation_date', Carbon::parse($validated['violation_date'])->toDateString())
-                // A denied violation should not block re-recording the same real
-                // incident; pending + confirmed still block a same-day duplicate.
-                ->notDenied()
-                ->exists();
+$exists = Violation::where('student_number', $validated['student_number'])
+    ->where('violation_type_id', $violationType->violation_type_id)
+    ->whereDate(
+        'violation_date',
+        Carbon::parse($validated['violation_date'])->toDateString()
+    )
+    ->notDenied()
+    ->exists();
 
             if ($exists) {
                 DB::rollBack();
@@ -373,20 +371,22 @@ class StudentViolationController extends Controller
             $ossStaffId = $this->ossStaffId();
             $ossStaffLabel = $this->ossStaffName();
 
-            $violation = Violation::create([
-                'student_number' => $validated['student_number'],
-                'violation_type' => $violationType->violation_type_id,
-                'violation_date' => $validated['violation_date'],
-                'description' => trim($validated['description']),
-                // `recorder_id` references admins.id and the OSS Staff account
-                // IS an admins row, so the identity is persisted directly.
-                'recorder_id' => $ossStaffId,
-                'recorder_type' => 'admin',
-                'recorder_name' => $ossStaffLabel,
-                // OSS-Staff-recorded violations are sent to the admin for
-                // confirmation before they count toward the student's record.
-                'status' => Violation::STATUS_PENDING,
-            ]);
+           $violation = Violation::create([
+    'student_number' => $validated['student_number'],
+    'violation_type_id' => $violationType->violation_type_id,
+    'violation_date' => $validated['violation_date'],
+    'description' => trim($validated['description']),
+
+    'identity_verified' => true,
+    'identity_verified_at' => now(),
+    'identity_verified_by_type' => 'admin',
+    'identity_verified_by_id' => $ossStaffId,
+
+    'recorder_id' => $ossStaffId,
+    'recorder_type' => 'admin',
+    'recorder_name' => $ossStaffLabel,
+    'status' => Violation::STATUS_PENDING,
+]);
 
             // `recorded_by_security_id` is intentionally NOT set: it addresses
             // the SECURITY account that recorded a row, and OSS Staff is an
@@ -479,8 +479,7 @@ class StudentViolationController extends Controller
             'evidence.*' => ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ]);
 
-        $violationType = $original->resolvedViolationType() ?? ViolationType::find($original->violation_type);
-
+$violationType = $original->resolvedViolationType();    
         DB::beginTransaction();
 
         try {
@@ -488,15 +487,21 @@ class StudentViolationController extends Controller
             $ossStaffLabel = $this->ossStaffName();
 
             $violation = Violation::create([
-                'student_number' => $original->student_number,
-                'violation_type' => $violationType?->violation_type_id ?? $original->violation_type,
-                'violation_date' => $validated['violation_date'],
-                'description' => trim($validated['description']),
-                'recorder_id' => $ossStaffId,
-                'recorder_type' => 'admin',
-                'recorder_name' => $ossStaffLabel,
-                'status' => Violation::STATUS_PENDING,
-            ]);
+    'student_number' => $validated['student_number'],
+    'violation_type_id' => $violationType->violation_type_id,
+    'violation_date' => $validated['violation_date'],
+    'description' => trim($validated['description']),
+
+    'identity_verified' => true,
+    'identity_verified_at' => now(),
+    'identity_verified_by_type' => 'admin',
+    'identity_verified_by_id' => $ossStaffId,
+
+    'recorder_id' => $ossStaffId,
+    'recorder_type' => 'admin',
+    'recorder_name' => $ossStaffLabel,
+    'status' => Violation::STATUS_PENDING,
+]);
 
             // `recorded_by_security_id` is deliberately NOT set (see store()).
 
@@ -630,13 +635,13 @@ class StudentViolationController extends Controller
             })
             ->values();
 
-        $severityCounts = (clone $violations)
-            ->leftJoin(
-                'violation_type_tbl',
-                'violation_tbl.violation_type',
-                '=',
-                'violation_type_tbl.violation_type_id'
-            )
+$severityCounts = (clone $violations)
+    ->leftJoin(
+    'violation_type_tbl',
+    'violation_tbl.violation_type_id',
+    '=',
+    'violation_type_tbl.violation_type_id'
+    )
             ->selectRaw('COALESCE(violation_type_tbl.severity_level, 0) as severity_level, COUNT(*) as count')
             ->groupBy('severity_level')
             ->pluck('count', 'severity_level');

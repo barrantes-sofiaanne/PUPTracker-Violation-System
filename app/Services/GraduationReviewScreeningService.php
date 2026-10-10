@@ -90,16 +90,15 @@ class GraduationReviewScreeningService
         $outstanding = $pending; // Open sanction = outstanding/not yet completed.
 
         $mostRecentViolation = $violations->last();
+$patternCounts = $violations
+    ->map(function (\App\Models\Violation $violation) {
+        $type = $violation->resolvedViolationType();
 
-        $patternCounts = $violations
-            ->map(function (\App\Models\Violation $violation) {
-                $type = $violation->resolvedViolationType();
-
-                return $type?->violation_type_id
-                    ? 'id:' . $type->violation_type_id
-                    : 'raw:' . strtolower(trim((string) $violation->violation_type));
-            })
-            ->countBy();
+        return $type?->violation_type_id
+            ? 'id:' . $type->violation_type_id
+            : 'unknown:' . $violation->violation_id;
+    })
+    ->countBy();
 
         $repeatedViolations = $patternCounts->filter(fn ($count) => $count > 1)->isNotEmpty();
 
@@ -134,9 +133,9 @@ class GraduationReviewScreeningService
             'pending_sanctions' => $pending,
             'outstanding_sanctions' => $outstanding,
             'most_recent_violation_date' => $mostRecentViolation?->violation_date?->toDateString(),
-            'most_recent_violation_type' => $mostRecentViolation
-                ? ($mostRecentViolation->violationTypeDisplay ?? $mostRecentViolation->violation_type)
-                : null,
+'most_recent_violation_type' => $mostRecentViolation
+    ? $mostRecentViolation->violationTypeDisplay
+    : null,
             'repeated_violations_exist' => $repeatedViolations,
             'repeated_categories_exist' => $repeatedCategories,
             'violation_periods' => $this->academicPeriods($violations),
@@ -145,9 +144,47 @@ class GraduationReviewScreeningService
             'requires_factual_review' => $requiresReview,
             'violations' => $this->violationsForPrompt($violations),
             'sanction_records' => $this->sanctionsForPrompt($sanctionRecords),
+            'display_violations' => $this->violationsForDisplay($violations),
+'display_sanction_records' => $this->sanctionsForDisplay($sanctionRecords),
         ];
     }
+protected function violationsForDisplay(Collection $violations): array
+{
+    return $violations->map(function ($violation) {
+        return [
+            'type' => $violation->violationTypeDisplay,
+            'date' => $violation->violation_date?->toDateString(),
+            'description' => (string) $violation->description,
+        ];
+    })->values()->all();
+}
 
+/**
+ * Detailed sanction information for authorized PUPTracker users.
+ *
+ * This data stays inside the application and is not sent to the AI.
+ */
+protected function sanctionsForDisplay(Collection $records): array
+{
+    return $records->map(function ($record) {
+        return [
+            'sanction' =>
+                $record->assignedSanction?->disciplinary_sanction
+                ?? 'Unspecified sanction',
+
+            'status' => $record->status,
+
+            'date_assigned' =>
+                $record->date_assigned?->toDateString(),
+
+            'date_completed' =>
+                $record->date_completed?->toDateString(),
+
+            'deadline' =>
+                $record->deadline_date?->toDateString(),
+        ];
+    })->values()->all();
+}
     /**
      * Deterministic hash of the disciplinary state (for change detection).
      */
@@ -155,9 +192,9 @@ class GraduationReviewScreeningService
     {
         $payload = [
             'violations' => $violations->map(fn ($v) => [
-                $v->violation_id,
-                (string) $v->violation_type,
-                $v->violation_date?->toDateString(),
+$v->violation_id,
+(string) $v->violation_type_id,
+$v->violation_date?->toDateString(),
                 (string) $v->description,
             ])->all(),
             'sanctions' => $sanctionRecords->map(fn ($r) => [
@@ -223,8 +260,7 @@ class GraduationReviewScreeningService
         return $violations->map(function ($violation) {
             return [
                 'ref' => $violation->violation_id,
-                'type' => $violation->violationTypeDisplay ?? $violation->violation_type,
-                'date' => $violation->violation_date?->toDateString(),
+'type' => $violation->violationTypeDisplay,                'date' => $violation->violation_date?->toDateString(),
                 'description' => mb_substr((string) $violation->description, 0, 200),
             ];
         })->values()->all();

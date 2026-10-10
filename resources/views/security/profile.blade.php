@@ -9,18 +9,19 @@
 @section('content')
 
 @php
-    $securityFirstName = optional($security->securityProfile)->firstname
-        ?? optional($security->securityInfo)->firstname
-        ?? '';
-    $securityMiddleName = optional($security->securityProfile)->middlename
-        ?? optional($security->securityInfo)->middlename
-        ?? '';
-    $securityLastName = optional($security->securityProfile)->lastname
-        ?? optional($security->securityInfo)->lastname
-        ?? '';
-    $securityFullName = trim($securityFirstName . ' ' . $securityMiddleName . ' ' . $securityLastName)
-        ?: ($security->email ?? 'Security');
-    $securityPosition = optional($security->securityProfile)->position ?? 'Security Personnel';
+    $securityInfo = $security->securityInfo;
+
+    $securityFirstName = $securityInfo?->firstname ?? '';
+    $securityMiddleName = $securityInfo?->middlename ?? '';
+    $securityLastName = $securityInfo?->lastname ?? '';
+
+    $securityFullName = trim(
+        $securityFirstName . ' ' .
+        $securityMiddleName . ' ' .
+        $securityLastName
+    ) ?: ($security->email ?? 'Security');
+
+    $securityPosition = 'Security Personnel';
 @endphp
 
 <div class="container-fluid py-4">

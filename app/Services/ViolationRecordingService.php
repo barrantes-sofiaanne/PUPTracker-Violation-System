@@ -217,13 +217,10 @@ class ViolationRecordingService
             return null;
         }
 
-        $previousCount = Violation::where('student_number', $studentNumber)
-            ->where(function ($query) use ($violationType) {
-                $query->where('violation_type', (string) $violationType->violation_type_id)
-                    ->orWhere('violation_type', $violationType->violation_type);
-            })
-            ->effective()
-            ->count();
+$previousCount = Violation::where('student_number', $studentNumber)
+    ->where('violation_type_id', $violationType->violation_type_id)
+    ->effective()
+    ->count();
 
         $currentOffenseNumber = $previousCount + 1;
         $offenseLevel = $this->formatOffenseLevel($currentOffenseNumber);

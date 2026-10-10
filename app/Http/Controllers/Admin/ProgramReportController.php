@@ -341,35 +341,37 @@ class ProgramReportController extends Controller
         }
 
         $statistics = $report->statistics_json ?? [];
-        $students = collect($statistics['students'] ?? []);
-        if ($students->isEmpty()) {
-            return back()->with('warning', 'No factual student records are available for AI analysis.');
-        }
+$statistics = $report->statistics_json ?? [];
 
-        $narratives = [];
-        $chunkSize = max(1, (int) config('graduation_review.ai.batch_size', 50));
+if (empty($statistics)) {
+    return back()->with(
+        'warning',
+        'No factual report statistics are available for AI analysis.'
+    );
+}
 
-        try {
-            foreach ($students->chunk($chunkSize) as $chunk) {
-                $dataset = $this->aiDataset($statistics);
-                $dataset['students'] = $chunk->values()->all();
-                $narratives[] = $this->ai->generateProgramAnalysis($dataset)['narrative'];
-            }
-        } catch (\Throwable $exception) {
-            Log::warning('AI program summary failed; factual report remains available.', [
-                'report_id' => $report->report_id,
-                'error' => $exception->getMessage(),
-            ]);
+$dataset = $this->aiDataset($statistics);
 
-            return back()->with('warning', 'AI-assisted summary is temporarily unavailable. The factual disciplinary report is still available for review.');
-        }
+try {
+    $narrative = $this->ai->generateProgramAnalysis($dataset)['narrative'];
+} catch (\Throwable $exception) {
+    Log::warning('AI program summary failed; factual report remains available.', [
+        'report_id' => $report->report_id,
+        'error' => $exception->getMessage(),
+    ]);
 
-        $report->update([
-            'ai_narrative' => implode("\n\n", $narratives),
-            'ai_model' => (string) config('graduation_review.ai.model'),
-            'ai_failed' => false,
-            'report_status' => 'generated',
-        ]);
+    return back()->with(
+        'warning',
+        'AI-assisted summary is temporarily unavailable. The factual disciplinary report is still available for review.'
+    );
+}
+
+$report->update([
+    'ai_narrative' => $narrative,
+    'ai_model' => (string) config('graduation_review.ai.model'),
+    'ai_failed' => false,
+    'report_status' => 'generated',
+]);
 
         $this->audit(
             Auth::guard('admin')->id(),
@@ -491,27 +493,57 @@ class ProgramReportController extends Controller
     /**
      * Build the aggregated dataset sent to DeepSeek (single request).
      */
-    protected function aiDataset(array $statistics): array
-    {
-        return [
-            'program' => $statistics['program'],
-            'academic_year' => $statistics['academic_year'],
-            'report_mode' => $statistics['report_mode'],
-            'degree_type' => $statistics['degree_type'],
-            'graduating_year' => $statistics['graduating_year'],
-            'graduating_students' => $statistics['cohort_total'],
-            'students_with_no_violations' => $statistics['students_with_no_violations'],
-            'students_with_completed_sanctions' => $statistics['students_with_completed_sanctions'],
-            'students_with_pending_sanctions' => $statistics['students_with_pending_sanctions'],
-            'students_with_outstanding_sanctions' => $statistics['students_with_outstanding_sanctions'],
-            'students_with_repeated_violations' => $statistics['students_with_repeated_violations'],
-            'students_requiring_manual_review' => $statistics['students_requiring_manual_review'],
-            'total_violation_records' => $statistics['total_violation_records'],
-            'violation_categories' => $statistics['violation_categories'],
-            'violation_types' => $statistics['violation_types'],
-            'students' => $statistics['students'],
-        ];
-    }
+/**
+ * Build the minimum necessary aggregated dataset sent to the AI Summary.
+ *
+ * No individual student records, names, student numbers, or
+ * student-level disciplinary details are sent to the AI.
+ */
+protected function aiDataset(array $statistics): array
+{
+    return [
+        'program' => $statistics['program'],
+        'academic_year' => $statistics['academic_year'],
+        'report_mode' => $statistics['report_mode'],
+        'degree_type' => $statistics['degree_type'],
+        'graduating_year' => $statistics['graduating_year'],
+
+        'graduating_students' => $statistics['cohort_total'],
+
+        'students_with_no_violations' =>
+            $statistics['students_with_no_violations'],
+
+        'students_with_violations' =>
+            $statistics['students_with_violations'],
+
+        'students_with_completed_sanctions' =>
+            $statistics['students_with_completed_sanctions'],
+
+        'students_with_pending_sanctions' =>
+            $statistics['students_with_pending_sanctions'],
+
+        'students_with_outstanding_sanctions' =>
+            $statistics['students_with_outstanding_sanctions'],
+
+        'students_with_repeated_violations' =>
+            $statistics['students_with_repeated_violations'],
+
+        'students_requiring_manual_review' =>
+            $statistics['students_requiring_manual_review'],
+
+        'total_violation_records' =>
+            $statistics['total_violation_records'],
+
+        'violation_categories' =>
+            $statistics['violation_categories'],
+
+        'violation_types' =>
+            $statistics['violation_types'],
+
+        'repeated_violations' =>
+            $statistics['repeated_violations'] ?? [],
+    ];
+}
 
     /**
      * Super Admin can view all reports; other admins only their own.

@@ -317,12 +317,18 @@
                                                     {{ optional($record->proof_submitted_at)->format('M d, Y h:i A') }}
                                                 </div>
                                                 @if($record->proof_path)
-                                                    <a href="{{ route('admin.sanctions.proof.download', $record) }}" target="_blank" class="admin-btn admin-btn-view admin-btn-sm mb-1">
-                                                        <i class="bi bi-eye me-1"></i>View Proof
-                                                    </a>
+<a href="{{ route('admin.sanctions.proof.download', [
+    'studentSanctionRecord' => $record->proof_access_key,
+]) }}"
+   target="_blank"
+   class="admin-btn admin-btn-view admin-btn-sm">
+    <i class="bi bi-eye me-1"></i>View Proof
+</a>
                                                 @endif
                                             @elseif($record->proof_path && strcasecmp((string) $record->status, 'Completed') === 0)
-                                                <a href="{{ route('admin.sanctions.proof.download', $record) }}" target="_blank" class="admin-btn admin-btn-view admin-btn-sm">
+                                                <a href="{{ route('admin.sanctions.proof.download', [
+    'studentSanctionRecord' => $record->proof_access_key,
+]) }}" target="_blank" class="admin-btn admin-btn-view admin-btn-sm">
                                                     <i class="bi bi-eye me-1"></i>View Proof
                                                 </a>
                                             @elseif($isOpen && $record->completion_remarks)
@@ -671,8 +677,11 @@ document.addEventListener('DOMContentLoaded', function () {
             // Community Service / Campus Service assignment fields are shown and
             // required ONLY for those two sanction types.
             const sanctionText = String(button.dataset.sanction || '').toLowerCase();
-            const isServiceSanction = sanctionText.includes('community') || sanctionText.includes('campus service');
-            const serviceWrap = document.getElementById('serviceAssignmentFields');
+const isServiceSanction =
+    sanctionText.includes('community service') ||
+    sanctionText.includes('campus service') ||
+    sanctionText.includes('student-assistance service') ||
+    sanctionText.includes('student assistance service');            const serviceWrap = document.getElementById('serviceAssignmentFields');
             if (serviceWrap) {
                 serviceWrap.classList.toggle('d-none', !isServiceSanction);
                 const officeInput = document.getElementById('modal_designated_office');

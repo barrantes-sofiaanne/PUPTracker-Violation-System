@@ -78,10 +78,10 @@ class DashboardController extends Controller
         // Get violations by severity from violation_type_tbl.
         // Some rows may still have legacy or unmapped violation types, so keep them as Unmapped.
         $violationsBySeverity = Violation::leftJoin(
-                'violation_type_tbl',
-                'violation_tbl.violation_type',
-                '=',
-                'violation_type_tbl.violation_type_id'
+    'violation_type_tbl',
+    'violation_tbl.violation_type_id',
+    '=',
+    'violation_type_tbl.violation_type_id'
             )
             ->where(function (Builder $query) {
                 $this->applyRecorderScope($query);

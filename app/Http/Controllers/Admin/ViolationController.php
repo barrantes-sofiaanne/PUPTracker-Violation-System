@@ -516,8 +516,7 @@ public function show(Request $request, string $student_number)
 $individualViolations = Violation::with([
     'violationType.violationCategory',
     'recorder.adminInfo',
-    'recordingSecurity.securityInfo',
-    'recordingSecurity.securityProfile',
+'recordingSecurity.securityInfo',
 ])
     ->where('student_number', $student_number)
     ->effective()
@@ -568,9 +567,7 @@ $individualViolations = Violation::with([
                 return 'type:' . $resolvedId;
             }
 
-            $raw = mb_strtolower(trim((string) $violation->violation_type));
-
-            // Legacy row: map the stored NAME back to its type ID.
+$raw = mb_strtolower(trim((string) $violation->violationType?->violation_type));
             return isset($typeIdByName[$raw])
                 ? 'type:' . $typeIdByName[$raw]
                 : 'raw:' . $raw;
@@ -607,8 +604,7 @@ $individualViolations = Violation::with([
                 // Human-readable type name. The `violation_type` column stores the
                 // TYPE ID, so printing it directly showed numbers like "10"/"24".
                 // The relationship is the source of truth; Security does the same.
-                'violation_type' => optional($latest->violationType)->violation_type ?? $latest->violation_type,
-                'offense_level' => $offenseLevel,
+'violation_type' => optional($latest->violationType)->violation_type ?? '-',                'offense_level' => $offenseLevel,
                 'status' => $sanctionRequest?->status ?? 'No Request',
                 'violation_status' => $violationStatus,
                 'remarks' => $records->count() > 1
@@ -738,9 +734,18 @@ public function searchStudents(Request $request)
             'year' => [
                 'year_name' => $student->studentInfo?->year?->year,
             ],
+            // Resolve the section from the student's linked section record.
+            // The explicit lookup is a fallback for older/inconsistent Eloquent
+            // relationship hydration while keeping the existing JSON shape.
             'section' => [
-                'section_name' => $student->studentInfo?->section?->section_name,
+                'section_name' => $student->studentInfo?->section?->section_name
+                    ?? Section::where('section_id', $student->studentInfo?->section_id)
+                        ->value('section_name'),
             ],
+            // Also expose a flat value for any client code that expects it.
+            'section_name' => $student->studentInfo?->section?->section_name
+                ?? Section::where('section_id', $student->studentInfo?->section_id)
+                    ->value('section_name'),
         ];
     }));
 }
@@ -794,13 +799,13 @@ $violationType = ViolationType::with('violationCategory')
         */
 
 $previousCount = Violation::where(
-        'student_number',
-        $request->student_number
+    'student_number',
+    $request->student_number
+)
+    ->where(
+        'violation_type_id',
+        $violationType->violation_type_id
     )
-    ->where(function ($query) use ($violationType) {
-        $query->where('violation_type', (string) $violationType->violation_type_id)
-            ->orWhere('violation_type', $violationType->violation_type);
-    })
     ->effective()
     ->count();
 
@@ -913,6 +918,15 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
 {
     $validated = $request->validated();
 
+    // Administrator recordings must include an explicit student-identity
+    // confirmation. Security and OSS Staff use the same FormRequest, so this
+    // rule is intentionally enforced here rather than globally in the request.
+    if (! $request->boolean('identity_confirmed')) {
+        return response()->json([
+            'message' => 'You must confirm the student identity before recording the violation.',
+        ], 422);
+    }
+
     $violationType = ViolationType::findOrFail(
         $validated['violation_type_id']
     );
@@ -927,14 +941,11 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
             |--------------------------------------------------------------------------
             */
 
-            $exists = Violation::where(
-                    'student_number',
-                    $validated['student_number']
-                )
-                ->where(function ($query) use ($violationType) {
-                    $query->where('violation_type', (string) $violationType->violation_type_id)
-                        ->orWhere('violation_type', $violationType->violation_type);
-                })
+$exists = Violation::where(
+        'student_number',
+        $validated['student_number']
+    )
+    ->where('violation_type_id', $violationType->violation_type_id)
                 ->whereDate(
                     'violation_date',
                     date(
@@ -977,7 +988,7 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
 
                 'student_number' => $validated['student_number'],
 
-                'violation_type' => $violationType->violation_type_id,
+                'violation_type_id' => $violationType->violation_type_id,
 
                 'violation_date' => $validated['violation_date'],
 
@@ -1029,20 +1040,15 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
             ]);
 
         } catch (\Throwable $exception) {
+    Log::error('Admin violation store failed', [
+        'student_number' => $request->input('student_number'),
+        'error' => $exception->getMessage(),
+        'file' => $exception->getFile(),
+        'line' => $exception->getLine(),
+    ]);
 
-            DB::rollBack();
-
-            // Log full technical detail server-side only; never leak internal
-            // paths/lines/messages to the client.
-            Log::error('Admin violation store failed', [
-                'student_number' => $request->input('student_number'),
-                'error' => $exception->getMessage(),
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
-            ]);
-
-            return \App\Support\Responses::unexpectedError();
-        }
+return \App\Support\Responses::unexpectedError();
+}
     }
 
     /**
