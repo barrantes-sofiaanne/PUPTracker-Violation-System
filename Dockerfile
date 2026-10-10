@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     libonig-dev \
     libxml2-dev \
+    gnupg \
+    ca-certificates \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
         gd \
@@ -41,11 +43,15 @@ ENV COMPOSER_ALLOW_SUPERUSER=1 \
 
 # Install Node.js 22
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs
+# Install Oracle MySQL client tools for remote binlog access
+RUN curl -fsSL https://repo.mysql.com/RPM-GPG-KEY-mysql-2025 \
+    | gpg --dearmor -o /usr/share/keyrings/mysql.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/mysql.gpg] https://repo.mysql.com/apt/debian/ trixie mysql-9.7-lts" \
+    > /etc/apt/sources.list.d/mysql.list \
     && apt-get update \
-    && apt-get install -y nodejs \
-    && apt-get clean \
+    && apt-get install -y mysql-community-client \
     && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
 # Copy the entire Laravel application
