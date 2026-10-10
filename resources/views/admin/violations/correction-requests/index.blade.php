@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Violation Change Requests')
+@section('title', 'Violation Correction & Deletion Requests')
 
 @section('content')
 
@@ -10,11 +10,11 @@
 
         <div>
             <h3 class="mb-1">
-                Violation Change Requests
+                Violation Correction &amp; Deletion Requests
             </h3>
 
             <p class="mb-0">
-                Review student requests to correct or delete violation records.
+                Review student requests to correct factual details or request deletion of a violation record.
             </p>
         </div>
 
@@ -43,7 +43,7 @@
         <div class="card-header bg-white">
 
             <h5 class="mb-0">
-                Pending Violation Change Requests
+                Pending Correction &amp; Deletion Requests
             </h5>
 
         </div>

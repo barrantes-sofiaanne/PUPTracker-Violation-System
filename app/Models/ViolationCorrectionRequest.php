@@ -29,15 +29,11 @@ class ViolationCorrectionRequest extends Model
         'request_type',
         'deletion_evidence',
         'original_violation_id',
-        'request_type',
-        'deletion_evidence',
-        'original_violation_id',
     ];
 
     protected $casts = [
         'requested_violation_date' => 'datetime',
         'reviewed_at' => 'datetime',
-        'deletion_evidence' => 'array',
         'deletion_evidence' => 'array',
     ];
 

@@ -1241,7 +1241,7 @@
                                     data-has-pending-change="{{ $hasPendingChangeRequest ? '1' : '0' }}"
                                     data-correction-url="{{ route('student.violations.correction-request', ['violation' => $violation->violation_id]) }}"
                                     data-deletion-url="{{ route('student.violations.deletion-request', ['violation' => $violation->violation_id]) }}">
-                                    <i class="bi bi-three-dots-square me-1"></i>Review Violation
+                                    <i class="bi bi-lightning-charge me-1"></i>Request Action
                                 </button>
                                 <div class="d-none violation-action-triggers">
                                     @if(!empty($violation->student_requires_sanction_request) && !isset($assignedSanctionViolationIds[$violation->violation_id]))
@@ -1306,22 +1306,34 @@
 <div class="modal fade" id="violationActionsModal" tabindex="-1" aria-labelledby="violationActionsModalLabel" aria-hidden="true">
  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
   <div class="modal-header admin-modal-header">
-   <div><h5 class="modal-title admin-modal-title" id="violationActionsModalLabel"><i class="bi bi-clipboard2-check me-2"></i>Review Violation</h5><p class="mb-0 small text-muted">Review the recorded information before choosing an action.</p></div>
+   <div><h5 class="modal-title admin-modal-title" id="violationActionsModalLabel"><i class="bi bi-clipboard2-check me-2"></i>Request Action</h5><p class="mb-0 small text-muted">Review the recorded information, then choose the action you need.</p></div>
    <button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
   </div>
   <div class="modal-body">
    <section id="violationActionDetails">
     <div class="row g-3 mb-3"><div class="col-md-6"><label class="form-label text-muted">Violation Type</label><div class="fw-semibold" id="actionViolationType">—</div></div><div class="col-md-6"><label class="form-label text-muted">Category</label><div class="fw-semibold" id="actionViolationCategory">—</div></div><div class="col-md-6"><label class="form-label text-muted">Date Recorded</label><div id="actionViolationDate">—</div></div><div class="col-md-6"><label class="form-label text-muted">Status</label><span class="badge bg-success">Confirmed</span></div><div class="col-12"><label class="form-label text-muted">Remarks / Description</label><div class="p-3 border rounded bg-light" id="actionViolationDescription">No remarks</div></div><div class="col-12"><label class="form-label text-muted">Evidence attached to the violation</label><div id="actionViolationEvidence" class="d-flex flex-wrap gap-2">No evidence available.</div></div></div>
     <div id="pendingChangeRequestNotice" class="alert alert-info d-none">You already have a pending correction or deletion request for this violation. You can still review the record, but cannot submit another change request until it is reviewed.</div>
-    <div class="d-flex flex-wrap justify-content-end gap-2 pt-3 border-top"><button type="button" id="openSanctionRequestAction" class="btn portal-btn"><i class="bi bi-send me-1"></i>Request Sanction</button><button type="button" id="openChangeRequestAction" class="btn btn-outline-primary"><i class="bi bi-pencil-square me-1"></i>Correction or Deletion</button></div>
+    <div class="d-flex flex-wrap justify-content-end gap-2 pt-3 border-top"><button type="button" id="openSanctionRequestAction" class="btn portal-btn"><i class="bi bi-send me-1"></i>Request Sanction</button><button type="button" id="openChangeRequestAction" class="btn btn-outline-primary"><i class="bi bi-pencil-square me-1"></i>Request Correction or Deletion</button></div>
    </section>
    <section id="violationChangeChoice" class="d-none"><button type="button" class="btn btn-link px-0 mb-2" id="backToViolationDetails"><i class="bi bi-arrow-left me-1"></i>Back to violation details</button><h6 class="fw-bold">What would you like to request?</h6><p class="text-muted">Choose whether the recorded information needs correction or the violation record should be deleted.</p><div class="row g-3"><div class="col-md-6"><button type="button" class="btn btn-outline-primary w-100 p-3" id="chooseCorrection"><i class="bi bi-pencil-square fs-4 d-block mb-2"></i><strong>Request Correction</strong><span class="small d-block mt-1">Correct factual details of the record.</span></button></div><div class="col-md-6"><button type="button" class="btn btn-outline-danger w-100 p-3" id="chooseDeletion"><i class="bi bi-trash3 fs-4 d-block mb-2"></i><strong>Request Deletion</strong><span class="small d-block mt-1">Ask the Administrator to remove the record.</span></button></div></div></section>
    <section id="violationDeletionFormSection" class="d-none"><button type="button" class="btn btn-link px-0 mb-2" id="backToChangeChoice"><i class="bi bi-arrow-left me-1"></i>Back</button><h6 class="fw-bold">Request Deletion</h6><p class="text-muted small">Explain why this record should be deleted. Supporting evidence is optional but recommended.</p>
     <form method="POST" enctype="multipart/form-data" id="violationDeletionRequestForm">@csrf
-     <div class="mb-3"><label for="deletionRequestReason" class="form-label fw-semibold">Reason for deletion <span class="text-danger">*</span></label><textarea class="form-control" name="reason" id="deletionRequestReason" rows="4" minlength="10" maxlength="2000" required placeholder="Explain why this violation record should be deleted..."></textarea></div>
-     <div class="mb-3"><label class="form-label fw-semibold">Evidence</label><input type="file" class="form-control" name="evidence_files[]" id="deletionEvidenceFiles" accept="image/*,.pdf" multiple><div class="form-text">Attach up to 5 image or PDF files, up to 10 MB each.</div></div>
-     <div class="border rounded p-3 mb-3"><div class="d-flex flex-wrap gap-2 mb-2"><button type="button" class="btn btn-outline-secondary btn-sm" id="startDeletionCamera"><i class="bi bi-camera me-1"></i>Use Camera</button><button type="button" class="btn btn-outline-secondary btn-sm d-none" id="captureDeletionCamera"><i class="bi bi-camera-fill me-1"></i>Capture Photo</button><button type="button" class="btn btn-outline-secondary btn-sm d-none" id="stopDeletionCamera">Stop Camera</button></div><video id="deletionCameraPreview" class="w-100 rounded d-none" autoplay playsinline style="max-height:260px;object-fit:contain;background:#111"></video><canvas id="deletionCameraCanvas" class="d-none"></canvas><img id="deletionCameraCapturedPreview" class="img-fluid rounded d-none mt-2" alt="Captured evidence preview"><input type="hidden" name="camera_image" id="deletionCameraImage"></div>
-     <div class="d-flex justify-content-end gap-2"><button type="button" class="btn btn-light" id="cancelDeletionForm">Cancel</button><button type="submit" class="btn btn-danger"><i class="bi bi-send me-1"></i>Submit Deletion Request</button></div>
+     <ul class="nav nav-tabs mb-3" id="deletionRequestTabs" role="tablist">
+      <li class="nav-item" role="presentation"><button class="nav-link active" id="deletion-reason-tab" data-bs-toggle="tab" data-bs-target="#deletion-reason-pane" type="button" role="tab" aria-controls="deletion-reason-pane" aria-selected="true">Reason <span class="text-danger">*</span></button></li>
+      <li class="nav-item" role="presentation"><button class="nav-link" id="deletion-evidence-tab" data-bs-toggle="tab" data-bs-target="#deletion-evidence-pane" type="button" role="tab" aria-controls="deletion-evidence-pane" aria-selected="false">Supporting Evidence</button></li>
+     </ul>
+     <div class="tab-content mb-3">
+      <div class="tab-pane fade show active" id="deletion-reason-pane" role="tabpanel" aria-labelledby="deletion-reason-tab" tabindex="0">
+       <label for="deletionRequestReason" class="form-label fw-semibold">Reason for deletion <span class="text-danger">*</span></label>
+       <textarea class="form-control" name="reason" id="deletionRequestReason" rows="4" minlength="10" maxlength="2000" required placeholder="Explain why this violation record should be deleted..."></textarea>
+       <div class="form-text">Provide at least 10 characters explaining why the record should be removed.</div>
+      </div>
+      <div class="tab-pane fade" id="deletion-evidence-pane" role="tabpanel" aria-labelledby="deletion-evidence-tab" tabindex="0">
+       <div class="mb-3"><label for="deletionEvidenceFiles" class="form-label fw-semibold">Attach files</label><input type="file" class="form-control" name="evidence_files[]" id="deletionEvidenceFiles" accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf" multiple><div class="form-text">Optional. Attach up to 5 image or PDF files, up to 10 MB each.</div></div>
+       <div class="border rounded p-3"><div class="fw-semibold mb-2">Capture with camera</div><div class="d-flex flex-wrap gap-2 mb-2"><button type="button" class="btn btn-outline-secondary btn-sm" id="startDeletionCamera"><i class="bi bi-camera me-1"></i>Use Camera</button><button type="button" class="btn btn-outline-secondary btn-sm d-none" id="captureDeletionCamera"><i class="bi bi-camera-fill me-1"></i>Capture Photo</button><button type="button" class="btn btn-outline-secondary btn-sm d-none" id="stopDeletionCamera">Stop Camera</button></div><video id="deletionCameraPreview" class="w-100 rounded d-none" autoplay playsinline style="max-height:260px;object-fit:contain;background:#111"></video><canvas id="deletionCameraCanvas" class="d-none"></canvas><img id="deletionCameraCapturedPreview" class="img-fluid rounded d-none mt-2" alt="Captured evidence preview"><input type="hidden" name="camera_image" id="deletionCameraImage"><p class="small text-muted mb-0 mt-2">Camera access requires browser permission and a secure connection (HTTPS).</p></div>
+      </div>
+     </div>
+     <div class="d-flex flex-wrap justify-content-end gap-2"><button type="button" class="btn btn-light" id="cancelDeletionForm">Cancel</button><button type="submit" class="btn btn-danger"><i class="bi bi-send me-1"></i>Submit Deletion Request</button></div>
     </form>
    </section>
   </div>
@@ -2319,13 +2331,13 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('openChangeRequestAction').addEventListener('click', () => showStep('choice'));
     document.getElementById('backToViolationDetails').addEventListener('click', () => showStep('details'));
     document.getElementById('backToChangeChoice').addEventListener('click', () => showStep('choice'));
-    document.getElementById('cancelDeletionForm').addEventListener('click', () => { showStep('choice'); });
+    document.getElementById('cancelDeletionForm').addEventListener('click', () => { stopCam(); showStep('choice'); });
     document.getElementById('chooseCorrection').addEventListener('click', () => {
       if (!activeButton) return; const trigger=activeButton.parentElement.querySelector('.legacy-correction-trigger');
       actionModal.hide(); if (trigger) setTimeout(() => trigger.click(), 180);
     });
     document.getElementById('chooseDeletion').addEventListener('click', () => {
-      if (!activeButton) return; document.getElementById('violationDeletionRequestForm').action=activeButton.dataset.deletionUrl; document.getElementById('deletionRequestReason').value=''; document.getElementById('deletionEvidenceFiles').value=''; document.getElementById('deletionCameraImage').value=''; document.getElementById('deletionCameraCapturedPreview').classList.add('d-none'); showStep('deletion');
+      if (!activeButton) return; stopCam(); document.getElementById('violationDeletionRequestForm').action=activeButton.dataset.deletionUrl; document.getElementById('deletionRequestReason').value=''; document.getElementById('deletionEvidenceFiles').value=''; document.getElementById('deletionCameraImage').value=''; document.getElementById('deletionCameraCapturedPreview').classList.add('d-none'); const reasonTab=document.getElementById('deletion-reason-tab'); if(reasonTab && window.bootstrap) bootstrap.Tab.getOrCreateInstance(reasonTab).show(); showStep('deletion');
     });
     document.getElementById('openSanctionRequestAction').addEventListener('click', () => {
       if (!activeButton) return; const trigger=activeButton.parentElement.querySelector('.request-sanction-btn');
@@ -2335,7 +2347,12 @@ document.addEventListener('DOMContentLoaded', function () {
     startCamera.addEventListener('click', async () => { try { cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false}); video.srcObject=cameraStream; video.classList.remove('d-none'); captureCamera.classList.remove('d-none'); stopCamera.classList.remove('d-none'); startCamera.classList.add('d-none'); } catch(e) { if(window.Swal) Swal.fire({icon:'error',title:'Camera unavailable',text:'Allow camera access or attach an image file instead.'}); else alert('Camera unavailable. Please attach an image file instead.'); } });
     captureCamera.addEventListener('click', () => { if(!video.videoWidth) return; canvas.width=video.videoWidth; canvas.height=video.videoHeight; canvas.getContext('2d').drawImage(video,0,0); imageInput.value=canvas.toDataURL('image/jpeg',0.88); imagePreview.src=imageInput.value; imagePreview.classList.remove('d-none'); stopCam(); });
     function stopCam(){ if(cameraStream) cameraStream.getTracks().forEach(t=>t.stop()); cameraStream=null; video.srcObject=null; video.classList.add('d-none'); captureCamera.classList.add('d-none'); stopCamera.classList.add('d-none'); startCamera.classList.remove('d-none'); }
-    stopCamera.addEventListener('click', stopCam); actionModalEl.addEventListener('hidden.bs.modal', stopCam);
+    stopCamera.addEventListener('click', stopCam); document.getElementById('backToChangeChoice').addEventListener('click', stopCam); actionModalEl.addEventListener('hidden.bs.modal', stopCam);
+    const deletionReasonField = document.getElementById('deletionRequestReason');
+    deletionReasonField.addEventListener('invalid', () => {
+      const reasonTab = document.getElementById('deletion-reason-tab');
+      if (reasonTab && window.bootstrap) bootstrap.Tab.getOrCreateInstance(reasonTab).show();
+    });
     document.getElementById('violationDeletionRequestForm').addEventListener('submit', function(e) { if (!this.action) { e.preventDefault(); return; } if(window.Swal) { e.preventDefault(); const form=this; Swal.fire({icon:'question',title:'Submit deletion request?',text:'The Administrator will review your reason and evidence. The violation will not be deleted unless the request is approved.',showCancelButton:true,confirmButtonText:'Submit Request',cancelButtonText:'Cancel'}).then(r=>{if(r.isConfirmed) form.submit();}); } });
 });
 

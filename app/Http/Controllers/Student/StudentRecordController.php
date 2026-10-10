@@ -648,7 +648,7 @@ public function correctionOptions(Request $request, Violation $violation)
                 $files[] = ['path' => $path, 'name' => 'Camera evidence.' . $extension, 'mime' => 'image/' . $matches[1]];
             }
 
-            ViolationCorrectionRequest::create([
+            $changeRequest = ViolationCorrectionRequest::create([
                 'violation_id' => $violation->violation_id,
                 'student_number' => $user->student_number,
                 'request_type' => ViolationCorrectionRequest::TYPE_DELETION,
@@ -663,7 +663,7 @@ public function correctionOptions(Request $request, Violation $violation)
                     title: 'Violation Deletion Request',
                     message: $user->first_name . ' ' . $user->last_name . ' (' . $user->student_number . ') submitted a deletion request for violation #' . $violation->violation_id . '.',
                     targetType: 'violation_correction_request',
-                    targetId: (int) ViolationCorrectionRequest::where('student_number', $user->student_number)->where('violation_id', $violation->violation_id)->latest('request_id')->value('request_id'),
+                    targetId: (int) $changeRequest->request_id,
                 );
             } catch (\Throwable $e) {
                 Log::warning('Unable to send admin notification for deletion request.', ['error' => $e->getMessage()]);
