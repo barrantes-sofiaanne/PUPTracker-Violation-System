@@ -1237,14 +1237,15 @@
                                     data-description="{{ $violation->description ?? '' }}"
                                     data-evidence="{{ htmlspecialchars(json_encode($logEvidence), ENT_QUOTES, 'UTF-8') }}"
                                     data-has-sanction="{{ isset($assignedSanctionViolationIds[$violation->violation_id]) ? '1' : '0' }}"
-                                    data-can-request-sanction="{{ !empty($violation->student_requires_sanction_request) && !isset($assignedSanctionViolationIds[$violation->violation_id]) ? '1' : '0' }}"
+                                    data-can-request-sanction="{{ !isset($assignedSanctionViolationIds[$violation->violation_id]) ? '1' : '0' }}"
                                     data-has-pending-change="{{ $hasPendingChangeRequest ? '1' : '0' }}"
                                     data-correction-url="{{ route('student.violations.correction-request', ['violation' => $violation->violation_id]) }}"
                                     data-deletion-url="{{ route('student.violations.deletion-request', ['violation' => $violation->violation_id]) }}">
                                     <i class="bi bi-lightning-charge me-1"></i>Request Action
                                 </button>
                                 <div class="d-none violation-action-triggers">
-                                    @if(!empty($violation->student_requires_sanction_request) && !isset($assignedSanctionViolationIds[$violation->violation_id]))
+                                    @if(!isset($assignedSanctionViolationIds[$violation->violation_id]))
+                                        {{-- Allow students to request a sanction for any violation that does not already have an assigned sanction. --}}
                                         <button type="button" class="request-sanction-btn" data-violation-type-id="{{ $violation->violation_type_id }}">Request Sanction</button>
                                     @endif
                                     <button type="button" class="legacy-correction-trigger" data-bs-toggle="modal" data-bs-target="#correctionRequestModal"
@@ -1302,18 +1303,33 @@
 
 </div>
 
+<style>
+/* Keep the unavailable sanction action visibly disabled even when portal-btn has custom styling. */
+#openSanctionRequestAction:disabled,
+#openSanctionRequestAction.sanction-unavailable {
+    opacity: .55;
+    cursor: not-allowed;
+    pointer-events: none;
+    box-shadow: none;
+}
+#violationActionsModal .admin-modal-close {
+    opacity: 1;
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+</style>
+
 {{-- Unified per-violation actions modal --}}
 <div class="modal fade" id="violationActionsModal" tabindex="-1" aria-labelledby="violationActionsModalLabel" aria-hidden="true">
  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
   <div class="modal-header admin-modal-header">
    <div><h5 class="modal-title admin-modal-title" id="violationActionsModalLabel"><i class="bi bi-clipboard2-check me-2"></i>Request Action</h5><p class="mb-0 small text-muted">Review the recorded information, then choose the action you need.</p></div>
-   <button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+   <button type="button" class="btn-close btn-close-white admin-modal-close" data-bs-dismiss="modal" aria-label="Close" title="Close"></button>
   </div>
   <div class="modal-body">
    <section id="violationActionDetails">
     <div class="row g-3 mb-3"><div class="col-md-6"><label class="form-label text-muted">Violation Type</label><div class="fw-semibold" id="actionViolationType">—</div></div><div class="col-md-6"><label class="form-label text-muted">Category</label><div class="fw-semibold" id="actionViolationCategory">—</div></div><div class="col-md-6"><label class="form-label text-muted">Date Recorded</label><div id="actionViolationDate">—</div></div><div class="col-md-6"><label class="form-label text-muted">Status</label><span class="badge bg-success">Confirmed</span></div><div class="col-12"><label class="form-label text-muted">Remarks / Description</label><div class="p-3 border rounded bg-light" id="actionViolationDescription">No remarks</div></div><div class="col-12"><label class="form-label text-muted">Evidence attached to the violation</label><div id="actionViolationEvidence" class="d-flex flex-wrap gap-2">No evidence available.</div></div></div>
     <div id="pendingChangeRequestNotice" class="alert alert-info d-none">You already have a pending correction or deletion request for this violation. You can still review the record, but cannot submit another change request until it is reviewed.</div>
-    <div class="d-flex flex-wrap justify-content-end gap-2 pt-3 border-top"><button type="button" id="openSanctionRequestAction" class="btn portal-btn"><i class="bi bi-send me-1"></i>Request Sanction</button><button type="button" id="openChangeRequestAction" class="btn btn-outline-primary"><i class="bi bi-pencil-square me-1"></i>Request Correction or Deletion</button></div>
+    <div class="d-flex flex-wrap justify-content-end gap-2 pt-3 border-top"><button type="button" id="openSanctionRequestAction" class="btn portal-btn" disabled aria-disabled="true"><i class="bi bi-info-circle me-1"></i>Sanction Request Unavailable</button><button type="button" id="openChangeRequestAction" class="btn btn-outline-primary"><i class="bi bi-pencil-square me-1"></i>Request Correction or Deletion</button></div>
    </section>
    <section id="violationChangeChoice" class="d-none"><button type="button" class="btn btn-link px-0 mb-2" id="backToViolationDetails"><i class="bi bi-arrow-left me-1"></i>Back to violation details</button><h6 class="fw-bold">What would you like to request?</h6><p class="text-muted">Choose whether the recorded information needs correction or the violation record should be deleted.</p><div class="row g-3"><div class="col-md-6"><button type="button" class="btn btn-outline-primary w-100 p-3" id="chooseCorrection"><i class="bi bi-pencil-square fs-4 d-block mb-2"></i><strong>Request Correction</strong><span class="small d-block mt-1">Correct factual details of the record.</span></button></div><div class="col-md-6"><button type="button" class="btn btn-outline-danger w-100 p-3" id="chooseDeletion"><i class="bi bi-trash3 fs-4 d-block mb-2"></i><strong>Request Deletion</strong><span class="small d-block mt-1">Ask the Administrator to remove the record.</span></button></div></div></section>
    <section id="violationDeletionFormSection" class="d-none"><button type="button" class="btn btn-link px-0 mb-2" id="backToChangeChoice"><i class="bi bi-arrow-left me-1"></i>Back</button><h6 class="fw-bold">Request Deletion</h6><p class="text-muted small">Explain why this record should be deleted. Supporting evidence is optional but recommended.</p>
@@ -2324,8 +2340,10 @@ document.addEventListener('DOMContentLoaded', function () {
       const sanctionAction = document.getElementById('openSanctionRequestAction');
       const canRequestSanction = button.dataset.canRequestSanction === '1';
       sanctionAction.disabled = !canRequestSanction;
+      sanctionAction.setAttribute('aria-disabled', String(!canRequestSanction));
+      sanctionAction.classList.toggle('sanction-unavailable', !canRequestSanction);
       sanctionAction.innerHTML = canRequestSanction ? '<i class="bi bi-send me-1"></i>Request Sanction' : '<i class="bi bi-info-circle me-1"></i>Sanction Request Unavailable';
-      sanctionAction.title = canRequestSanction ? '' : 'This violation does not require a student sanction request, or a sanction has already been assigned.';
+      sanctionAction.title = canRequestSanction ? '' : 'A sanction has already been assigned to this violation.';
       actionModal.show();
     }));
     document.getElementById('openChangeRequestAction').addEventListener('click', () => showStep('choice'));
