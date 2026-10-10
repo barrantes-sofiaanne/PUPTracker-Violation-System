@@ -316,34 +316,6 @@ foreach ($groupedViolations as $records) {
     ];
 }
 
-// Keep the Individual Violations Log aligned with the same sanction eligibility
-// decision used by Summary by Violation. The Blade view reads this explicit
-// attribute to decide whether to expose Request Sanction.
-$requestEligibleTypeIds = collect($violationSummary)
-    ->filter(fn ($summary) => ! empty($summary['requires_sanction_request']))
-    ->pluck('violation_type_id')
-    ->filter()
-    ->map(fn ($id) => (string) $id)
-    ->values()
-    ->all();
-
-$violations->getCollection()->transform(function ($violation) use (
-    $requestEligibleTypeIds,
-    $assignedSanctionViolationIds
-) {
-    $resolvedType = $violation->resolvedViolationType();
-    $resolvedTypeId = (string) ($resolvedType?->violation_type_id ?? '');
-
-    $violation->setAttribute(
-        'student_requires_sanction_request',
-        $resolvedTypeId !== ''
-            && in_array($resolvedTypeId, $requestEligibleTypeIds, true)
-            && ! isset($assignedSanctionViolationIds[$violation->violation_id])
-    );
-
-    return $violation;
-});
-
 $sanctionRecords = StudentSanctionRecord::with([
     'violation.violationType',
     'assignedSanction',
@@ -440,16 +412,10 @@ $offenseCount = Violation::where('student_number', $user->student_number)
         ], 422);
     }
 
-    // Only Community Service / Campus Service sanctions require a student
-    // sanction request because the administration must schedule/assign the
-    // service. Student-Assistance Service and other OSS-consultation sanctions
-    // are already assigned and must be handled through the Sanction Record tab.
-    if (! StudentSanctionRecord::requiresStudentSanctionRequest($assignedSanction?->disciplinary_sanction)) {
-        return response()->json([
-            'success' => false,
-            'message' => StudentSanctionRecord::CONSULTATION_NOTICE,
-        ], 422);
-    }
+    // Allow a student to request sanction review for any configured,
+    // non-warning sanction. The consultation notice remains in the Sanction
+    // Record tab for sanctions that do not require proof of completion; it
+    // must not block creation of the sanction request itself.
 
     $existing = SanctionRequest::where(
         'student_number',
