@@ -1228,7 +1228,17 @@
                                     ])->values()->all();
                                     $hasPendingChangeRequest = \App\Models\ViolationCorrectionRequest::where('violation_id', $violation->violation_id)->where('student_number', Auth::user()->student_number)->where('status', 'pending')->exists();
                                 @endphp
-                                <button type="button" class="btn portal-btn btn-sm w-100 violation-actions-open"
+                                <div class="student-violation-actions">
+                                    @if(!isset($assignedSanctionViolationIds[$violation->violation_id]))
+                                        <button type="button" class="student-action-btn student-action-btn-primary request-sanction-visible">
+                                            <i class="bi bi-send me-1"></i>Request Sanction
+                                        </button>
+                                    @else
+                                        <button type="button" class="student-action-btn student-action-btn-muted" disabled title="A sanction has already been assigned to this violation.">
+                                            <i class="bi bi-check-circle me-1"></i>Sanction Assigned
+                                        </button>
+                                    @endif
+                                    <button type="button" class="student-action-btn student-action-btn-secondary violation-actions-open"
                                     data-violation-id="{{ $violation->violation_id }}"
                                     data-violation-type-id="{{ $violation->violation_type_id }}"
                                     data-violation-name="{{ $violation->violation_type_display }}"
@@ -1241,8 +1251,9 @@
                                     data-has-pending-change="{{ $hasPendingChangeRequest ? '1' : '0' }}"
                                     data-correction-url="{{ route('student.violations.correction-request', ['violation' => $violation->violation_id]) }}"
                                     data-deletion-url="{{ route('student.violations.deletion-request', ['violation' => $violation->violation_id]) }}">
-                                    <i class="bi bi-lightning-charge me-1"></i>Request Action
-                                </button>
+                                        <i class="bi bi-pencil-square me-1"></i>Correction / Deletion
+                                    </button>
+                                </div>
                                 <div class="d-none violation-action-triggers">
                                     @if(!isset($assignedSanctionViolationIds[$violation->violation_id]))
                                         {{-- Allow students to request a sanction for any violation that does not already have an assigned sanction. --}}
@@ -1304,6 +1315,15 @@
 </div>
 
 <style>
+.student-violation-actions { display:flex; flex-direction:column; align-items:stretch; gap:.55rem; min-width:190px; }
+.student-action-btn { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; width:100%; min-height:42px; padding:.65rem .9rem; border:1px solid transparent; border-radius:10px; font-size:.95rem; font-weight:600; line-height:1.25; text-align:center; transition:background-color .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease; }
+.student-action-btn:not(:disabled):hover { transform:translateY(-1px); box-shadow:0 4px 10px rgba(50,20,20,.12); }
+.student-action-btn-primary { color:#fff; background:#8b0000; border-color:#8b0000; }
+.student-action-btn-primary:hover,.student-action-btn-primary:focus-visible { color:#fff; background:#6f0000; border-color:#6f0000; }
+.student-action-btn-secondary { color:#7f0000; background:#fff; border-color:#c98a8a; }
+.student-action-btn-secondary:hover,.student-action-btn-secondary:focus-visible { color:#650000; background:#fff5f5; border-color:#8b0000; }
+.student-action-btn-muted,.student-action-btn:disabled { color:#666; background:#eee; border-color:#ddd; cursor:not-allowed; opacity:.8; box-shadow:none; }
+@media (max-width:768px) { .student-violation-actions { min-width:0; width:100%; } }
 /* Keep the unavailable sanction action visibly disabled even when portal-btn has custom styling. */
 #openSanctionRequestAction:disabled,
 #openSanctionRequestAction.sanction-unavailable {
@@ -1322,7 +1342,7 @@
 <div class="modal fade" id="violationActionsModal" tabindex="-1" aria-labelledby="violationActionsModalLabel" aria-hidden="true">
  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
   <div class="modal-header admin-modal-header">
-   <div><h5 class="modal-title admin-modal-title" id="violationActionsModalLabel"><i class="bi bi-clipboard2-check me-2"></i>Request Action</h5><p class="mb-0 small text-muted">Review the recorded information, then choose the action you need.</p></div>
+   <div><h5 class="modal-title admin-modal-title" id="violationActionsModalLabel"><i class="bi bi-clipboard2-check me-2"></i>Violation Details</h5><p class="mb-0 small text-muted">Review this record and choose correction or deletion if needed.</p></div>
    <button type="button" class="btn-close btn-close-white admin-modal-close" data-bs-dismiss="modal" aria-label="Close" title="Close"></button>
   </div>
   <div class="modal-body">
@@ -2329,6 +2349,10 @@ document.addEventListener('DOMContentLoaded', function () {
     let activeButton = null, cameraStream = null;
     const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value || '—'; };
     function showStep(step) { details.classList.toggle('d-none', step !== 'details'); choice.classList.toggle('d-none', step !== 'choice'); deletion.classList.toggle('d-none', step !== 'deletion'); }
+    document.querySelectorAll('.request-sanction-visible').forEach(button => button.addEventListener('click', () => {
+      const trigger = button.closest('td')?.querySelector('.request-sanction-btn');
+      if (trigger) trigger.click();
+    }));
     document.querySelectorAll('.violation-actions-open').forEach(button => button.addEventListener('click', () => {
       activeButton = button; showStep('details');
       setText('actionViolationType', button.dataset.violationName); setText('actionViolationCategory', button.dataset.category); setText('actionViolationDate', button.dataset.date); setText('actionViolationDescription', button.dataset.description || 'No remarks recorded.');
