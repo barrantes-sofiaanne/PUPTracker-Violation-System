@@ -2,24 +2,8 @@
 
 @section('title', 'Student Record')
 
-@php
-    $violationCategories = $violationTypes
-        ->pluck('violationCategory')
-        ->filter()
-        ->unique('violation_category_id')
-        ->sortBy('category_name')
-        ->values();
-@endphp
-
 @push('styles')
-
-{{-- Student Record-specific styles --}}
-<link rel="stylesheet" href="{{ asset('css/student.css') }}">
-
-{{-- Re-apply the shared Student Portal UI after student.css --}}
-<link rel="stylesheet" href="{{ asset('css/portal.css') }}">
-<link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
-
+<link rel="stylesheet" href="{{ asset('css/student.css') }}"> 
 <style>
 /* ==========================================================================
    Submit Proof of Completion modal (scoped to this page)
@@ -477,355 +461,6 @@
         width: 100%;
     }
 }
-
-/* =========================================================
-   Violation correction modal
-   ========================================================= */
-#correctionRequestModal .modal-dialog {
-    max-width: 900px;
-}
-
-#correctionRequestModal .modal-content {
-    border-radius: 1rem;
-}
-
-#correctionRequestModal .correction-record-panel,
-#correctionRequestModal .correction-request-panel {
-    border: 1px solid var(--border-color);
-    border-radius: 0.85rem;
-    padding: 1rem;
-    background: var(--card-bg, #fff);
-}
-
-#correctionRequestModal .correction-record-panel {
-    background: rgba(128, 0, 0, 0.025);
-}
-
-#correctionRequestModal .correction-section-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.9rem;
-    color: var(--pup-maroon, #800000);
-    font-weight: 700;
-}
-
-#correctionRequestModal .correction-evidence-box {
-    border-top: 1px solid var(--border-color);
-    padding-top: 1rem;
-}
-
-#correctionRequestModal .correction-evidence-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    margin: 0 0.5rem 0.5rem 0;
-}
-
-#correctionRequestModal input[readonly],
-#correctionRequestModal textarea[readonly] {
-    background: #f7f7f7;
-}
-
-/* =========================================================
-   Violation Record tables
-   ========================================================= */
-
-/* ---------------------------------------------------------
-   Summary by Violation
-   --------------------------------------------------------- */
-.summary-table-responsive {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto !important;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-}
-
-.summary-violations-table {
-    width: 1200px !important;
-    min-width: 1200px !important;
-    max-width: none !important;
-    table-layout: fixed !important;
-    border-collapse: collapse;
-}
-
-/* Six summary columns = 100%. Evidence belongs in the individual log. */
-.summary-category-col { width: 16%; }
-.summary-violation-type-col { width: 24%; }
-.summary-offense-col { width: 12%; }
-.summary-status-col { width: 14%; }
-.summary-remarks-col { width: 16%; }
-.summary-sanction-col { width: 18%; }
-
-.summary-violations-table th,
-.summary-violations-table td {
-    box-sizing: border-box;
-    vertical-align: middle !important;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    hyphens: none !important;
-}
-
-.summary-violations-table thead th {
-    text-align: center !important;
-    line-height: 1.2 !important;
-    font-size: 0.82rem !important;
-    padding: 0.8rem 0.55rem !important;
-}
-
-.summary-violations-table tbody td {
-    line-height: 1.4 !important;
-    padding: 1rem 0.65rem !important;
-}
-
-/* Keep normal words intact; only allow emergency breaking of a very long
-   unbroken value. */
-.summary-violations-table .summary-category-col,
-.summary-violations-table .summary-violation-type-col,
-.summary-violations-table .summary-offense-col,
-.summary-violations-table .summary-remarks-col,
-.summary-violations-table .summary-sanction-col {
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-}
-
-/* Status */
-.summary-violations-table .summary-status-col {
-    text-align: center !important;
-}
-
-.summary-violations-table .summary-status-col .portal-badge,
-.summary-violations-table .summary-status-col .badge {
-    display: inline-block;
-    max-width: 100%;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    text-align: center;
-    line-height: 1.2 !important;
-}
-
-/* Action */
-.summary-violations-table .summary-action-col {
-    text-align: center !important;
-    vertical-align: middle !important;
-}
-
-.summary-action-col .summary-action-buttons {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
-    width: 100%;
-    gap: 0.5rem;
-}
-
-.summary-action-col .summary-action-buttons .btn {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    hyphens: none !important;
-    text-align: center;
-    line-height: 1.25 !important;
-    padding: 0.65rem 0.45rem !important;
-    font-size: 0.85rem !important;
-}
-
-/* ---------------------------------------------------------
-   Individual Violations Log
-   Give the Actions column enough room for readable controls. On narrow
-   screens the table scrolls horizontally instead of breaking button labels.
-   --------------------------------------------------------- */
-.individual-table-responsive {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto !important;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-}
-
-.individual-violations-table {
-    width: 1400px !important;
-    min-width: 1400px !important;
-    max-width: none !important;
-    table-layout: fixed !important;
-}
-
-.individual-violations-table th,
-.individual-violations-table td {
-    box-sizing: border-box;
-    vertical-align: middle;
-    white-space: normal;
-    word-break: normal;
-    overflow-wrap: break-word;
-    hyphens: none;
-    padding: 0.9rem 0.65rem;
-}
-
-.individual-violations-table .violation-type-col { width: 19%; }
-.individual-violations-table .violation-date-col { width: 13%; }
-.individual-violations-table .category-col { width: 15%; }
-.individual-violations-table .status-col { width: 11%; }
-.individual-violations-table .remarks-col { width: 13%; }
-.individual-violations-table .attachments-col { width: 11%; }
-.individual-violations-table .individual-actions-col { width: 18%; min-width: 230px; text-align: center; }
-.individual-violations-table .individual-actions-col > div {
-    display: flex !important;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.55rem !important;
-    width: 100%;
-    max-width: 230px;
-    margin-inline: auto;
-}
-.individual-violations-table .individual-actions-col .btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    width: 100%;
-    max-width: 230px;
-    min-width: 0;
-    min-height: 44px;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    line-height: 1.25;
-    padding: 0.65rem 0.75rem;
-    margin: 0;
-}
-
-.individual-violations-table .violation-date-col {
-    line-height: 1.45;
-}
-
-/* ---------------------------------------------------------
-   Tablet / desktop tightening
-   --------------------------------------------------------- */
-@media (max-width: 1200px) {
-    .summary-violations-table thead th {
-        font-size: 0.78rem;
-        padding-left: 0.35rem !important;
-        padding-right: 0.35rem !important;
-    }
-
-    .summary-violations-table tbody td {
-        padding-left: 0.4rem !important;
-        padding-right: 0.4rem !important;
-    }
-
-    .summary-action-col .summary-action-buttons .btn {
-        font-size: 0.8rem;
-        padding-left: 0.3rem;
-        padding-right: 0.3rem;
-    }
-}
-
-/* ---------------------------------------------------------
-   Mobile: keep multi-column records readable.
-   Do NOT squeeze the summary columns into the phone viewport.
-   The table becomes horizontally scrollable instead.
-   --------------------------------------------------------- */
-@media (max-width: 767.98px) {
-    .summary-table-responsive,
-    .individual-table-responsive {
-        width: 100%;
-        max-width: 100%;
-        overflow-x: auto !important;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior-x: contain;
-    }
-
-    .summary-violations-table {
-        width: 1200px !important;
-        min-width: 1200px !important;
-        max-width: none !important;
-        table-layout: fixed !important;
-    }
-
-    .summary-violations-table th,
-    .summary-violations-table td {
-        word-break: normal !important;
-        overflow-wrap: normal !important;
-        hyphens: none !important;
-    }
-
-    .summary-violations-table thead th {
-        font-size: 0.78rem !important;
-        line-height: 1.2 !important;
-        padding: 0.75rem 0.5rem !important;
-    }
-
-    .summary-violations-table tbody td {
-        font-size: 0.88rem !important;
-        line-height: 1.4 !important;
-        padding: 1rem 0.55rem !important;
-    }
-
-    .summary-action-col .summary-action-buttons {
-        gap: 0.45rem;
-    }
-
-    .summary-action-col .summary-action-buttons .btn {
-        font-size: 0.82rem !important;
-        line-height: 1.25 !important;
-        padding: 0.65rem 0.45rem !important;
-        white-space: normal !important;
-        word-break: normal !important;
-        overflow-wrap: normal !important;
-    }
-
-    .individual-violations-table {
-        width: 1400px !important;
-        min-width: 1400px !important;
-        max-width: none !important;
-        table-layout: fixed !important;
-    }
-
-    .individual-violations-table th,
-    .individual-violations-table td {
-        word-break: normal !important;
-        overflow-wrap: break-word !important;
-        hyphens: none !important;
-        white-space: normal !important;
-    }
-
-    .individual-violations-table .individual-actions-col > div {
-        max-width: 230px;
-    }
-
-    .individual-violations-table .individual-actions-col .btn {
-        width: 100%;
-        max-width: 230px;
-        min-height: 44px;
-        font-size: 0.85rem !important;
-        line-height: 1.25 !important;
-        padding: 0.6rem 0.65rem !important;
-        white-space: normal !important;
-        overflow-wrap: break-word !important;
-    }
-
-    .individual-violations-table thead th {
-        font-size: 0.8rem !important;
-        line-height: 1.2 !important;
-        padding: 0.7rem 0.5rem !important;
-        white-space: normal !important;
-    }
-
-    .individual-violations-table tbody td {
-        font-size: 0.84rem !important;
-        line-height: 1.35 !important;
-        padding: 0.8rem 0.5rem !important;
-    }
-}
-
 </style>
 @endpush
 
@@ -948,39 +583,55 @@
 
                         <div class="card-body p-0">
 
-                            <div class="table-responsive summary-table-responsive">
+                            <div class="table-responsive">
 
-                                <table class="table table-hover align-middle mb-0 portal-table summary-violations-table">
+                                <table class="table table-hover align-middle mb-0 portal-table">
 
                                 <thead>
 
                                     <tr>
 
-                                        <th class="summary-category-col">
+                                        <th>
+
                                             Category
+
                                         </th>
 
-                                        <th class="summary-violation-type-col">
+                                        <th>
+
                                             Violation Type
+
                                         </th>
 
-                                        <th class="summary-offense-col">
+                                        <th>
+
                                             Offense Level
+
                                         </th>
 
-                                        <th class="summary-status-col">
+                                        <th>
+
                                             Status
+
                                         </th>
 
-                                        <th class="summary-remarks-col">
+                                        <th>
+
                                             Remarks
+
                                         </th>
 
+                                        <th>
 
-                                        <th class="summary-sanction-col">
                                             Disciplinary Sanction
+
                                         </th>
 
+                                        <th>
+
+                                            Action
+
+                                        </th>
 
                                     </tr>
 
@@ -991,19 +642,26 @@
 
 <tr>
 
-    <td class="summary-category-col">
+    <td>
+
         {{ $summary['category'] }}
+
     </td>
 
-    <td class="summary-violation-type-col">
+    <td>
+
         {{ $summary['type'] }}
+
     </td>
 
-    <td class="summary-offense-col">
+    <td>
+
         {{ $summary['offense_level'] }}
+
     </td>
 
-    <td class="summary-status-col">
+    <td>
+
         @if(!empty($summary['has_pending']))
 
             <span class="portal-badge goldenrod">
@@ -1032,15 +690,93 @@
 
     </td>
 
-    <td class="summary-remarks-col">
+    <td>
+
         {{ $summary['remarks'] }}
+
     </td>
 
-    <td class="summary-sanction-col">
+    <td style="max-width:300px; white-space:normal;">
+
         {{ $summary['disciplinary_sanction'] }}
+
     </td>
 
+    <td>
 
+        @if($summary['workflow_status'] === 'PendingConfirmation')
+
+            <button
+                class="btn btn-secondary btn-sm"
+                disabled>
+
+                <i class="bi bi-hourglass-split"></i>
+
+                Pending Confirmation
+
+            </button>
+
+        @elseif($summary['workflow_status'] === 'Requested')
+
+            <button
+                class="btn btn-secondary btn-sm"
+                disabled>
+
+                <i class="bi bi-clock-history"></i>
+
+                Requested
+
+            </button>
+
+        @elseif($summary['workflow_status'] === 'Pending')
+
+            <button
+                class="btn btn-secondary btn-sm"
+                disabled>
+
+                <i class="bi bi-hourglass-split"></i>
+
+                Pending
+
+            </button>
+
+        @elseif($summary['workflow_status'] === 'Approved')
+
+            <button
+                class="btn btn-success btn-sm"
+                disabled>
+
+                <i class="bi bi-check-circle"></i>
+
+                Approved
+
+            </button>
+
+        @else
+
+            @if($summary['violation_status'] !== 'Sanction')
+
+                <span class="badge bg-secondary-subtle text-secondary-emphasis border">
+                    No Request Needed
+                </span>
+
+            @else
+
+                <button
+                    class="btn portal-btn btn-sm request-sanction-btn"
+                    data-violation-type-id="{{ $summary['violation_type_id'] }}">
+
+                    <i class="bi bi-send"></i>
+
+                    Request Sanction
+
+                </button>
+
+            @endif
+
+        @endif
+
+    </td>
 
 </tr>
 
@@ -1049,7 +785,7 @@
 <tr>
 
     <td
-        colspan="6"
+        colspan="7"
         class="text-center py-5 text-muted">
 
         No outstanding violations found.
@@ -1088,9 +824,9 @@
 
     <div class="card-body p-0">
 
-        <div class="table-responsive individual-table-responsive">
+        <div class="table-responsive">
 
-        <table class="table table-hover align-middle mb-0 portal-table individual-violations-table">
+        <table class="table table-hover align-middle mb-0 portal-table">
 
             <thead>
 
@@ -1132,7 +868,6 @@
 
                     </th>
 
-                    <th>Actions</th>
                 </tr>
 
             </thead>
@@ -1141,25 +876,32 @@
 
                 @forelse($violations as $violation)
 
-@php
-    $isPendingLog =
-        strtolower((string) $violation->status) === 'pending';
-@endphp
+                    @php
+                        $isPendingLog = strtolower((string) $violation->status) === 'pending';
+                    @endphp
 
                     <tr>
 
-                        <td class="violation-type-col">
+                        <td>
+
                             {{ $violation->violation_type_display }}
+
                         </td>
-                        <td class="violation-date-col">
+
+                        <td>
+
                             {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}
+
                         </td>
 
-                        <td class="category-col">
+                        <td>
+
                             {{ $violation->violation_category_display }}
+
                         </td>
 
-                        <td class="status-col">
+                        <td>
+
                             @if($isPendingLog)
 
                                 <span class="portal-badge goldenrod">
@@ -1179,11 +921,14 @@
 
                         </td>
 
-                        <td class="remarks-col">
+                        <td>
+
                             {{ $violation->description ?: 'No remarks' }}
+
                         </td>
 
-                        <td class="attachments-col">
+                        <td>
+
                             @if($isPendingLog)
 
                                 <span class="text-muted small">
@@ -1219,65 +964,6 @@
 
                         </td>
 
-                        <td class="individual-actions-col">
-                            @if(!$isPendingLog)
-                                @php
-                                    $logEvidence = collect($violation->evidence ?? [])->filter(fn ($e) => !empty($e->access_key))->map(fn ($e) => [
-                                        'access_key' => $e->access_key,
-                                        'original_name' => $e->original_name ?: 'Evidence',
-                                    ])->values()->all();
-                                    $hasPendingChangeRequest = \App\Models\ViolationCorrectionRequest::where('violation_id', $violation->violation_id)->where('student_number', Auth::user()->student_number)->where('status', 'pending')->exists();
-                                @endphp
-                                <div class="student-violation-actions">
-                                    @if(!isset($assignedSanctionViolationIds[$violation->violation_id]))
-                                        <button type="button" class="student-action-btn student-action-btn-primary request-sanction-visible">
-                                            <i class="bi bi-send me-1"></i>Request Sanction
-                                        </button>
-                                    @else
-                                        <button type="button" class="student-action-btn student-action-btn-muted" disabled title="A sanction has already been assigned to this violation.">
-                                            <i class="bi bi-check-circle me-1"></i>Sanction Assigned
-                                        </button>
-                                    @endif
-                                    <button type="button" class="student-action-btn student-action-btn-secondary violation-actions-open"
-                                    data-violation-id="{{ $violation->violation_id }}"
-                                    data-violation-type-id="{{ $violation->violation_type_id }}"
-                                    data-violation-name="{{ $violation->violation_type_display }}"
-                                    data-category="{{ $violation->violation_category_display }}"
-                                    data-date="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') : '—' }}"
-                                    data-description="{{ $violation->description ?? '' }}"
-                                    data-evidence="{{ htmlspecialchars(json_encode($logEvidence), ENT_QUOTES, 'UTF-8') }}"
-                                    data-has-sanction="{{ isset($assignedSanctionViolationIds[$violation->violation_id]) ? '1' : '0' }}"
-                                    data-can-request-sanction="{{ !isset($assignedSanctionViolationIds[$violation->violation_id]) ? '1' : '0' }}"
-                                    data-has-pending-change="{{ $hasPendingChangeRequest ? '1' : '0' }}"
-                                    data-correction-url="{{ route('student.violations.correction-request', ['violation' => $violation->violation_id]) }}"
-                                    data-deletion-url="{{ route('student.violations.deletion-request', ['violation' => $violation->violation_id]) }}">
-                                        <i class="bi bi-pencil-square me-1"></i>Correction / Deletion
-                                    </button>
-                                </div>
-                                <div class="d-none violation-action-triggers">
-                                    @if(!isset($assignedSanctionViolationIds[$violation->violation_id]))
-                                        {{-- Allow students to request a sanction for any violation that does not already have an assigned sanction. --}}
-                                        <button type="button" class="request-sanction-btn" data-violation-type-id="{{ $violation->violation_type_id }}">Request Sanction</button>
-                                    @endif
-                                    <button type="button" class="legacy-correction-trigger" data-bs-toggle="modal" data-bs-target="#correctionRequestModal"
-                                        data-correction-url="{{ route('student.violations.correction-request', ['violation' => $violation->violation_id]) }}"
-                                        data-violation-id="{{ $violation->violation_id }}"
-                                        data-violation-type-id="{{ $violation->violation_type_id }}"
-                                        data-violation-category-id="{{ $violation->resolvedViolationType()?->violation_category_id ?? '' }}"
-                                        data-violation-category="{{ $violation->violation_category_display }}"
-                                        data-violation-offense="{{ $violation->offense_level_display ?? '' }}"
-                                        data-violation-sanction="{{ $violation->resolvedViolationType()?->disciplinarySanctions?->first()?->disciplinary_sanction ?? '' }}"
-                                        data-violation-date="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d\TH:i') : '' }}"
-                                        data-violation-date-display="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') : '—' }}"
-                                        data-violation-description="{{ $violation->description ?? '' }}"
-                                        data-has-sanction="{{ isset($assignedSanctionViolationIds[$violation->violation_id]) ? '1' : '0' }}"
-                                        data-violation-name="{{ $violation->violation_type_display }}"
-                                        data-evidence="{{ htmlspecialchars(json_encode($logEvidence), ENT_QUOTES, 'UTF-8') }}">Open correction form</button>
-                                </div>
-                            @else
-                                <span class="text-muted small">Available after confirmation</span>
-                            @endif
-                        </td>
                     </tr>
 
                 @empty
@@ -1285,7 +971,7 @@
                     <tr>
 
                         <td
-                            colspan="7"
+                            colspan="6"
                             class="text-center py-5">
 
                             No individual violations found.
@@ -1312,267 +998,6 @@
 
 </div>
 
-</div>
-
-<style>
-.student-violation-actions { display:flex; flex-direction:column; align-items:stretch; gap:.55rem; min-width:190px; }
-.student-action-btn { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; width:100%; min-height:42px; padding:.65rem .9rem; border:1px solid transparent; border-radius:10px; font-size:.95rem; font-weight:600; line-height:1.25; text-align:center; transition:background-color .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease; }
-.student-action-btn:not(:disabled):hover { transform:translateY(-1px); box-shadow:0 4px 10px rgba(50,20,20,.12); }
-.student-action-btn-primary { color:#fff; background:#8b0000; border-color:#8b0000; }
-.student-action-btn-primary:hover,.student-action-btn-primary:focus-visible { color:#fff; background:#6f0000; border-color:#6f0000; }
-.student-action-btn-secondary { color:#7f0000; background:#fff; border-color:#c98a8a; }
-.student-action-btn-secondary:hover,.student-action-btn-secondary:focus-visible { color:#650000; background:#fff5f5; border-color:#8b0000; }
-.student-action-btn-muted,.student-action-btn:disabled { color:#666; background:#eee; border-color:#ddd; cursor:not-allowed; opacity:.8; box-shadow:none; }
-@media (max-width:768px) { .student-violation-actions { min-width:0; width:100%; } }
-/* Keep the unavailable sanction action visibly disabled even when portal-btn has custom styling. */
-#openSanctionRequestAction:disabled,
-#openSanctionRequestAction.sanction-unavailable {
-    opacity: .55;
-    cursor: not-allowed;
-    pointer-events: none;
-    box-shadow: none;
-}
-#violationActionsModal .admin-modal-close {
-    opacity: 1;
-    filter: invert(1) grayscale(100%) brightness(200%);
-}
-</style>
-
-{{-- Unified per-violation actions modal --}}
-<div class="modal fade" id="violationActionsModal" tabindex="-1" aria-labelledby="violationActionsModalLabel" aria-hidden="true">
- <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
-  <div class="modal-header admin-modal-header">
-   <div><h5 class="modal-title admin-modal-title" id="violationActionsModalLabel"><i class="bi bi-clipboard2-check me-2"></i>Violation Details</h5><p class="mb-0 small text-muted">Review this record and choose correction or deletion if needed.</p></div>
-   <button type="button" class="btn-close btn-close-white admin-modal-close" data-bs-dismiss="modal" aria-label="Close" title="Close"></button>
-  </div>
-  <div class="modal-body">
-   <section id="violationActionDetails">
-    <div class="row g-3 mb-3"><div class="col-md-6"><label class="form-label text-muted">Violation Type</label><div class="fw-semibold" id="actionViolationType">—</div></div><div class="col-md-6"><label class="form-label text-muted">Category</label><div class="fw-semibold" id="actionViolationCategory">—</div></div><div class="col-md-6"><label class="form-label text-muted">Date Recorded</label><div id="actionViolationDate">—</div></div><div class="col-md-6"><label class="form-label text-muted">Status</label><span class="badge bg-success">Confirmed</span></div><div class="col-12"><label class="form-label text-muted">Remarks / Description</label><div class="p-3 border rounded bg-light" id="actionViolationDescription">No remarks</div></div><div class="col-12"><label class="form-label text-muted">Evidence attached to the violation</label><div id="actionViolationEvidence" class="d-flex flex-wrap gap-2">No evidence available.</div></div></div>
-    <div id="pendingChangeRequestNotice" class="alert alert-info d-none">You already have a pending correction or deletion request for this violation. You can still review the record, but cannot submit another change request until it is reviewed.</div>
-    <div class="d-flex flex-wrap justify-content-end gap-2 pt-3 border-top"><button type="button" id="openSanctionRequestAction" class="btn portal-btn" disabled aria-disabled="true"><i class="bi bi-info-circle me-1"></i>Sanction Request Unavailable</button><button type="button" id="openChangeRequestAction" class="btn btn-outline-primary"><i class="bi bi-pencil-square me-1"></i>Request Correction or Deletion</button></div>
-   </section>
-   <section id="violationChangeChoice" class="d-none"><button type="button" class="btn btn-link px-0 mb-2" id="backToViolationDetails"><i class="bi bi-arrow-left me-1"></i>Back to violation details</button><h6 class="fw-bold">What would you like to request?</h6><p class="text-muted">Choose whether the recorded information needs correction or the violation record should be deleted.</p><div class="row g-3"><div class="col-md-6"><button type="button" class="btn btn-outline-primary w-100 p-3" id="chooseCorrection"><i class="bi bi-pencil-square fs-4 d-block mb-2"></i><strong>Request Correction</strong><span class="small d-block mt-1">Correct factual details of the record.</span></button></div><div class="col-md-6"><button type="button" class="btn btn-outline-danger w-100 p-3" id="chooseDeletion"><i class="bi bi-trash3 fs-4 d-block mb-2"></i><strong>Request Deletion</strong><span class="small d-block mt-1">Ask the Administrator to remove the record.</span></button></div></div></section>
-   <section id="violationDeletionFormSection" class="d-none"><button type="button" class="btn btn-link px-0 mb-2" id="backToChangeChoice"><i class="bi bi-arrow-left me-1"></i>Back</button><h6 class="fw-bold">Request Deletion</h6><p class="text-muted small">Explain why this record should be deleted. Supporting evidence is optional but recommended.</p>
-    <form method="POST" enctype="multipart/form-data" id="violationDeletionRequestForm">@csrf
-     <ul class="nav nav-tabs mb-3" id="deletionRequestTabs" role="tablist">
-      <li class="nav-item" role="presentation"><button class="nav-link active" id="deletion-reason-tab" data-bs-toggle="tab" data-bs-target="#deletion-reason-pane" type="button" role="tab" aria-controls="deletion-reason-pane" aria-selected="true">Reason <span class="text-danger">*</span></button></li>
-      <li class="nav-item" role="presentation"><button class="nav-link" id="deletion-evidence-tab" data-bs-toggle="tab" data-bs-target="#deletion-evidence-pane" type="button" role="tab" aria-controls="deletion-evidence-pane" aria-selected="false">Supporting Evidence</button></li>
-     </ul>
-     <div class="tab-content mb-3">
-      <div class="tab-pane fade show active" id="deletion-reason-pane" role="tabpanel" aria-labelledby="deletion-reason-tab" tabindex="0">
-       <label for="deletionRequestReason" class="form-label fw-semibold">Reason for deletion <span class="text-danger">*</span></label>
-       <textarea class="form-control" name="reason" id="deletionRequestReason" rows="4" minlength="10" maxlength="2000" required placeholder="Explain why this violation record should be deleted..."></textarea>
-       <div class="form-text">Provide at least 10 characters explaining why the record should be removed.</div>
-      </div>
-      <div class="tab-pane fade" id="deletion-evidence-pane" role="tabpanel" aria-labelledby="deletion-evidence-tab" tabindex="0">
-       <div class="mb-3"><label for="deletionEvidenceFiles" class="form-label fw-semibold">Attach files</label><input type="file" class="form-control" name="evidence_files[]" id="deletionEvidenceFiles" accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf" multiple><div class="form-text">Optional. Attach up to 5 image or PDF files, up to 10 MB each.</div></div>
-       <div class="border rounded p-3"><div class="fw-semibold mb-2">Capture with camera</div><div class="d-flex flex-wrap gap-2 mb-2"><button type="button" class="btn btn-outline-secondary btn-sm" id="startDeletionCamera"><i class="bi bi-camera me-1"></i>Use Camera</button><button type="button" class="btn btn-outline-secondary btn-sm d-none" id="captureDeletionCamera"><i class="bi bi-camera-fill me-1"></i>Capture Photo</button><button type="button" class="btn btn-outline-secondary btn-sm d-none" id="stopDeletionCamera">Stop Camera</button></div><video id="deletionCameraPreview" class="w-100 rounded d-none" autoplay playsinline style="max-height:260px;object-fit:contain;background:#111"></video><canvas id="deletionCameraCanvas" class="d-none"></canvas><img id="deletionCameraCapturedPreview" class="img-fluid rounded d-none mt-2" alt="Captured evidence preview"><input type="hidden" name="camera_image" id="deletionCameraImage"><p class="small text-muted mb-0 mt-2">Camera access requires browser permission and a secure connection (HTTPS).</p></div>
-      </div>
-     </div>
-     <div class="d-flex flex-wrap justify-content-end gap-2"><button type="button" class="btn btn-light" id="cancelDeletionForm">Cancel</button><button type="submit" class="btn btn-danger"><i class="bi bi-send me-1"></i>Submit Deletion Request</button></div>
-    </form>
-   </section>
-  </div>
- </div></div>
-</div>
-
-{{-- ================================================= --}}
-{{-- Violation Correction Request Modal --}}
-{{-- ================================================= --}}
-
-<div
-    class="modal fade"
-    id="correctionRequestModal"
-    tabindex="-1"
-    aria-labelledby="correctionRequestModalLabel"
-    aria-hidden="true"
->
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-
-            <form
-                method="POST"
-                id="correctionRequestForm"
-            >
-                @csrf
-
-                <div class="modal-header">
-                    <div>
-                        <h5
-                            class="modal-title fw-bold"
-                            id="correctionRequestModalLabel"
-                        >
-                            Request Violation Correction
-                        </h5>
-
-                        <small class="text-muted">
-                            This request will be reviewed by an Administrator.
-                        </small>
-                    </div>
-
-                    <button
-                        type="button"
-                        class="btn-close"
-                        data-bs-dismiss="modal"
-                        aria-label="Close"
-                    ></button>
-                </div>
-
-                <div class="modal-body">
-
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-1"></i>
-
-                        Submitting this form does not immediately change your
-                        violation record. Your request will be reviewed first.
-                    </div>
-
-                    <div class="alert alert-warning d-none" id="correctionSanctionWarning">
-                        <i class="bi bi-shield-exclamation me-1"></i>
-
-                        A disciplinary sanction has already been assigned to
-                        this violation. The violation type and date cannot be
-                        changed. You may request correction of the description
-                        or factual remarks.
-                    </div>
-
-                    <section class="correction-record-panel mb-4">
-                        <div class="correction-section-title">
-                            <i class="bi bi-file-earmark-text"></i>
-                            Current Violation Record
-                        </div>
-
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Category</label>
-                                <input type="text" class="form-control" id="correctionCurrentCategory" readonly>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Violation Type</label>
-                                <input type="text" class="form-control" id="correctionCurrentViolation" readonly>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">Offense Level</label>
-                                <input type="text" class="form-control" id="correctionCurrentOffense" readonly>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">Violation Date</label>
-                                <input type="text" class="form-control" id="correctionCurrentDate" readonly>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">Current Sanction</label>
-                                <input type="text" class="form-control" id="correctionCurrentSanction" readonly>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label fw-semibold">Current Remarks / Description</label>
-                                <textarea class="form-control" id="correctionCurrentDescription" rows="3" readonly></textarea>
-                            </div>
-                        </div>
-
-                        <div class="correction-evidence-box mt-3">
-                            <div class="correction-section-title mb-2">
-                                <i class="bi bi-paperclip"></i>
-                                Evidence Supporting This Violation
-                            </div>
-                            <p class="small text-muted mb-3">
-                                Evidence is provided for review only. You cannot edit, replace, delete,
-                                or upload evidence through a correction request.
-                            </p>
-                            <div id="correctionEvidenceList">
-                                <span class="text-muted">No evidence is available for this violation.</span>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section class="correction-request-panel">
-                        <div class="correction-section-title">
-                            <i class="bi bi-pencil-square"></i>
-                            Requested Correction
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="requested_violation_category_id" class="form-label fw-semibold">
-                                Category <span class="text-danger">*</span>
-                            </label>
-                            <select class="form-select" name="requested_violation_category_id" id="requested_violation_category_id" required>
-                                <option value="">Select category</option>
-                                @foreach($violationTypes->pluck('violationCategory')->filter()->unique('violation_category_id')->sortBy('category_name') as $category)
-                                    <option value="{{ $category->violation_category_id }}">{{ $category->category_name }}</option>
-                                @endforeach
-                            </select>
-                            <div class="form-text">The selected category determines which violation types are available.</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="requested_violation_type_id" class="form-label fw-semibold">
-                                Violation Type <span class="text-danger">*</span>
-                            </label>
-                            <select class="form-select" name="requested_violation_type_id" id="requested_violation_type_id" required>
-                                <option value="">Select a category first</option>
-                                @foreach($violationTypes as $type)
-                                    @if($type->violationCategory)
-                                        <option value="{{ $type->violation_type_id }}" data-category-id="{{ $type->violation_category_id }}">
-                                            {{ $type->violation_type }}
-                                        </option>
-                                    @endif
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Resulting Offense Level</label>
-                                <input type="text" class="form-control" id="correctionResultingOffense" readonly value="—">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Disciplinary Sanction</label>
-                                <input type="text" class="form-control" id="correctionResultingSanction" readonly value="Select a violation type">
-                                <div class="form-text">The sanction is automatically determined by the selected violation type and resulting offense level. It cannot be edited.</div>
-                            </div>
-                        </div>
-
-                        <div class="mb-3 mt-3">
-                            <label for="requested_violation_date" class="form-label fw-semibold">Corrected Violation Date <span class="text-danger">*</span></label>
-                            <input type="datetime-local" class="form-control" name="requested_violation_date" id="requested_violation_date" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="requested_description" class="form-label fw-semibold">Corrected Remarks / Description</label>
-                            <textarea class="form-control" name="requested_description" id="requested_description" rows="4" maxlength="5000" placeholder="Enter the factual correction you are requesting."></textarea>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="correction_reason" class="form-label fw-semibold">Reason for Correction <span class="text-danger">*</span></label>
-                            <textarea class="form-control" name="reason" id="correction_reason" rows="4" minlength="10" maxlength="2000" required placeholder="Explain why the existing violation information or evidence does not support the recorded violation."></textarea>
-                            <div class="form-text">Explain the specific factual issue you want the Administrator to review, including why the available evidence does not support the violation when applicable.</div>
-                        </div>
-                    </section>
-                </div>
-
-                <div class="modal-footer">
-
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        data-bs-dismiss="modal"
-                    >
-                        Cancel
-                    </button>
-
-                    <button
-                        type="submit"
-                        class="btn btn-primary"
-                    >
-                        <i class="bi bi-send me-1"></i>
-                        Submit Correction Request
-                    </button>
-
-                </div>
-
-            </form>
-
-        </div>
-    </div>
 </div>
 {{-- ================================================= --}}
 {{-- Sanction Record --}}
@@ -1756,7 +1181,8 @@
                                         <div class="small text-success mb-1">
                                             <i class="bi bi-patch-check-fill me-1"></i>Proof accepted
                                         </div>
-<a href="{{ route('student.proof.download', ['studentSanctionRecord' => $record->proof_access_key]) }}" target="_blank" class="btn btn-sm btn-outline-secondary">                                            <i class="bi bi-paperclip me-1"></i>View Proof
+                                        <a href="{{ route('student.proof.download', $record) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-paperclip me-1"></i>View Proof
                                         </a>
                                     @else
                                         <span class="small text-muted">Completed by administration</span>
@@ -1771,7 +1197,8 @@
                                     </div>
 
                                     @if($record->proof_path)
-<a href="{{ route('student.proof.download', ['studentSanctionRecord' => $record->proof_access_key]) }}" target="_blank" class="btn btn-sm btn-outline-secondary mb-1">                                            <i class="bi bi-paperclip me-1"></i>View Proof
+                                        <a href="{{ route('student.proof.download', $record) }}" target="_blank" class="btn btn-sm btn-outline-secondary mb-1">
+                                            <i class="bi bi-paperclip me-1"></i>View Proof
                                         </a>
                                     @endif
 
@@ -1805,7 +1232,8 @@
                                             data-office="{{ $record->designated_office ?? '' }}"
                                             data-starting-date="{{ optional($record->starting_date)->format('M d, Y') ?? '' }}"
                                             data-required-hours="{{ $record->required_hours ?? '' }}"
-data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}"                                            <i class="bi bi-upload me-1"></i>Submit Proof
+                                            data-community-service="{{ $record->is_service_sanction ? '1' : '0' }}">
+                                            <i class="bi bi-upload me-1"></i>Submit Proof
                                         </button>
                                     @else
                                         {{-- Every other sanction is settled through a personal
@@ -1831,7 +1259,7 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}"          
                         <tr>
 
                             <td
-                                colspan="7"
+                                colspan="6"
                                 class="text-center py-5 text-muted">
 
                                 No sanction records found.
@@ -2255,17 +1683,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 // The official form is only relevant for Community Service /
                 // Campus Service sanctions. Show the download link only when
                 // the assigned sanction is one of those; hide it for others.
-// The official form is relevant only to Community Service / Campus Service.
-// Student-Assistance Service uses the existing OSS consultation notice and
-// does not require a proof upload.
-const officialArea = document.getElementById('officialFormArea');
-
-if (officialArea) {
-    const isServiceSanction =
-        String(button.dataset.serviceSanction || '0') === '1';
-
-    officialArea.classList.toggle('d-none', !isServiceSanction);
-}
+                const officialArea = document.getElementById('officialFormArea');
+                if (officialArea) {
+                    const isCommunityService = String(button.dataset.communityService || '0') === '1';
+                    officialArea.classList.toggle('d-none', !isCommunityService);
+                }
 
                 submitProofModal.show();
             });
@@ -2337,201 +1759,6 @@ if (officialArea) {
                 });
         });
     }
-});
-
-document.addEventListener('DOMContentLoaded', function () {
-    const actionModalEl = document.getElementById('violationActionsModal');
-    if (!actionModalEl || !window.bootstrap) return;
-    const actionModal = bootstrap.Modal.getOrCreateInstance(actionModalEl);
-    const details = document.getElementById('violationActionDetails');
-    const choice = document.getElementById('violationChangeChoice');
-    const deletion = document.getElementById('violationDeletionFormSection');
-    let activeButton = null, cameraStream = null;
-    const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value || '—'; };
-    function showStep(step) { details.classList.toggle('d-none', step !== 'details'); choice.classList.toggle('d-none', step !== 'choice'); deletion.classList.toggle('d-none', step !== 'deletion'); }
-    document.querySelectorAll('.request-sanction-visible').forEach(button => button.addEventListener('click', () => {
-      const trigger = button.closest('td')?.querySelector('.request-sanction-btn');
-      if (trigger) trigger.click();
-    }));
-    document.querySelectorAll('.violation-actions-open').forEach(button => button.addEventListener('click', () => {
-      activeButton = button; showStep('details');
-      setText('actionViolationType', button.dataset.violationName); setText('actionViolationCategory', button.dataset.category); setText('actionViolationDate', button.dataset.date); setText('actionViolationDescription', button.dataset.description || 'No remarks recorded.');
-      const evidenceBox = document.getElementById('actionViolationEvidence'); evidenceBox.replaceChildren(); let files=[]; try { files=JSON.parse(button.dataset.evidence || '[]'); } catch(e) { files=[]; }
-      if (!files.length) evidenceBox.textContent='No evidence available.';
-      files.forEach(file => { const a=document.createElement('a'); a.className='btn btn-sm btn-outline-secondary'; a.href="{{ url('/student/violations/evidence') }}/"+encodeURIComponent(file.access_key); a.target='_blank'; a.rel='noopener'; a.textContent=file.original_name || 'View evidence'; evidenceBox.appendChild(a); });
-      document.getElementById('pendingChangeRequestNotice').classList.toggle('d-none', button.dataset.hasPendingChange !== '1');
-      document.getElementById('openChangeRequestAction').disabled = button.dataset.hasPendingChange === '1';
-      const sanctionAction = document.getElementById('openSanctionRequestAction');
-      const canRequestSanction = button.dataset.canRequestSanction === '1';
-      sanctionAction.disabled = !canRequestSanction;
-      sanctionAction.setAttribute('aria-disabled', String(!canRequestSanction));
-      sanctionAction.classList.toggle('sanction-unavailable', !canRequestSanction);
-      sanctionAction.innerHTML = canRequestSanction ? '<i class="bi bi-send me-1"></i>Request Sanction' : '<i class="bi bi-info-circle me-1"></i>Sanction Request Unavailable';
-      sanctionAction.title = canRequestSanction ? '' : 'A sanction has already been assigned to this violation.';
-      actionModal.show();
-    }));
-    document.getElementById('openChangeRequestAction').addEventListener('click', () => showStep('choice'));
-    document.getElementById('backToViolationDetails').addEventListener('click', () => showStep('details'));
-    document.getElementById('backToChangeChoice').addEventListener('click', () => showStep('choice'));
-    document.getElementById('cancelDeletionForm').addEventListener('click', () => { stopCam(); showStep('choice'); });
-    document.getElementById('chooseCorrection').addEventListener('click', () => {
-      if (!activeButton) return; const trigger=activeButton.parentElement.querySelector('.legacy-correction-trigger');
-      actionModal.hide(); if (trigger) setTimeout(() => trigger.click(), 180);
-    });
-    document.getElementById('chooseDeletion').addEventListener('click', () => {
-      if (!activeButton) return; stopCam(); document.getElementById('violationDeletionRequestForm').action=activeButton.dataset.deletionUrl; document.getElementById('deletionRequestReason').value=''; document.getElementById('deletionEvidenceFiles').value=''; document.getElementById('deletionCameraImage').value=''; document.getElementById('deletionCameraCapturedPreview').classList.add('d-none'); const reasonTab=document.getElementById('deletion-reason-tab'); if(reasonTab && window.bootstrap) bootstrap.Tab.getOrCreateInstance(reasonTab).show(); showStep('deletion');
-    });
-    document.getElementById('openSanctionRequestAction').addEventListener('click', () => {
-      if (!activeButton) return; const trigger=activeButton.parentElement.querySelector('.request-sanction-btn');
-      actionModal.hide(); if (trigger) setTimeout(() => trigger.click(), 180);
-    });
-    const startCamera=document.getElementById('startDeletionCamera'), captureCamera=document.getElementById('captureDeletionCamera'), stopCamera=document.getElementById('stopDeletionCamera'), video=document.getElementById('deletionCameraPreview'), canvas=document.getElementById('deletionCameraCanvas'), imageInput=document.getElementById('deletionCameraImage'), imagePreview=document.getElementById('deletionCameraCapturedPreview');
-    startCamera.addEventListener('click', async () => { try { cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false}); video.srcObject=cameraStream; video.classList.remove('d-none'); captureCamera.classList.remove('d-none'); stopCamera.classList.remove('d-none'); startCamera.classList.add('d-none'); } catch(e) { if(window.Swal) Swal.fire({icon:'error',title:'Camera unavailable',text:'Allow camera access or attach an image file instead.'}); else alert('Camera unavailable. Please attach an image file instead.'); } });
-    captureCamera.addEventListener('click', () => { if(!video.videoWidth) return; canvas.width=video.videoWidth; canvas.height=video.videoHeight; canvas.getContext('2d').drawImage(video,0,0); imageInput.value=canvas.toDataURL('image/jpeg',0.88); imagePreview.src=imageInput.value; imagePreview.classList.remove('d-none'); stopCam(); });
-    function stopCam(){ if(cameraStream) cameraStream.getTracks().forEach(t=>t.stop()); cameraStream=null; video.srcObject=null; video.classList.add('d-none'); captureCamera.classList.add('d-none'); stopCamera.classList.add('d-none'); startCamera.classList.remove('d-none'); }
-    stopCamera.addEventListener('click', stopCam); document.getElementById('backToChangeChoice').addEventListener('click', stopCam); actionModalEl.addEventListener('hidden.bs.modal', stopCam);
-    const deletionReasonField = document.getElementById('deletionRequestReason');
-    deletionReasonField.addEventListener('invalid', () => {
-      const reasonTab = document.getElementById('deletion-reason-tab');
-      if (reasonTab && window.bootstrap) bootstrap.Tab.getOrCreateInstance(reasonTab).show();
-    });
-    document.getElementById('violationDeletionRequestForm').addEventListener('submit', function(e) { if (!this.action) { e.preventDefault(); return; } if(window.Swal) { e.preventDefault(); const form=this; Swal.fire({icon:'question',title:'Submit deletion request?',text:'The Administrator will review your reason and evidence. The violation will not be deleted unless the request is approved.',showCancelButton:true,confirmButtonText:'Submit Request',cancelButtonText:'Cancel'}).then(r=>{if(r.isConfirmed) form.submit();}); } });
-});
-
-document.addEventListener('DOMContentLoaded', function () {
-    const correctionModal = document.getElementById('correctionRequestModal');
-    if (!correctionModal) return;
-
-    const form = document.getElementById('correctionRequestForm');
-    const currentCategory = document.getElementById('correctionCurrentCategory');
-    const currentViolation = document.getElementById('correctionCurrentViolation');
-    const currentOffense = document.getElementById('correctionCurrentOffense');
-    const currentDate = document.getElementById('correctionCurrentDate');
-    const currentSanction = document.getElementById('correctionCurrentSanction');
-    const currentDescription = document.getElementById('correctionCurrentDescription');
-    const evidenceList = document.getElementById('correctionEvidenceList');
-    const categorySelect = document.getElementById('requested_violation_category_id');
-    const typeSelect = document.getElementById('requested_violation_type_id');
-    const offenseOutput = document.getElementById('correctionResultingOffense');
-    const sanctionOutput = document.getElementById('correctionResultingSanction');
-    const violationDate = document.getElementById('requested_violation_date');
-    const description = document.getElementById('requested_description');
-    const reason = document.getElementById('correction_reason');
-    const sanctionWarning = document.getElementById('correctionSanctionWarning');
-
-    function filterViolationTypes() {
-        const categoryId = categorySelect.value;
-        Array.from(typeSelect.options).forEach(function (option, index) {
-            if (index === 0) return;
-            const matches = !!categoryId && option.dataset.categoryId === categoryId;
-            option.hidden = !matches;
-            option.disabled = !matches;
-        });
-        if (!typeSelect.value || typeSelect.selectedOptions[0]?.hidden) typeSelect.value = '';
-        offenseOutput.value = '—';
-        sanctionOutput.value = categoryId ? 'Select a violation type' : 'Select a category first';
-    }
-
-    function renderEvidence(encodedJson) {
-        evidenceList.innerHTML = '';
-        let items = [];
-        try { items = encodedJson ? JSON.parse(encodedJson) : []; } catch (error) { items = []; }
-        if (!Array.isArray(items) || items.length === 0) {
-            evidenceList.innerHTML = '<span class="text-muted">No evidence is available for this violation.</span>';
-            return;
-        }
-        items.forEach(function (item) {
-            const link = document.createElement('a');
-            link.className = 'btn btn-sm btn-outline-secondary correction-evidence-item';
-            link.href = "{{ url('/student/violations/evidence') }}/" + encodeURIComponent(item.access_key);
-            link.target = '_blank';
-            link.rel = 'noopener';
-            link.innerHTML = '<i class="bi bi-eye"></i><span></span>';
-            link.querySelector('span').textContent = item.original_name || 'View Evidence';
-            evidenceList.appendChild(link);
-        });
-    }
-
-    async function loadCorrectionOptions() {
-        const violationId = form.dataset.violationId;
-        const typeId = typeSelect.value;
-        if (!violationId || !typeId) return;
-        offenseOutput.value = 'Loading…';
-        sanctionOutput.value = 'Loading…';
-        try {
-            const url = "{{ url('/student/violations') }}/" + encodeURIComponent(violationId) + '/correction-options?violation_type_id=' + encodeURIComponent(typeId);
-            const response = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
-            if (!response.ok) throw new Error('Unable to load correction options.');
-            const data = await response.json();
-            offenseOutput.value = data.offense_level || '—';
-            sanctionOutput.value = data.disciplinary_sanction || 'N/A';
-        } catch (error) {
-            offenseOutput.value = '—';
-            sanctionOutput.value = 'Unable to determine sanction';
-        }
-    }
-
-    categorySelect.addEventListener('change', function () {
-        filterViolationTypes();
-        loadCorrectionOptions();
-    });
-    typeSelect.addEventListener('change', loadCorrectionOptions);
-
-    correctionModal.addEventListener('show.bs.modal', function (event) {
-        const button = event.relatedTarget;
-        if (!button) return;
-
-        form.action = button.dataset.correctionUrl || '';
-        form.dataset.violationId = button.dataset.violationId || '';
-
-        currentCategory.value = button.dataset.violationCategory || '—';
-        currentViolation.value = button.dataset.violationName || '';
-        currentOffense.value = button.dataset.violationOffense || '—';
-        currentDate.value = button.dataset.violationDateDisplay || '—';
-        currentSanction.value = button.dataset.violationSanction || '—';
-        currentDescription.value = button.dataset.violationDescription || '';
-
-        categorySelect.value = button.dataset.violationCategoryId || '';
-        filterViolationTypes();
-        typeSelect.value = button.dataset.violationTypeId || '';
-        violationDate.value = button.dataset.violationDate || '';
-        description.value = button.dataset.violationDescription || '';
-        reason.value = '';
-        renderEvidence(button.dataset.evidence || '');
-
-        const hasSanction = button.dataset.hasSanction === '1';
-        sanctionWarning.classList.toggle('d-none', !hasSanction);
-        categorySelect.disabled = hasSanction;
-        typeSelect.disabled = hasSanction;
-        violationDate.disabled = hasSanction;
-
-        document.querySelectorAll('.correction-original-value').forEach(function (element) { element.remove(); });
-        if (hasSanction) {
-            const hiddenCategory = document.createElement('input');
-            hiddenCategory.type = 'hidden'; hiddenCategory.name = 'requested_violation_category_id';
-            hiddenCategory.value = button.dataset.violationCategoryId || ''; hiddenCategory.className = 'correction-original-value';
-            form.appendChild(hiddenCategory);
-
-            const hiddenType = document.createElement('input');
-            hiddenType.type = 'hidden'; hiddenType.name = 'requested_violation_type_id';
-            hiddenType.value = button.dataset.violationTypeId || ''; hiddenType.className = 'correction-original-value';
-            form.appendChild(hiddenType);
-
-            const hiddenDate = document.createElement('input');
-            hiddenDate.type = 'hidden'; hiddenDate.name = 'requested_violation_date';
-            hiddenDate.value = button.dataset.violationDate || ''; hiddenDate.className = 'correction-original-value';
-            form.appendChild(hiddenDate);
-        }
-
-        loadCorrectionOptions();
-    });
-
-    correctionModal.addEventListener('hidden.bs.modal', function () {
-        document.querySelectorAll('.correction-original-value').forEach(function (element) { element.remove(); });
-        categorySelect.disabled = false;
-        typeSelect.disabled = false;
-        violationDate.disabled = false;
-    });
 });
 </script>
 
