@@ -1223,6 +1223,298 @@
 
 </div>
 
+{{-- ================================================= --}}
+{{-- Sanction Record --}}
+{{-- ================================================= --}}
+
+<div
+    class="tab-pane fade"
+    id="sanctionRecord"
+    role="tabpanel"
+    aria-labelledby="sanction-tab">
+
+    <div class="card shadow-sm border-0">
+
+        <div class="card-header bg-white">
+
+            <h5 class="mb-0">
+
+                Your Sanction Records
+
+            </h5>
+
+        </div>
+
+        <div class="card-body p-0">
+
+            <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+
+                            Violation Type
+
+                        </th>
+
+                        <th>
+
+                            Status
+
+                        </th>
+
+                        <th>
+
+                            Date Assigned
+
+                        </th>
+
+                        <th>
+
+                            Deadline
+
+                        </th>
+
+                        <th>
+
+                            Sanction Details
+
+                        </th>
+
+                        <th>
+
+                            Proof of Completion
+
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    @forelse($sanctionRecords as $record)
+
+                        {{-- data-sanction-record-id lets the dashboard's
+                             "Approaching Deadlines" View action deep-link
+                             straight to this exact sanction row. --}}
+                        <tr data-sanction-record-id="{{ $record->record_id }}">
+
+                            <td>
+
+                                {{ optional(optional($record->violation)->violationType)->violation_type ?? 'N/A' }}
+
+                            </td>
+
+                            <td>
+
+                                @php
+                                    $recStatus = strtolower(trim((string) $record->status));
+                                    $recOpen = strcasecmp((string) $record->status, 'Completed') !== 0;
+                                    $recOverdue = $recOpen && $record->deadline_date && $record->deadline_date->isPast();
+                                @endphp
+
+                                @if($recStatus === 'pending')
+                                    @if($record->has_pending_proof)
+                                        <span class="portal-badge maroon">
+                                            For Review
+                                        </span>
+                                    @else
+                                        <span class="portal-badge warning">
+                                            Pending
+                                        </span>
+                                    @endif
+                                @elseif($recStatus === 'in progress')
+                                    <span class="portal-badge goldenrod">
+                                        In Progress
+                                    </span>
+                                @elseif($recStatus === 'overdue' || $recOverdue)
+                                    <span class="portal-badge maroon">
+                                        Overdue
+                                    </span>
+                                @elseif($recStatus === 'completed')
+                                    <span class="portal-badge success">
+                                        Completed
+                                    </span>
+                                @else
+                                    <span class="portal-badge muted">
+                                        {{ $record->status }}
+                                    </span>
+                                @endif
+
+                            </td>
+
+                            <td>
+
+                                {{ optional($record->date_assigned)->format('M d, Y h:i A') }}
+
+                            </td>
+
+                            <td>
+
+                                @if($record->deadline_date)
+                                    <span class="fw-semibold {{ ($recOverdue || $recStatus === 'overdue') ? 'text-danger' : '' }}">
+                                        {{ $record->deadline_date->format('M d, Y') }}
+                                    </span>
+                                    @if($recOverdue || $recStatus === 'overdue')
+                                        <span class="portal-badge maroon d-block mt-1">Overdue</span>
+                                    @endif
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+
+                            </td>
+
+                            <td style="max-width:320px; white-space:normal;">
+
+                                {{ optional($record->assignedSanction)->disciplinary_sanction ?? 'N/A' }}
+
+                                @if($record->is_service_sanction)
+                                    {{-- Community/Campus Service assignment — server-side
+                                         values, read-only to the student. --}}
+                                    <div class="service-assignment-details mt-2">
+                                        @if($record->required_hours)
+                                            <div class="service-assignment-row">
+                                                <span class="service-assignment-label"><i class="bi bi-hourglass-split me-1"></i>Required Hours:</span>
+                                                <span class="fw-semibold">{{ $record->required_hours }} hrs</span>
+                                            </div>
+                                        @endif
+                                        <div class="service-assignment-row">
+                                            <span class="service-assignment-label"><i class="bi bi-building me-1"></i>Designated Office:</span>
+                                            <span class="fw-semibold">{{ $record->designated_office ?: '—' }}</span>
+                                        </div>
+                                        <div class="service-assignment-row">
+                                            <span class="service-assignment-label"><i class="bi bi-calendar-event me-1"></i>Starting Date:</span>
+                                            <span class="fw-semibold">{{ optional($record->starting_date)->format('M d, Y') ?? '—' }}</span>
+                                        </div>
+                                    </div>
+                                @endif
+
+                            </td>
+
+                            <td style="min-width:220px;">
+
+                                @if(strcasecmp($record->status, 'Completed') === 0)
+
+                                    <span class="portal-badge success mb-1 d-inline-block">Completed</span>
+
+                                    @if($record->proof_path)
+                                        <div class="small text-success mb-1">
+                                            <i class="bi bi-patch-check-fill me-1"></i>Proof accepted
+                                        </div>
+                                        @if($record->proof_access_key)
+                                            <a href="{{ route('student.proof.download', ['studentSanctionRecord' => $record->proof_access_key]) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-paperclip me-1"></i>View Proof
+                                            </a>
+                                        @else
+                                            <span class="small text-muted">Proof file link unavailable. Please contact the Office of Student Services.</span>
+                                        @endif
+                                    @else
+                                        <span class="small text-muted">Completed by administration</span>
+                                    @endif
+
+                                @elseif($record->has_pending_proof)
+
+                                    <span class="portal-badge goldenrod mb-1 d-inline-block">Under Review</span>
+
+                                    <div class="small text-muted mb-1">
+                                        <i class="bi bi-hourglass-split me-1"></i>Proof submitted — awaiting admin review.
+                                    </div>
+
+                                    @if($record->proof_path && $record->proof_access_key)
+                                        <a href="{{ route('student.proof.download', ['studentSanctionRecord' => $record->proof_access_key]) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary mb-1">
+                                            <i class="bi bi-paperclip me-1"></i>View Proof
+                                        </a>
+                                    @elseif($record->proof_path)
+                                        <span class="small text-muted">Proof file link unavailable. Please contact the Office of Student Services.</span>
+                                    @endif
+
+                                    @if($record->completion_remarks)
+                                        <div class="small text-danger mt-1">
+                                            <i class="bi bi-x-circle me-1"></i>Last review: {{ $record->completion_remarks }}
+                                        </div>
+                                    @endif
+
+                                @elseif($recOpen)
+
+                                    <span class="portal-badge warning mb-1 d-inline-block">Assigned</span>
+
+                                    @if($record->completion_remarks)
+                                        <div class="small text-danger mb-2">
+                                            <i class="bi bi-x-circle me-1"></i>Your previous proof was not accepted: {{ $record->completion_remarks }}
+                                        </div>
+                                    @endif
+
+                                    @if($record->requires_proof_of_completion)
+                                        {{-- Community/Campus Service: the student uploads a
+                                             Proof of Completion for admin review. --}}
+                                        <button
+                                            type="button"
+                                            class="btn portal-btn btn-sm submit-proof-btn"
+                                            data-record-id="{{ $record->record_id }}"
+                                            data-violation="{{ optional(optional($record->violation)->violationType)->violation_type ?? 'N/A' }}"
+                                            data-sanction="{{ optional($record->assignedSanction)->disciplinary_sanction ?? 'N/A' }}"
+                                            data-deadline="{{ optional($record->deadline_date)->format('M d, Y') ?? '' }}"
+                                            data-record-ref="Record #{{ $record->record_id }}"
+                                            data-office="{{ $record->designated_office ?? '' }}"
+                                            data-starting-date="{{ optional($record->starting_date)->format('M d, Y') ?? '' }}"
+                                            data-required-hours="{{ $record->required_hours ?? '' }}"
+data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}"                                            <i class="bi bi-upload me-1"></i>Submit Proof
+                                        </button>
+                                    @else
+                                        {{-- Every other sanction is settled through a personal
+                                             consultation at the Office of Student Services, so
+                                             no proof of completion is required from the student. --}}
+                                        <div class="consultation-notice small" role="note">
+                                            <i class="bi bi-info-circle-fill me-1" aria-hidden="true"></i>{{ \App\Models\StudentSanctionRecord::CONSULTATION_NOTICE }}
+                                        </div>
+                                    @endif
+
+                                @else
+
+                                    <span class="text-muted small">—</span>
+
+                                @endif
+
+                            </td>
+
+                        </tr>
+
+                    @empty
+
+                        <tr>
+
+                            <td
+                                colspan="7"
+                                class="text-center py-5 text-muted">
+
+                                No sanction records found.
+
+                            </td>
+
+                        </tr>
+
+                    @endforelse
+
+                </tbody>
+
+            </table>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+</div>
+
+        </div>
+
+
 <div class="modal fade" id="requestSanctionConfirmModal" tabindex="-1" aria-labelledby="requestSanctionConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
