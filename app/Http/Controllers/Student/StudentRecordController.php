@@ -316,6 +316,34 @@ foreach ($groupedViolations as $records) {
     ];
 }
 
+// Keep the Individual Violations Log aligned with the same sanction eligibility
+// decision used by Summary by Violation. The Blade view reads this explicit
+// attribute to decide whether to expose Request Sanction.
+$requestEligibleTypeIds = collect($violationSummary)
+    ->filter(fn ($summary) => ! empty($summary['requires_sanction_request']))
+    ->pluck('violation_type_id')
+    ->filter()
+    ->map(fn ($id) => (string) $id)
+    ->values()
+    ->all();
+
+$violations->getCollection()->transform(function ($violation) use (
+    $requestEligibleTypeIds,
+    $assignedSanctionViolationIds
+) {
+    $resolvedType = $violation->resolvedViolationType();
+    $resolvedTypeId = (string) ($resolvedType?->violation_type_id ?? '');
+
+    $violation->setAttribute(
+        'student_requires_sanction_request',
+        $resolvedTypeId !== ''
+            && in_array($resolvedTypeId, $requestEligibleTypeIds, true)
+            && ! isset($assignedSanctionViolationIds[$violation->violation_id])
+    );
+
+    return $violation;
+});
+
 $sanctionRecords = StudentSanctionRecord::with([
     'violation.violationType',
     'assignedSanction',
