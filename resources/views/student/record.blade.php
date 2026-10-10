@@ -1,104 +1,3 @@
-1. Back up resources/views/student/record.blade.php.
-2. Open the downloaded TXT file.
-3. Copy its complete contents into resources/views/student/record.blade.php.
-4. Refresh the staging site and test Request Sanction on a violation that has no assigned sanction.
-Please note: This fixes the student-facing button and restores access to the existing sanction trigger. I have not verified the full workflow against your live database or run Laravel integration tests, so confirm that the request reaches the sanction tab and that service deadlines remain correct before deploying.
-
-
-
-
-
-student-record-sanction-flow-fixed.txtDocument
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Think
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      Student Record Sanction Flow Fixed
-
-
- 
-
-
 @extends('layouts.student')
 
 @section('title', 'Student Record')
@@ -1336,13 +1235,6 @@ Think
 
                         <td class="individual-actions-col">
                             @if(!$isPendingLog)
-                                @php
-                                    $logEvidence = collect($violation->evidence ?? [])->filter(fn ($e) => !empty($e->access_key))->map(fn ($e) => [
-                                        'access_key' => $e->access_key,
-                                        'original_name' => $e->original_name ?: 'Evidence',
-                                    ])->values()->all();
-                                    $hasPendingChangeRequest = \App\Models\ViolationCorrectionRequest::where('violation_id', $violation->violation_id)->where('student_number', Auth::user()->student_number)->where('status', 'pending')->exists();
-                                @endphp
                                 <div class="student-sanction-action">
                                     @if(!isset($assignedSanctionViolationIds[$violation->violation_id]))
                                         <button type="button" class="btn portal-btn btn-sm w-100 student-request-sanction">
@@ -1359,7 +1251,10 @@ Think
                                         @endif
                                     </div>
                                 </div>
-                                </td>
+                            @else
+                                <span class="text-muted small">Available after confirmation</span>
+                            @endif
+                        </td>
                     </tr>
 
                 @empty
