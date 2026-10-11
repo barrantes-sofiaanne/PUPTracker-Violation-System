@@ -22,26 +22,21 @@
                 {{ $notificationTitle }}
             </h2>
 
-            <p style="font-size:15px; line-height:1.6; color:#555555;">
-                {{ $notificationMessage }}
-            </p>
 
 @if (($notificationTitle ?? '') === 'Sanction Request Approved')
     @php
         $message = (string) ($notificationMessage ?? '');
-
-        $intro = 'Your sanction request has been approved. Please review your Sanction Record tab for the details of your assigned sanction.';
 
         $dateAssigned = null;
         $designatedOffice = null;
         $startingDate = null;
         $deadlineDate = null;
 
-        if (preg_match('/Date Assigned:\s*(.*?)(?=\.\s*(?:Designated Office|Designated office|Deadline to Complete|$)|$)/i', $message, $matches)) {
+        if (preg_match('/Date Assigned:\s*(.*?)(?=\.\s*(?:Designated Office|Deadline to Complete|$)|$)/i', $message, $matches)) {
             $dateAssigned = trim($matches[1]);
         }
 
-        if (preg_match('/Designated Office:\s*(.*?)(?=\.\s*(?:Starting Date|Starting date|Deadline to Complete|$)|$)/i', $message, $matches)) {
+        if (preg_match('/Designated Office:\s*(.*?)(?=\.\s*(?:Starting Date|Deadline to Complete|$)|$)/i', $message, $matches)) {
             $designatedOffice = trim($matches[1]);
         }
 
@@ -52,30 +47,30 @@
         if (preg_match('/Deadline to Complete:\s*(.*?)(?=\.$|$)/i', $message, $matches)) {
             $deadlineDate = trim($matches[1]);
         }
+
+        $isServiceAssignment = filled($designatedOffice) && filled($startingDate);
     @endphp
 
-    <p style="font-size: 16px; line-height: 1.7; color: #555555;">
-        @if (filled($designatedOffice) && filled($startingDate))
-    <p style="font-size: 16px; line-height: 1.7; color: #555555;">
-        Your sanction request has been approved. Please review your
-        Sanction Record tab for the details of your assigned service.
-    </p>
-@else
-    <p style="font-size: 16px; line-height: 1.7; color: #555555;">
-        Your sanction request has been approved. Please open the
-        Sanction Record tab in your account and read the note regarding
-        your assigned sanction.
-    </p>
+    @if ($isServiceAssignment)
+        <p style="font-size:16px; line-height:1.7; color:#555555;">
+            Your sanction request has been approved. Please review your
+            Sanction Record tab for the details of your assigned service.
+        </p>
+    @else
+        <p style="font-size:16px; line-height:1.7; color:#555555;">
+            Your sanction request has been approved. Please open the
+            Sanction Record tab in your account and read the note regarding
+            your assigned sanction.
+        </p>
 
-    <p style="font-size: 16px; line-height: 1.7; color: #555555;">
-        You are required to visit the Office of Student Services
-        for personal intervention.
-    </p>
-@endif
-    </p>
+        <p style="font-size:16px; line-height:1.7; color:#555555;">
+            You are required to visit the Office of Student Services
+            for personal intervention.
+        </p>
+    @endif
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-           border="0" style="border-collapse: collapse; margin: 20px 0;">
+           border="0" style="border-collapse:collapse; margin:20px 0;">
         @foreach ([
             'Date Assigned' => $dateAssigned,
             'Designated Office' => $designatedOffice,
@@ -84,10 +79,12 @@
         ] as $label => $value)
             @if (filled($value))
                 <tr>
-                    <td style="padding: 12px; border-bottom: 1px solid #eeeeee; font-weight: bold; color: #333333; vertical-align: top;">
+                    <td style="padding:12px; border-bottom:1px solid #eeeeee;
+                               font-weight:bold; color:#333333; vertical-align:top;">
                         {{ $label }}
                     </td>
-                    <td style="padding: 12px; border-bottom: 1px solid #eeeeee; color: #555555; vertical-align: top;">
+                    <td style="padding:12px; border-bottom:1px solid #eeeeee;
+                               color:#555555; vertical-align:top;">
                         {{ rtrim($value, '.') }}
                     </td>
                 </tr>
@@ -95,11 +92,18 @@
         @endforeach
     </table>
 
-    <p style="font-size: 14px; line-height: 1.6; color: #666666;">
-        Please observe your starting date and complete the assigned sanction by the deadline.
-    </p>
+    @if ($isServiceAssignment)
+        <p style="font-size:14px; line-height:1.6; color:#666666;">
+            Please observe your starting date and complete the assigned
+            sanction by the deadline, if one has been specified.
+        </p>
+    @endif
 @else
-    <p>{{ $notificationMessage }}</p>
+    <p style="font-size:15px; line-height:1.6; color:#555555;">
+        {{ $notificationMessage }}
+    </p>
+@endif
+
 @endif
 
             <p style="margin-top:30px; font-size:13px; color:#777777;">
