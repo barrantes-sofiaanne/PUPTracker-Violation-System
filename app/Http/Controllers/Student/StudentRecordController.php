@@ -263,12 +263,8 @@ if (!empty($filters['date_to'])) {
     );
 }
 
-$violations = $violationsQuery
-    ->orderByDesc('violation_date')
-    ->paginate(10)
-    ->withQueryString();
-
-    if (!empty($filters['sanction_status'])) {
+// Apply the sanction status filter BEFORE pagination.
+if (!empty($filters['sanction_status'])) {
     $matchingTypeIds = $sanctionStatusByTypeId
         ->filter(
             fn ($status) => $status === $filters['sanction_status']
@@ -276,11 +272,22 @@ $violations = $violationsQuery
         ->keys()
         ->all();
 
-    $violationsQuery->whereIn(
-        'violation_type_id',
-        $matchingTypeIds
-    );
+    // If no violation types match, return no records.
+    if (empty($matchingTypeIds)) {
+        $violationsQuery->whereRaw('1 = 0');
+    } else {
+        $violationsQuery->whereIn(
+            'violation_type_id',
+            $matchingTypeIds
+        );
+    }
 }
+
+// Paginate only after ALL filters have been applied.
+$violations = $violationsQuery
+    ->orderByDesc('violation_date')
+    ->paginate(10)
+    ->withQueryString();
 /*
 |--------------------------------------------------------------------------
 | Summary by Violation
