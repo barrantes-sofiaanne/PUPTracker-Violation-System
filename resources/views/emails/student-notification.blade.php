@@ -104,7 +104,7 @@
     </p>
 @endif
 
-@endif
+
 
             <p style="margin-top:30px; font-size:13px; color:#777777;">
                 This is an automated notification from PUPTracker. Please do not reply to this email.
