@@ -56,10 +56,30 @@ $assignedSanctionViolationIds = StudentSanctionRecord::where(
     'student_number',
     $user->student_number
 )
+
+
     ->whereNotNull('violation_id')
     ->pluck('violation_id')
     ->mapWithKeys(fn ($id) => [(int) $id => true])
     ->all();
+
+/*
+|--------------------------------------------------------------------------
+| Latest Sanction Request Statuses
+|--------------------------------------------------------------------------
+| Requests are tracked by violation type in the existing workflow.
+| The latest request determines the status shown in the student log.
+*/
+$sanctionRequestsByType = SanctionRequest::where(
+    'student_number',
+    $user->student_number
+)
+    ->orderByDesc('request_date')
+    ->get()
+    ->unique('violation_type_id')
+    ->keyBy(
+        fn ($request) => (string) $request->violation_type_id
+    );
 
        $violations = Violation::with([
     'violationType.violationCategory',
@@ -328,18 +348,17 @@ $sanctionRecords = StudentSanctionRecord::with([
 ->orderByDesc('date_assigned')
 ->get();
 
-return view(
-    'student.record',
-    compact(
-        'user',
-        'violations',
-        'violationSummary',
-        'sanctionRecords',
-        'violationTypes',
-        'pendingCorrectionRequests',
-        'assignedSanctionViolationIds'
-    )
-);
+return view('student.record', compact(
+    'user',
+    'violations',
+    'violationSummary',
+    'sanctionRecords',
+    'violationTypes',
+    'pendingCorrectionRequests',
+    'assignedSanctionViolationIds',
+    'sanctionRequestsByType',
+    'assignedSanctionTypeKeys'
+));
     }
 
 public function requestSanction(Request $request)

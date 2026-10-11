@@ -21,6 +21,63 @@
 <link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
 
 <style>
+
+    
+/* Sanction request status indicators */
+.individual-violations-table .sanction-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    width: 100%;
+    padding: 0.7rem 0.55rem;
+    border: 1px solid transparent;
+    border-radius: 0.65rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.3;
+    text-align: center;
+}
+
+.individual-violations-table .sanction-state-pending {
+    color: #805600;
+    background: #fff5d9;
+    border-color: #efdfa9;
+}
+
+.individual-violations-table .sanction-state-approved {
+    color: #126b4a;
+    background: #e6f6ed;
+    border-color: #c2e7d1;
+}
+
+.individual-violations-table .sanction-state-declined {
+    color: #a32121;
+    background: #fff0f0;
+    border-color: #efcccc;
+}
+
+.individual-violations-table .sanction-state-assigned {
+    color: #555d6b;
+    background: #edf0f4;
+    border-color: #d9dfe7;
+}
+
+.individual-violations-table .sanction-state + div {
+    width: 100%;
+}
+
+.individual-violations-table .individual-actions-col .request-sanction-btn {
+    font-weight: 600;
+}
+
+@media (max-width: 767.98px) {
+    .individual-violations-table .sanction-state {
+        font-size: 0.8rem;
+        padding: 0.65rem 0.45rem;
+    }
+}
+
 /* ==========================================================================
    Submit Proof of Completion modal (scoped to this page)
    ========================================================================== */
@@ -1093,8 +1150,36 @@
                 @forelse($violations as $violation)
 
 @php
-    $isPendingLog =
-        strtolower((string) $violation->status) === 'pending';
+
+    $isPendingLog = strtolower(
+        (string) $violation->status
+    ) === 'pending';
+
+    $resolvedViolationType = $violation->resolvedViolationType();
+
+    $typeId = (string) (
+        $resolvedViolationType?->violation_type_id
+        ?? $violation->violation_type_id
+        ?? ''
+    );
+
+    $sanctionRequest = $sanctionRequestsByType->get($typeId);
+
+    $requestStatus = strtolower(trim(
+        (string) ($sanctionRequest?->status ?? '')
+    ));
+
+    $isActiveSanctionRequest = (bool) (
+        $sanctionRequest?->is_active ?? false
+    );
+
+    $hasAssignedSanction =
+        in_array($typeId, $assignedSanctionTypeKeys ?? [], true)
+        || isset(
+            $assignedSanctionViolationIds[
+                (int) $violation->violation_id
+            ]
+        );
 @endphp
 
                     <tr>
@@ -1170,23 +1255,65 @@
 
                         </td>
 
-                        <td class="individual-actions-col">
-                            @if(!$isPendingLog)
-                                @if(!isset($assignedSanctionViolationIds[$violation->violation_id]))
-                                    <button type="button"
-                                        class="btn portal-btn btn-sm w-100 request-sanction-btn"
-                                        data-violation-type-id="{{ $violation->violation_type_id }}">
-                                        <i class="bi bi-send me-1"></i>Request Sanction
-                                    </button>
-                                @else
-                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" disabled>
-                                        <i class="bi bi-check-circle me-1"></i>Sanction Assigned
-                                    </button>
-                                @endif
-                            @else
-                                <span class="text-muted small">Available after confirmation</span>
-                            @endif
-                        </td>
+                        
+<td class="individual-actions-col">
+    @if($isPendingLog)
+
+        <span class="text-muted small">
+            Available after confirmation
+        </span>
+
+    @elseif($hasAssignedSanction)
+
+        <span class="sanction-state sanction-state-assigned">
+            <i class="bi bi-shield-check" aria-hidden="true"></i>
+            Sanction Assigned
+        </span>
+
+    @elseif($requestStatus === 'pending' && $isActiveSanctionRequest)
+
+        <span class="sanction-state sanction-state-pending">
+            <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+            Request Pending
+        </span>
+
+    @elseif($requestStatus === 'approved')
+
+        <span class="sanction-state sanction-state-approved">
+            <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+            Request Approved
+        </span>
+
+    @elseif($requestStatus === 'declined')
+
+        <span class="sanction-state sanction-state-declined">
+            <i class="bi bi-x-circle" aria-hidden="true"></i>
+            Request Declined
+        </span>
+
+        <div class="mt-2">
+            <button
+                type="button"
+                class="btn portal-btn btn-sm w-100 request-sanction-btn"
+                data-violation-type-id="{{ $typeId }}">
+                <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>
+                Request Again
+            </button>
+        </div>
+
+    @else
+
+        <button
+            type="button"
+            class="btn portal-btn btn-sm w-100 request-sanction-btn"
+            data-violation-type-id="{{ $typeId }}">
+            <i class="bi bi-send me-1" aria-hidden="true"></i>
+            Request Sanction
+        </button>
+
+    @endif
+</td>
+
                     </tr>
 
                 @empty
