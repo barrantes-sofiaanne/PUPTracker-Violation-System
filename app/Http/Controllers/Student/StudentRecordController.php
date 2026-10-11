@@ -112,11 +112,63 @@ $recordedViolationCategories = $recordedViolationTypes
     ->sortBy('category_name')
     ->values();
 
+    // Determine the sanction-request status for each recorded violation type.
+$assignedSanctionTypeIdsForFilter = StudentSanctionRecord::with(
+    'violation.violationType'
+)
+    ->where('student_number', $user->student_number)
+    ->get()
+    ->map(fn ($record) => (string) (
+        $record->violation?->resolvedViolationType()?->violation_type_id
+        ?? ''
+    ))
+    ->filter(fn ($id) => $id !== '')
+    ->unique()
+    ->values()
+    ->all();
+
+$sanctionStatusByTypeId = $recordedViolationTypes->mapWithKeys(
+    function ($type) use (
+        $sanctionRequestsByType,
+        $assignedSanctionTypeIdsForFilter
+    ) {
+        $typeId = (string) $type->violation_type_id;
+
+        if (in_array($typeId, $assignedSanctionTypeIdsForFilter, true)) {
+            $status = 'sanction_assigned';
+        } else {
+            $sanctionRequest = $sanctionRequestsByType->get($typeId);
+
+            $requestStatus = strtolower(trim(
+                (string) ($sanctionRequest?->status ?? '')
+            ));
+
+            $isActive = (bool) ($sanctionRequest?->is_active ?? false);
+
+            if ($requestStatus === 'pending' && $isActive) {
+                $status = 'request_pending';
+            } elseif ($requestStatus === 'approved') {
+                $status = 'request_approved';
+            } elseif ($requestStatus === 'declined') {
+                $status = 'request_declined';
+            } else {
+                $status = 'request_sanction';
+            }
+        }
+
+        return [$typeId => $status];
+    }
+);
+
 $filters = $request->validate([
     'category_id' => ['nullable', 'integer'],
     'violation_type_id' => ['nullable', 'integer'],
     'date_from' => ['nullable', 'date'],
     'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+    'sanction_status' => [
+    'nullable',
+    'in:request_sanction,request_pending,request_approved,request_declined,sanction_assigned',
+],
 ]);
 
 // Restrict submitted category/type values to options available
@@ -216,6 +268,19 @@ $violations = $violationsQuery
     ->paginate(10)
     ->withQueryString();
 
+    if (!empty($filters['sanction_status'])) {
+    $matchingTypeIds = $sanctionStatusByTypeId
+        ->filter(
+            fn ($status) => $status === $filters['sanction_status']
+        )
+        ->keys()
+        ->all();
+
+    $violationsQuery->whereIn(
+        'violation_type_id',
+        $matchingTypeIds
+    );
+}
 /*
 |--------------------------------------------------------------------------
 | Summary by Violation
@@ -472,20 +537,22 @@ $sanctionRecords = StudentSanctionRecord::with([
 ->orderByDesc('date_assigned')
 ->get();
 
-return view('student.record', compact(
-    'user',
-    'violations',
-    'violationSummary',
-    'sanctionRecords',
-    'violationTypes',
-    'pendingCorrectionRequests',
-    'assignedSanctionViolationIds',
-    'sanctionRequestsByType',
-    'assignedSanctionTypeKeys',
-    'recordedViolationTypes',
-    'recordedViolationCategories',
-    'filters'
-));
+return view(
+    'student.record',
+    compact(
+        'user',
+        'violations',
+        'violationSummary',
+        'sanctionRecords',
+        'violationTypes',
+        'pendingCorrectionRequests',
+        'assignedSanctionViolationIds',
+        'sanctionRequestsByType',
+        'recordedViolationTypes',
+        'recordedViolationCategories',
+        'filters'
+    )
+);
     }
 
 public function requestSanction(Request $request)

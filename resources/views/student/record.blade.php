@@ -1212,7 +1212,57 @@
                     @endforeach
                 </select>
             </div>
+            
+            <div class="individual-filter-field">
+    <label for="filterSanctionStatus">
+        Sanction Request Status
+    </label>
 
+    <select
+        class="form-select"
+        id="filterSanctionStatus"
+        name="sanction_status"
+    >
+        <option value="">
+            All Request Statuses
+        </option>
+
+        <option
+            value="request_sanction"
+            @selected(request('sanction_status', $filters['sanction_status'] ?? '') === 'request_sanction')
+        >
+            Request Sanction
+        </option>
+
+        <option
+            value="request_pending"
+            @selected(request('sanction_status', $filters['sanction_status'] ?? '') === 'request_pending')
+        >
+            Request Pending
+        </option>
+
+        <option
+            value="request_approved"
+            @selected(request('sanction_status', $filters['sanction_status'] ?? '') === 'request_approved')
+        >
+            Request Approved
+        </option>
+
+        <option
+            value="request_declined"
+            @selected(request('sanction_status', $filters['sanction_status'] ?? '') === 'request_declined')
+        >
+            Request Declined
+        </option>
+
+        <option
+            value="sanction_assigned"
+            @selected(request('sanction_status', $filters['sanction_status'] ?? '') === 'sanction_assigned')
+        >
+            Sanction Assigned
+        </option>
+    </select>
+</div>
             <div class="individual-filter-field">
                 <label for="filterDateFrom">From Date</label>
                 <input type="date"
