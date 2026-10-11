@@ -328,21 +328,32 @@ if (! $student->isActiveAccount()) {
             ]);
 
             try {
-                $deadlineMessage = $deadlineDate
-                    ? ' Deadline to complete: ' . $deadlineDate->format('M d, Y') . '.'
-                    : '';
-                $serviceMessage = $designatedOffice
-                    ? ' Designated office: ' . $designatedOffice . '.'
-                        . ($startingDate ? ' Starting date: ' . $startingDate->format('M d, Y') . '.' : '')
-                    : '';
-                app(\App\Services\StudentNotificationService::class)->create(
-                    studentNumber: $student->student_number,
-                    type: 'sanction',
-                    title: 'Sanction Request Approved',
-                    message: 'Your sanction request was approved. Please check your Sanction Record tab. Scheduled date: ' . $scheduledDate->format('M d, Y') . '.' . $serviceMessage . $deadlineMessage,
-                    targetType: 'sanction_request',
-                    targetId: (int) $sanctionRequest->request_id,
-                );
+$dateAssignedMessage = ' Date Assigned: '
+    . $scheduledDate->format('M d, Y') . '.';
+
+$serviceMessage = $designatedOffice
+    ? ' Designated Office: ' . $designatedOffice . '.'
+        . ($startingDate
+            ? ' Starting Date: ' . $startingDate->format('M d, Y') . '.'
+            : '')
+    : '';
+
+$deadlineMessage = $deadlineDate
+    ? ' Deadline to Complete: ' . $deadlineDate->format('M d, Y') . '.'
+    : '';
+
+app(\App\Services\StudentNotificationService::class)->create(
+    studentNumber: $student->student_number,
+    type: 'sanction',
+    title: 'Sanction Request Approved',
+    message: 'Your sanction request has been approved. '
+        . 'Please review your Sanction Record tab for details.'
+        . $dateAssignedMessage
+        . $serviceMessage
+        . $deadlineMessage,
+    targetType: 'sanction_request',
+    targetId: (int) $sanctionRequest->request_id,
+);
             } catch (\Throwable $e) {
                 // Notification must never break the approval.
             }

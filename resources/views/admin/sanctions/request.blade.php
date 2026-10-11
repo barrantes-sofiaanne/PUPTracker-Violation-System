@@ -56,7 +56,7 @@
                     <form action="{{ route('admin.sanctions.requests.approve', $sanctionRequest) }}" method="POST" class="d-flex flex-wrap align-items-end gap-2" data-sanction-text="{{ $assignedSanction?->disciplinary_sanction ?? '' }}" data-service-sanction="{{ !empty($isServiceSanction) ? '1' : '0' }}">
                         @csrf
                         <div>
-                            <label for="notification_date" class="admin-filter-label">Notification / Date Assigned</label>
+                            <label for="notification_date" class="admin-filter-label">Date Assigned</label>
                             <input type="date" id="notification_date" name="notification_date" class="form-control" value="{{ now()->format('Y-m-d') }}" required>
                         </div>
                             <div>

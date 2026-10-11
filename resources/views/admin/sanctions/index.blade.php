@@ -472,7 +472,7 @@
 
                 <form id="approveSanctionRequestForm" method="POST" class="mb-2">
                     @csrf
-                    <label for="notification_date" class="form-label fw-semibold">Notification / Date Assigned (Student Sanction Tab)</label>
+                    <label for="notification_date" class="form-label fw-semibold">Date Assigned (shown in Student Sanction Record)</label>
                     <input type="date" id="notification_date" name="notification_date" class="form-control" required>
                     <small class="text-muted">The selected date will be shown in the student's Sanction Record tab.</small>
                     <label for="modal_deadline_date" class="form-label fw-semibold mt-3">Deadline (if needed)</label>
