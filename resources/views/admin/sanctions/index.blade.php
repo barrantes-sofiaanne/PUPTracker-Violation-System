@@ -317,14 +317,14 @@
                                                     {{ optional($record->proof_submitted_at)->format('M d, Y h:i A') }}
                                                 </div>
                                                 @if($record->proof_path)
-<a href="{{ route('admin.sanctions.proof.download', [
-    'studentSanctionRecord' => $record->proof_access_key,
-]) }}"
-   target="_blank"
-   class="admin-btn admin-btn-view admin-btn-sm">
-    <i class="bi bi-eye me-1"></i>View Proof
-</a>
-                                                @endif
+    <a href="{{ route('admin.sanctions.proof.download', [
+        'studentSanctionRecord' => $record->proof_access_key,
+    ]) }}"
+       target="_blank"
+       class="admin-btn admin-btn-view admin-btn-sm">
+        <i class="bi bi-eye me-1"></i>View Proof
+    </a>
+@endif
                                             @elseif($record->proof_path && strcasecmp((string) $record->status, 'Completed') === 0)
                                                 <a href="{{ route('admin.sanctions.proof.download', [
     'studentSanctionRecord' => $record->proof_access_key,
