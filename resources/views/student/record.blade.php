@@ -834,6 +834,88 @@
     }
 }
 
+
+/* Individual Violations Log filters */
+.individual-log-filters-wrap {
+    padding: 1.1rem 1.25rem !important;
+    border-bottom: 1px solid #eee2d5;
+    background: #fffdf9;
+}
+
+.individual-log-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.85rem;
+    align-items: end;
+}
+
+.individual-filter-field {
+    min-width: 0;
+}
+
+.individual-filter-field label {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: #5d1515;
+    font-size: 0.78rem;
+    font-weight: 750;
+}
+
+.individual-filter-field .form-select,
+.individual-filter-field .form-control {
+    min-height: 42px;
+    border-color: #e5d7c8;
+    border-radius: 0.65rem;
+    font-size: 0.88rem;
+}
+
+.individual-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    grid-column: 1 / -1;
+}
+
+.individual-filter-apply {
+    color: #fff;
+    background: #800909;
+    border: 1px solid #800909;
+    border-radius: 0.65rem;
+    font-weight: 700;
+}
+
+.individual-filter-apply:hover,
+.individual-filter-apply:focus {
+    color: #fff;
+    background: #650707;
+    border-color: #650707;
+}
+
+.individual-filter-clear {
+    border: 1px solid #d9c8b8;
+    color: #5d1515;
+    border-radius: 0.65rem;
+    font-weight: 650;
+}
+
+.individual-filter-clear:hover,
+.individual-filter-clear:focus {
+    color: #5d1515;
+    background: #f7eee6;
+}
+
+@media (max-width: 767.98px) {
+    .individual-log-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 420px) {
+    .individual-log-filters {
+        grid-template-columns: 1fr;
+    }
+}
+
 </style>
 @endpush
 
@@ -1092,6 +1174,74 @@
 
         </h5>
 
+    </div>
+
+    {{-- Filters for the Individual Violations Log --}}
+    <div class="individual-log-filters-wrap">
+        <form method="GET"
+              action="{{ route('student.record') }}"
+              class="individual-log-filters"
+              id="individualLogFilters">
+
+            <div class="individual-filter-field">
+                <label for="filterCategory">Category</label>
+                <select class="form-select" id="filterCategory" name="category_id">
+                    <option value="">All Categories</option>
+                    @foreach(($recordedViolationCategories ?? $violationCategories ?? collect()) as $category)
+                        <option value="{{ $category->violation_category_id }}"
+                            @selected((string) request('category_id', $filters['category_id'] ?? '') === (string) $category->violation_category_id)>
+                            {{ $category->category_name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="individual-filter-field">
+                <label for="filterViolationType">Violation Type</label>
+                <select class="form-select"
+                        id="filterViolationType"
+                        name="violation_type_id"
+                        data-selected="{{ request('violation_type_id', $filters['violation_type_id'] ?? '') }}">
+                    <option value="">All Violation Types</option>
+                    @foreach(($recordedViolationTypes ?? $violationTypes ?? collect()) as $type)
+                        <option value="{{ $type->violation_type_id }}"
+                                data-category-id="{{ $type->violation_category_id ?? optional($type->violationCategory)->violation_category_id }}"
+                            @selected((string) request('violation_type_id', $filters['violation_type_id'] ?? '') === (string) $type->violation_type_id)>
+                            {{ $type->violation_type }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="individual-filter-field">
+                <label for="filterDateFrom">From Date</label>
+                <input type="date"
+                       class="form-control"
+                       id="filterDateFrom"
+                       name="date_from"
+                       value="{{ request('date_from', $filters['date_from'] ?? '') }}"
+                       max="{{ request('date_to', $filters['date_to'] ?? '') }}">
+            </div>
+
+            <div class="individual-filter-field">
+                <label for="filterDateTo">To Date</label>
+                <input type="date"
+                       class="form-control"
+                       id="filterDateTo"
+                       name="date_to"
+                       value="{{ request('date_to', $filters['date_to'] ?? '') }}"
+                       min="{{ request('date_from', $filters['date_from'] ?? '') }}">
+            </div>
+
+            <div class="individual-filter-actions">
+                <button class="btn individual-filter-apply" type="submit">
+                    <i class="bi bi-funnel me-1" aria-hidden="true"></i>Apply Filters
+                </button>
+                <a class="btn individual-filter-clear" href="{{ route('student.record') }}">
+                    Clear
+                </a>
+            </div>
+        </form>
     </div>
 
     <div class="card-body p-0">
@@ -1589,7 +1739,8 @@
                                             data-office="{{ $record->designated_office ?? '' }}"
                                             data-starting-date="{{ optional($record->starting_date)->format('M d, Y') ?? '' }}"
                                             data-required-hours="{{ $record->required_hours ?? '' }}"
-data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}"                                            <i class="bi bi-upload me-1"></i>Submit Proof
+data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
+                                            <i class="bi bi-upload me-1"></i>Submit Proof
                                         </button>
                                     @else
                                         {{-- Every other sanction is settled through a personal

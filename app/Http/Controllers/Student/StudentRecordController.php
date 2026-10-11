@@ -21,7 +21,7 @@ use App\Models\ViolationCorrectionRequest;
 use App\Models\ViolationType;
 class StudentRecordController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         // Flip this student's In Progress/Pending sanctions past deadline to
         // Overdue (one-time notifications) before rendering.
@@ -81,18 +81,141 @@ $sanctionRequestsByType = SanctionRequest::where(
         fn ($request) => (string) $request->violation_type_id
     );
 
-       $violations = Violation::with([
+
+/*
+|--------------------------------------------------------------------------
+| Individual Violations Log Filters
+|--------------------------------------------------------------------------
+| Filter choices are derived only from this student's confirmed records.
+*/
+
+$studentRecordedViolations = Violation::with([
+    'violationType.violationCategory',
+])
+    ->where('student_number', $user->student_number)
+    ->where('status', Violation::STATUS_CONFIRMED)
+    ->get();
+
+// Build the available violation-type options from the student's records.
+$recordedViolationTypes = $studentRecordedViolations
+    ->map(fn ($violation) => $violation->resolvedViolationType())
+    ->filter()
+    ->unique('violation_type_id')
+    ->sortBy('violation_type')
+    ->values();
+
+// Build category options only from those recorded violation types.
+$recordedViolationCategories = $recordedViolationTypes
+    ->map(fn ($type) => $type->violationCategory)
+    ->filter()
+    ->unique('violation_category_id')
+    ->sortBy('category_name')
+    ->values();
+
+$filters = $request->validate([
+    'category_id' => ['nullable', 'integer'],
+    'violation_type_id' => ['nullable', 'integer'],
+    'date_from' => ['nullable', 'date'],
+    'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+]);
+
+// Restrict submitted category/type values to options available
+// from this student's own confirmed violation records.
+$recordedCategoryIds = $recordedViolationCategories
+    ->pluck('violation_category_id')
+    ->map(fn ($id) => (string) $id)
+    ->all();
+
+$recordedTypeIds = $recordedViolationTypes
+    ->pluck('violation_type_id')
+    ->map(fn ($id) => (string) $id)
+    ->all();
+
+if (
+    !empty($filters['category_id'])
+    && !in_array((string) $filters['category_id'], $recordedCategoryIds, true)
+) {
+    $filters['category_id'] = null;
+}
+
+if (
+    !empty($filters['violation_type_id'])
+    && !in_array((string) $filters['violation_type_id'], $recordedTypeIds, true)
+) {
+    $filters['violation_type_id'] = null;
+}
+
+// If both filters are selected, the type must belong to that category.
+if (!empty($filters['category_id']) && !empty($filters['violation_type_id'])) {
+    $selectedType = $recordedViolationTypes->first(
+        fn ($type) =>
+            (string) $type->violation_type_id
+            === (string) $filters['violation_type_id']
+    );
+
+    if (
+        !$selectedType
+        || (string) $selectedType->violation_category_id
+            !== (string) $filters['category_id']
+    ) {
+        $filters['violation_type_id'] = null;
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Query the Individual Violations Log
+|--------------------------------------------------------------------------
+*/
+
+$violationsQuery = Violation::with([
     'violationType.violationCategory',
     'violationType.disciplinarySanctions',
     'evidence',
 ])
-           ->where('student_number', $user->student_number)
-           // Student Record must expose only violations that have been
-           // explicitly confirmed by an Administrator. Pending, denied, and
-           // legacy/unconfirmed records are not visible to the student.
-           ->where('status', Violation::STATUS_CONFIRMED)
-           ->orderByDesc('violation_date')
-           ->paginate(10);
+    ->where('student_number', $user->student_number)
+    ->where('status', Violation::STATUS_CONFIRMED);
+
+if (!empty($filters['category_id'])) {
+    $violationsQuery->whereHas(
+        'violationType',
+        function ($query) use ($filters) {
+            $query->where(
+                'violation_category_id',
+                $filters['category_id']
+            );
+        }
+    );
+}
+
+if (!empty($filters['violation_type_id'])) {
+    $violationsQuery->where(
+        'violation_type_id',
+        $filters['violation_type_id']
+    );
+}
+
+if (!empty($filters['date_from'])) {
+    $violationsQuery->whereDate(
+        'violation_date',
+        '>=',
+        $filters['date_from']
+    );
+}
+
+if (!empty($filters['date_to'])) {
+    $violationsQuery->whereDate(
+        'violation_date',
+        '<=',
+        $filters['date_to']
+    );
+}
+
+$violations = $violationsQuery
+    ->orderByDesc('violation_date')
+    ->paginate(10)
+    ->withQueryString();
+
 /*
 |--------------------------------------------------------------------------
 | Summary by Violation
@@ -190,8 +313,9 @@ return 'unknown:' . $violation->violation_id;    });
 
 foreach ($groupedViolations as $records) {
 
-    // Keep the newest effective incident first so Summary actions point to a concrete record.
-    $records = $records->sortByDesc('violation_date')->values();
+    // groupBy() may yield a plain object/array for a single grouped item, so
+    // normalize each bucket to a Collection before chaining Collection methods.
+    $records = collect($records)->sortByDesc('violation_date')->values();
 
     // All records in this collection are Administrator-confirmed, so the
     // offense level is computed only from records the student is allowed to see.
@@ -357,7 +481,10 @@ return view('student.record', compact(
     'pendingCorrectionRequests',
     'assignedSanctionViolationIds',
     'sanctionRequestsByType',
-    'assignedSanctionTypeKeys'
+    'assignedSanctionTypeKeys',
+    'recordedViolationTypes',
+    'recordedViolationCategories',
+    'filters'
 ));
     }
 
