@@ -316,21 +316,31 @@
                                                 <div class="small text-muted mb-1">
                                                     {{ optional($record->proof_submitted_at)->format('M d, Y h:i A') }}
                                                 </div>
-                                                @if($record->proof_path)
+                                                
+@if($record->proof_path && filled($record->proof_access_key))
     <a href="{{ route('admin.sanctions.proof.download', [
         'studentSanctionRecord' => $record->proof_access_key,
     ]) }}"
        target="_blank"
+       rel="noopener noreferrer"
        class="admin-btn admin-btn-view admin-btn-sm">
         <i class="bi bi-eye me-1"></i>View Proof
     </a>
 @endif
-                                            @elseif($record->proof_path && strcasecmp((string) $record->status, 'Completed') === 0)
-                                                <a href="{{ route('admin.sanctions.proof.download', [
-    'studentSanctionRecord' => $record->proof_access_key,
-]) }}" target="_blank" class="admin-btn admin-btn-view admin-btn-sm">
-                                                    <i class="bi bi-eye me-1"></i>View Proof
-                                                </a>
+
+                                          
+@elseif($record->proof_path
+    && strcasecmp((string) $record->status, 'Completed') === 0
+    && filled($record->proof_access_key))
+    <a href="{{ route('admin.sanctions.proof.download', [
+        'studentSanctionRecord' => $record->proof_access_key,
+    ]) }}"
+       target="_blank"
+       rel="noopener noreferrer"
+       class="admin-btn admin-btn-view admin-btn-sm">
+        <i class="bi bi-eye me-1"></i>View Proof
+    </a>
+
                                             @elseif($isOpen && $record->completion_remarks)
                                                 <div class="small text-danger mb-1">
                                                     <i class="bi bi-x-circle me-1"></i>Previous proof rejected:
