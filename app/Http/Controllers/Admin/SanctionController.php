@@ -338,22 +338,44 @@ $serviceMessage = $designatedOffice
             : '')
     : '';
 
+
 $deadlineMessage = $deadlineDate
     ? ' Deadline to Complete: ' . $deadlineDate->format('M d, Y') . '.'
     : '';
+
+if ($designatedOffice && $startingDate) {
+    // Service sanctions: tell the student where and when to render service.
+    $serviceMessage = ' Designated Office: ' . $designatedOffice . '.'
+        . ' Starting Date: ' . $startingDate->format('M d, Y') . '.';
+
+    $notificationMessage =
+        'Your sanction request has been approved. '
+        . 'Please review your Sanction Record tab for the details '
+        . 'of your assigned service.'
+        . ' Date Assigned: ' . $scheduledDate->format('M d, Y') . '.'
+        . $serviceMessage
+        . $deadlineMessage;
+} else {
+    // Other sanctions: direct the student to the note and personal intervention.
+    $notificationMessage =
+        'Your sanction request has been approved. '
+        . 'Please open the Sanction Record tab in your account '
+        . 'and read the note regarding your assigned sanction. '
+        . 'You are required to visit the Office of Student Services '
+        . 'for personal intervention.'
+        . ' Date Assigned: ' . $scheduledDate->format('M d, Y') . '.'
+        . $deadlineMessage;
+}
 
 app(\App\Services\StudentNotificationService::class)->create(
     studentNumber: $student->student_number,
     type: 'sanction',
     title: 'Sanction Request Approved',
-    message: 'Your sanction request has been approved. '
-        . 'Please review your Sanction Record tab for details.'
-        . $dateAssignedMessage
-        . $serviceMessage
-        . $deadlineMessage,
+    message: $notificationMessage,
     targetType: 'sanction_request',
     targetId: (int) $sanctionRequest->request_id,
 );
+
             } catch (\Throwable $e) {
                 // Notification must never break the approval.
             }

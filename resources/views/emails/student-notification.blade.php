@@ -55,7 +55,23 @@
     @endphp
 
     <p style="font-size: 16px; line-height: 1.7; color: #555555;">
-        {{ $intro }}
+        @if (filled($designatedOffice) && filled($startingDate))
+    <p style="font-size: 16px; line-height: 1.7; color: #555555;">
+        Your sanction request has been approved. Please review your
+        Sanction Record tab for the details of your assigned service.
+    </p>
+@else
+    <p style="font-size: 16px; line-height: 1.7; color: #555555;">
+        Your sanction request has been approved. Please open the
+        Sanction Record tab in your account and read the note regarding
+        your assigned sanction.
+    </p>
+
+    <p style="font-size: 16px; line-height: 1.7; color: #555555;">
+        You are required to visit the Office of Student Services
+        for personal intervention.
+    </p>
+@endif
     </p>
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
