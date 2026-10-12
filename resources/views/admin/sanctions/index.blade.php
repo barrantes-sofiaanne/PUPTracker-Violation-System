@@ -1261,6 +1261,15 @@
 
 
 <style>
+    #reviewProofModal .review-proof-student-subtitle {
+        color: rgba(255, 255, 255, .9);
+        margin-top: 4px;
+    }
+    #reviewProofModal .review-proof-student-subtitle strong {
+        color: #fff;
+        font-weight: 700;
+    }
+
     #reviewProofModal .proof-details-panel { height: 100%; padding: 18px; background: #faf7f7; border: 1px solid #eadede; border-radius: 12px; }
     #reviewProofModal .proof-section-title { color: #800000; font-weight: 700; }
     #reviewProofModal .proof-detail { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; border-bottom: 1px solid #eadede; }
@@ -1305,10 +1314,8 @@
 
                     </h5>
 
-                    <div class="text-muted small">
-
+                    <div class="small review-proof-student-subtitle">
                         Student: <strong id="reviewProofStudent">—</strong>
-
                     </div>
 
                 </div>
@@ -1332,7 +1339,6 @@
                     <div class="col-lg-4">
                         <section class="proof-details-panel" aria-label="Sanction details">
                             <h6 class="proof-section-title"><i class="bi bi-clipboard2-check me-2"></i>Sanction Details</h6>
-                            <div class="proof-detail"><span>Student Number</span><strong id="reviewProofStudent">—</strong></div>
                             <div class="proof-detail"><span>Violation</span><strong id="reviewProofViolation">—</strong></div>
                             <div class="proof-detail"><span>Disciplinary Sanction</span><strong id="reviewProofSanction">—</strong></div>
                             <div class="proof-detail"><span>Current Status</span><strong id="reviewProofStatus">—</strong></div>
@@ -1652,7 +1658,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-    // Read the requested tab from the JSON data script (set server-side).*
+    // Read the requested tab from the JSON data script (set server-side).
 
     let requestedTab = pageData.requested_tab || '';
 
