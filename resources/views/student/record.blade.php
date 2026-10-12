@@ -1311,12 +1311,7 @@
                                             <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                                             Warning-Level Violation
                                         </strong>
-                                        <p class="mb-2">A sanction request is not required for this violation. The related disciplinary consequence is shown in the Sanction Record tab for your reference.</p>
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-warning fw-semibold js-view-related-consequence"
-                                                aria-controls="sanctionRecord">
-                                            <i class="bi bi-arrow-right-circle me-1" aria-hidden="true"></i>View Related Consequence
-                                        </button>
+                                        <p class="mb-0">A sanction request is not required for this warning-level violation. Please review the applicable disciplinary consequence in the Sanction Record tab and comply with the details provided.</p>
                                     </div>
                                 @elseif($requestStatus === 'pending' && (bool) ($sanctionRequest->is_active ?? false))
                                     <span class="sanction-state sanction-state-pending"><i class="bi bi-hourglass-split"></i>Request Pending</span>
@@ -1385,7 +1380,7 @@
             <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
             <div>
                 <span class="consultation-notice-title">No sanction request required</span>
-                <p class="consultation-notice-text">A request is not required for these warning-level violations. Please review the Sanction Details column and comply with the disciplinary consequence specified there.</p>
+                <p class="consultation-notice-text">No sanction request is required for these warning-level violations. Please review the applicable disciplinary consequence associated with each violation and comply with the details provided.</p>
             </div>
         </div>
     @endif
@@ -1844,16 +1839,6 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Warning-level notices can take the student directly to the Sanction Record tab.
-    document.querySelectorAll('.js-view-related-consequence').forEach(function (button) {
-        button.addEventListener('click', function () {
-            const sanctionTab = document.getElementById('sanction-tab');
-            if (sanctionTab && window.bootstrap && bootstrap.Tab) {
-                bootstrap.Tab.getOrCreateInstance(sanctionTab).show();
-            }
-        });
-    });
-
     // Deep-link support: if the URL contains #sanctionRecord, open the
     // Sanction Record tab automatically (used by notification links).
     if (window.location.hash === '#sanctionRecord') {
