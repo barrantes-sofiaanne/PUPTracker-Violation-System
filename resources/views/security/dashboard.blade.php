@@ -298,8 +298,11 @@
     <div class="search-bar-container">
         <div class="card portal-card">
             <div class="card-body">
-                <form method="GET" action="" class="row g-2">
-                    <div class="col-md-8">
+<form
+    method="GET"
+    action="{{ route('security.dashboard') }}"
+    class="row g-2"
+>                    <div class="col-md-8">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-0">
                                 <i class="bi bi-search"></i>
@@ -322,99 +325,34 @@
         </div>
     </div>
 
-    {{-- Main Content Row --}}
-    <div class="row g-3 mb-4">
-        
-        {{-- Recent Violations --}}
-        <div class="col-lg-8">
-            <div class="card portal-card">
-                <div class="card-header card-header-custom">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="fw-bold mb-0">Recent Violations (Last 7 Days)</h5>
-                        <span class="portal-badge muted">{{ $recentViolations->count() }} records</span>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table mb-0 portal-table">
-                            <thead>
-                                <tr>
-                                    <th>Student</th>
-                                    <th>Violation Type</th>
-                                    <th>Offense Level</th>
-                                    <th>Date & Time</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($recentViolations as $violation)
-                                <tr class="violation-item">
-                                    <td>
-                                        <strong>{{ $violation->student_number }}</strong>
-                                        @if($violation->student)
-                                        <br><small class="text-muted">
-                                            {{ $violation->student->last_name }}, {{ $violation->student->first_name }}
-                                        </small>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <span class="portal-badge muted">
-                                            {{ $violation->violation_type_display }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="portal-badge danger">
-                                            {{ $violation->offense_level }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <small class="text-muted">
-                                            {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y H:i') }}
-                                        </small>
-                                    </td>
-                                    <td>
-                                        <button
-                                            class="btn btn-sm portal-btn-outline"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#violationDetailModal"
-                                            data-violation="{{ json_encode($violation) }}"
-                                            data-student-number="{{ $violation->student_number }}"
-                                            data-student-name="{{ $violation->student ? $violation->student->last_name . ', ' . $violation->student->first_name : '-' }}"
-                                            data-violation-type="{{ $violation->violation_type_display ?: 'N/A' }}"
-                                            data-violation-category="{{ $violation->violation_category_display ?: 'N/A' }}"
-                                            data-offense="{{ $violation->offense_level ?: 'N/A' }}"
-                                            data-violation-date="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->setTimezone('Asia/Manila')->format('M d, Y, H:i') : 'N/A' }}"
-                                            data-description="{{ $violation->description ?: 'No description provided.' }}"
-                                            data-student-url="{{ route('security.violations.show', $violation->student_number) }}">
-                                            View
-                                        </button>
-                                    </td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="5" class="text-center py-5">
-                                        <i class="bi bi-inbox display-4 text-muted"></i>
-                                        <p class="text-muted mt-3">No recent violations in the last 7 days</p>
-                                    </td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
- </div>
-                </div>
+{{-- Main Content Row --}}
+<div class="row g-3 mb-4">
 
-                {{-- Violation and Sanction Guide --}}
-                <div class="violation-guide-wrapper mt-3">
-                    @include('partials.violation-sanction-guide', [
-                        'guideId' => 'securityGuide',
-                        'guideTitle' => 'Violation and Sanction Guide',
-                    ])
-                </div>
+    {{-- Recent Violations: Left Side --}}
+    <div class="col-lg-8">
+        {{-- Keep your existing Recent Violations card here --}}
+    </div>
 
-            </div>
+    {{-- Sidebar Widgets: Right Side --}}
+    <div class="col-lg-4">
+        {{-- Keep your existing Top Offenders card here --}}
+
+        {{-- Keep your existing Categories card here --}}
+    </div>
+
+</div>
+
+{{-- Violation and Sanction Guide: Below Both Columns --}}
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="violation-guide-wrapper">
+            @include('partials.violation-sanction-guide', [
+                'guideId' => 'securityGuide',
+                'guideTitle' => 'Violation and Sanction Guide',
+            ])
         </div>
+    </div>
+</div>
 
         {{-- Sidebar Widgets --}}
         <div class="col-lg-4">
