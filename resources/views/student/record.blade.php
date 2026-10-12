@@ -1216,6 +1216,7 @@
     </div>
 </div>
 
+</div><!-- End Violation Record tab pane -->
 
 {{-- ================================================= --}}
 {{-- Sanction Record --}}
@@ -1502,8 +1503,6 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
         </div>
 
     </div>
-
-</div>
 
 </div>
 
