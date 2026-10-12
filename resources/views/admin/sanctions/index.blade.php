@@ -317,16 +317,14 @@
                                                     {{ optional($record->proof_submitted_at)->format('M d, Y h:i A') }}
                                                 </div>
                                                 
+
 @if($record->proof_path && filled($record->proof_access_key))
-    <a href="{{ route('admin.sanctions.proof.download', [
-        'studentSanctionRecord' => $record->proof_access_key,
-    ]) }}"
-       target="_blank"
-       rel="noopener noreferrer"
-       class="admin-btn admin-btn-view admin-btn-sm">
-        <i class="bi bi-eye me-1"></i>View Proof
-    </a>
+    <span class="text-muted small">
+        <i class="bi bi-file-earmark-check me-1"></i>
+        Proof available for review in Actions
+    </span>
 @endif
+
 
                                           
 @elseif($record->proof_path
@@ -371,26 +369,34 @@
                                                         Reopen
                                                     </button>
                                                 @endif
-                                            @elseif($record->has_pending_proof)
-                                                <form action="{{ route('admin.sanctions.records.complete', $record) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    <button type="submit" class="admin-btn admin-btn-success admin-btn-sm">
-                                                        Accept
-                                                    </button>
-                                                </form>
-                                                <button
-                                                    type="button"
-                                                    class="admin-btn admin-btn-danger admin-btn-sm reject-proof-btn"
-                                                    data-record-id="{{ $record->record_id }}"
-                                                    data-student="{{ $record->student_number }}"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#rejectProofModal">
-                                                    Reject
-                                                </button>
-                                            @elseif($isOpen && $record->completion_remarks)
-                                                <span class="text-muted small">Awaiting resubmission</span>
-                                            @elseif($isOpen)
-                                                <span class="text-muted small">Awaiting proof</span>
+
+@elseif($record->has_pending_proof)
+    <button
+        type="button"
+        class="admin-btn admin-btn-view admin-btn-sm review-proof-btn"
+        data-record-id="{{ $record->record_id }}"
+        data-student="{{ $record->student_number }}"
+        data-proof-url="{{ route('admin.sanctions.proof.download', [
+            'studentSanctionRecord' => $record->proof_access_key,
+        ]) }}"
+        data-accept-url="{{ route('admin.sanctions.records.complete', $record) }}"
+        data-reject-url="{{ route('admin.sanctions.records.reject-proof', [
+            'studentSanctionRecord' => $record->record_id,
+        ]) }}"
+        data-bs-toggle="modal"
+        data-bs-target="#reviewProofModal">
+        <i class="bi bi-eye me-1"></i>Review Proof
+    </button>
+@elseif($isOpen && $record->completion_remarks)
+    <span class="text-muted small">Awaiting resubmission</span>
+@elseif($isOpen)
+    <button type="button"
+            class="admin-btn admin-btn-neutral admin-btn-sm"
+            disabled
+            title="The student must submit proof before it can be reviewed.">
+        <i class="bi bi-hourglass-split me-1"></i>Awaiting Proof
+    </button>
+
                                             @elseif(strcasecmp((string) $record->status, 'Completed') === 0)
                                                 <button type="button"
                                                         class="admin-btn admin-btn-view admin-btn-sm reopen-sanction-btn"
@@ -598,6 +604,91 @@
         </div>
     </div>
 </div>
+
+{{-- Review submitted proof of completion --}}
+<div class="modal fade admin-modal"
+     id="reviewProofModal"
+     tabindex="-1"
+     aria-labelledby="reviewProofModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content admin-modal-content">
+            <div class="modal-header admin-modal-header">
+                <div>
+                    <h5 class="modal-title admin-modal-title"
+                        id="reviewProofModalLabel">
+                        Review Proof of Completion
+                    </h5>
+                    <div class="text-muted small">
+                        Student: <strong id="reviewProofStudent">—</strong>
+                    </div>
+                </div>
+
+                <button type="button"
+                        class="btn-close admin-modal-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body admin-modal-body">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <span class="text-muted small">
+                        Review the submitted document before making a decision.
+                    </span>
+
+                    <a id="reviewProofOpenNewTab"
+                       href="#"
+                       target="_blank"
+                       rel="noopener"
+                       class="admin-btn admin-btn-view admin-btn-sm">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>
+                        Open Proof in New Tab
+                    </a>
+                </div>
+
+                <div class="border rounded overflow-hidden"
+                     style="height:65vh; min-height:350px;">
+                    <iframe id="reviewProofFrame"
+                            src="about:blank"
+                            title="Submitted proof of completion"
+                            style="width:100%; height:100%; border:0;">
+                    </iframe>
+                </div>
+
+                <p class="text-muted small mt-2 mb-0">
+                    If the document cannot be previewed, use
+                    “Open Proof in New Tab.”
+                </p>
+            </div>
+
+            <div class="modal-footer admin-modal-footer">
+                <form id="reviewProofAcceptForm" method="POST">
+                    @csrf
+                    <button type="submit"
+                            class="admin-btn admin-btn-success">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Accept Proof
+                    </button>
+                </form>
+
+                <button type="button"
+                        id="reviewProofRejectBtn"
+                        class="admin-btn admin-btn-danger"
+                        data-bs-target="#rejectProofModal">
+                    <i class="bi bi-x-circle me-1"></i>
+                    Reject Proof
+                </button>
+
+                <button type="button"
+                        class="admin-btn admin-btn-neutral"
+                        data-bs-dismiss="modal">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -622,6 +713,70 @@
 @json($sanctionPageData)
 </script>
 <script>
+    
+document.addEventListener('DOMContentLoaded', function () {
+    const reviewModal = document.getElementById('reviewProofModal');
+
+    if (!reviewModal) return;
+
+    const proofFrame = document.getElementById('reviewProofFrame');
+    const proofNewTab = document.getElementById('reviewProofOpenNewTab');
+    const studentDisplay = document.getElementById('reviewProofStudent');
+    const acceptForm = document.getElementById('reviewProofAcceptForm');
+    const rejectButton = document.getElementById('reviewProofRejectBtn');
+
+    document.querySelectorAll('.review-proof-btn').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const proofUrl = button.dataset.proofUrl || '';
+            const acceptUrl = button.dataset.acceptUrl || '';
+            const rejectUrl = button.dataset.rejectUrl || '';
+
+            studentDisplay.textContent = button.dataset.student || '—';
+            proofFrame.src = proofUrl || 'about:blank';
+            proofNewTab.href = proofUrl || '#';
+            acceptForm.action = acceptUrl;
+            rejectButton.dataset.rejectUrl = rejectUrl;
+            rejectButton.dataset.student = button.dataset.student || '';
+            rejectButton.dataset.recordId = button.dataset.recordId || '';
+        });
+    });
+
+    reviewModal.addEventListener('hidden.bs.modal', function () {
+        proofFrame.src = 'about:blank';
+    });
+
+    // Pass the selected record to the existing rejection modal.
+
+rejectButton.addEventListener('click', function (event) {
+    event.preventDefault();
+
+    const rejectForm = document.getElementById('rejectProofForm');
+    const rejectStudent = document.getElementById('rejectModalStudent');
+    const rejectReason = document.getElementById('rejectReason');
+
+    if (rejectForm && rejectButton.dataset.rejectUrl) {
+        rejectForm.action = rejectButton.dataset.rejectUrl;
+    }
+
+    if (rejectStudent) {
+        rejectStudent.textContent = rejectButton.dataset.student || '—';
+    }
+
+    if (rejectReason) {
+        rejectReason.value = '';
+    }
+
+    const rejectModalEl = document.getElementById('rejectProofModal');
+
+    bootstrap.Modal.getOrCreateInstance(reviewModal).hide();
+
+    reviewModal.addEventListener('hidden.bs.modal', function openRejectModal() {
+        reviewModal.removeEventListener('hidden.bs.modal', openRejectModal);
+        bootstrap.Modal.getOrCreateInstance(rejectModalEl).show();
+    }, { once: true });
+});
+
+}); 
 document.addEventListener('DOMContentLoaded', function () {
     const pageDataEl = document.getElementById('sanctionPageData');
     let pageData = {};
