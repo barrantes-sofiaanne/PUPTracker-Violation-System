@@ -785,6 +785,124 @@
     }
 }
 
+
+
+/* Warning-level consequence card: informational only, not an assigned record. */
+.warning-consequence-card {
+    border: 1px solid #f0dca3 !important;
+    border-left: 4px solid #c58a08 !important;
+    border-radius: 1rem !important;
+    background: #fffaf0;
+    box-shadow: 0 8px 24px rgba(83, 55, 0, 0.06) !important;
+    overflow: hidden;
+}
+.warning-consequence-card .card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 1rem 1.25rem;
+    background: #fff4d6 !important;
+    border-bottom: 1px solid #f0e0b8;
+}
+.warning-consequence-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.8rem;
+    color: #805600;
+    background: #ffe7a3;
+    font-size: 1.15rem;
+}
+.warning-consequence-card .card-body {
+    padding: 1rem 1.25rem;
+}
+.warning-consequence-item {
+    padding: 1rem 0;
+    border-bottom: 1px solid #f0e6d0;
+}
+.warning-consequence-item:first-child { padding-top: 0; }
+.warning-consequence-item:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+.warning-consequence-label {
+    color: #79571a;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.warning-consequence-value {
+    color: #332b1e;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+.warning-consequence-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid #e9d28e;
+    border-radius: 999px;
+    color: #775400;
+    background: #fff1c5;
+    font-size: 0.78rem;
+    font-weight: 750;
+}
+.warning-sanction-notice {
+    border: 1px solid #f0dca3;
+    border-left: 3px solid #c58a08;
+    border-radius: 0.75rem;
+    background: #fffaf0;
+    color: #473919;
+}
+.warning-sanction-notice .btn {
+    white-space: normal;
+}
+
+/* Give the consultation note the same deliberate callout treatment as the
+   other portal guidance panels instead of rendering it as plain table text. */
+.consultation-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(128, 0, 0, 0.18);
+    border-left: 4px solid #800909;
+    border-radius: 0.85rem;
+    background: #fff8ef;
+    color: #342c2c;
+    line-height: 1.5;
+    white-space: normal;
+}
+.consultation-notice > i {
+    flex: 0 0 auto;
+    margin-top: 0.15rem;
+    color: #800909;
+    font-size: 1.1rem;
+}
+.consultation-notice-title {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #720606;
+    font-size: 0.88rem;
+    font-weight: 800;
+}
+.consultation-notice-text {
+    margin: 0;
+    font-size: 0.84rem;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 576px) {
+    .warning-consequence-card .card-header,
+    .warning-consequence-card .card-body { padding: 0.9rem; }
+    .consultation-notice { padding: 0.75rem; }
+}
+
 </style>
 @endpush
 
@@ -1154,6 +1272,19 @@
                             <td class="individual-actions-col">
                                 @if($isPendingLog)
                                     <span class="text-muted small">Available after confirmation</span>
+                                @elseif($isWarningLevelViolation)
+                                    <div class="warning-sanction-notice p-3 mb-0 small text-start" role="note">
+                                        <strong class="d-flex align-items-center gap-2 mb-2">
+                                            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                                            Warning-Level Violation
+                                        </strong>
+                                        <p class="mb-2">A sanction request is not required for this violation. The related disciplinary consequence is shown in the Sanction Record tab for your reference.</p>
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-warning fw-semibold js-view-related-consequence"
+                                                aria-controls="sanctionRecord">
+                                            <i class="bi bi-arrow-right-circle me-1" aria-hidden="true"></i>View Related Consequence
+                                        </button>
+                                    </div>
                                 @elseif($requestStatus === 'pending' && (bool) ($sanctionRequest->is_active ?? false))
                                     <span class="sanction-state sanction-state-pending"><i class="bi bi-hourglass-split"></i>Request Pending</span>
                                     <small class="d-block text-muted mt-2">Submitted for admin review</small>
@@ -1170,18 +1301,6 @@
                                     <button type="button" class="btn request-sanction-btn mt-2" data-violation-type-id="{{ $typeId }}">
                                         <i class="bi bi-arrow-repeat"></i> Request Again
                                     </button>
-                                    @elseif($isWarningLevelViolation)
-    <div class="alert alert-warning py-2 px-3 mb-0 small text-start"
-         role="note">
-        <strong class="d-block mb-1">
-            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
-            Warning-Level Violation
-        </strong>
-
-        A sanction request is not required for this violation.
-        Please check the Sanction Record tab for the related guidance note.
-    </div>
-
 @else
     <button type="button" class="btn request-sanction-btn"
             data-violation-type-id="{{ $typeId }}">
@@ -1227,6 +1346,34 @@
     id="sanctionRecord"
     role="tabpanel"
     aria-labelledby="sanction-tab">
+
+    @if($relatedDisciplinaryConsequences->isNotEmpty())
+        <div class="card warning-consequence-card mb-4">
+            <div class="card-header">
+                <span class="warning-consequence-icon" aria-hidden="true"><i class="bi bi-receipt-cutoff"></i></span>
+                <div>
+                    <h5 class="mb-1 fw-bold">Related Disciplinary Consequences</h5>
+                    <p class="mb-0 small text-muted">Configured consequences for warning-level violations. These entries are informational and are not proof that a payment has been assessed or completed.</p>
+                </div>
+            </div>
+            <div class="card-body">
+                @foreach($relatedDisciplinaryConsequences as $consequence)
+                    <div class="warning-consequence-item">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                            <div>
+                                <div class="fw-bold text-dark">{{ $consequence['violation_type'] }}</div>
+                                <div class="small text-muted">{{ $consequence['category'] }} · {{ $consequence['offense_level'] }}</div>
+                                <div class="small text-muted">Date recorded: {{ $consequence['violation_date'] ? \Carbon\Carbon::parse($consequence['violation_date'])->format('M d, Y') : '—' }}</div>
+                            </div>
+                            <span class="warning-consequence-status"><i class="bi bi-info-circle" aria-hidden="true"></i>No request required</span>
+                        </div>
+                        <div class="warning-consequence-label mb-1">Configured disciplinary consequence</div>
+                        <div class="warning-consequence-value">{{ $consequence['disciplinary_sanction'] }}</div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
 
     <div class="card shadow-sm border-0">
 
@@ -1464,8 +1611,12 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
                                         {{-- Every other sanction is settled through a personal
                                              consultation at the Office of Student Services, so
                                              no proof of completion is required from the student. --}}
-                                        <div class="consultation-notice small" role="note">
-                                            <i class="bi bi-info-circle-fill me-1" aria-hidden="true"></i>{{ \App\Models\StudentSanctionRecord::CONSULTATION_NOTICE }}
+                                        <div class="consultation-notice" role="note">
+                                            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                                            <div>
+                                                <span class="consultation-notice-title">Personal consultation required</span>
+                                                <p class="consultation-notice-text">{{ \App\Models\StudentSanctionRecord::CONSULTATION_NOTICE }}</p>
+                                            </div>
                                         </div>
                                     @endif
 
@@ -1678,6 +1829,16 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Warning-level notices can take the student directly to the Sanction Record tab.
+    document.querySelectorAll('.js-view-related-consequence').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const sanctionTab = document.getElementById('sanction-tab');
+            if (sanctionTab && window.bootstrap && bootstrap.Tab) {
+                bootstrap.Tab.getOrCreateInstance(sanctionTab).show();
+            }
+        });
+    });
+
     // Deep-link support: if the URL contains #sanctionRecord, open the
     // Sanction Record tab automatically (used by notification links).
     if (window.location.hash === '#sanctionRecord') {
