@@ -69,10 +69,78 @@ $sanctionRequestsByType = SanctionRequest::where('student_number', $user->studen
     ->keyBy(fn ($request) => (string) $request->violation_type_id);
 
 // Build filter options only from this student's confirmed violations.
-$studentRecordedViolations = Violation::with('violationType.violationCategory')
+// Build filter options and warning-level detection from this student's
+// confirmed violations. Preserve the existing filter behavior.
+$studentRecordedViolations = Violation::with([
+    'violationType.violationCategory',
+    'violationType.disciplinarySanctions',
+])
     ->where('student_number', $user->student_number)
     ->where('status', Violation::STATUS_CONFIRMED)
     ->get();
+
+    /*
+|--------------------------------------------------------------------------
+| Warning-Level Violations
+|--------------------------------------------------------------------------
+| A warning-level violation does not require a sanction request.
+| Determine the applicable sanction using the confirmed offense count
+| for each violation type and its configured disciplinary sanction.
+|
+| Keep this separate from the existing filters and summary calculations.
+*/
+
+$warningLevelViolationIds = [];
+
+$confirmedViolationsByType = $studentRecordedViolations
+    ->groupBy(function ($violation) {
+        $resolvedType = $violation->resolvedViolationType();
+
+        return (string) (
+            $resolvedType?->violation_type_id
+            ?? $violation->violation_type_id
+            ?? 'unknown:' . $violation->violation_id
+        );
+    });
+
+foreach ($confirmedViolationsByType as $recordsForType) {
+    $firstRecord = collect($recordsForType)->first();
+    $resolvedType = $firstRecord?->resolvedViolationType();
+
+    if (!$resolvedType) {
+        continue;
+    }
+
+    $offenseCount = collect($recordsForType)->count();
+
+    $offenseLevel = match ($offenseCount) {
+        1 => '1st Offense',
+        2 => '2nd Offense',
+        3 => '3rd Offense',
+        default => $offenseCount . 'th Offense',
+    };
+
+    $configuredSanctions = $resolvedType->disciplinarySanctions
+        ?? collect();
+
+    $applicableSanction = $configuredSanctions
+        ->firstWhere('offense_level', $offenseLevel)
+        ?? $configuredSanctions
+            ->sortBy('disciplinary_sanction_id')
+            ->first();
+
+    $sanctionText = strtolower(
+        trim((string) ($applicableSanction?->disciplinary_sanction ?? ''))
+    );
+
+    if ($sanctionText !== '' && str_contains($sanctionText, 'warning')) {
+        foreach ($recordsForType as $warningRecord) {
+            $warningLevelViolationIds[
+                (int) $warningRecord->violation_id
+            ] = true;
+        }
+    }
+}
 
 $recordedViolationTypes = $studentRecordedViolations
     ->map(fn ($violation) => $violation->resolvedViolationType())
@@ -390,7 +458,8 @@ return view(
         'sanctionRequestsByType',
         'recordedViolationTypes',
         'recordedViolationCategories',
-        'filters'
+        'filters',
+        'warningLevelViolationIds'
     )
 );
     }
@@ -456,6 +525,19 @@ $offenseCount = Violation::where('student_number', $user->student_number)
             'message' => 'No disciplinary sanction is configured for this violation yet.'
         ], 422);
     }
+    // Warning-level violations do not require a sanction request.
+// Enforce this server-side so the restriction cannot be bypassed
+// by manually submitting the request endpoint.
+$sanctionText = strtolower(
+    trim((string) $assignedSanction->disciplinary_sanction)
+);
+
+if ($sanctionText !== '' && str_contains($sanctionText, 'warning')) {
+    return response()->json([
+        'success' => false,
+        'message' => 'A sanction request is not required for this violation. Please check the Sanction Record tab for the related guidance note.',
+    ], 422);
+}
 
     // Preserve the standard sanction-request workflow for configured
     // sanctions. The administrator remains responsible for reviewing requests.

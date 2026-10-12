@@ -598,16 +598,32 @@
     background: #fff;
     box-shadow: 0 12px 34px rgba(43, 24, 24, .07) !important;
 }
+
 .individual-log-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
     padding: 1.25rem 1.5rem !important;
-    color: #fff;
-    background: linear-gradient(115deg, #650000 0%, #8b0808 58%, #a21b1b 100%);
+    color: #fff !important;
+    background: linear-gradient(
+        115deg,
+        #650000 0%,
+        #8b0808 58%,
+        #a21b1b 100%
+    ) !important;
     border: 0 !important;
+    opacity: 1 !important;
 }
+
+.individual-log-header .individual-log-title {
+    color: #fff !important;
+}
+
+.individual-log-header .individual-log-subtitle {
+    color: rgba(255, 255, 255, .85) !important;
+}
+
 .individual-log-heading { display: flex; align-items: center; gap: .9rem; min-width: 0; }
 .individual-log-icon {
     display: inline-flex; align-items: center; justify-content: center;
@@ -626,10 +642,7 @@
     width: 100%; max-width: 100%; overflow-x: auto !important; overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
 }
-.individual-violations-table {
-    width: 100%; min-width: 1120px; max-width: none !important; table-layout: fixed !important;
-    margin: 0 !important; border-collapse: separate; border-spacing: 0;
-}
+
 .individual-violations-table thead th {
     padding: .95rem .9rem !important; color: #6d1515; background: #fff7e2;
     border-top: 1px solid #f4e4bd !important; border-bottom: 1px solid #f0e3c8 !important;
@@ -643,16 +656,54 @@
 .individual-violations-table tbody tr:last-child td { border-bottom: 0; }
 .individual-violations-table tbody tr { transition: background-color .18s ease; }
 .individual-violations-table tbody tr:hover td { background: #fffdf8; }
-.individual-violations-table .violation-type-col { width: 19%; font-weight: 750; color: #3f2020; }
-.individual-violations-table .violation-date-col { width: 13%; line-height: 1.5; color: #625d66; font-size: .86rem; }
-.individual-violations-table .category-col { width: 15%; color: #625d66; font-size: .86rem; }
-.individual-violations-table .status-col { width: 12%; }
-.individual-violations-table .remarks-col { width: 14%; color: #625d66; }
-.individual-violations-table .attachments-col { width: 11%; }
-.individual-violations-table .individual-actions-col { width: 16%; min-width: 190px; text-align: center; }
-.individual-violations-table .individual-actions-col > div {
-    display: flex !important; flex-direction: column; align-items: stretch; gap: .55rem !important;
-    width: 100%; max-width: 230px; margin-inline: auto;
+.individual-violations-table {
+    width: 100%;
+    min-width: 1120px;
+    max-width: none !important;
+    table-layout: fixed !important;
+    margin: 0 !important;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.individual-violations-table .violation-type-col {
+    width: 19%;
+}
+
+.individual-violations-table .violation-date-col {
+    width: 13%;
+}
+
+.individual-violations-table .category-col {
+    width: 15%;
+}
+
+.individual-violations-table .status-col {
+    width: 12%;
+}
+
+.individual-violations-table .remarks-col {
+    width: 14%;
+}
+
+.individual-violations-table .attachments-col {
+    width: 13%;
+    min-width: 140px;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+}
+.individual-violations-table .individual-actions-col {
+    width: 14%;
+    min-width: 190px;
+    text-align: center;
+}
+
+.individual-violations-table .attachments-col a {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 .individual-violations-table .individual-actions-col .btn {
     display: flex; align-items: center; justify-content: center; gap: .45rem; width: 100%;
@@ -1161,6 +1212,9 @@
                             $hasAssignedSanction = isset($assignedSanctionViolationIds[$violation->violation_id]);
                             $rowSanctionStatus = $hasAssignedSanction ? 'assigned' : (($requestStatus === 'pending' && $isActiveRequest) ? 'pending' : ($requestStatus === 'approved' ? 'approved' : ($requestStatus === 'declined' ? 'declined' : 'needs')));
                             $rowDate = \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d');
+                            $isWarningLevelViolation = isset(
+    $warningLevelViolationIds[(int) $violation->violation_id]
+);
                         @endphp
                         <tr data-category-id="{{ $categoryId }}" data-violation-type-id="{{ $typeId }}" data-violation-date="{{ $rowDate }}" data-sanction-status="{{ $rowSanctionStatus }}">
                             <td class="violation-type-col">{{ $violation->violation_type_display }}</td>
@@ -1214,6 +1268,19 @@
                                         <i class="bi bi-send"></i> Request Sanction
                                     </button>
                                     <small class="d-block text-muted mt-2">Start a sanction request</small>
+                                    @elseif($isWarningLevelViolation)
+    <div
+        class="alert alert-warning py-2 px-3 mb-0 small text-start"
+        role="note"
+    >
+        <strong class="d-block mb-1">
+            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+            Warning-Level Violation
+        </strong>
+
+        A sanction request is not required for this violation.
+        Please check the Sanction Record tab for the related guidance note.
+    </div>
                                 @endif
                             </td>
                         </tr>
