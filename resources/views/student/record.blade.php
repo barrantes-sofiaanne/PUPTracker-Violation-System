@@ -20,580 +20,36 @@
 <link rel="stylesheet" href="{{ asset('css/portal.css') }}">
 <link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
 
-<style>
-/* ==========================================================================
-   Submit Proof of Completion modal (scoped to this page)
-   ========================================================================== */
-/* The dialog is centred both ways and constrained to the viewport. Previously
-   this page's own stylesheet restyled bare `.modal-content`/`.modal-header`
-   (width, transform, padding), which overrode Bootstrap's centring and made
-   this dialog sit oddly. That leak is now scoped in student.css, and the
-   centring is stated explicitly here so it cannot regress. */
-#submitProofModal .modal-dialog {
-    width: 100%;
-    max-width: 500px;
-    margin: 0.5rem auto;
-}
-
-#submitProofModal .modal-content {
-    width: 100%;
-}
-
-#submitProofModal #submitProofForm {
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-}
-
-#submitProofModal .modal-body {
-    min-height: 0;
-    flex: 1 1 auto;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-}
-
-#submitProofModal .modal-header {
-    align-items: flex-start;
-    gap: 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-#submitProofModal .modal-title {
-    color: var(--pup-maroon);
-    font-size: 1.15rem;
-}
-#submitProofModal .modal-subtitle {
-    color: var(--secondary-text);
-    font-size: 0.85rem;
-    margin-top: 0.25rem;
-    line-height: 1.4;
-}
-#submitProofModal .modal-body {
-    padding: 1.25rem 1.5rem;
-}
-/* Vertical scrolling for tall content is handled by Bootstrap's
-   `modal-dialog-scrollable` (which caps the dialog at the viewport and scrolls
-   only the body). A fixed `max-height` on the body previously fought that rule
-   and made the dialog unnecessarily short — and therefore look off-centre — on
-   shorter screens, so it was removed. */
-#submitProofModal .modal-footer {
-    border-top: 1px solid var(--border-color);
-    margin-top: 0;
-    padding: 0.9rem 1.5rem;
-}
-#submitProofModal .proof-section {
-    margin-bottom: 1.5rem;
-}
-#submitProofModal .proof-section-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--pup-maroon);
-    font-weight: 700;
-    font-size: 0.92rem;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    margin-bottom: 0.6rem;
-}
-#submitProofModal .proof-step-number {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.35rem;
-    height: 1.35rem;
-    border-radius: 50%;
-    background: var(--pup-maroon);
-    color: #fff;
-    font-size: 0.75rem;
-    font-weight: 700;
-    line-height: 1;
-}
-#submitProofModal .proof-body-text {
-    color: var(--secondary-text);
-    font-size: 0.88rem;
-    line-height: 1.5;
-}
-#submitProofModal .proof-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-    background: var(--hover-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 0.6rem;
-    padding: 0.9rem;
-}
-#submitProofModal .proof-detail-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    min-width: 0;
-}
-#submitProofModal .proof-detail-label {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    color: var(--secondary-text);
-    font-weight: 600;
-}
-#submitProofModal .proof-detail-value {
-    font-size: 0.92rem;
-    color: var(--primary-text);
-    font-weight: 600;
-    word-break: break-word;
-}
-#submitProofModal .official-form-area {
-    margin-top: 0.85rem;
-    padding: 0.75rem 0.9rem;
-    border: 1px dashed var(--border-color);
-    border-radius: 0.5rem;
-    background: var(--secondary-bg);
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-}
-#submitProofModal .official-form-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--primary-text);
-}
-#submitProofModal .proof-upload-zone {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    gap: 0.5rem;
-    padding: 1.6rem 1rem;
-    border: 2px dashed var(--border-color);
-    border-radius: 0.7rem;
-    background: var(--secondary-bg);
-    cursor: pointer;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
-}
-#submitProofModal .proof-upload-zone:hover,
-#submitProofModal .proof-upload-zone:focus-visible,
-#submitProofModal .proof-upload-zone-active {
-    border-color: var(--pup-maroon);
-    background: var(--hover-bg);
-    outline: none;
-}
-#submitProofModal .proof-file-input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-    clip-path: inset(50%);
-}
-#submitProofModal .proof-upload-icon {
-    font-size: 2rem;
-    color: var(--pup-maroon);
-    line-height: 1;
-}
-#submitProofModal .proof-upload-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--primary-text);
-}
-#submitProofModal .proof-upload-hint {
-    font-size: 0.82rem;
-    color: var(--secondary-text);
-}
-#submitProofModal .proof-upload-zone .btn {
-    padding: 0.4rem 1.1rem;
-    font-size: 0.85rem;
-}
-#submitProofModal .proof-file-selected {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    padding: 0.7rem 0.9rem;
-    border: 1px solid var(--border-color);
-    border-radius: 0.6rem;
-    background: var(--hover-bg);
-}
-#submitProofModal .proof-file-chip {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    min-width: 0;
-}
-#submitProofModal .proof-file-icon {
-    font-size: 1.4rem;
-    color: var(--status-completed-text);
-    flex-shrink: 0;
-}
-#submitProofModal .proof-file-meta {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-#submitProofModal .proof-file-name {
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: var(--primary-text);
-    word-break: break-all;
-}
-#submitProofModal .proof-file-size {
-    font-size: 0.78rem;
-    color: var(--secondary-text);
-}
-#submitProofModal .proof-formats {
-    font-size: 0.78rem;
-    color: var(--secondary-text);
-    text-align: center;
-    margin: 0.45rem 0 0;
-}
-#submitProofModal .invalid-proof-feedback {
-    margin-top: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.4rem;
-    font-size: 0.82rem;
-    color: #b02a37;
-    background: var(--status-sanction-bg);
-    border: 1px solid rgba(207, 19, 34, 0.25);
-}
-#submitProofModal .proof-guidelines {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.35rem;
-}
-#submitProofModal .proof-guidelines li {
-    position: relative;
-    padding-left: 1.4rem;
-    font-size: 0.85rem;
-    color: var(--secondary-text);
-    line-height: 1.45;
-}
-#submitProofModal .proof-guidelines li::before {
-    content: "\2713";
-    position: absolute;
-    left: 0;
-    top: 0;
-    color: var(--pup-maroon);
-    font-weight: 700;
-}
-#submitProofModal .proof-char-counter {
-    font-size: 0.75rem;
-    margin-top: 0.2rem;
-}
-#submitProofModal .proof-review-alert {
-    border: 1px solid rgba(128, 0, 0, 0.25);
-    border-left: 4px solid var(--pup-maroon);
-    background: var(--hover-bg);
-    border-radius: 0.5rem;
-    padding: 0.9rem 1rem;
-    color: var(--primary-text);
-    font-size: 0.85rem;
-    line-height: 1.5;
-}
-#submitProofModal .proof-review-alert p {
-    margin-bottom: 0.25rem;
-}
-#submitProofModal .proof-review-alert .bi-shield-check {
-    color: var(--pup-maroon);
-}
-#submitProofModal .proof-confirm .form-check-label {
-    font-size: 0.88rem;
-    color: var(--primary-text);
-    line-height: 1.4;
-}
-#submitProofModal .proof-confirm .form-check-input:checked {
-    background-color: var(--pup-maroon);
-    border-color: var(--pup-maroon);
-}
-#submitProofModal .proof-confirm .form-check-input:focus {
-    box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.2);
-    border-color: var(--pup-maroon);
-}
-#submitProofModal .btn:focus-visible,
-#submitProofModal .proof-upload-zone:focus-visible,
-#submitProofModal .form-control:focus,
-#submitProofModal .form-check-input:focus {
-    outline: none;
-    box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.25);
-}
-@media (max-width: 767.98px) {
-    #submitProofModal .modal-dialog {
-        width: calc(100% - 1rem);
-        max-width: none;
-        margin: 0.5rem auto;
-    }
-
-    #submitProofModal .modal-content {
-        border-radius: 0.6rem;
-    }
-
-    #submitProofModal .modal-header {
-        padding: 1rem;
-    }
-
-    #submitProofModal #submitProofForm {
-    min-height: 0;
-}
-
-#submitProofModal .modal-body {
-    min-height: 0;
-    overflow-y: auto;
-}
-
-    #submitProofModal .modal-footer {
-        padding: 0.8rem 1rem;
-    }
-
-    #submitProofModal .proof-detail-grid {
-        grid-template-columns: 1fr;
-        gap: 0.6rem;
-    }
-
-    #submitProofModal .official-form-area {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    #submitProofModal .official-form-label {
-        text-align: center;
-    }
-
-    #submitProofModal .official-form-area .btn {
-        width: 100%;
-    }
-
-    #submitProofModal .proof-file-selected {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    #submitProofModal .proof-file-chip {
-        width: 100%;
-    }
-
-    #submitProofModal .proof-file-selected .btn {
-        width: 100%;
-    }
-
-    #submitProofModal .modal-footer {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    #submitProofModal .modal-footer .btn {
-        flex: 1 1 0;
-        width: auto;
-    }
-}
-
-/* Every action button inside the Submit Proof modal uses the same maroon
-   treatment as the Submit Proof button itself (the project's .portal-btn).
-   Hover / focus / disabled come from the shared .portal-btn rules, so the
-   states stay consistent with the rest of the system. */
-#submitProofModal .btn.portal-btn,
-#submitProofModal .btn.portal-btn-outline {
-    font-weight: 600;
-}
-
-/* The "Choose File" affordance is a styled span acting as a button, so it
-   needs pointer + disabled affordances to match the real buttons. */
-#submitProofModal .proof-upload-zone .btn.portal-btn {
-    cursor: pointer;
-}
-
-/* Highlight applied when arriving from the dashboard's Approaching Deadlines
-   card (?sanction=<record_id>). Uses a maroon accent bar plus a tint so the
-   selected sanction is identifiable without relying on colour alone (the row
-   is also focused programmatically). */
-#sanctionRecord tr.sanction-row-highlight > td {
-    background-color: rgba(128, 0, 0, 0.06);
-    box-shadow: inset 0 0 0 9999px rgba(128, 0, 0, 0.02);
-}
-
-#sanctionRecord tr.sanction-row-highlight > td:first-child {
-    border-left: 4px solid var(--pup-maroon);
-}
-
-#sanctionRecord tr.sanction-row-highlight {
-    outline: 2px solid rgba(128, 0, 0, 0.35);
-    outline-offset: -2px;
-}
-
-/* Community/Campus Service assignment (read-only to the student). */
-.service-assignment-details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    padding-top: 0.5rem;
-    border-top: 1px dashed var(--border-color);
-}
-.service-assignment-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    font-size: 0.85rem;
-}
-.service-assignment-label {
-    color: var(--secondary-text);
-    white-space: nowrap;
-}
-/* Shown instead of the Proof of Completion upload for sanctions that are not
-   Community/Campus Service — those are settled through a personal
-   consultation at the Office of Student Services. */
-.consultation-notice {
-    display: flex;
-    gap: 0.4rem;
-    padding: 0.55rem 0.65rem;
-    border-radius: 0.5rem;
-    border: 1px solid rgba(128, 0, 0, 0.25);
-    border-left: 3px solid var(--pup-maroon);
-    background: var(--hover-bg);
-    color: var(--primary-text);
-    line-height: 1.45;
-}
-.consultation-notice i {
-    color: var(--pup-maroon);
-    flex-shrink: 0;
-}
-@media (max-width: 576px) {
-    /* Keep the Sanction Record table usable on mobile: let the service
-       assignment details and action buttons stack and wrap instead of
-       overflowing. */
-    .service-assignment-row {
-        flex-direction: column;
-        gap: 0.1rem;
-    }
-    .service-assignment-details .fw-semibold {
-        word-break: break-word;
-    }
-    .submit-proof-btn,
-    #sanctionRecord .btn {
-        width: 100%;
-    }
-}
 
 /* =========================================================
-   Violation Record tables
+   Individual Violations Log
+   Consolidated responsive styling
    ========================================================= */
 
-/* ---------------------------------------------------------
-   Summary by Violation
-   --------------------------------------------------------- */
-.summary-table-responsive {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-}
-
-.summary-violations-table {
-    width: 1200px;
-    min-width: 1200px;
-    table-layout: fixed;
-    border-collapse: collapse;
-}
-
-.summary-category-col       { width: 16%; }
-.summary-violation-type-col { width: 24%; }
-.summary-offense-col        { width: 12%; }
-.summary-status-col         { width: 14%; }
-.summary-remarks-col        { width: 16%; }
-.summary-sanction-col       { width: 18%; }
-
-.summary-violations-table th,
-.summary-violations-table td {
-    vertical-align: middle;
-    white-space: normal;
-    overflow-wrap: break-word;
-    word-break: normal;
-}
-
-.summary-violations-table thead th {
-    text-align: center !important;
-    line-height: 1.2 !important;
-    font-size: 0.82rem !important;
-    padding: 0.8rem 0.55rem !important;
-}
-
-.summary-violations-table tbody td {
-    line-height: 1.4 !important;
-    padding: 1rem 0.65rem !important;
-}
-
-/* Keep normal words intact; only allow emergency breaking of a very long
-   unbroken value. */
-.summary-violations-table .summary-category-col,
-.summary-violations-table .summary-violation-type-col,
-.summary-violations-table .summary-offense-col,
-.summary-violations-table .summary-remarks-col,
-.summary-violations-table .summary-sanction-col {
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-}
-
-/* Status */
-.summary-violations-table .summary-status-col {
-    text-align: center !important;
-}
-
-.summary-violations-table .summary-status-col .portal-badge,
-.summary-violations-table .summary-status-col .badge {
-    display: inline-block;
-    max-width: 100%;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    text-align: center;
-    line-height: 1.2 !important;
-}
-
-/* Action */
-.summary-violations-table .summary-action-col {
-    text-align: center !important;
-    vertical-align: middle !important;
-}
-
-.summary-action-col .summary-action-buttons {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
-    width: 100%;
-    gap: 0.5rem;
-}
-
-.summary-action-col .summary-action-buttons .btn {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    hyphens: none !important;
-    text-align: center;
-    line-height: 1.25 !important;
-    padding: 0.65rem 0.45rem !important;
-    font-size: 0.85rem !important;
-}
-
-/* ---------------------------------------------------------
-   Individual Violations Log — elevated maroon / gold portal styling
-   --------------------------------------------------------- */
 .individual-log-card {
-    border: 1px solid rgba(112, 0, 0, .10) !important;
-    border-radius: 1.1rem !important;
+    width: 100%;
+    height: auto !important;
+    min-height: 0 !important;
+    margin-bottom: 1.5rem !important;
+    padding-bottom: 0 !important;
     overflow: hidden;
     background: #fff;
-    box-shadow: 0 12px 34px rgba(43, 24, 24, .07) !important;
+    border: 1px solid rgba(112, 0, 0, 0.10) !important;
+    border-radius: 1.1rem !important;
+    box-shadow: 0 12px 34px rgba(43, 24, 24, 0.07) !important;
 }
+
+.individual-log-card > .card-body {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: initial !important;
+}
+
+.individual-log-card > .card-body.p-0 {
+    padding: 0 !important;
+}
+
+/* Header */
 
 .individual-log-header {
     display: flex;
@@ -612,343 +68,491 @@
     opacity: 1 !important;
 }
 
-.individual-log-header .individual-log-title {
-    color: #fff !important;
+.individual-log-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    min-width: 0;
 }
 
-.individual-log-header .individual-log-subtitle {
-    color: rgba(255, 255, 255, .85) !important;
-}
-
-.individual-log-heading { display: flex; align-items: center; gap: .9rem; min-width: 0; }
 .individual-log-icon {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 2.8rem; height: 2.8rem; flex: 0 0 2.8rem;
-    border: 1px solid rgba(255,255,255,.24); border-radius: .9rem;
-    background: rgba(255,255,255,.12); font-size: 1.25rem;
-}
-.individual-log-title { margin: 0; font-size: 1.2rem; font-weight: 750; letter-spacing: -.02em; color: #fff; }
-.individual-log-subtitle { margin: .22rem 0 0; color: rgba(255,255,255,.78); font-size: .84rem; line-height: 1.4; }
-.individual-log-count {
-    display: inline-flex; align-items: center; gap: .4rem; flex: 0 0 auto;
-    padding: .45rem .75rem; border: 1px solid rgba(255,255,255,.25); border-radius: 999px;
-    background: rgba(255,255,255,.12); color: #fff; font-size: .78rem; font-weight: 700;
-}
-.individual-table-responsive {
-    width: 100%; max-width: 100%; overflow-x: auto !important; overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-}
-
-.individual-violations-table thead th {
-    padding: .95rem .9rem !important; color: #6d1515; background: #fff7e2;
-    border-top: 1px solid #f4e4bd !important; border-bottom: 1px solid #f0e3c8 !important;
-    font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .075em;
-}
-.individual-violations-table tbody td {
-    box-sizing: border-box; vertical-align: middle; white-space: normal; word-break: normal;
-    overflow-wrap: anywhere; hyphens: none; padding: 1.05rem .9rem;
-    border-bottom: 1px solid #f0eeee; color: #34313a; background: #fff; line-height: 1.5;
-}
-.individual-violations-table tbody tr:last-child td { border-bottom: 0; }
-.individual-violations-table tbody tr { transition: background-color .18s ease; }
-.individual-violations-table tbody tr:hover td { background: #fffdf8; }
-.individual-violations-table {
-    width: 100%;
-    min-width: 1120px;
-    max-width: none !important;
-    table-layout: fixed !important;
-    margin: 0 !important;
-    border-collapse: separate;
-    border-spacing: 0;
-}
-
-.individual-violations-table .violation-type-col {
-    width: 19%;
-}
-
-.individual-violations-table .violation-date-col {
-    width: 13%;
-}
-
-.individual-violations-table .category-col {
-    width: 15%;
-}
-
-.individual-violations-table .status-col {
-    width: 12%;
-}
-
-.individual-violations-table .remarks-col {
-    width: 14%;
-}
-
-.individual-violations-table .attachments-col {
-    width: 13%;
-    min-width: 140px;
-    overflow-wrap: normal !important;
-    word-break: normal !important;
-}
-.individual-violations-table .individual-actions-col {
-    width: 14%;
-    min-width: 190px;
-    text-align: center;
-}
-
-.individual-violations-table .attachments-col a {
     display: inline-flex;
     align-items: center;
-    max-width: 100%;
-    white-space: normal;
-    overflow-wrap: anywhere;
-}
-.individual-violations-table .individual-actions-col .btn {
-    display: flex; align-items: center; justify-content: center; gap: .45rem; width: 100%;
-    max-width: 230px; min-width: 0; min-height: 44px; white-space: normal !important;
-    word-break: normal !important; overflow-wrap: break-word !important; line-height: 1.25;
-    padding: .68rem .8rem; margin: 0; border-radius: .75rem; font-weight: 700;
-    transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
-}
-.individual-violations-table .individual-actions-col .request-sanction-btn {
-    border: 1px solid #780000; color: #fff; background: linear-gradient(120deg, #710000, #960d0d);
-    box-shadow: 0 5px 13px rgba(120, 0, 0, .13);
-}
-.individual-violations-table .individual-actions-col .request-sanction-btn:hover {
-    color: #fff; background: #5f0000; transform: translateY(-1px);
-    box-shadow: 0 8px 18px rgba(120, 0, 0, .2);
-}
-.sanction-state {
-    display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
-    width: 100%; padding: .68rem .75rem; border: 1px solid transparent; border-radius: .75rem;
-    font-size: .8rem; font-weight: 750; line-height: 1.25; text-align: center;
-}
-.sanction-state-pending { color: #815300; background: #fff4d5; border-color: #f4df9d; }
-.sanction-state-approved { color: #116448; background: #e2f5ec; border-color: #bce7d2; }
-.sanction-state-declined { color: #9b2727; background: #fff0f0; border-color: #f2cdcd; }
-.sanction-state-assigned { color: #4d5664; background: #f0f2f5; border-color: #dfe3e8; }
-
-.individual-log-filters-wrap { padding: 1.1rem 1.25rem !important; border-bottom: 1px solid #eee2d5; background: #fffdf9; }
-.individual-log-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; align-items: end; }
-.individual-filter-field label, .individual-status-filter-row label { display: block; margin-bottom: .4rem; color: #5d1515; font-size: .78rem; font-weight: 750; }
-.individual-filter-field .form-select, .individual-filter-field .form-control, .individual-status-filter-row .form-select { min-height: 42px; border-color: #e5d7c8; border-radius: .65rem; font-size: .88rem; }
-.individual-filter-actions { display: flex; gap: .5rem; grid-column: 1 / -1; }
-.individual-filter-apply { color: #fff; background: #800909; border: 1px solid #800909; border-radius: .65rem; font-weight: 700; }
-.individual-filter-apply:hover { color: #fff; background: #650606; }
-.individual-filter-clear { border: 1px solid #d9c8b8; color: #5d1515; border-radius: .65rem; font-weight: 650; }
-.individual-status-filter-row { display: flex; align-items: center; gap: .75rem; margin-top: 1rem; }
-.individual-status-filter-row label { margin: 0; white-space: nowrap; }
-.individual-status-filter-row .form-select { max-width: 260px; }
-@media (max-width: 767.98px) { .individual-log-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .individual-filter-actions { grid-column: 1 / -1; } .individual-status-filter-row { align-items: flex-start; flex-direction: column; gap: .4rem; } .individual-status-filter-row .form-select { max-width: none; width: 100%; } }
-@media (max-width: 420px) { .individual-log-filters { grid-template-columns: 1fr; } }
-
-.individual-log-empty { padding: 3.25rem 1rem !important; text-align: center; color: #77717a !important; }
-.individual-log-empty-icon {
-    display: inline-flex; align-items: center; justify-content: center; width: 3rem; height: 3rem;
-    margin-bottom: .75rem; border-radius: 1rem; color: #850909; background: #fff3df; font-size: 1.35rem;
-}
-@media (max-width: 640px) {
-    .individual-log-header { align-items: flex-start; padding: 1rem !important; }
-    .individual-log-title { font-size: 1rem; }
-    .individual-log-subtitle { font-size: .78rem; }
-    .individual-log-icon { width: 2.35rem; height: 2.35rem; flex-basis: 2.35rem; }
-    .individual-log-count { font-size: .7rem; padding: .38rem .55rem; }
+    justify-content: center;
+    width: 2.8rem;
+    height: 2.8rem;
+    flex: 0 0 2.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.12);
+    font-size: 1.25rem;
 }
 
-/* ---------------------------------------------------------
-   Tablet / desktop tightening
-   --------------------------------------------------------- */
-@media (max-width: 1200px) {
-    .summary-violations-table thead th {
-        font-size: 0.78rem;
-        padding-left: 0.35rem !important;
-        padding-right: 0.35rem !important;
-    }
-
-    .summary-violations-table tbody td {
-        padding-left: 0.4rem !important;
-        padding-right: 0.4rem !important;
-    }
-
-    .summary-action-col .summary-action-buttons .btn {
-        font-size: 0.8rem;
-        padding-left: 0.3rem;
-        padding-right: 0.3rem;
-    }
+.individual-log-title,
+.individual-log-header .individual-log-title {
+    margin: 0;
+    color: #fff !important;
+    font-size: 1.2rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
 }
 
-/* Individual Violations Log: remove unnecessary bottom space */
-.individual-log-card,
-.individual-log-card .card-body {
-    height: auto !important;
-    min-height: 0 !important;
+.individual-log-subtitle,
+.individual-log-header .individual-log-subtitle {
+    margin: 0.22rem 0 0;
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-size: 0.84rem;
+    line-height: 1.4;
+}
+
+.individual-log-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     flex: 0 0 auto;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
 }
 
-.individual-log-card {
-    margin-bottom: 1.5rem !important;
-    padding-bottom: 0 !important;
+/* Filters */
+
+.individual-log-filters-wrap {
+    padding: 1.1rem 1.25rem !important;
+    border-bottom: 1px solid #eee2d5;
+    background: #fffdf9;
 }
 
-.individual-log-card .table-responsive,
-.individual-log-card .individual-table-responsive {
-    height: auto !important;
-    min-height: 0 !important;
-    margin-bottom: 0 !important;
-    padding-bottom: 0 !important;
+.individual-log-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.85rem;
+    align-items: end;
 }
 
-.individual-violations-table {
-    margin-bottom: 0 !important;
+.individual-filter-field {
+    min-width: 0;
 }
 
-.individual-log-card nav[aria-label],
-.individual-log-card .pagination {
-    margin-bottom: 1rem !important;
-}
-
-.individual-log-card .card-footer {
-    height: auto !important;
-    min-height: 0 !important;
-}
-
-/* ---------------------------------------------------------
-   Mobile: keep multi-column records readable.
-   Do NOT squeeze the summary columns into the phone viewport.
-   The table becomes horizontally scrollable instead.
-   --------------------------------------------------------- */
-@media (max-width: 767.98px) {
-    .summary-table-responsive,
-    .individual-table-responsive {
-        width: 100%;
-        max-width: 100%;
-        overflow-x: auto !important;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior-x: contain;
-    }
-
-    .summary-violations-table {
-        width: 1200px !important;
-        min-width: 1200px !important;
-        max-width: none !important;
-        table-layout: fixed !important;
-    }
-
-    .summary-violations-table th,
-    .summary-violations-table td {
-        word-break: normal !important;
-        overflow-wrap: normal !important;
-        hyphens: none !important;
-    }
-
-    .summary-violations-table thead th {
-        font-size: 0.78rem !important;
-        line-height: 1.2 !important;
-        padding: 0.75rem 0.5rem !important;
-    }
-
-    .summary-violations-table tbody td {
-        font-size: 0.88rem !important;
-        line-height: 1.4 !important;
-        padding: 1rem 0.55rem !important;
-    }
-
-    .summary-action-col .summary-action-buttons {
-        gap: 0.45rem;
-    }
-
-    .summary-action-col .summary-action-buttons .btn {
-        font-size: 0.82rem !important;
-        line-height: 1.25 !important;
-        padding: 0.65rem 0.45rem !important;
-        white-space: normal !important;
-        word-break: normal !important;
-        overflow-wrap: normal !important;
-    }
-
-    .individual-violations-table {
-        width: 1400px !important;
-        min-width: 1400px !important;
-        max-width: none !important;
-        table-layout: fixed !important;
-    }
-
-    .individual-violations-table th,
-    .individual-violations-table td {
-        word-break: normal !important;
-        overflow-wrap: break-word !important;
-        hyphens: none !important;
-        white-space: normal !important;
-    }
-
-    .individual-violations-table .individual-actions-col > div {
-        max-width: 230px;
-    }
-
-    .individual-violations-table .individual-actions-col .btn {
-        width: 100%;
-        max-width: 230px;
-        min-height: 44px;
-        font-size: 0.85rem !important;
-        line-height: 1.25 !important;
-        padding: 0.6rem 0.65rem !important;
-        white-space: normal !important;
-        overflow-wrap: break-word !important;
-    }
-
-    .individual-violations-table thead th {
-        font-size: 0.8rem !important;
-        line-height: 1.2 !important;
-        padding: 0.7rem 0.5rem !important;
-        white-space: normal !important;
-    }
-
-    .individual-violations-table tbody td {
-        font-size: 0.84rem !important;
-        line-height: 1.35 !important;
-        padding: 0.8rem 0.5rem !important;
-    }
-}
-
-/* Individual Violations Log: natural height and pagination spacing */
-.individual-log-card {
-    height: auto !important;
-    min-height: 0 !important;
-    padding-bottom: 0 !important;
-}
-
-.individual-log-card > .card-body {
-    height: auto !important;
-    min-height: 0 !important;
-    flex: initial !important;
-}
-
-.individual-log-card > .card-body.p-0 {
-    padding: 0 !important;
-}
-
-.individual-log-card .individual-table-responsive {
+.individual-filter-field label,
+.individual-status-filter-row label {
     display: block;
+    margin-bottom: 0.4rem;
+    color: #5d1515;
+    font-size: 0.78rem;
+    font-weight: 750;
+}
+
+.individual-filter-field .form-select,
+.individual-filter-field .form-control,
+.individual-status-filter-row .form-select {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    border-color: #e5d7c8;
+    border-radius: 0.65rem;
+    font-size: 0.88rem;
+}
+
+.individual-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    grid-column: 1 / -1;
+}
+
+.individual-filter-apply {
+    color: #fff;
+    background: #800909;
+    border: 1px solid #800909;
+    border-radius: 0.65rem;
+    font-weight: 700;
+}
+
+.individual-filter-apply:hover {
+    color: #fff;
+    background: #650606;
+}
+
+.individual-filter-clear {
+    border: 1px solid #d9c8b8;
+    color: #5d1515;
+    border-radius: 0.65rem;
+    font-weight: 650;
+}
+
+.individual-status-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.individual-status-filter-row label {
+    margin: 0;
+    white-space: nowrap;
+}
+
+.individual-status-filter-row .form-select {
+    max-width: 260px;
+}
+
+/* Table scrolling container */
+
+.individual-log-card .individual-table-responsive,
+.individual-table-responsive {
+    display: block;
+    width: 100%;
+    max-width: 100%;
     height: auto !important;
     min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow-x: auto !important;
     overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
 }
 
-.individual-log-card .individual-violations-table {
-    margin-bottom: 0 !important;
+/* Table layout.
+   The seven columns are deliberately given enough space.
+   Horizontal scrolling is preferable to breaking every word. */
+
+.individual-log-card .individual-violations-table,
+.individual-violations-table {
+    width: 1500px !important;
+    min-width: 1500px !important;
+    max-width: none !important;
+    margin: 0 !important;
+    table-layout: fixed !important;
+    border-collapse: separate;
+    border-spacing: 0;
 }
+
+/* Column widths:
+   1 = violation type
+   2 = date
+   3 = category
+   4 = status
+   5 = remarks
+   6 = attachments
+   7 = action
+*/
+
+.individual-violations-table .violation-type-col,
+.individual-violations-table th:nth-child(1),
+.individual-violations-table td:nth-child(1) {
+    width: 260px;
+}
+
+.individual-violations-table .violation-date-col,
+.individual-violations-table th:nth-child(2),
+.individual-violations-table td:nth-child(2) {
+    width: 180px;
+}
+
+.individual-violations-table .category-col,
+.individual-violations-table th:nth-child(3),
+.individual-violations-table td:nth-child(3) {
+    width: 260px;
+}
+
+.individual-violations-table .status-col,
+.individual-violations-table th:nth-child(4),
+.individual-violations-table td:nth-child(4) {
+    width: 175px;
+}
+
+.individual-violations-table .remarks-col,
+.individual-violations-table th:nth-child(5),
+.individual-violations-table td:nth-child(5) {
+    width: 210px;
+}
+
+.individual-violations-table .attachments-col,
+.individual-violations-table th:nth-child(6),
+.individual-violations-table td:nth-child(6) {
+    width: 205px;
+    min-width: 0;
+}
+
+.individual-violations-table .individual-actions-col,
+.individual-violations-table th:nth-child(7),
+.individual-violations-table td:nth-child(7) {
+    width: 210px;
+    min-width: 0;
+    text-align: center;
+}
+
+/* Header cells */
+
+.individual-violations-table thead th {
+    box-sizing: border-box;
+    padding: 0.95rem 1rem !important;
+    color: #6d1515;
+    background: #fff7e2;
+    border-top: 1px solid #f4e4bd !important;
+    border-bottom: 1px solid #f0e3c8 !important;
+    font-size: 0.78rem !important;
+    font-weight: 800;
+    line-height: 1.35 !important;
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.045em;
+    vertical-align: middle;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: none !important;
+}
+
+/* Body cells */
+
+.individual-violations-table tbody td {
+    box-sizing: border-box;
+    padding: 1rem !important;
+    color: #34313a;
+    background: #fff;
+    border-bottom: 1px solid #f0eeee;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    text-align: left;
+    vertical-align: middle;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: none !important;
+}
+
+.individual-violations-table tbody tr {
+    transition: background-color 0.18s ease;
+}
+
+.individual-violations-table tbody tr:hover td {
+    background: #fffdf8;
+}
+
+.individual-violations-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+/* Dates */
+
+.individual-violations-table .violation-date-col {
+    white-space: normal !important;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Status badges: do not split Confirmed into separate fragments */
+
+.individual-violations-table .status-col {
+    text-align: center !important;
+}
+
+.individual-violations-table .status-col .portal-badge,
+.individual-violations-table .status-col .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    width: auto;
+    max-width: 100%;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.82rem !important;
+    font-weight: 700;
+    line-height: 1.25 !important;
+    text-align: center;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+}
+
+.individual-violations-table .status-col .portal-badge i,
+.individual-violations-table .status-col .badge i {
+    flex: 0 0 auto;
+}
+
+/* Remarks */
+
+.individual-violations-table .remarks-col {
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+}
+
+/* Attachments */
+
+.individual-violations-table .attachments-col {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+}
+
+.individual-violations-table .attachments-col a {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    max-width: 100%;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+    line-height: 1.4;
+}
+
+.individual-violations-table .attachments-col a i {
+    flex: 0 0 auto;
+    margin-top: 0.15rem;
+}
+
+.individual-violations-table .attachments-col .text-muted {
+    display: inline-block;
+    line-height: 1.45;
+}
+
+/* Sanction action buttons */
+
+.individual-violations-table .individual-actions-col {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.individual-violations-table .individual-actions-col > div {
+    width: 100%;
+    max-width: 190px;
+    margin: 0 auto;
+}
+
+.individual-violations-table .individual-actions-col .btn,
+.individual-violations-table .individual-actions-col .sanction-state {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    max-width: 190px;
+    min-width: 0;
+    min-height: 44px;
+    margin: 0;
+    padding: 0.7rem 0.8rem !important;
+    border-radius: 0.75rem;
+    font-size: 0.85rem !important;
+    font-weight: 700;
+    line-height: 1.3 !important;
+    text-align: center;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: none !important;
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease,
+        background 0.18s ease;
+}
+
+.individual-violations-table .individual-actions-col .btn i,
+.individual-violations-table .individual-actions-col .sanction-state i {
+    flex: 0 0 auto;
+}
+
+.individual-violations-table .individual-actions-col .request-sanction-btn {
+    color: #fff;
+    background: linear-gradient(120deg, #710000, #960d0d);
+    border: 1px solid #780000;
+    box-shadow: 0 5px 13px rgba(120, 0, 0, 0.13);
+}
+
+.individual-violations-table .individual-actions-col .request-sanction-btn:hover {
+    color: #fff;
+    background: #5f0000;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(120, 0, 0, 0.2);
+}
+
+/* Sanction states */
+
+.individual-violations-table .sanction-state {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: 1px solid transparent;
+    font-size: 0.82rem !important;
+}
+
+.sanction-state-pending {
+    color: #815300;
+    background: #fff4d5;
+    border-color: #f4df9d;
+}
+
+.sanction-state-approved {
+    color: #116448;
+    background: #e2f5ec;
+    border-color: #bce7d2;
+}
+
+.sanction-state-declined {
+    color: #9b2727;
+    background: #fff0f0;
+    border-color: #f2cdcd;
+}
+
+.sanction-state-assigned {
+    color: #4d5664;
+    background: #f0f2f5;
+    border-color: #dfe3e8;
+}
+
+/* Informational notices in the action column */
+
+.individual-violations-table .individual-actions-col .alert {
+    width: 100%;
+    max-width: 190px;
+    margin: 0 auto;
+    line-height: 1.45;
+    text-align: left;
+    word-break: normal;
+    overflow-wrap: break-word;
+}
+
+/* Empty state */
+
+.individual-log-empty {
+    padding: 3.25rem 1rem !important;
+    color: #77717a !important;
+    text-align: center;
+}
+
+.individual-log-empty-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 0.75rem;
+    border-radius: 1rem;
+    color: #850909;
+    background: #fff3df;
+    font-size: 1.35rem;
+}
+
+/* Pagination: preserve Laravel pagination and eliminate excess space */
 
 .individual-log-pagination {
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
     flex-wrap: wrap;
+    gap: 0.75rem;
     width: 100%;
     height: auto !important;
     min-height: 0 !important;
     margin: 0 !important;
+    padding: 1rem !important;
     border-top: 1px solid #f0eeee;
     background: #fff;
 }
@@ -960,10 +564,11 @@
 
 .individual-log-pagination .pagination {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
     justify-content: center;
-    margin: 0 !important;
+    flex-wrap: wrap;
     gap: 0.2rem;
+    margin: 0 !important;
 }
 
 .individual-log-pagination svg {
@@ -971,7 +576,107 @@
     height: 1rem;
 }
 
-</style>
+/* Natural card height: prevent a large blank area below the log */
+
+.individual-log-card .table-responsive,
+.individual-log-card .individual-table-responsive {
+    height: auto !important;
+    min-height: 0 !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.individual-log-card .individual-violations-table {
+    margin-bottom: 0 !important;
+}
+
+.individual-log-card nav[aria-label],
+.individual-log-card .pagination {
+    margin-bottom: 0 !important;
+}
+
+.individual-log-card .card-footer {
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+/* Responsive filters */
+
+@media (max-width: 767.98px) {
+    .individual-log-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .individual-filter-actions {
+        grid-column: 1 / -1;
+    }
+
+    .individual-status-filter-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .individual-status-filter-row .form-select {
+        width: 100%;
+        max-width: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .individual-log-header {
+        align-items: flex-start;
+        padding: 1rem !important;
+    }
+
+    .individual-log-title {
+        font-size: 1rem;
+    }
+
+    .individual-log-subtitle {
+        font-size: 0.78rem;
+    }
+
+    .individual-log-icon {
+        width: 2.35rem;
+        height: 2.35rem;
+        flex-basis: 2.35rem;
+    }
+
+    .individual-log-count {
+        padding: 0.38rem 0.55rem;
+        font-size: 0.7rem;
+    }
+
+    .individual-violations-table thead th {
+        padding: 0.8rem 0.7rem !important;
+        font-size: 0.76rem !important;
+    }
+
+    .individual-violations-table tbody td {
+        padding: 0.85rem 0.7rem !important;
+        font-size: 0.86rem;
+    }
+
+    .individual-log-pagination {
+        padding: 0.85rem 0.5rem !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .individual-log-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .individual-log-header {
+        flex-wrap: wrap;
+    }
+
+    .individual-log-count {
+        margin-left: 3.25rem;
+    }
+}
+
 @endpush
 
 @section('content')
