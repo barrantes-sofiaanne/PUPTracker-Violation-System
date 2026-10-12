@@ -63,16 +63,19 @@ $assignedSanctionViolationIds = StudentSanctionRecord::where(
 
 // Latest request for each violation type drives the status shown in the log.
 
+
 $sanctionRequestsByType = SanctionRequest::where(
     'student_number',
     $user->student_number
 )
     ->whereNotNull('violation_type_id')
+    // Active requests must take priority over older inactive requests.
+    ->orderByDesc('is_active')
     ->orderByDesc('request_date')
     ->get()
-    ->filter(fn ($request) => !empty($request->violation_type_id))
     ->unique('violation_type_id')
     ->keyBy(fn ($request) => (string) $request->violation_type_id);
+
 
 
 // Build filter options only from this student's confirmed violations.
