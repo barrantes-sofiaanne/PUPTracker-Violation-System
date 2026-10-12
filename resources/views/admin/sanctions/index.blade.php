@@ -370,7 +370,8 @@
                                                     </button>
                                                 @endif
 
-@elseif($record->has_pending_proof)
+
+@elseif($record->has_pending_proof && filled($record->proof_access_key))
     <button
         type="button"
         class="admin-btn admin-btn-view admin-btn-sm review-proof-btn"
@@ -387,15 +388,30 @@
         data-bs-target="#reviewProofModal">
         <i class="bi bi-eye me-1"></i>Review Proof
     </button>
+
+@elseif($record->has_pending_proof)
+    <button
+        type="button"
+        class="admin-btn admin-btn-neutral admin-btn-sm"
+        disabled
+        title="The proof is awaiting a valid access key.">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Proof Link Unavailable
+    </button>
+
 @elseif($isOpen && $record->completion_remarks)
     <span class="text-muted small">Awaiting resubmission</span>
+
 @elseif($isOpen)
-    <button type="button"
-            class="admin-btn admin-btn-neutral admin-btn-sm"
-            disabled
-            title="The student must submit proof before it can be reviewed.">
-        <i class="bi bi-hourglass-split me-1"></i>Awaiting Proof
+    <button
+        type="button"
+        class="admin-btn admin-btn-neutral admin-btn-sm"
+        disabled
+        title="The student must submit proof before it can be reviewed.">
+        <i class="bi bi-hourglass-split me-1"></i>
+        Awaiting Proof
     </button>
+
 
                                             @elseif(strcasecmp((string) $record->status, 'Completed') === 0)
                                                 <button type="button"
