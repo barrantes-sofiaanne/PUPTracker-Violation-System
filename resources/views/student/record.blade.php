@@ -21,6 +21,29 @@
 <link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
 
 <style>
+    
+/* Keep the two tab panes independent. */
+#studentRecordTabsContent > .tab-pane,
+.tab-content > #violationRecord,
+.tab-content > #sanctionRecord {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: initial !important;
+    align-self: stretch;
+}
+
+/* Bootstrap should hide inactive tab panes. */
+.tab-content > .tab-pane:not(.active) {
+    display: none !important;
+}
+
+/* Let the active tab determine the content height. */
+.tab-content {
+    height: auto !important;
+    min-height: 0 !important;
+    align-items: stretch;
+}
+
 /* =========================================================
    Individual Violations Log
    Consolidated responsive styling
@@ -644,6 +667,44 @@
     padding-top: 0.65rem !important;
     padding-bottom: 0.65rem !important;
     line-height: 1.35 !important;
+}
+
+/* Fix excess height in the Student Record tab pane */
+#violationRecord.tab-pane,
+#sanctionRecord.tab-pane {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: 0 0 auto !important;
+    align-self: flex-start !important;
+}
+
+/* Prevent the tab content from stretching the record tabs */
+#violationRecord.tab-pane.show.active,
+#sanctionRecord.tab-pane.show.active {
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+/* Keep the tab-content wrapper content-sized */
+.tab-content:has(> #violationRecord),
+.tab-content:has(> #sanctionRecord) {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: 0 0 auto !important;
+    align-self: flex-start !important;
+}
+
+/* Keep the log card and pagination at their natural height */
+#violationRecord .individual-log-card {
+    height: auto !important;
+    min-height: 0 !important;
+    margin-bottom: 1rem !important;
+}
+
+#violationRecord .individual-log-pagination {
+    height: auto !important;
+    min-height: 0 !important;
+    margin-bottom: 0 !important;
 }
 
 
