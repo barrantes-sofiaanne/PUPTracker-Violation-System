@@ -157,46 +157,48 @@
     });
     </script>
     @endpush
-                                        <form
-                        action="{{ route('admin.sanctions.requests.decline', $sanctionRequest) }}"
-                        method="POST"
-                        class="mt-3"
-                        onsubmit="return confirm('Decline this sanction request and notify the student?');"
-                    >
-                        @csrf
+                    <form
+    action="{{ route('admin.sanctions.requests.decline', $sanctionRequest) }}"
+    method="POST"
+    class="mt-3"
+    onsubmit="return confirm('Decline this sanction request and notify the student?');"
+>
+    @csrf
 
-                        <div class="mb-3">
-    <label for="decline_reason" class="form-label">
-        Reason for Declining <span class="text-danger">*</span>
-    </label>
+    <div class="mb-3">
+        <label for="decline_reason" class="form-label fw-semibold">
+            Reason for Declining
+            <span class="text-danger">*</span>
+        </label>
 
-    <textarea
-        id="decline_reason"
-        name="decline_reason"
-        class="form-control"
-        rows="4"
-        minlength="5"
-        maxlength="2000"
-        required
-        placeholder="Explain why this sanction request is being declined."
-    >{{ old('decline_reason') }}</textarea>
+        <textarea
+            id="decline_reason"
+            name="decline_reason"
+            class="form-control"
+            rows="4"
+            minlength="5"
+            maxlength="2000"
+            required
+            placeholder="Enter the reason for declining this sanction request..."
+        >{{ old('decline_reason') }}</textarea>
 
-    @error('decline_reason')
-        <div class="text-danger small mt-1">
-            {{ $message }}
-        </div>
-    @enderror
+        @error('decline_reason')
+            <div class="text-danger small mt-1">
+                {{ $message }}
+            </div>
+        @enderror
 
-    <small class="text-muted">
-        This reason will be visible to the student.
-    </small>
-</div>
+        <small class="text-muted">
+            Please explain why this request is being declined.
+            The student will be able to view your reason.
+        </small>
+    </div>
 
-                        <button type="submit" class="admin-btn admin-btn-danger">
-                            <i class="bi bi-x-circle me-1"></i>
-                            Decline Request
-                        </button>
-                    </form>
+    <button type="submit" class="admin-btn admin-btn-danger">
+        <i class="bi bi-x-circle me-1"></i>
+        Decline Request
+    </button>
+</form>
                 </div>
             @else
                 <div class="border-top mt-4 pt-4 text-muted">This request has already been processed.</div>
