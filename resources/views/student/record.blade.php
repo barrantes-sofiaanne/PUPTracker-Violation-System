@@ -1263,16 +1263,9 @@
                                     <button type="button" class="btn request-sanction-btn mt-2" data-violation-type-id="{{ $typeId }}">
                                         <i class="bi bi-arrow-repeat"></i> Request Again
                                     </button>
-                                @else
-                                    <button type="button" class="btn request-sanction-btn" data-violation-type-id="{{ $typeId }}">
-                                        <i class="bi bi-send"></i> Request Sanction
-                                    </button>
-                                    <small class="d-block text-muted mt-2">Start a sanction request</small>
                                     @elseif($isWarningLevelViolation)
-    <div
-        class="alert alert-warning py-2 px-3 mb-0 small text-start"
-        role="note"
-    >
+    <div class="alert alert-warning py-2 px-3 mb-0 small text-start"
+         role="note">
         <strong class="d-block mb-1">
             <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
             Warning-Level Violation
@@ -1281,7 +1274,16 @@
         A sanction request is not required for this violation.
         Please check the Sanction Record tab for the related guidance note.
     </div>
-                                @endif
+
+@else
+    <button type="button" class="btn request-sanction-btn"
+            data-violation-type-id="{{ $typeId }}">
+        <i class="bi bi-send"></i> Request Sanction
+    </button>
+    <small class="d-block text-muted mt-2">
+        Start a sanction request
+    </small>
+@endif 
                             </td>
                         </tr>
                     @empty
