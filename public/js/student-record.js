@@ -242,7 +242,8 @@ document.addEventListener("DOMContentLoaded", function () {
     applySanctionStatusFilter();
     // Automatically submit all filters, including sanction status.
     // This preserves filter selections in the URL when the page reloads.
-    if (filterForm) {
+
+    if (filterFormForScroll) {
         const autoApplySelectors = [
             '[name="category_id"]',
             '[name="violation_type_id"]',
@@ -250,11 +251,14 @@ document.addEventListener("DOMContentLoaded", function () {
             '[name="date_to"]',
             '[name="sanction_status"]',
         ];
+
         autoApplySelectors.forEach(function (selector) {
-            const control = filterForm.querySelector(selector);
+            const control = filterFormForScroll.querySelector(selector);
+
             if (!control) return;
+
             control.addEventListener("change", function () {
-                filterForm.requestSubmit();
+                filterFormForScroll.requestSubmit();
             });
         });
     }
