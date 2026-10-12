@@ -300,21 +300,21 @@ foreach ($groupedViolations as $records) {
 
     // Preserve the summary status derived from the configured sanction.
 
-    if (
-        $matchesViolationType($first, $approvedRequests)
-        || $matchesViolationType($first, $assignedSanctionTypeKeys)
-    ) {
-        // A violation type that already entered the sanction workflow (open
-        // OR completed) belongs to the Sanction Record tab only. Completed
-        // sanctions are therefore removed from the Summary table.
-        continue;
-    }
+   
 
     // At this point the violation is confirmed and has a disciplinary
     // sanction, so the student may see the Summary row.
-    $workflowStatus = $matchesViolationType($first, $activeRequests)
-        ? 'Requested'
-        : 'Actionable';
+  $hasSanctionWorkflow =
+    $matchesViolationType($first, $approvedRequests)
+    || $matchesViolationType($first, $assignedSanctionTypeKeys);
+
+$workflowStatus = $hasSanctionWorkflow
+    ? 'Assigned'
+    : (
+        $matchesViolationType($first, $activeRequests)
+            ? 'Requested'
+            : 'Actionable'
+    );
 
     $violationSummary[] = [
         // Using ?-> prevents the "reading property on null" error
@@ -358,8 +358,11 @@ foreach ($groupedViolations as $records) {
 
         // Only sanctions that require administration scheduling (Community or
         // Campus Service) expose Request Sanction in the student UI.
-        'requires_sanction_request' => StudentSanctionRecord::requiresStudentSanctionRequest($disciplinarySanction),
-
+'requires_sanction_request' =>
+    ! $hasSanctionWorkflow
+    && StudentSanctionRecord::requiresStudentSanctionRequest(
+        $disciplinarySanction
+    ),
         'violation_status' => $status,
 
         'workflow_status' => $workflowStatus,
