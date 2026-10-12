@@ -365,16 +365,6 @@ foreach ($groupedViolations as $records) {
 
     // Preserve the summary status derived from the configured sanction.
 
-    if (
-        $matchesViolationType($first, $approvedRequests)
-        || $matchesViolationType($first, $assignedSanctionTypeKeys)
-    ) {
-        // A violation type that already entered the sanction workflow (open
-        // OR completed) belongs to the Sanction Record tab only. Completed
-        // sanctions are therefore removed from the Summary table.
-        continue;
-    }
-
     // At this point the violation is confirmed and has a disciplinary
     // sanction, so the student may see the Summary row.
     $workflowStatus = $matchesViolationType($first, $activeRequests)

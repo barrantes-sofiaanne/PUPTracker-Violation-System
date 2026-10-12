@@ -488,35 +488,31 @@
 .summary-table-responsive {
     width: 100%;
     max-width: 100%;
-    overflow-x: auto !important;
+    overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
 }
 
 .summary-violations-table {
-    width: 1200px !important;
-    min-width: 1200px !important;
-    max-width: none !important;
-    table-layout: fixed !important;
+    width: 1200px;
+    min-width: 1200px;
+    table-layout: fixed;
     border-collapse: collapse;
 }
 
-/* Six summary columns = 100%. Evidence belongs in the individual log. */
-.summary-category-col { width: 16%; }
+.summary-category-col       { width: 16%; }
 .summary-violation-type-col { width: 24%; }
-.summary-offense-col { width: 12%; }
-.summary-status-col { width: 14%; }
-.summary-remarks-col { width: 16%; }
-.summary-sanction-col { width: 18%; }
+.summary-offense-col        { width: 12%; }
+.summary-status-col         { width: 14%; }
+.summary-remarks-col        { width: 16%; }
+.summary-sanction-col       { width: 18%; }
 
 .summary-violations-table th,
 .summary-violations-table td {
-    box-sizing: border-box;
-    vertical-align: middle !important;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    hyphens: none !important;
+    vertical-align: middle;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
 }
 
 .summary-violations-table thead th {
@@ -1540,8 +1536,9 @@
                                             data-office="{{ $record->designated_office ?? '' }}"
                                             data-starting-date="{{ optional($record->starting_date)->format('M d, Y') ?? '' }}"
                                             data-required-hours="{{ $record->required_hours ?? '' }}"
-data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}"                                            <i class="bi bi-upload me-1"></i>Submit Proof
-                                        </button>
+data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
+    <i class="bi bi-upload me-1"></i>Submit Proof
+</button>
                                     @else
                                         {{-- Every other sanction is settled through a personal
                                              consultation at the Office of Student Services, so
