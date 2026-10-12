@@ -21,6 +21,7 @@ public function index()
     // Apply the logged-in security officer's scope
     // and exclude denied violations.
     $this->applyRecorderScope($baseViolations);
+
     // Read the student search input.
 $search = trim((string) request()->query('search', ''));
 
@@ -48,10 +49,10 @@ $recentViolations = Violation::with([
     ->where(function (Builder $query) {
         $this->applyRecorderScope($query);
     })
+    ->where('violation_date', '>=', now()->subDays(7))
     ->when($search !== '', function (Builder $query) use ($search) {
         $this->applyStudentSearch($query, $search);
     })
-    ->where('violation_date', '>=', now()->subDays(7))
     ->latest('violation_date')
     ->take(10)
     ->get();
@@ -160,7 +161,8 @@ $violationsByOffenseLevel = (clone $baseViolations)
         'activeOffenders',
         'violationsByCategory',
         'violationsByOffenseLevel',
-        'categories'
+        'categories',
+        'search'
     ));
 }
 

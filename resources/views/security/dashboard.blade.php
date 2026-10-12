@@ -326,32 +326,193 @@
     </div>
 
 {{-- Main Content Row --}}
-<div class="row g-3 mb-4">
+{{-- Main Content Row --}}
+<div class="row g-3 mb-4 align-items-start">
 
     {{-- Recent Violations: Left Side --}}
     <div class="col-lg-8">
-        {{-- Keep your existing Recent Violations card here --}}
+        <div class="card portal-card h-100">
+            <div class="card-header card-header-custom">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">
+                        Recent Violations (Last 7 Days)
+                    </h5>
+                    <span class="portal-badge muted">
+                        {{ $recentViolations->count() }} records
+                    </span>
+                </div>
+            </div>
+
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0 portal-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Violation Type</th>
+                                <th>Offense Level</th>
+                                <th>Date &amp; Time</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @forelse($recentViolations as $violation)
+                                <tr class="violation-item">
+                                    <td>
+                                        <strong>
+                                            {{ $violation->student_number }}
+                                        </strong>
+
+                                        @if($violation->student)
+                                            <br>
+                                            <small class="text-muted">
+                                                {{ $violation->student->last_name }},
+                                                {{ $violation->student->first_name }}
+                                            </small>
+                                        @endif
+                                    </td>
+
+                                    <td>
+                                        <span class="portal-badge muted">
+                                            {{ $violation->violation_type_display }}
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        <span class="portal-badge danger">
+                                            {{ $violation->offense_level }}
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y H:i') }}
+                                        </small>
+                                    </td>
+
+                                    <td>
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm portal-btn-outline"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#violationDetailModal"
+                                            data-violation="{{ json_encode($violation) }}"
+                                            data-student-number="{{ $violation->student_number }}"
+                                            data-student-name="{{ $violation->student ? $violation->student->last_name . ', ' . $violation->student->first_name : '-' }}"
+                                            data-violation-type="{{ $violation->violation_type_display ?: 'N/A' }}"
+                                            data-violation-category="{{ $violation->violation_category_display ?: 'N/A' }}"
+                                            data-offense="{{ $violation->offense_level ?: 'N/A' }}"
+                                            data-violation-date="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->setTimezone('Asia/Manila')->format('M d, Y, H:i') : 'N/A' }}"
+                                            data-description="{{ $violation->description ?: 'No description provided.' }}"
+                                            data-student-url="{{ route('security.violations.show', $violation->student_number) }}">
+                                            View
+                                        </button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="text-center py-5">
+                                        <i class="bi bi-inbox display-4 text-muted"></i>
+                                        <p class="text-muted mt-3">
+                                            {{ $search
+                                                ? 'No recent violations found for this student in your records.'
+                                                : 'No recent violations in the last 7 days.' }}
+                                        </p>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 
     {{-- Sidebar Widgets: Right Side --}}
     <div class="col-lg-4">
-        {{-- Keep your existing Top Offenders card here --}}
 
-        {{-- Keep your existing Categories card here --}}
+        {{-- Top Offenders: Does not change when searching --}}
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-header card-header-custom">
+                <h5 class="fw-bold mb-0">Top Offenders</h5>
+            </div>
+
+            <div class="card-body">
+                @forelse($activeOffenders as $offender)
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <strong>{{ $offender->student_number }}</strong>
+
+                        <span class="portal-badge danger">
+                            {{ $offender->violation_count }} violations
+                        </span>
+                    </div>
+                @empty
+                    <p class="text-muted text-center py-3">
+                        No records found
+                    </p>
+                @endforelse
+            </div>
+        </div>
+
+        {{-- Categories: Updates with student search --}}
+        <div class="card shadow-sm border-0">
+            <div class="card-header card-header-custom">
+                <h5 class="fw-bold mb-0">Categories</h5>
+            </div>
+
+            <div class="card-body">
+                @forelse($violationsByCategory as $category)
+                    @php
+                        $percentage = $categoryTotal > 0
+                            ? round(($category->count / $categoryTotal) * 100, 1)
+                            : 0;
+                    @endphp
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-500 text-truncate">
+                                {{ $category->category_name ?? 'Unknown' }}
+                            </span>
+
+                            <span class="portal-badge muted">
+                                {{ $category->count }}
+                            </span>
+                        </div>
+
+                        <div class="progress" style="height: 6px;">
+                            <div
+                                class="progress-bar"
+                                @style([
+                                    'background-color' => 'var(--portal-maroon)',
+                                    'width' => $percentage . '%',
+                                ])
+                                role="progressbar"
+                                aria-valuemin="0"
+                                aria-valuemax="100"
+                                aria-valuenow="{{ $percentage }}">
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-muted text-center py-3">
+                        {{ $search
+                            ? 'No categories found for this student in your records.'
+                            : 'No category data.' }}
+                    </p>
+                @endforelse
+            </div>
+        </div>
+
     </div>
-
 </div>
 
 {{-- Violation and Sanction Guide: Below Both Columns --}}
-<div class="row mt-3">
-    <div class="col-12">
-        <div class="violation-guide-wrapper">
-            @include('partials.violation-sanction-guide', [
-                'guideId' => 'securityGuide',
-                'guideTitle' => 'Violation and Sanction Guide',
-            ])
-        </div>
-    </div>
+<div class="violation-guide-wrapper mt-3 mb-4">
+    @include('partials.violation-sanction-guide', [
+        'guideId' => 'securityGuide',
+        'guideTitle' => 'Violation and Sanction Guide',
+    ])
 </div>
 
         {{-- Sidebar Widgets --}}
