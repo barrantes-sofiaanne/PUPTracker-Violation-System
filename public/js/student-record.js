@@ -136,32 +136,84 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     // Individual Violations Log filters.
     const statusFilter = document.getElementById("filterSanctionStatus");
-    const filterForm = document.querySelector(
+    // Keep the Student Record page focused on the Individual Log table
+    // after filters trigger a page reload.
+
+    const individualLogPane = document.getElementById("violationRecord");
+    const individualLogTable = document.querySelector(
+        "#violationRecord .individual-violations-table",
+    );
+
+    const filterFormForScroll = document.querySelector(
         "#violationRecord .individual-log-filters",
     );
 
-    if (filterForm) {
-        filterForm.addEventListener("submit", function () {
-            sessionStorage.setItem(
-                "studentRecordScrollY",
-                String(window.scrollY),
-            );
+    const returnToIndividualLog =
+        sessionStorage.getItem("returnToIndividualLog") === "true";
+
+    // Save the position before Category, Type, or Date filters reload the page.
+    if (filterFormForScroll) {
+        filterFormForScroll.addEventListener("submit", function () {
+            sessionStorage.setItem("returnToIndividualLog", "true");
         });
     }
 
-    // Restore the saved scroll position after the page reloads.
-    const savedScrollY = sessionStorage.getItem("studentRecordScrollY");
+    // Restore the Individual Log tab and bring its table into view after reload.
+    function restoreIndividualLogPosition() {
+        if (
+            !returnToIndividualLog ||
+            !individualLogPane ||
+            !individualLogTable
+        ) {
+            return;
+        }
 
-    if (savedScrollY !== null) {
-        sessionStorage.removeItem("studentRecordScrollY");
+        // Find the Bootstrap tab button associated with the Individual Log pane.
+        const tabButton = document.querySelector(
+            '[data-bs-toggle="tab"][data-bs-target="#violationRecord"], ' +
+                '[data-bs-toggle="pill"][data-bs-target="#violationRecord"], ' +
+                'a[data-bs-toggle="tab"][href="#violationRecord"], ' +
+                'a[data-bs-toggle="pill"][href="#violationRecord"]',
+        );
 
-        requestAnimationFrame(function () {
-            window.scrollTo({
-                top: Number(savedScrollY),
-                behavior: "instant",
+        function scrollToLog() {
+            if (!individualLogPane.classList.contains("active")) {
+                return;
+            }
+
+            sessionStorage.removeItem("returnToIndividualLog");
+
+            // Allow the table layout to settle before scrolling.
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    const tableTop =
+                        individualLogTable.getBoundingClientRect().top +
+                        window.scrollY;
+
+                    // Adjust 100 to match your header height, if necessary.
+                    window.scrollTo({
+                        top: Math.max(0, tableTop - 100),
+                        behavior: "instant",
+                    });
+                });
             });
-        });
+        }
+
+        if (individualLogPane.classList.contains("active")) {
+            scrollToLog();
+        } else if (tabButton && typeof bootstrap !== "undefined") {
+            // Reopen the correct tab if the page reload resets the active tab.
+            tabButton.addEventListener("shown.bs.tab", scrollToLog, {
+                once: true,
+            });
+
+            bootstrap.Tab.getOrCreateInstance(tabButton).show();
+        }
     }
+
+    window.addEventListener("load", function () {
+        restoreIndividualLogPosition();
+    });
     const filterCount = document.getElementById("individualFilterCount");
     const tableBody = document.querySelector(
         "#violationRecord .individual-violations-table tbody",
