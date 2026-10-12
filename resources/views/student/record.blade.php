@@ -903,6 +903,45 @@
     .consultation-notice { padding: 0.75rem; }
 }
 
+/* Match the Individual Violations Log title bar to Summary by Violation. */
+.individual-log-titlebar {
+    padding: 1rem 1.25rem !important;
+    background: #fff !important;
+    border-bottom: 1px solid #eee2d5 !important;
+}
+.individual-log-titlebar h5 {
+    color: #800909 !important;
+    font-size: 1.15rem;
+    font-weight: 750;
+}
+.individual-log-record-count {
+    color: #6c5555;
+    font-size: 0.8rem;
+    font-weight: 650;
+}
+
+/* Keep filters aligned and prevent the status selector from colliding with labels. */
+.individual-log-filters-wrap { overflow: visible; }
+.individual-log-filters { align-items: end; }
+.individual-status-filter-row {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 260px) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+}
+.individual-status-filter-row .form-select { max-width: 100%; }
+@media (max-width: 640px) {
+    .individual-log-filters-wrap { padding: 1rem !important; }
+    .individual-log-filters { grid-template-columns: minmax(0, 1fr); }
+    .individual-filter-actions { grid-column: 1 / -1; }
+    .individual-status-filter-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.45rem;
+    }
+    .individual-status-filter-row .form-select { width: 100%; max-width: none; }
+}
+
 </style>
 @endpush
 
@@ -1152,15 +1191,9 @@
 {{-- ================================================= --}}
 
 <div class="card individual-log-card mb-4">
-    <div class="card-header individual-log-header">
-        <div class="individual-log-heading">
-            <span class="individual-log-icon"><i class="bi bi-journal-check"></i></span>
-            <div>
-                <h5 class="individual-log-title">Individual Violations Log</h5>
-                <p class="individual-log-subtitle">Review your confirmed records and track sanction requests.</p>
-            </div>
-        </div>
-        <span class="individual-log-count"><i class="bi bi-list-check"></i>{{ $violations->total() }} {{ $violations->total() === 1 ? 'record' : 'records' }}</span>
+    <div class="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-2 individual-log-titlebar">
+        <h5 class="mb-0">Individual Violations Log</h5>
+        <span class="individual-log-record-count">{{ $violations->total() }} {{ $violations->total() === 1 ? 'record' : 'records' }}</span>
     </div>
 
     <div class="card-body individual-log-filters-wrap">
@@ -1348,29 +1381,11 @@
     aria-labelledby="sanction-tab">
 
     @if($relatedDisciplinaryConsequences->isNotEmpty())
-        <div class="card warning-consequence-card mb-4">
-            <div class="card-header">
-                <span class="warning-consequence-icon" aria-hidden="true"><i class="bi bi-receipt-cutoff"></i></span>
-                <div>
-                    <h5 class="mb-1 fw-bold">Related Disciplinary Consequences</h5>
-                    <p class="mb-0 small text-muted">Configured consequences for warning-level violations. These entries are informational and are not proof that a payment has been assessed or completed.</p>
-                </div>
-            </div>
-            <div class="card-body">
-                @foreach($relatedDisciplinaryConsequences as $consequence)
-                    <div class="warning-consequence-item">
-                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
-                            <div>
-                                <div class="fw-bold text-dark">{{ $consequence['violation_type'] }}</div>
-                                <div class="small text-muted">{{ $consequence['category'] }} · {{ $consequence['offense_level'] }}</div>
-                                <div class="small text-muted">Date recorded: {{ $consequence['violation_date'] ? \Carbon\Carbon::parse($consequence['violation_date'])->format('M d, Y') : '—' }}</div>
-                            </div>
-                            <span class="warning-consequence-status"><i class="bi bi-info-circle" aria-hidden="true"></i>No request required</span>
-                        </div>
-                        <div class="warning-consequence-label mb-1">Configured disciplinary consequence</div>
-                        <div class="warning-consequence-value">{{ $consequence['disciplinary_sanction'] }}</div>
-                    </div>
-                @endforeach
+        <div class="consultation-notice warning-request-guidance mb-4" role="note">
+            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+            <div>
+                <span class="consultation-notice-title">No sanction request required</span>
+                <p class="consultation-notice-text">A request is not required for these warning-level violations. Please review the Sanction Details column and comply with the disciplinary consequence specified there.</p>
             </div>
         </div>
     @endif

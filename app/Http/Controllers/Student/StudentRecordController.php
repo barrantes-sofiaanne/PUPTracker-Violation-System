@@ -219,9 +219,8 @@ $approvedRequests = SanctionRequest::where(
 ->toArray();
 
 // Violation types that already have ANY assigned sanction record (open or
-// completed). Once a violation type has entered the sanction workflow it
-// belongs in the Sanction Record tab only and must NOT be re-requestable
-// (including after the sanction has been completed).
+// completed). These keys prevent duplicate requests, while the violation history
+// remains visible in Summary by Violation.
 $assignedSanctionTypeKeys = StudentSanctionRecord::with('violation')
     ->where('student_number', $user->student_number)
     ->get()
@@ -262,10 +261,10 @@ $candidates = array_filter([
     return false;
 };
 
-// Group ONLY administrator-confirmed violations by violation type.
+// Group administrator-confirmed violations by violation type.
 // The Student Record must never expose a pending/unconfirmed violation.
-// Warning-only violations, or violation types that already entered the
-// sanction workflow, are removed from the Summary table.
+// Keep warning-level, assigned, and completed-sanction violation types in the
+// Summary so it represents the student's full confirmed violation history.
 $groupedViolations = Violation::with([
         'violationType.violationCategory',
         'violationType.disciplinarySanctions',
@@ -289,6 +288,9 @@ return 'unknown:' . $violation->violation_id;    });
 foreach ($groupedViolations as $records) {
 
     // Keep the newest effective incident first so Summary actions point to a concrete record.
+    // Normalize grouped data to a Collection before sorting/filtering because
+    // groupBy() can yield a plain object/array payload here depending on the
+    // underlying model data shape.
     $records = collect($records)->sortByDesc('violation_date')->values();
 
     // All records in this collection are Administrator-confirmed, so the
@@ -363,21 +365,16 @@ foreach ($groupedViolations as $records) {
     // Warning-only violations remain visible in the summary with Warning status,
     // but the Individual Violations Log replaces the request button with guidance.
 
-    if (
-        $matchesViolationType($first, $approvedRequests)
-        || $matchesViolationType($first, $assignedSanctionTypeKeys)
-    ) {
-        // A violation type that already entered the sanction workflow (open
-        // OR completed) belongs to the Sanction Record tab only. Completed
-        // sanctions are therefore removed from the Summary table.
-        continue;
-    }
-
-    // At this point the violation is confirmed and has a disciplinary
-    // sanction, so the student may see the Summary row.
+    // Keep every administrator-confirmed violation type in Summary by Violation,
+    // including types with an approved request or an assigned/completed sanction.
+    // The Summary is a history overview; the Sanction Record tab remains the
+    // detailed source for actual assigned sanction records.
     $workflowStatus = $matchesViolationType($first, $activeRequests)
         ? 'Requested'
-        : 'Actionable';
+        : (($matchesViolationType($first, $approvedRequests)
+            || $matchesViolationType($first, $assignedSanctionTypeKeys))
+            ? 'Assigned'
+            : 'Actionable');
 
     $violationSummary[] = [
         // Using ?-> prevents the "reading property on null" error
