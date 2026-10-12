@@ -185,7 +185,8 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    grid-column: 1 / -1;
+    grid-column: 1 / 3;
+    grid-row: 2;
 }
 
 .individual-filter-apply {
@@ -209,10 +210,13 @@
 }
 
 .individual-status-filter-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 260px) minmax(0, 1fr);
     align-items: center;
     gap: 0.75rem;
-    margin-top: 1rem;
+    grid-column: 3 / 5;
+    grid-row: 2;
+    min-width: 0;
 }
 
 .individual-status-filter-row label {
@@ -221,7 +225,29 @@
 }
 
 .individual-status-filter-row .form-select {
+    width: 100%;
     max-width: 260px;
+}
+
+@media (max-width: 767.98px) {
+    .individual-filter-actions {
+        grid-column: 1 / -1;
+        grid-row: auto;
+    }
+
+    .individual-status-filter-row {
+        grid-column: 1 / -1;
+        grid-row: auto;
+        grid-template-columns: max-content minmax(0, 1fr);
+    }
+
+    .individual-status-filter-row #individualFilterCount {
+        grid-column: 1 / -1;
+    }
+
+    .individual-status-filter-row .form-select {
+        max-width: none;
+    }
 }
 
 /* Table scrolling container */
@@ -720,9 +746,12 @@
     }
 
     .individual-status-filter-row {
-        align-items: flex-start;
-        flex-direction: column;
+        grid-template-columns: minmax(0, 1fr);
         gap: 0.4rem;
+    }
+
+    .individual-status-filter-row #individualFilterCount {
+        grid-column: auto;
     }
 
     .individual-status-filter-row .form-select {
@@ -920,28 +949,15 @@
     font-weight: 650;
 }
 
-/* Keep filters aligned and prevent the status selector from colliding with labels. */
+/* Keep the filter panel aligned without changing its visual styling. */
 .individual-log-filters-wrap { overflow: visible; }
 .individual-log-filters { align-items: end; }
-.individual-status-filter-row {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 260px) minmax(0, 1fr);
-    align-items: center;
-    gap: 0.75rem;
-    width: 100%;
-}
-.individual-status-filter-row .form-select { max-width: 100%; }
 @media (max-width: 640px) {
     .individual-log-filters-wrap { padding: 1rem !important; }
     .individual-log-filters { grid-template-columns: minmax(0, 1fr); }
-    .individual-filter-actions { grid-column: 1 / -1; }
-    .individual-status-filter-row {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 0.45rem;
-    }
-    .individual-status-filter-row .form-select { width: 100%; max-width: none; }
+    .individual-filter-actions,
+    .individual-status-filter-row { grid-column: 1 / -1; }
 }
-
 </style>
 @endpush
 
@@ -1228,19 +1244,20 @@
                 <button class="btn individual-filter-apply" type="submit"><i class="bi bi-funnel me-1"></i>Apply Filters</button>
                 <a class="btn individual-filter-clear" href="{{ route('student.record') }}">Clear</a>
             </div>
+            <div class="individual-status-filter-row">
+                <label for="filterSanctionStatus">Sanction Status</label>
+                <select class="form-select" id="filterSanctionStatus">
+                    <option value="all">All Statuses</option>
+                    <option value="needs">Needs Request</option>
+                    <option value="no-request">No Request Required</option>
+                    <option value="pending">Request Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="declined">Declined</option>
+                    <option value="assigned">Sanction Assigned</option>
+                </select>
+                <span class="small text-muted" id="individualFilterCount" aria-live="polite"></span>
+            </div>
         </form>
-        <div class="individual-status-filter-row">
-            <label for="filterSanctionStatus">Sanction Status</label>
-            <select class="form-select" id="filterSanctionStatus">
-                <option value="all">All Statuses</option>
-                <option value="needs">Needs Request</option>
-                <option value="pending">Request Pending</option>
-                <option value="approved">Approved</option>
-                <option value="declined">Declined</option>
-                <option value="assigned">Sanction Assigned</option>
-            </select>
-            <span class="small text-muted" id="individualFilterCount" aria-live="polite"></span>
-        </div>
     </div>
 
     <div class="card-body p-0">
@@ -1268,11 +1285,17 @@
                             $requestStatus = strtolower((string) ($sanctionRequest->status ?? ''));
                             $isActiveRequest = (bool) ($sanctionRequest->is_active ?? false);
                             $hasAssignedSanction = isset($assignedSanctionViolationIds[$violation->violation_id]);
-                            $rowSanctionStatus = $hasAssignedSanction ? 'assigned' : (($requestStatus === 'pending' && $isActiveRequest) ? 'pending' : ($requestStatus === 'approved' ? 'approved' : ($requestStatus === 'declined' ? 'declined' : 'needs')));
+                            $isWarningLevelViolation = isset($warningLevelViolationIds[(int) $violation->violation_id]);
+                            $rowSanctionStatus = $hasAssignedSanction
+                                ? 'assigned'
+                                : (($requestStatus === 'pending' && $isActiveRequest)
+                                    ? 'pending'
+                                    : ($requestStatus === 'approved'
+                                        ? 'approved'
+                                        : ($requestStatus === 'declined'
+                                            ? 'declined'
+                                            : ($isWarningLevelViolation ? 'no-request' : 'needs'))));
                             $rowDate = \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d');
-                            $isWarningLevelViolation = isset(
-    $warningLevelViolationIds[(int) $violation->violation_id]
-);
                         @endphp
                         <tr data-category-id="{{ $categoryId }}" data-violation-type-id="{{ $typeId }}" data-violation-date="{{ $rowDate }}" data-sanction-status="{{ $rowSanctionStatus }}">
                             <td class="violation-type-col">{{ $violation->violation_type_display }}</td>
@@ -1311,7 +1334,7 @@
                                             <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                                             Warning-Level Violation
                                         </strong>
-                                        <p class="mb-0">A sanction request is not required for this warning-level violation. Please review the applicable disciplinary consequence in the Sanction Record tab and comply with the details provided.</p>
+                                        <p class="mb-0">A sanction request is not required for this warning-level violation. Please review the corresponding disciplinary sanction in the Summary by Violation table and comply with the details provided.</p>
                                     </div>
                                 @elseif($requestStatus === 'pending' && (bool) ($sanctionRequest->is_active ?? false))
                                     <span class="sanction-state sanction-state-pending"><i class="bi bi-hourglass-split"></i>Request Pending</span>

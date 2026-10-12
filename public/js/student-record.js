@@ -120,4 +120,43 @@ document.addEventListener("DOMContentLoaded", function () {
             submitSanctionRequest(selectedViolationTypeId);
         });
     }
+
+    // Filter Individual Violations Log by sanction status.
+    const statusFilter = document.getElementById("filterSanctionStatus");
+    const filterCount = document.getElementById("individualFilterCount");
+    const tableBody = document.querySelector(
+        "#violationRecord .individual-violations-table tbody",
+    );
+
+    if (statusFilter && tableBody) {
+        const rows = Array.from(
+            tableBody.querySelectorAll("tr[data-sanction-status]"),
+        );
+
+        function applySanctionStatusFilter() {
+            const selectedStatus = statusFilter.value || "all";
+            let visibleCount = 0;
+
+            rows.forEach((row) => {
+                const rowStatus = row.dataset.sanctionStatus || "needs";
+
+                const matches =
+                    selectedStatus === "all" || rowStatus === selectedStatus;
+
+                row.hidden = !matches;
+
+                if (matches) {
+                    visibleCount++;
+                }
+            });
+
+            if (filterCount) {
+                filterCount.textContent = `${visibleCount} of ${rows.length} records shown`;
+            }
+        }
+
+        statusFilter.addEventListener("change", applySanctionStatusFilter);
+
+        applySanctionStatusFilter();
+    }
 });
