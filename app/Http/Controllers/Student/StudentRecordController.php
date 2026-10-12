@@ -62,21 +62,14 @@ $assignedSanctionViolationIds = StudentSanctionRecord::where(
     ->all();
 
 // Latest request for each violation type drives the status shown in the log.
-
-
-$sanctionRequestsByType = SanctionRequest::where(
-    'student_number',
-    $user->student_number
-)
+$sanctionRequestsByType = SanctionRequest::where('student_number', $user->student_number)
     ->whereNotNull('violation_type_id')
-    // Active requests must take priority over older inactive requests.
+    // An active request must take priority over any older inactive request.
     ->orderByDesc('is_active')
     ->orderByDesc('request_date')
     ->get()
     ->unique('violation_type_id')
     ->keyBy(fn ($request) => (string) $request->violation_type_id);
-
-
 
 // Build filter options only from this student's confirmed violations.
 $studentRecordedViolations = Violation::with('violationType.violationCategory')
@@ -104,71 +97,6 @@ $filters = request()->validate([
     'date_from' => 'nullable|date',
     'date_to' => 'nullable|date|after_or_equal:date_from',
 ]);
-
-// Identify confirmed individual violations whose applicable configured
-// sanction is a warning. These records stay in the Individual Violations Log
-// and should not offer a Request Sanction action.
-$confirmedViolationsForSanctionCheck = Violation::with([
-    'violationType.disciplinarySanctions',
-])
-    ->where('student_number', $user->student_number)
-    ->effective()
-    ->get();
-
-$confirmedTypeCounts = $confirmedViolationsForSanctionCheck
-    ->groupBy(function ($record) {
-        $resolvedType = $record->resolvedViolationType();
-        return (string) ($resolvedType?->violation_type_id ?? 'unknown:' . $record->violation_id);
-    });
-
-$warningLevelViolationIds = [];
-$relatedDisciplinaryConsequences = [];
-foreach ($confirmedTypeCounts as $recordsForType) {
-    $firstRecord = $recordsForType->first();
-    $resolvedType = $firstRecord?->resolvedViolationType();
-
-    if (!$resolvedType) {
-        continue;
-    }
-
-    $count = $recordsForType->count();
-    $offenseLevel = match ($count) {
-        1 => '1st Offense',
-        2 => '2nd Offense',
-        3 => '3rd Offense',
-        default => $count . 'th Offense',
-    };
-
-    $configuredSanctions = $resolvedType->disciplinarySanctions ?? collect();
-    $applicableSanction = $configuredSanctions->firstWhere('offense_level', $offenseLevel)
-        ?? $configuredSanctions->sortBy('disciplinary_sanction_id')->first();
-
-    if ($applicableSanction && str_contains(
-        strtolower((string) $applicableSanction->disciplinary_sanction),
-        'warning'
-    )) {
-        foreach ($recordsForType as $warningRecord) {
-            $warningLevelViolationIds[(int) $warningRecord->violation_id] = true;
-
-            $relatedDisciplinaryConsequences[] = [
-                'violation_id' => (int) $warningRecord->violation_id,
-                'violation_type' => $warningRecord->violation_type_display
-                    ?? $resolvedType->violation_type
-                    ?? 'Recorded violation',
-                'category' => $warningRecord->violation_category_display
-                    ?? $resolvedType->violationCategory?->category_name
-                    ?? '—',
-                'violation_date' => $warningRecord->violation_date,
-                'offense_level' => $offenseLevel,
-                'disciplinary_sanction' => (string) $applicableSanction->disciplinary_sanction,
-            ];
-        }
-    }
-}
-
-$relatedDisciplinaryConsequences = collect($relatedDisciplinaryConsequences)
-    ->sortByDesc('violation_date')
-    ->values();
 
         $violationsQuery = Violation::with([
             'violationType.violationCategory',
@@ -229,8 +157,9 @@ $approvedRequests = SanctionRequest::where(
 ->toArray();
 
 // Violation types that already have ANY assigned sanction record (open or
-// completed). These keys prevent duplicate requests, while the violation history
-// remains visible in Summary by Violation.
+// completed). Once a violation type has entered the sanction workflow it
+// belongs in the Sanction Record tab only and must NOT be re-requestable
+// (including after the sanction has been completed).
 $assignedSanctionTypeKeys = StudentSanctionRecord::with('violation')
     ->where('student_number', $user->student_number)
     ->get()
@@ -271,10 +200,10 @@ $candidates = array_filter([
     return false;
 };
 
-// Group administrator-confirmed violations by violation type.
+// Group ONLY administrator-confirmed violations by violation type.
 // The Student Record must never expose a pending/unconfirmed violation.
-// Keep warning-level, assigned, and completed-sanction violation types in the
-// Summary so it represents the student's full confirmed violation history.
+// Warning-only violations, or violation types that already entered the
+// sanction workflow, are removed from the Summary table.
 $groupedViolations = Violation::with([
         'violationType.violationCategory',
         'violationType.disciplinarySanctions',
@@ -298,9 +227,6 @@ return 'unknown:' . $violation->violation_id;    });
 foreach ($groupedViolations as $records) {
 
     // Keep the newest effective incident first so Summary actions point to a concrete record.
-    // Normalize grouped data to a Collection before sorting/filtering because
-    // groupBy() can yield a plain object/array payload here depending on the
-    // underlying model data shape.
     $records = collect($records)->sortByDesc('violation_date')->values();
 
     // All records in this collection are Administrator-confirmed, so the
@@ -372,19 +298,23 @@ foreach ($groupedViolations as $records) {
         $status = 'Sanction';
     }
 
-    // Warning-only violations remain visible in the summary with Warning status,
-    // but the Individual Violations Log replaces the request button with guidance.
+    // Preserve the summary status derived from the configured sanction.
 
-    // Keep every administrator-confirmed violation type in Summary by Violation,
-    // including types with an approved request or an assigned/completed sanction.
-    // The Summary is a history overview; the Sanction Record tab remains the
-    // detailed source for actual assigned sanction records.
+    if (
+        $matchesViolationType($first, $approvedRequests)
+        || $matchesViolationType($first, $assignedSanctionTypeKeys)
+    ) {
+        // A violation type that already entered the sanction workflow (open
+        // OR completed) belongs to the Sanction Record tab only. Completed
+        // sanctions are therefore removed from the Summary table.
+        continue;
+    }
+
+    // At this point the violation is confirmed and has a disciplinary
+    // sanction, so the student may see the Summary row.
     $workflowStatus = $matchesViolationType($first, $activeRequests)
         ? 'Requested'
-        : (($matchesViolationType($first, $approvedRequests)
-            || $matchesViolationType($first, $assignedSanctionTypeKeys))
-            ? 'Assigned'
-            : 'Actionable');
+        : 'Actionable';
 
     $violationSummary[] = [
         // Using ?-> prevents the "reading property on null" error
@@ -463,9 +393,7 @@ return view(
         'sanctionRequestsByType',
         'recordedViolationTypes',
         'recordedViolationCategories',
-        'filters',
-        'warningLevelViolationIds',
-        'relatedDisciplinaryConsequences'
+        'filters'
     )
 );
     }
@@ -532,18 +460,8 @@ $offenseCount = Violation::where('student_number', $user->student_number)
         ], 422);
     }
 
-    $sanctionText = strtolower((string) ($assignedSanction?->disciplinary_sanction ?? ''));
-    if ($sanctionText !== '' && str_contains($sanctionText, 'warning')) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Warning-level violations remain in the violation log and cannot be moved to sanction records.'
-        ], 422);
-    }
-
-    // Allow a student to request sanction review for any configured,
-    // non-warning sanction. The consultation notice remains in the Sanction
-    // Record tab for sanctions that do not require proof of completion; it
-    // must not block creation of the sanction request itself.
+    // Preserve the standard sanction-request workflow for configured
+    // sanctions. The administrator remains responsible for reviewing requests.
 
     $existing = SanctionRequest::where(
         'student_number',

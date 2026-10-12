@@ -1492,8 +1492,8 @@
     // Resolve the request for this violation type.
     $sanctionRequest = $typeId !== ''
         ? (
-            $sanctionRequestsByType->get($typeId)
-            ?? $sanctionRequestsByType->get((int) $typeId)
+            data_get($sanctionRequestsByType, $typeId)
+            ?? data_get($sanctionRequestsByType, (int) $typeId)
         )
         : null;
 
@@ -1568,49 +1568,37 @@
                                     <span class="text-muted small"><i class="bi bi-paperclip me-1"></i>No attachment</span>
                                 @endif
                             </td>
-                            
-<td class="individual-actions-col">
-    @if($isPendingLog)
-        <span class="text-muted small">
-            Available after confirmation
-        </span>
-
-    @elseif($isWarningLevelViolation)
-        <div class="warning-sanction-notice p-3 mb-0 small text-start" role="note">
-            <strong class="d-flex align-items-center gap-2 mb-2">
-                <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
-                Warning-Level Violation
-            </strong>
-
-            <p class="mb-0">
-                A sanction request is not required for this warning-level
-                violation. Please review the corresponding disciplinary
-                sanction in the Summary by Violation table and comply with
-                the details provided.
-            </p>
-        </div>
-
-    @elseif($hasAssignedSanction)
-        <span class="sanction-state sanction-state-assigned">
-            <i class="bi bi-shield-check"></i>
-            Sanction Assigned
-        </span>
-
-    @else
-        <button
-            type="button"
-            class="btn request-sanction-btn"
-            data-violation-type-id="{{ $typeId }}">
-            <i class="bi bi-send"></i>
-            Request Sanction
-        </button>
-
-        <small class="d-block text-muted mt-2">
-            Start a sanction request
-        </small>
-    @endif
-</td>
-
+                            <td class="individual-actions-col">
+                                @if($isPendingLog)
+                                    <span class="text-muted small">Available after confirmation</span>
+                                @elseif($isWarningLevelViolation)
+                                    <div class="warning-sanction-notice p-3 mb-0 small text-start" role="note">
+                                        <strong class="d-flex align-items-center gap-2 mb-2">
+                                            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                                            Warning-Level Violation
+                                        </strong>
+                                        <p class="mb-0">A sanction request is not required for this warning-level violation. Please review the corresponding disciplinary sanction in the Summary by Violation table and comply with the details provided.</p>
+                                    </div>
+                                @elseif($isActiveRequest)
+                                    <span class="sanction-state sanction-state-pending"><i class="bi bi-hourglass-split"></i>Request Pending</span>
+                                    <small class="d-block text-muted mt-2">Submitted for admin review</small>
+                                @elseif($hasAssignedSanction)
+                                    <span class="sanction-state sanction-state-assigned"><i class="bi bi-shield-check"></i>Sanction Assigned</span>
+                                @elseif($requestStatus === 'declined' && !$isActiveRequest)
+                                    <span class="sanction-state sanction-state-declined"><i class="bi bi-x-circle"></i>Request Declined</span>
+                                    <button type="button" class="btn request-sanction-btn mt-2" data-violation-type-id="{{ $typeId }}">
+                                        <i class="bi bi-arrow-repeat"></i> Request Again
+                                    </button>
+                                @else
+                                    <button type="button" class="btn request-sanction-btn"
+                                            data-violation-type-id="{{ $typeId }}">
+                                        <i class="bi bi-send"></i> Request Sanction
+                                    </button>
+                                    <small class="d-block text-muted mt-2">
+                                        Start a sanction request
+                                    </small>
+                                @endif 
+                            </td>
                         </tr>
                     @empty
                         <tr>
