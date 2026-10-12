@@ -1193,13 +1193,6 @@
                             <td class="individual-actions-col">
                                 @if($isPendingLog)
                                     <span class="text-muted small">Available after confirmation</span>
-                                @elseif(isset($warningLevelViolationIds[(int) $violation->violation_id]))
-                                    <div class="alert alert-warning py-2 px-3 mb-0 small text-start" role="note">
-                                        <strong class="d-block mb-1">
-                                            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>Warning-Level Violation
-                                        </strong>
-                                        A sanction request is not required for this violation. Please check the Sanction Record tab for the related guidance note.
-                                    </div>
                                 @elseif($requestStatus === 'pending' && (bool) ($sanctionRequest->is_active ?? false))
                                     <span class="sanction-state sanction-state-pending"><i class="bi bi-hourglass-split"></i>Request Pending</span>
                                     <small class="d-block text-muted mt-2">Submitted for admin review</small>

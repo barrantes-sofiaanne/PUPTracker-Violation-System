@@ -95,53 +95,6 @@ $filters = request()->validate([
     'date_to' => 'nullable|date|after_or_equal:date_from',
 ]);
 
-// Identify confirmed individual violations whose applicable configured
-// sanction is a warning. These records stay in the Individual Violations Log
-// and should not offer a Request Sanction action.
-$confirmedViolationsForSanctionCheck = Violation::with([
-    'violationType.disciplinarySanctions',
-])
-    ->where('student_number', $user->student_number)
-    ->effective()
-    ->get();
-
-$confirmedTypeCounts = $confirmedViolationsForSanctionCheck
-    ->groupBy(function ($record) {
-        $resolvedType = $record->resolvedViolationType();
-        return (string) ($resolvedType?->violation_type_id ?? 'unknown:' . $record->violation_id);
-    });
-
-$warningLevelViolationIds = [];
-foreach ($confirmedTypeCounts as $recordsForType) {
-    $firstRecord = $recordsForType->first();
-    $resolvedType = $firstRecord?->resolvedViolationType();
-
-    if (!$resolvedType) {
-        continue;
-    }
-
-    $count = $recordsForType->count();
-    $offenseLevel = match ($count) {
-        1 => '1st Offense',
-        2 => '2nd Offense',
-        3 => '3rd Offense',
-        default => $count . 'th Offense',
-    };
-
-    $configuredSanctions = $resolvedType->disciplinarySanctions ?? collect();
-    $applicableSanction = $configuredSanctions->firstWhere('offense_level', $offenseLevel)
-        ?? $configuredSanctions->sortBy('disciplinary_sanction_id')->first();
-
-    if ($applicableSanction && str_contains(
-        strtolower((string) $applicableSanction->disciplinary_sanction),
-        'warning'
-    )) {
-        foreach ($recordsForType as $warningRecord) {
-            $warningLevelViolationIds[(int) $warningRecord->violation_id] = true;
-        }
-    }
-}
-
         $violationsQuery = Violation::with([
             'violationType.violationCategory',
             'violationType.disciplinarySanctions',
@@ -342,8 +295,7 @@ foreach ($groupedViolations as $records) {
         $status = 'Sanction';
     }
 
-    // Warning-only violations remain visible in the summary with Warning status,
-    // but the Individual Violations Log replaces the request button with guidance.
+    // Preserve the summary status derived from the configured sanction.
 
     if (
         $matchesViolationType($first, $approvedRequests)
@@ -438,8 +390,7 @@ return view(
         'sanctionRequestsByType',
         'recordedViolationTypes',
         'recordedViolationCategories',
-        'filters',
-        'warningLevelViolationIds'
+        'filters'
     )
 );
     }
@@ -506,18 +457,8 @@ $offenseCount = Violation::where('student_number', $user->student_number)
         ], 422);
     }
 
-    $sanctionText = strtolower((string) ($assignedSanction?->disciplinary_sanction ?? ''));
-    if ($sanctionText !== '' && str_contains($sanctionText, 'warning')) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Warning-level violations remain in the violation log and cannot be moved to sanction records.'
-        ], 422);
-    }
-
-    // Allow a student to request sanction review for any configured,
-    // non-warning sanction. The consultation notice remains in the Sanction
-    // Record tab for sanctions that do not require proof of completion; it
-    // must not block creation of the sanction request itself.
+    // Preserve the standard sanction-request workflow for configured
+    // sanctions. The administrator remains responsible for reviewing requests.
 
     $existing = SanctionRequest::where(
         'student_number',
@@ -992,7 +933,7 @@ public function requestCorrection(
      * The correction queue is reviewed by the Administrator.
      */
     try {
-        app(AdminNotificationService::class)->create(
+        app(\App\Services\AdminNotificationService::class)->create(
             type: 'violation_correction_request',
             title: 'Violation Correction Request',
             message:
@@ -1157,8 +1098,8 @@ public function requestCorrection(
 
             // If the record was never assigned (still Pending), submitting a
             // proof implies it is now active/in progress.
-            if (strcasecmp((string) $record->status, StudentSanctionRecord::STATUS_PENDING) === 0) {
-                $record->status = StudentSanctionRecord::STATUS_IN_PROGRESS;
+            if (strcasecmp((string) $record->status, \App\Models\StudentSanctionRecord::STATUS_PENDING) === 0) {
+                $record->status = \App\Models\StudentSanctionRecord::STATUS_IN_PROGRESS;
             }
 
             // Steps 4-6 of the required flow run inside ONE transaction so the
