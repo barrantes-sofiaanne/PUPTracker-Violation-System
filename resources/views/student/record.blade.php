@@ -144,6 +144,9 @@
 
 /* Filters */
 
+
+/* Filters */
+
 .individual-log-filters-wrap {
     padding: 1.1rem 1.25rem !important;
     border-bottom: 1px solid #eee2d5;
@@ -153,7 +156,7 @@
 .individual-log-filters {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.85rem;
+    gap: 0.85rem 1rem;
     align-items: end;
 }
 
@@ -181,40 +184,12 @@
     font-size: 0.88rem;
 }
 
-.individual-filter-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    grid-column: 1 / 3;
-    grid-row: 2;
-}
-
-.individual-filter-apply {
-    color: #fff;
-    background: #800909;
-    border: 1px solid #800909;
-    border-radius: 0.65rem;
-    font-weight: 700;
-}
-
-.individual-filter-apply:hover {
-    color: #fff;
-    background: #650606;
-}
-
-.individual-filter-clear {
-    border: 1px solid #d9c8b8;
-    color: #5d1515;
-    border-radius: 0.65rem;
-    font-weight: 650;
-}
-
 .individual-status-filter-row {
     display: grid;
-    grid-template-columns: max-content minmax(180px, 260px);
+    grid-template-columns: max-content minmax(180px, 260px) minmax(0, 1fr);
     align-items: center;
     gap: 0.55rem 0.75rem;
-    grid-column: 3 / 5;
+    grid-column: 1 / 4;
     grid-row: 2;
     min-width: 0;
 }
@@ -225,31 +200,63 @@
 }
 
 .individual-status-filter-row .form-select {
-    width: 100%;
     max-width: 260px;
 }
 
 .individual-status-filter-row #individualFilterCount {
-    grid-column: 2;
+    grid-column: 3;
     justify-self: end;
     max-width: 100%;
+    color: #716663;
     white-space: normal;
     overflow-wrap: anywhere;
     text-align: right;
     line-height: 1.35;
+    font-size: 0.82rem;
 }
 
-@media (max-width: 767.98px) {
-    .individual-filter-actions {
-        grid-column: 1 / -1;
-        grid-row: auto;
+.individual-filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    grid-column: 4 / 5;
+    grid-row: 2;
+}
+
+.individual-filter-clear {
+    min-width: 110px;
+    border: 1px solid #d9c8b8;
+    color: #5d1515;
+    background: #fffdf9;
+    border-radius: 0.65rem;
+    font-weight: 650;
+    padding: 0.65rem 1.25rem;
+}
+
+.individual-filter-clear:hover {
+    border-color: #800909;
+    color: #800909;
+    background: #fff8f3;
+}
+
+@media (max-width: 991.98px) {
+    .individual-log-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .individual-status-filter-row {
-        grid-column: 1 / -1;
-        grid-row: auto;
+        grid-column: 1 / 2;
+        grid-row: 3;
         grid-template-columns: minmax(0, 1fr);
         gap: 0.4rem;
+    }
+
+    .individual-status-filter-row label {
+        margin: 0;
+    }
+
+    .individual-status-filter-row .form-select {
+        max-width: none;
     }
 
     .individual-status-filter-row #individualFilterCount {
@@ -258,8 +265,35 @@
         text-align: left;
     }
 
-    .individual-status-filter-row .form-select {
-        max-width: none;
+    .individual-filter-actions {
+        grid-column: 2 / 3;
+        grid-row: 3;
+        align-self: end;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .individual-log-filters-wrap {
+        padding: 1rem !important;
+    }
+
+    .individual-log-filters {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.8rem;
+    }
+
+    .individual-status-filter-row,
+    .individual-filter-actions {
+        grid-column: 1 / -1;
+        grid-row: auto;
+    }
+
+    .individual-filter-actions {
+        justify-content: flex-start;
+    }
+
+    .individual-filter-clear {
+        width: 100%;
     }
 }
 
@@ -1253,23 +1287,47 @@
                 <label for="filterDateTo">To Date</label>
                 <input class="form-control" type="date" id="filterDateTo" name="date_to" value="{{ $filters['date_to'] ?? '' }}" min="{{ $filters['date_from'] ?? '' }}">
             </div>
-            <div class="individual-filter-actions">
-                <button class="btn individual-filter-apply" type="submit"><i class="bi bi-funnel me-1"></i>Apply Filters</button>
-                <a class="btn individual-filter-clear" href="{{ route('student.record') }}">Clear</a>
-            </div>
-            <div class="individual-status-filter-row">
-                <label for="filterSanctionStatus">Sanction Status</label>
-                <select class="form-select" id="filterSanctionStatus">
-                    <option value="all">All Statuses</option>
-                    <option value="needs">Needs Request</option>
-                    <option value="no-request">No Request Required</option>
-                    <option value="pending">Request Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="declined">Declined</option>
-                    <option value="assigned">Sanction Assigned</option>
-                </select>
-                <span class="small text-muted" id="individualFilterCount" aria-live="polite"></span>
-            </div>
+
+<div class="individual-filter-actions">
+    <a class="btn individual-filter-clear"
+       href="{{ route('student.record') }}">Clear</a>
+</div>
+
+
+<div class="individual-status-filter-row">
+    <label for="filterSanctionStatus">Sanction Status</label>
+
+    <select class="form-select"
+            id="filterSanctionStatus"
+            name="sanction_status">
+        <option value="all" @selected(request('sanction_status', 'all') === 'all')>
+            All Statuses
+        </option>
+        <option value="needs" @selected(request('sanction_status') === 'needs')>
+            Needs Request
+        </option>
+        <option value="no-request" @selected(request('sanction_status') === 'no-request')>
+            No Request Required
+        </option>
+        <option value="pending" @selected(request('sanction_status') === 'pending')>
+            Request Pending
+        </option>
+        <option value="approved" @selected(request('sanction_status') === 'approved')>
+            Approved
+        </option>
+        <option value="declined" @selected(request('sanction_status') === 'declined')>
+            Declined
+        </option>
+        <option value="assigned" @selected(request('sanction_status') === 'assigned')>
+            Sanction Assigned
+        </option>
+    </select>
+
+    <span class="small text-muted"
+          id="individualFilterCount"
+          aria-live="polite"></span>
+</div>
+
         </form>
     </div>
 
