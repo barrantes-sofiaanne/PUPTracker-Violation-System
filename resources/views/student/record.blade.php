@@ -211,9 +211,9 @@
 
 .individual-status-filter-row {
     display: grid;
-    grid-template-columns: max-content minmax(0, 260px) minmax(0, 1fr);
+    grid-template-columns: max-content minmax(180px, 260px);
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.55rem 0.75rem;
     grid-column: 3 / 5;
     grid-row: 2;
     min-width: 0;
@@ -229,6 +229,16 @@
     max-width: 260px;
 }
 
+.individual-status-filter-row #individualFilterCount {
+    grid-column: 2;
+    justify-self: end;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: right;
+    line-height: 1.35;
+}
+
 @media (max-width: 767.98px) {
     .individual-filter-actions {
         grid-column: 1 / -1;
@@ -238,11 +248,14 @@
     .individual-status-filter-row {
         grid-column: 1 / -1;
         grid-row: auto;
-        grid-template-columns: max-content minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.4rem;
     }
 
     .individual-status-filter-row #individualFilterCount {
-        grid-column: 1 / -1;
+        grid-column: 1;
+        justify-self: start;
+        text-align: left;
     }
 
     .individual-status-filter-row .form-select {
@@ -1397,16 +1410,6 @@
     id="sanctionRecord"
     role="tabpanel"
     aria-labelledby="sanction-tab">
-
-    @if($relatedDisciplinaryConsequences->isNotEmpty())
-        <div class="consultation-notice warning-request-guidance mb-4" role="note">
-            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
-            <div>
-                <span class="consultation-notice-title">No sanction request required</span>
-                <p class="consultation-notice-text">No sanction request is required for these warning-level violations. Please review the applicable disciplinary consequence associated with each violation and comply with the details provided.</p>
-            </div>
-        </div>
-    @endif
 
     <div class="card shadow-sm border-0">
 
