@@ -21,63 +21,6 @@
 <link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
 
 <style>
-
-    
-/* Sanction request status indicators */
-.individual-violations-table .sanction-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.45rem;
-    width: 100%;
-    padding: 0.7rem 0.55rem;
-    border: 1px solid transparent;
-    border-radius: 0.65rem;
-    font-size: 0.82rem;
-    font-weight: 700;
-    line-height: 1.3;
-    text-align: center;
-}
-
-.individual-violations-table .sanction-state-pending {
-    color: #805600;
-    background: #fff5d9;
-    border-color: #efdfa9;
-}
-
-.individual-violations-table .sanction-state-approved {
-    color: #126b4a;
-    background: #e6f6ed;
-    border-color: #c2e7d1;
-}
-
-.individual-violations-table .sanction-state-declined {
-    color: #a32121;
-    background: #fff0f0;
-    border-color: #efcccc;
-}
-
-.individual-violations-table .sanction-state-assigned {
-    color: #555d6b;
-    background: #edf0f4;
-    border-color: #d9dfe7;
-}
-
-.individual-violations-table .sanction-state + div {
-    width: 100%;
-}
-
-.individual-violations-table .individual-actions-col .request-sanction-btn {
-    font-weight: 600;
-}
-
-@media (max-width: 767.98px) {
-    .individual-violations-table .sanction-state {
-        font-size: 0.8rem;
-        padding: 0.65rem 0.45rem;
-    }
-}
-
 /* ==========================================================================
    Submit Proof of Completion modal (scoped to this page)
    ========================================================================== */
@@ -834,88 +777,6 @@
     }
 }
 
-
-/* Individual Violations Log filters */
-.individual-log-filters-wrap {
-    padding: 1.1rem 1.25rem !important;
-    border-bottom: 1px solid #eee2d5;
-    background: #fffdf9;
-}
-
-.individual-log-filters {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.85rem;
-    align-items: end;
-}
-
-.individual-filter-field {
-    min-width: 0;
-}
-
-.individual-filter-field label {
-    display: block;
-    margin-bottom: 0.4rem;
-    color: #5d1515;
-    font-size: 0.78rem;
-    font-weight: 750;
-}
-
-.individual-filter-field .form-select,
-.individual-filter-field .form-control {
-    min-height: 42px;
-    border-color: #e5d7c8;
-    border-radius: 0.65rem;
-    font-size: 0.88rem;
-}
-
-.individual-filter-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    grid-column: 1 / -1;
-}
-
-.individual-filter-apply {
-    color: #fff;
-    background: #800909;
-    border: 1px solid #800909;
-    border-radius: 0.65rem;
-    font-weight: 700;
-}
-
-.individual-filter-apply:hover,
-.individual-filter-apply:focus {
-    color: #fff;
-    background: #650707;
-    border-color: #650707;
-}
-
-.individual-filter-clear {
-    border: 1px solid #d9c8b8;
-    color: #5d1515;
-    border-radius: 0.65rem;
-    font-weight: 650;
-}
-
-.individual-filter-clear:hover,
-.individual-filter-clear:focus {
-    color: #5d1515;
-    background: #f7eee6;
-}
-
-@media (max-width: 767.98px) {
-    .individual-log-filters {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 420px) {
-    .individual-log-filters {
-        grid-template-columns: 1fr;
-    }
-}
-
 </style>
 @endpush
 
@@ -1176,117 +1037,6 @@
 
     </div>
 
-    {{-- Filters for the Individual Violations Log --}}
-    <div class="individual-log-filters-wrap">
-        <form method="GET"
-              action="{{ route('student.record') }}"
-              class="individual-log-filters"
-              id="individualLogFilters">
-
-            <div class="individual-filter-field">
-                <label for="filterCategory">Category</label>
-                <select class="form-select" id="filterCategory" name="category_id">
-                    <option value="">All Categories</option>
-                    @foreach(($recordedViolationCategories ?? $violationCategories ?? collect()) as $category)
-                        <option value="{{ $category->violation_category_id }}"
-                            @selected((string) request('category_id', $filters['category_id'] ?? '') === (string) $category->violation_category_id)>
-                            {{ $category->category_name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="individual-filter-field">
-                <label for="filterViolationType">Violation Type</label>
-                <select class="form-select"
-                        id="filterViolationType"
-                        name="violation_type_id"
-                        data-selected="{{ request('violation_type_id', $filters['violation_type_id'] ?? '') }}">
-                    <option value="">All Violation Types</option>
-                    @foreach(($recordedViolationTypes ?? $violationTypes ?? collect()) as $type)
-                        <option value="{{ $type->violation_type_id }}"
-                                data-category-id="{{ $type->violation_category_id ?? optional($type->violationCategory)->violation_category_id }}"
-                            @selected((string) request('violation_type_id', $filters['violation_type_id'] ?? '') === (string) $type->violation_type_id)>
-                            {{ $type->violation_type }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            
-            <div class="individual-filter-field">
-    <label for="filterSanctionStatus">
-        Sanction Request Status
-    </label>
-
-    <select
-        class="form-select"
-        id="filterSanctionStatus"
-        name="sanction_status"
-    >
-        <option value="">
-            All Request Statuses
-        </option>
-
-        <option
-            value="request_sanction"
-            @selected(request('sanction_status', $filters['sanction_status'] ?? '') === 'request_sanction')
-        >
-            Request Sanction
-        </option>
-
-        <option
-            value="request_pending"
-            @selected(request('sanction_status', $filters['sanction_status'] ?? '') === 'request_pending')
-        >
-            Request Pending
-        </option>
-
-        <option
-            value="request_declined"
-            @selected(request('sanction_status', $filters['sanction_status'] ?? '') === 'request_declined')
-        >
-            Request Declined
-        </option>
-
-        <option
-            value="sanction_assigned"
-            @selected(request('sanction_status', $filters['sanction_status'] ?? '') === 'sanction_assigned')
-        >
-            Sanction Assigned
-        </option>
-    </select>
-</div>
-            <div class="individual-filter-field">
-                <label for="filterDateFrom">From Date</label>
-                <input type="date"
-                       class="form-control"
-                       id="filterDateFrom"
-                       name="date_from"
-                       value="{{ request('date_from', $filters['date_from'] ?? '') }}"
-                       max="{{ request('date_to', $filters['date_to'] ?? '') }}">
-            </div>
-
-            <div class="individual-filter-field">
-                <label for="filterDateTo">To Date</label>
-                <input type="date"
-                       class="form-control"
-                       id="filterDateTo"
-                       name="date_to"
-                       value="{{ request('date_to', $filters['date_to'] ?? '') }}"
-                       min="{{ request('date_from', $filters['date_from'] ?? '') }}">
-            </div>
-
-            <div class="individual-filter-actions">
-                <button class="btn individual-filter-apply" type="submit">
-                    <i class="bi bi-funnel me-1" aria-hidden="true"></i>Apply Filters
-                </button>
-                <a class="btn individual-filter-clear" href="{{ route('student.record') }}">
-                    Clear
-                </a>
-            </div>
-        </form>
-    </div>
-
     <div class="card-body p-0">
 
         <div class="table-responsive individual-table-responsive">
@@ -1343,36 +1093,8 @@
                 @forelse($violations as $violation)
 
 @php
-
-    $isPendingLog = strtolower(
-        (string) $violation->status
-    ) === 'pending';
-
-    $resolvedViolationType = $violation->resolvedViolationType();
-
-    $typeId = (string) (
-        $resolvedViolationType?->violation_type_id
-        ?? $violation->violation_type_id
-        ?? ''
-    );
-
-    $sanctionRequest = $sanctionRequestsByType->get($typeId);
-
-    $requestStatus = strtolower(trim(
-        (string) ($sanctionRequest?->status ?? '')
-    ));
-
-    $isActiveSanctionRequest = (bool) (
-        $sanctionRequest?->is_active ?? false
-    );
-
-    $hasAssignedSanction =
-        in_array($typeId, $assignedSanctionTypeKeys ?? [], true)
-        || isset(
-            $assignedSanctionViolationIds[
-                (int) $violation->violation_id
-            ]
-        );
+    $isPendingLog =
+        strtolower((string) $violation->status) === 'pending';
 @endphp
 
                     <tr>
@@ -1448,60 +1170,30 @@
 
                         </td>
 
-                        
-
-<td class="individual-actions-col">
-    @if($isPendingLog)
-
-        <span class="text-muted small">
-            Available after confirmation
-        </span>
-
-    @elseif($hasAssignedSanction)
-
-        <span class="sanction-state sanction-state-assigned">
-            <i class="bi bi-shield-check" aria-hidden="true"></i>
-            Sanction Assigned
-        </span>
-
-    @elseif($requestStatus === 'pending' && $isActiveSanctionRequest)
-
-        <span class="sanction-state sanction-state-pending">
-            <i class="bi bi-hourglass-split" aria-hidden="true"></i>
-            Request Pending
-        </span>
-
-    @elseif($requestStatus === 'declined')
-
-        <span class="sanction-state sanction-state-declined">
-            <i class="bi bi-x-circle" aria-hidden="true"></i>
-            Request Declined
-        </span>
-
-        <div class="mt-2">
-            <button
-                type="button"
-                class="btn portal-btn btn-sm w-100 request-sanction-btn"
-                data-violation-type-id="{{ $typeId }}">
-                <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>
-                Request Again
-            </button>
-        </div>
-
-    @else
-
-        <button
-            type="button"
-            class="btn portal-btn btn-sm w-100 request-sanction-btn"
-            data-violation-type-id="{{ $typeId }}">
-            <i class="bi bi-send me-1" aria-hidden="true"></i>
-            Request Sanction
-        </button>
-
-    @endif
-</td>
-
-
+                        <td class="individual-actions-col">
+                            @if(!$isPendingLog)
+                                @if(isset($warningLevelViolationIds[$violation->violation_id]))
+                                    <div class="alert alert-warning py-2 px-3 mb-0 small text-start" role="note">
+                                        <strong class="d-block mb-1">
+                                            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>Warning-Level Violation
+                                        </strong>
+                                        A sanction request is not required for this violation. Please check the Sanction Record tab for the related guidance note.
+                                    </div>
+                                @elseif(!isset($assignedSanctionViolationIds[$violation->violation_id]))
+                                    <button type="button"
+                                        class="btn portal-btn btn-sm w-100 request-sanction-btn"
+                                        data-violation-type-id="{{ $violation->violation_type_id }}">
+                                        <i class="bi bi-send me-1"></i>Request Sanction
+                                    </button>
+                                @else
+                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" disabled>
+                                        <i class="bi bi-check-circle me-1"></i>Sanction Assigned
+                                    </button>
+                                @endif
+                            @else
+                                <span class="text-muted small">Available after confirmation</span>
+                            @endif
+                        </td>
                     </tr>
 
                 @empty
@@ -1777,8 +1469,7 @@
                                             data-office="{{ $record->designated_office ?? '' }}"
                                             data-starting-date="{{ optional($record->starting_date)->format('M d, Y') ?? '' }}"
                                             data-required-hours="{{ $record->required_hours ?? '' }}"
-data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
-                                            <i class="bi bi-upload me-1"></i>Submit Proof
+data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}"                                            <i class="bi bi-upload me-1"></i>Submit Proof
                                         </button>
                                     @else
                                         {{-- Every other sanction is settled through a personal

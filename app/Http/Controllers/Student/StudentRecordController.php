@@ -21,7 +21,7 @@ use App\Models\ViolationCorrectionRequest;
 use App\Models\ViolationType;
 class StudentRecordController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
         // Flip this student's In Progress/Pending sanctions past deadline to
         // Overdue (one-time notifications) before rendering.
@@ -56,236 +56,70 @@ $assignedSanctionViolationIds = StudentSanctionRecord::where(
     'student_number',
     $user->student_number
 )
-
-
     ->whereNotNull('violation_id')
     ->pluck('violation_id')
     ->mapWithKeys(fn ($id) => [(int) $id => true])
     ->all();
 
-/*
-|--------------------------------------------------------------------------
-| Latest Sanction Request Statuses
-|--------------------------------------------------------------------------
-| Requests are tracked by violation type in the existing workflow.
-| The latest request determines the status shown in the student log.
-*/
-$sanctionRequestsByType = SanctionRequest::where(
-    'student_number',
-    $user->student_number
-)
-    ->orderByDesc('request_date')
-    ->get()
-    ->unique('violation_type_id')
-    ->keyBy(
-        fn ($request) => (string) $request->violation_type_id
-    );
-
-
-/*
-|--------------------------------------------------------------------------
-| Individual Violations Log Filters
-|--------------------------------------------------------------------------
-| Filter choices are derived only from this student's confirmed records.
-*/
-
-$studentRecordedViolations = Violation::with([
-    'violationType.violationCategory',
+// Identify confirmed individual violations whose applicable configured
+// sanction is a warning. These records stay in the Individual Violations Log
+// and should not offer a Request Sanction action.
+$confirmedViolationsForSanctionCheck = Violation::with([
+    'violationType.disciplinarySanctions',
 ])
     ->where('student_number', $user->student_number)
-    ->where('status', Violation::STATUS_CONFIRMED)
+    ->effective()
     ->get();
 
-// Build the available violation-type options from the student's records.
-$recordedViolationTypes = $studentRecordedViolations
-    ->map(fn ($violation) => $violation->resolvedViolationType())
-    ->filter()
-    ->unique('violation_type_id')
-    ->sortBy('violation_type')
-    ->values();
+$confirmedTypeCounts = $confirmedViolationsForSanctionCheck
+    ->groupBy(function ($record) {
+        $resolvedType = $record->resolvedViolationType();
+        return (string) ($resolvedType?->violation_type_id ?? 'unknown:' . $record->violation_id);
+    });
 
-// Build category options only from those recorded violation types.
-$recordedViolationCategories = $recordedViolationTypes
-    ->map(fn ($type) => $type->violationCategory)
-    ->filter()
-    ->unique('violation_category_id')
-    ->sortBy('category_name')
-    ->values();
+$warningLevelViolationIds = [];
+foreach ($confirmedTypeCounts as $recordsForType) {
+    $firstRecord = $recordsForType->first();
+    $resolvedType = $firstRecord?->resolvedViolationType();
 
-    // Determine the sanction-request status for each recorded violation type.
-$assignedSanctionTypeIdsForFilter = StudentSanctionRecord::with(
-    'violation.violationType'
-)
-    ->where('student_number', $user->student_number)
-    ->get()
-    ->map(fn ($record) => (string) (
-        $record->violation?->resolvedViolationType()?->violation_type_id
-        ?? ''
-    ))
-    ->filter(fn ($id) => $id !== '')
-    ->unique()
-    ->values()
-    ->all();
+    if (!$resolvedType) {
+        continue;
+    }
 
-$sanctionStatusByTypeId = $recordedViolationTypes->mapWithKeys(
-    function ($type) use (
-        $sanctionRequestsByType,
-        $assignedSanctionTypeIdsForFilter
-    ) {
-        $typeId = (string) $type->violation_type_id;
+    $count = $recordsForType->count();
+    $offenseLevel = match ($count) {
+        1 => '1st Offense',
+        2 => '2nd Offense',
+        3 => '3rd Offense',
+        default => $count . 'th Offense',
+    };
 
-        if (in_array($typeId, $assignedSanctionTypeIdsForFilter, true)) {
-            $status = 'sanction_assigned';
-        } else {
-            $sanctionRequest = $sanctionRequestsByType->get($typeId);
+    $configuredSanctions = $resolvedType->disciplinarySanctions ?? collect();
+    $applicableSanction = $configuredSanctions->firstWhere('offense_level', $offenseLevel)
+        ?? $configuredSanctions->sortBy('disciplinary_sanction_id')->first();
 
-            $requestStatus = strtolower(trim(
-                (string) ($sanctionRequest?->status ?? '')
-            ));
-
-            $isActive = (bool) ($sanctionRequest?->is_active ?? false);
-
-if ($requestStatus === 'pending' && $isActive) {
-    $status = 'request_pending';
-} elseif ($requestStatus === 'declined') {
-    $status = 'request_declined';
-} else {
-    $status = 'request_sanction';
-}
+    if ($applicableSanction && str_contains(
+        strtolower((string) $applicableSanction->disciplinary_sanction),
+        'warning'
+    )) {
+        foreach ($recordsForType as $warningRecord) {
+            $warningLevelViolationIds[(int) $warningRecord->violation_id] = true;
         }
-
-        return [$typeId => $status];
-    }
-);
-
-$filters = $request->validate([
-    'category_id' => ['nullable', 'integer'],
-    'violation_type_id' => ['nullable', 'integer'],
-    'date_from' => ['nullable', 'date'],
-    'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
-    'sanction_status' => [
-    'nullable',
-    'in:request_sanction,request_pending,request_declined,sanction_assigned',
-],
-]);
-
-// Restrict submitted category/type values to options available
-// from this student's own confirmed violation records.
-$recordedCategoryIds = $recordedViolationCategories
-    ->pluck('violation_category_id')
-    ->map(fn ($id) => (string) $id)
-    ->all();
-
-$recordedTypeIds = $recordedViolationTypes
-    ->pluck('violation_type_id')
-    ->map(fn ($id) => (string) $id)
-    ->all();
-
-if (
-    !empty($filters['category_id'])
-    && !in_array((string) $filters['category_id'], $recordedCategoryIds, true)
-) {
-    $filters['category_id'] = null;
-}
-
-if (
-    !empty($filters['violation_type_id'])
-    && !in_array((string) $filters['violation_type_id'], $recordedTypeIds, true)
-) {
-    $filters['violation_type_id'] = null;
-}
-
-// If both filters are selected, the type must belong to that category.
-if (!empty($filters['category_id']) && !empty($filters['violation_type_id'])) {
-    $selectedType = $recordedViolationTypes->first(
-        fn ($type) =>
-            (string) $type->violation_type_id
-            === (string) $filters['violation_type_id']
-    );
-
-    if (
-        !$selectedType
-        || (string) $selectedType->violation_category_id
-            !== (string) $filters['category_id']
-    ) {
-        $filters['violation_type_id'] = null;
     }
 }
 
-/*
-|--------------------------------------------------------------------------
-| Query the Individual Violations Log
-|--------------------------------------------------------------------------
-*/
-
-$violationsQuery = Violation::with([
+       $violations = Violation::with([
     'violationType.violationCategory',
     'violationType.disciplinarySanctions',
     'evidence',
 ])
-    ->where('student_number', $user->student_number)
-    ->where('status', Violation::STATUS_CONFIRMED);
-
-if (!empty($filters['category_id'])) {
-    $violationsQuery->whereHas(
-        'violationType',
-        function ($query) use ($filters) {
-            $query->where(
-                'violation_category_id',
-                $filters['category_id']
-            );
-        }
-    );
-}
-
-if (!empty($filters['violation_type_id'])) {
-    $violationsQuery->where(
-        'violation_type_id',
-        $filters['violation_type_id']
-    );
-}
-
-if (!empty($filters['date_from'])) {
-    $violationsQuery->whereDate(
-        'violation_date',
-        '>=',
-        $filters['date_from']
-    );
-}
-
-if (!empty($filters['date_to'])) {
-    $violationsQuery->whereDate(
-        'violation_date',
-        '<=',
-        $filters['date_to']
-    );
-}
-
-// Apply the sanction status filter BEFORE pagination.
-if (!empty($filters['sanction_status'])) {
-    $matchingTypeIds = $sanctionStatusByTypeId
-        ->filter(
-            fn ($status) => $status === $filters['sanction_status']
-        )
-        ->keys()
-        ->all();
-
-    // If no violation types match, return no records.
-    if (empty($matchingTypeIds)) {
-        $violationsQuery->whereRaw('1 = 0');
-    } else {
-        $violationsQuery->whereIn(
-            'violation_type_id',
-            $matchingTypeIds
-        );
-    }
-}
-
-// Paginate only after ALL filters have been applied.
-$violations = $violationsQuery
-    ->orderByDesc('violation_date')
-    ->paginate(10)
-    ->withQueryString();
+           ->where('student_number', $user->student_number)
+           // Student Record must expose only violations that have been
+           // explicitly confirmed by an Administrator. Pending, denied, and
+           // legacy/unconfirmed records are not visible to the student.
+           ->where('status', Violation::STATUS_CONFIRMED)
+           ->orderByDesc('violation_date')
+           ->paginate(10);
 /*
 |--------------------------------------------------------------------------
 | Summary by Violation
@@ -383,9 +217,8 @@ return 'unknown:' . $violation->violation_id;    });
 
 foreach ($groupedViolations as $records) {
 
-    // groupBy() may yield a plain object/array for a single grouped item, so
-    // normalize each bucket to a Collection before chaining Collection methods.
-    $records = collect($records)->sortByDesc('violation_date')->values();
+    // Keep the newest effective incident first so Summary actions point to a concrete record.
+    $records = $records->sortByDesc('violation_date')->values();
 
     // All records in this collection are Administrator-confirmed, so the
     // offense level is computed only from records the student is allowed to see.
@@ -447,7 +280,7 @@ foreach ($groupedViolations as $records) {
                 ->first();
     }
 
-    $disciplinarySanction = $sanction?->disciplinary_sanction ?? 'N/A';
+    $disciplinarySanction = $sanction->disciplinary_sanction ?? 'N/A';
 
     $status = 'Unknown';
     if (str_contains(strtolower($disciplinarySanction), 'warning')) {
@@ -458,35 +291,25 @@ foreach ($groupedViolations as $records) {
 
     // Warning-only violations have no sanction workflow; keep them out of the
     // Summary table (they are still listed in the Individual Violations Log).
+    if ($status === 'Warning') {
+        continue;
+    }
+
+    if (
+        $matchesViolationType($first, $approvedRequests)
+        || $matchesViolationType($first, $assignedSanctionTypeKeys)
+    ) {
+        // A violation type that already entered the sanction workflow (open
+        // OR completed) belongs to the Sanction Record tab only. Completed
+        // sanctions are therefore removed from the Summary table.
+        continue;
+    }
 
     // At this point the violation is confirmed and has a disciplinary
     // sanction, so the student may see the Summary row.
-$typeId = (string) ($resolvedType?->violation_type_id ?? '');
-
-$sanctionRequest = $sanctionRequestsByType->get($typeId);
-
-$requestStatus = strtolower(trim(
-    (string) ($sanctionRequest?->status ?? '')
-));
-
-$hasAssignedSanction = in_array(
-    $typeId,
-    $assignedSanctionTypeIdsForFilter,
-    true
-);
-
-if ($hasAssignedSanction) {
-    $workflowStatus = 'Sanction Assigned';
-} elseif (
-    $requestStatus === 'pending'
-    && (bool) ($sanctionRequest?->is_active ?? false)
-) {
-    $workflowStatus = 'Request Pending';
-} elseif ($requestStatus === 'declined') {
-    $workflowStatus = 'Request Declined';
-} else {
-    $workflowStatus = 'Request Sanction';
-}
+    $workflowStatus = $matchesViolationType($first, $activeRequests)
+        ? 'Requested'
+        : 'Actionable';
 
     $violationSummary[] = [
         // Using ?-> prevents the "reading property on null" error
@@ -562,10 +385,7 @@ return view(
         'violationTypes',
         'pendingCorrectionRequests',
         'assignedSanctionViolationIds',
-        'sanctionRequestsByType',
-        'recordedViolationTypes',
-        'recordedViolationCategories',
-        'filters'
+        'warningLevelViolationIds'
     )
 );
     }
@@ -1301,25 +1121,16 @@ public function requestCorrection(
                     $proofCode,
                     $sha256
                 ): void {
-
-$record->update([
-    'status' => $record->status,
-
-    // A fresh, unpredictable key for this proof submission.
-    // The database column has a unique constraint.
-    'proof_access_key' => bin2hex(random_bytes(32)),
-
-    'proof_path' => $storedPath,
-    'proof_original_name' => $file->getClientOriginalName(),
-    'proof_submitted_at' => now(),
-    'proof_notes' => $notes,
-
-    // Reset the previous review state for the new submission.
-    'completion_reviewed_by_admin_id' => null,
-    'completion_reviewed_at' => null,
-    'completion_remarks' => null,
-]);
-
+                    $record->update([
+                        'status' => $record->status,
+                        'proof_path' => $storedPath,
+                        'proof_original_name' => $file->getClientOriginalName(),
+                        'proof_submitted_at' => now(),
+                        'proof_notes' => $notes,
+                        'completion_reviewed_by_admin_id' => null,
+                        'completion_reviewed_at' => null,
+                        'completion_remarks' => null,
+                    ]);
 
                     // Preserve per-submission proof history. Each submission is a
                     // new auditable row with its own PROOF code + SHA-256; the
