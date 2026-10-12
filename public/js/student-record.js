@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     const confirmButton = document.getElementById("confirmRequestSanctionBtn");
     const modalElement = document.getElementById("requestSanctionConfirmModal");
+
     const modalInstance =
         modalElement && typeof bootstrap !== "undefined"
             ? bootstrap.Modal.getOrCreateInstance(modalElement)
@@ -138,6 +139,29 @@ document.addEventListener("DOMContentLoaded", function () {
     const filterForm = document.querySelector(
         "#violationRecord .individual-log-filters",
     );
+
+    if (filterForm) {
+        filterForm.addEventListener("submit", function () {
+            sessionStorage.setItem(
+                "studentRecordScrollY",
+                String(window.scrollY),
+            );
+        });
+    }
+
+    // Restore the saved scroll position after the page reloads.
+    const savedScrollY = sessionStorage.getItem("studentRecordScrollY");
+
+    if (savedScrollY !== null) {
+        sessionStorage.removeItem("studentRecordScrollY");
+
+        requestAnimationFrame(function () {
+            window.scrollTo({
+                top: Number(savedScrollY),
+                behavior: "instant",
+            });
+        });
+    }
     const filterCount = document.getElementById("individualFilterCount");
     const tableBody = document.querySelector(
         "#violationRecord .individual-violations-table tbody",
