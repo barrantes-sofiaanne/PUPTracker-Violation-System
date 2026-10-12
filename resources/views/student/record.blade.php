@@ -601,103 +601,49 @@
 }
 
 
-/* Final column sizing correction for the Individual Violations Log */
-.individual-log-card .table-responsive > table,
-.individual-violations-table {
-    width: 1700px !important;
-    min-width: 1700px !important;
-    table-layout: fixed !important;
-}
-
-/* Violation Type */
-.individual-log-card .table-responsive > table th:nth-child(1),
-.individual-log-card .table-responsive > table td:nth-child(1),
-.individual-violations-table th:nth-child(1),
-.individual-violations-table td:nth-child(1) {
-    width: 300px !important;
-}
-
-/* Date Recorded */
-.individual-log-card .table-responsive > table th:nth-child(2),
-.individual-log-card .table-responsive > table td:nth-child(2),
-.individual-violations-table th:nth-child(2),
-.individual-violations-table td:nth-child(2) {
-    width: 180px !important;
-}
-
-/* Category */
-.individual-log-card .table-responsive > table th:nth-child(3),
-.individual-log-card .table-responsive > table td:nth-child(3),
-.individual-violations-table th:nth-child(3),
-.individual-violations-table td:nth-child(3) {
-    width: 280px !important;
-}
-
-/* Record Status */
-.individual-log-card .table-responsive > table th:nth-child(4),
-.individual-log-card .table-responsive > table td:nth-child(4),
-.individual-violations-table th:nth-child(4),
-.individual-violations-table td:nth-child(4) {
-    width: 180px !important;
-}
-
-/* Remarks */
-.individual-log-card .table-responsive > table th:nth-child(5),
-.individual-log-card .table-responsive > table td:nth-child(5),
-.individual-violations-table th:nth-child(5),
-.individual-violations-table td:nth-child(5) {
-    width: 220px !important;
-}
-
-/* Evidence */
+/* Fix excessive wrapping in the Individual Violations Log Evidence column */
 .individual-log-card .table-responsive > table th:nth-child(6),
 .individual-log-card .table-responsive > table td:nth-child(6),
 .individual-violations-table th:nth-child(6),
 .individual-violations-table td:nth-child(6) {
-    width: 240px !important;
+    width: 260px !important;
+    min-width: 260px !important;
 }
 
-/* Sanction Request */
-.individual-log-card .table-responsive > table th:nth-child(7),
-.individual-log-card .table-responsive > table td:nth-child(7),
-.individual-violations-table th:nth-child(7),
-.individual-violations-table td:nth-child(7) {
-    width: 300px !important;
-}
-
-/* Keep text readable without breaking words unnecessarily */
-.individual-log-card .table-responsive > table td,
-.individual-violations-table td {
-    vertical-align: middle !important;
-    line-height: 1.4 !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    hyphens: none !important;
-    padding: 0.8rem 1rem !important;
-}
-
-/* Keep status labels on one line */
-.individual-log-card .table-responsive > table td:nth-child(4) .badge,
-.individual-log-card .table-responsive > table td:nth-child(4) .portal-badge {
+/* Keep attachment links compact and aligned */
+.individual-log-card .table-responsive > table td:nth-child(6) a,
+.individual-violations-table td:nth-child(6) a {
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    white-space: nowrap !important;
-    word-break: keep-all !important;
-    overflow-wrap: normal !important;
-}
-
-/* Keep action labels readable */
-.individual-log-card .table-responsive > table td:nth-child(7) .btn,
-.individual-log-card .table-responsive > table td:nth-child(7) .sanction-state {
-    width: 100%;
-    max-width: 230px;
-    min-height: 44px;
-    padding: 0.65rem 0.8rem !important;
-    line-height: 1.3 !important;
+    align-items: flex-start;
+    gap: 0.4rem;
+    max-width: 100%;
+    line-height: 1.4 !important;
     white-space: normal !important;
     word-break: normal !important;
-    overflow-wrap: break-word !important;
+    overflow-wrap: anywhere !important;
+}
+
+/* Keep attachment icons from consuming text width */
+.individual-log-card .table-responsive > table td:nth-child(6) a i,
+.individual-violations-table td:nth-child(6) a i {
+    flex: 0 0 auto;
+    margin-top: 0.15rem;
+}
+
+/* Keep the empty attachment message compact */
+.individual-log-card .table-responsive > table td:nth-child(6) .text-muted,
+.individual-violations-table td:nth-child(6) .text-muted {
+    display: inline-block;
+    line-height: 1.4 !important;
+    overflow-wrap: normal;
+}
+
+/* Slightly compact row spacing without hiding content */
+.individual-log-card .table-responsive > table tbody td,
+.individual-violations-table tbody td {
+    padding-top: 0.65rem !important;
+    padding-bottom: 0.65rem !important;
+    line-height: 1.35 !important;
 }
 
 
