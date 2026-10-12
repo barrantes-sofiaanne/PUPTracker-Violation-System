@@ -154,16 +154,17 @@ $violationsByOffenseLevel = (clone $baseViolations)
     ])->get();
 
 
-    return view('security.dashboard', compact(
-        'activeStudents',
-        'totalViolations',
-        'recentViolations',
-        'activeOffenders',
-        'violationsByCategory',
-        'violationsByOffenseLevel',
-        'categories',
-        'search'
-    ));
+return view('security.dashboard', compact(
+    'activeStudents',
+    'totalViolations',
+    'recentViolations',
+    'activeOffenders',
+    'violationsByCategory',
+    'categoryTotal',
+    'violationsByOffenseLevel',
+    'categories',
+    'search'
+));
 }
 
 private function applyStudentSearch(
