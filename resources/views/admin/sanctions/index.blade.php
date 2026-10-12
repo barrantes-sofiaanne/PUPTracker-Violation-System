@@ -1046,20 +1046,48 @@
 
             </div>
 
-            <div class="modal-footer admin-modal-footer d-flex justify-content-between">
+<div class="modal-footer admin-modal-footer d-flex flex-column align-items-stretch gap-3">
+<form
+    id="declineSanctionRequestForm"
+    method="POST"
+    class="me-auto"
+>
+    @csrf
 
-                <form id="declineSanctionRequestForm" method="POST">
+    <div class="mb-3">
+        <label
+            for="declineRequestReason"
+            class="form-label fw-semibold"
+        >
+            Reason for Declining
+            <span class="text-danger">*</span>
+        </label>
 
-                    @csrf
+        <textarea
+            id="declineRequestReason"
+            name="decline_reason"
+            class="form-control"
+            rows="3"
+            minlength="5"
+            maxlength="2000"
+            placeholder="Explain why this sanction request is being declined..."
+            required
+        ></textarea>
 
-                    <button type="submit" class="admin-btn admin-btn-danger">Decline</button>
+        <small class="text-muted">
+            This reason will be saved and made available to the student.
+        </small>
+    </div>
 
-                </form>
+    <button type="submit" class="admin-btn admin-btn-danger">
+        <i class="bi bi-x-circle me-1"></i>
+        Decline
+    </button>
+</form>
 
 
 
-                <div class="d-flex gap-2">
-
+<div class="d-flex gap-2 justify-content-end">
                     <button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Close</button>
 
                     <button type="submit" form="approveSanctionRequestForm" class="admin-btn admin-btn-success" id="approveSanctionRequestBtn">Approve & Notify</button>
