@@ -407,7 +407,7 @@ app(\App\Services\StudentNotificationService::class)->create(
             'max:2000',
         ],
     ]);
-
+$reason = trim($validated['decline_reason']);
     if (!$sanctionRequest->is_active) {
         return back()->withErrors([
             'sanction_request' =>

@@ -166,33 +166,31 @@
                         @csrf
 
                         <div class="mb-3">
-                            <label for="decline_reason" class="admin-filter-label">
-                                Reason for Declining
-                                <span class="text-danger">*</span>
-                            </label>
+    <label for="decline_reason" class="form-label">
+        Reason for Declining <span class="text-danger">*</span>
+    </label>
 
-                            <textarea
-                                id="decline_reason"
-                                name="decline_reason"
-                                class="form-control"
-                                rows="4"
-                                minlength="5"
-                                maxlength="2000"
-                                required
-                                placeholder="Explain why this sanction request is being declined."
-                            >{{ old('decline_reason') }}</textarea>
+    <textarea
+        id="decline_reason"
+        name="decline_reason"
+        class="form-control"
+        rows="4"
+        minlength="5"
+        maxlength="2000"
+        required
+        placeholder="Explain why this sanction request is being declined."
+    >{{ old('decline_reason') }}</textarea>
 
-                            @error('decline_reason')
-                                <div class="text-danger small mt-1">
-                                    {{ $message }}
-                                </div>
-                            @enderror
+    @error('decline_reason')
+        <div class="text-danger small mt-1">
+            {{ $message }}
+        </div>
+    @enderror
 
-                            <small class="text-muted">
-                                The student will be able to view this reason and use it
-                                to address the issue before submitting another request.
-                            </small>
-                        </div>
+    <small class="text-muted">
+        This reason will be visible to the student.
+    </small>
+</div>
 
                         <button type="submit" class="admin-btn admin-btn-danger">
                             <i class="bi bi-x-circle me-1"></i>
