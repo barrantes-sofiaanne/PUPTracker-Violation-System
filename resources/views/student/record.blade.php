@@ -1005,6 +1005,132 @@
     .individual-filter-actions,
     .individual-status-filter-row { grid-column: 1 / -1; }
 }
+
+
+/* Student Record: responsive sanction request buttons */
+.individual-violations-table .individual-actions-col .request-sanction-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 190px;
+    min-height: 44px;
+    padding: 0.7rem 0.85rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: break-word;
+    text-align: center;
+}
+
+.individual-violations-table .individual-actions-col
+.request-sanction-btn i {
+    flex: 0 0 auto;
+}
+
+/* Confirmation modal */
+#requestSanctionConfirmModal .modal-dialog {
+    width: calc(100% - 2rem);
+    max-width: 480px;
+    margin: 1rem auto;
+}
+
+#requestSanctionConfirmModal .modal-content {
+    border: 0;
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+#requestSanctionConfirmModal .modal-header {
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+}
+
+#requestSanctionConfirmModal .modal-title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+#requestSanctionConfirmModal .modal-body {
+    overflow-wrap: anywhere;
+}
+
+#requestSanctionConfirmModal .modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+#requestSanctionConfirmModal .modal-footer .btn {
+    min-height: 44px;
+}
+
+/* Mobile phones */
+@media (max-width: 575.98px) {
+    .individual-violations-table .individual-actions-col {
+        padding: 0.75rem !important;
+    }
+
+    .individual-violations-table .individual-actions-col
+    .request-sanction-btn {
+        max-width: 100%;
+        min-height: 46px;
+        padding: 0.7rem 0.6rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    #requestSanctionConfirmModal .modal-dialog {
+        width: auto;
+        max-width: none;
+        margin: 0.5rem;
+    }
+
+    #requestSanctionConfirmModal .modal-content {
+        border-radius: 0.85rem;
+    }
+
+    #requestSanctionConfirmModal .modal-header {
+        padding: 0.85rem 1rem;
+    }
+
+    #requestSanctionConfirmModal .modal-title {
+        font-size: 1.05rem;
+        line-height: 1.35;
+    }
+
+    #requestSanctionConfirmModal .modal-body {
+        padding: 1rem;
+    }
+
+    #requestSanctionConfirmModal .modal-footer {
+        padding: 0.75rem 1rem;
+    }
+
+    #requestSanctionConfirmModal .modal-footer .btn {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+}
+
+/* Extra-small phones */
+@media (max-width: 380px) {
+    #requestSanctionConfirmModal .modal-dialog {
+        margin: 0.25rem;
+    }
+
+    #requestSanctionConfirmModal .modal-header,
+    #requestSanctionConfirmModal .modal-body {
+        padding: 0.75rem;
+    }
+
+    #requestSanctionConfirmModal .modal-footer {
+        padding: 0.75rem;
+    }
+}
+
 </style>
 @endpush
 

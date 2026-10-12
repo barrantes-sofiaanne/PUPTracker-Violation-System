@@ -6,24 +6,36 @@
     also hide a modal nested inside it.
 --}}
 
+
 <style>
+    /* Security: Resubmit Violation modal */
+    #resubmitViolationModal .modal-dialog {
+        width: calc(100% - 2rem);
+        max-width: 900px;
+        margin: 1rem auto;
+    }
+
     #resubmitViolationModal .modal-content {
-        max-height: calc(100vh - 1rem);
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 2rem);
+        max-height: calc(100dvh - 2rem);
+        overflow: hidden;
+        border: 0;
+        border-radius: 12px;
     }
 
-    #resubmitViolationModal .modal-body {
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
+    /* Keep the header visible while the form scrolls */
     #resubmitViolationModal .modal-header {
         position: relative;
-        padding-right: 4rem;
+        flex-shrink: 0;
+        padding: 1rem 4rem 1rem 1.25rem;
         background: #800000 !important;
         color: #fff !important;
     }
 
-    #resubmitViolationModal .modal-header .modal-title {
+    #resubmitViolationModal .modal-header .modal-title,
+    #resubmitViolationModal .modal-header .modal-title i {
         color: #fff !important;
     }
 
@@ -32,30 +44,110 @@
         top: 50%;
         right: 0.75rem;
         transform: translateY(-50%);
-
         width: 44px;
         height: 44px;
-
         margin: 0 !important;
         padding: 0;
-
+        flex-shrink: 0;
         z-index: 10;
     }
 
-    #resubmitViolationModal .modal-footer {
-        flex-shrink: 0;
+    /* Allow the form body to scroll independently */
+    #resubmitViolationModal #resubmitViolationForm {
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
     }
 
-    @media (max-width: 575.98px) {
+    #resubmitViolationModal .modal-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 1.25rem;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #resubmitViolationModal .modal-body .row {
+        --bs-gutter-x: 1rem;
+        --bs-gutter-y: 1rem;
+    }
+
+    #resubmitViolationModal .form-control {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    #resubmitViolationModal .modal-footer {
+        display: flex;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 1rem 1.25rem;
+    }
+
+    /* Tablets and mobile phones */
+    @media (max-width: 767.98px) {
         #resubmitViolationModal .modal-dialog {
+            width: auto;
+            max-width: none;
             margin: 0.5rem;
         }
 
+        #resubmitViolationModal .modal-content {
+            max-height: calc(100vh - 1rem);
+            max-height: calc(100dvh - 1rem);
+            border-radius: 10px;
+        }
+
+        #resubmitViolationModal .modal-header {
+            padding: 0.85rem 3.5rem 0.85rem 1rem;
+        }
+
+        #resubmitViolationModal .modal-title {
+            font-size: 1.1rem;
+            line-height: 1.35;
+        }
+
+        #resubmitViolationModal .modal-body {
+            padding: 1rem;
+        }
+
+        #resubmitViolationModal .modal-body .row {
+            --bs-gutter-x: 0.75rem;
+            --bs-gutter-y: 0.75rem;
+        }
+
+        /* Stack Student, Violation Type and Date fields */
+        #resubmitViolationModal .modal-body .col-md-6 {
+            width: 100%;
+        }
+
+        /* Prevent mobile browser zoom on form focus */
+        #resubmitViolationModal .form-control,
+        #resubmitViolationModal input[type="file"],
+        #resubmitViolationModal textarea {
+            font-size: 16px;
+        }
+
+        #resubmitViolationModal textarea {
+            min-height: 120px;
+        }
+
+        #resubmitViolationModal .alert {
+            overflow-wrap: anywhere;
+        }
+
+        #resubmitViolationModal .form-text {
+            overflow-wrap: anywhere;
+        }
+
         #resubmitViolationModal .modal-footer {
-            padding: 0.75rem;
+            padding: 0.75rem 1rem;
         }
 
         #resubmitViolationModal .modal-footer .btn {
@@ -67,11 +159,31 @@
         }
     }
 
-    #resubmitViolationModal .modal-title,
-#resubmitViolationModal .modal-title i {
-    color: #fff !important;
-}
+    /* Extra-small phones */
+    @media (max-width: 380px) {
+        #resubmitViolationModal .modal-dialog {
+            margin: 0.25rem;
+        }
+
+        #resubmitViolationModal .modal-content {
+            max-height: calc(100vh - 0.5rem);
+            max-height: calc(100dvh - 0.5rem);
+        }
+
+        #resubmitViolationModal .modal-header {
+            padding-left: 0.75rem;
+        }
+
+        #resubmitViolationModal .modal-body {
+            padding: 0.75rem;
+        }
+
+        #resubmitViolationModal .modal-footer {
+            padding: 0.75rem;
+        }
+    }
 </style>
+
 
 <div class="modal fade" id="resubmitViolationModal" tabindex="-1" aria-labelledby="resubmitViolationModalLabel" aria-hidden="true">
 <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
