@@ -1301,16 +1301,25 @@ public function requestCorrection(
                     $proofCode,
                     $sha256
                 ): void {
-                    $record->update([
-                        'status' => $record->status,
-                        'proof_path' => $storedPath,
-                        'proof_original_name' => $file->getClientOriginalName(),
-                        'proof_submitted_at' => now(),
-                        'proof_notes' => $notes,
-                        'completion_reviewed_by_admin_id' => null,
-                        'completion_reviewed_at' => null,
-                        'completion_remarks' => null,
-                    ]);
+
+$record->update([
+    'status' => $record->status,
+
+    // A fresh, unpredictable key for this proof submission.
+    // The database column has a unique constraint.
+    'proof_access_key' => bin2hex(random_bytes(32)),
+
+    'proof_path' => $storedPath,
+    'proof_original_name' => $file->getClientOriginalName(),
+    'proof_submitted_at' => now(),
+    'proof_notes' => $notes,
+
+    // Reset the previous review state for the new submission.
+    'completion_reviewed_by_admin_id' => null,
+    'completion_reviewed_at' => null,
+    'completion_remarks' => null,
+]);
+
 
                     // Preserve per-submission proof history. Each submission is a
                     // new auditable row with its own PROOF code + SHA-256; the
