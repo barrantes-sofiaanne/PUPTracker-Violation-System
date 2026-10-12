@@ -145,15 +145,13 @@ $sanctionStatusByTypeId = $recordedViolationTypes->mapWithKeys(
 
             $isActive = (bool) ($sanctionRequest?->is_active ?? false);
 
-            if ($requestStatus === 'pending' && $isActive) {
-                $status = 'request_pending';
-            } elseif ($requestStatus === 'approved') {
-                $status = 'request_approved';
-            } elseif ($requestStatus === 'declined') {
-                $status = 'request_declined';
-            } else {
-                $status = 'request_sanction';
-            }
+if ($requestStatus === 'pending' && $isActive) {
+    $status = 'request_pending';
+} elseif ($requestStatus === 'declined') {
+    $status = 'request_declined';
+} else {
+    $status = 'request_sanction';
+}
         }
 
         return [$typeId => $status];
@@ -167,7 +165,7 @@ $filters = $request->validate([
     'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
     'sanction_status' => [
     'nullable',
-    'in:request_sanction,request_pending,request_approved,request_declined,sanction_assigned',
+    'in:request_sanction,request_pending,request_declined,sanction_assigned',
 ],
 ]);
 
@@ -449,7 +447,7 @@ foreach ($groupedViolations as $records) {
                 ->first();
     }
 
-    $disciplinarySanction = $sanction->disciplinary_sanction ?? 'N/A';
+    $disciplinarySanction = $sanction?->disciplinary_sanction ?? 'N/A';
 
     $status = 'Unknown';
     if (str_contains(strtolower($disciplinarySanction), 'warning')) {
@@ -460,25 +458,35 @@ foreach ($groupedViolations as $records) {
 
     // Warning-only violations have no sanction workflow; keep them out of the
     // Summary table (they are still listed in the Individual Violations Log).
-    if ($status === 'Warning') {
-        continue;
-    }
-
-    if (
-        $matchesViolationType($first, $approvedRequests)
-        || $matchesViolationType($first, $assignedSanctionTypeKeys)
-    ) {
-        // A violation type that already entered the sanction workflow (open
-        // OR completed) belongs to the Sanction Record tab only. Completed
-        // sanctions are therefore removed from the Summary table.
-        continue;
-    }
 
     // At this point the violation is confirmed and has a disciplinary
     // sanction, so the student may see the Summary row.
-    $workflowStatus = $matchesViolationType($first, $activeRequests)
-        ? 'Requested'
-        : 'Actionable';
+$typeId = (string) ($resolvedType?->violation_type_id ?? '');
+
+$sanctionRequest = $sanctionRequestsByType->get($typeId);
+
+$requestStatus = strtolower(trim(
+    (string) ($sanctionRequest?->status ?? '')
+));
+
+$hasAssignedSanction = in_array(
+    $typeId,
+    $assignedSanctionTypeIdsForFilter,
+    true
+);
+
+if ($hasAssignedSanction) {
+    $workflowStatus = 'Sanction Assigned';
+} elseif (
+    $requestStatus === 'pending'
+    && (bool) ($sanctionRequest?->is_active ?? false)
+) {
+    $workflowStatus = 'Request Pending';
+} elseif ($requestStatus === 'declined') {
+    $workflowStatus = 'Request Declined';
+} else {
+    $workflowStatus = 'Request Sanction';
+}
 
     $violationSummary[] = [
         // Using ?-> prevents the "reading property on null" error

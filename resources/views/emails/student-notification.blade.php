@@ -63,10 +63,6 @@
             your assigned sanction.
         </p>
 
-        <p style="font-size:16px; line-height:1.7; color:#555555;">
-            You are required to visit the Office of Student Services
-            for personal intervention.
-        </p>
     @endif
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
@@ -102,6 +98,22 @@
     <p style="font-size:15px; line-height:1.6; color:#555555;">
         {{ $notificationMessage }}
     </p>
+@endif
+
+@if (!empty($actionUrl))
+    <div style="margin-top:28px; margin-bottom:28px;">
+        <a href="{{ $actionUrl }}"
+           style="display:inline-block;
+                  padding:14px 28px;
+                  background-color:#800000;
+                  color:#ffffff;
+                  text-decoration:none;
+                  border-radius:6px;
+                  font-size:16px;
+                  font-weight:bold;">
+            {{ $actionText ?? 'View Student Record' }}
+        </a>
+    </div>
 @endif
 
 

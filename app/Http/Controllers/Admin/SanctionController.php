@@ -297,7 +297,7 @@ if (! $student->isActiveAccount()) {
                 $pendingRecord->update([
                     'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
                     'assigned_by_admin_id' => $adminId,
-                    'date_assigned' => $scheduledDate,
+                    'date_assigned' => now(),
                     'deadline_date' => $deadlineDate,
                     // Service assignment (null for non-service sanctions).
                     'designated_office' => $designatedOffice,
@@ -312,7 +312,7 @@ if (! $student->isActiveAccount()) {
                     'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
                     'assigned_by_admin_id' => $adminId,
                     'status' => StudentSanctionRecord::STATUS_IN_PROGRESS,
-                    'date_assigned' => $scheduledDate,
+                    'date_assigned' => now(),
                     'deadline_date' => $deadlineDate,
                     // Service assignment (null for non-service sanctions).
                     'designated_office' => $designatedOffice,

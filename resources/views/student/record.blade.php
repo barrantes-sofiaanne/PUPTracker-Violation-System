@@ -1242,13 +1242,6 @@
         </option>
 
         <option
-            value="request_approved"
-            @selected(request('sanction_status', $filters['sanction_status'] ?? '') === 'request_approved')
-        >
-            Request Approved
-        </option>
-
-        <option
             value="request_declined"
             @selected(request('sanction_status', $filters['sanction_status'] ?? '') === 'request_declined')
         >
@@ -1456,6 +1449,7 @@
                         </td>
 
                         
+
 <td class="individual-actions-col">
     @if($isPendingLog)
 
@@ -1475,13 +1469,6 @@
         <span class="sanction-state sanction-state-pending">
             <i class="bi bi-hourglass-split" aria-hidden="true"></i>
             Request Pending
-        </span>
-
-    @elseif($requestStatus === 'approved')
-
-        <span class="sanction-state sanction-state-approved">
-            <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
-            Request Approved
         </span>
 
     @elseif($requestStatus === 'declined')
@@ -1513,6 +1500,7 @@
 
     @endif
 </td>
+
 
                     </tr>
 
