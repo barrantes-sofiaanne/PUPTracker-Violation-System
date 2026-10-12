@@ -159,50 +159,50 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Restore the Individual Log tab and bring its table into view after reload.
-    function restoreIndividualLogPosition() {
-        if (
-            !returnToIndividualLog ||
-            !individualLogPane ||
-            !individualLogTable
-        ) {
-            return;
-        }
 
-        // Find the Bootstrap tab button associated with the Individual Log pane.
-        const tabButton = document.querySelector(
-            '[data-bs-toggle="tab"][data-bs-target="#violationRecord"], ' +
-                '[data-bs-toggle="pill"][data-bs-target="#violationRecord"], ' +
-                'a[data-bs-toggle="tab"][href="#violationRecord"], ' +
-                'a[data-bs-toggle="pill"][href="#violationRecord"]',
+    function restoreIndividualLogPosition() {
+        const shouldReturn =
+            sessionStorage.getItem("returnToIndividualLog") === "true";
+
+        if (!shouldReturn) return;
+
+        const logPane = document.getElementById("violationRecord");
+        const logTable = document.querySelector(
+            "#violationRecord .individual-violations-table",
         );
 
+        if (!logPane || !logTable) return;
+
         function scrollToLog() {
-            if (!individualLogPane.classList.contains("active")) {
-                return;
-            }
+            if (!logPane.classList.contains("active")) return;
 
-            sessionStorage.removeItem("returnToIndividualLog");
-
-            // Allow the table layout to settle before scrolling.
             requestAnimationFrame(function () {
                 requestAnimationFrame(function () {
-                    const tableTop =
-                        individualLogTable.getBoundingClientRect().top +
-                        window.scrollY;
-
-                    // Adjust 100 to match your header height, if necessary.
-                    window.scrollTo({
-                        top: Math.max(0, tableTop - 100),
+                    logTable.scrollIntoView({
                         behavior: "instant",
+                        block: "start",
                     });
+
+                    // Offset for a fixed header, if applicable.
+                    window.scrollBy(0, -100);
+
+                    sessionStorage.removeItem("returnToIndividualLog");
                 });
             });
         }
 
-        if (individualLogPane.classList.contains("active")) {
+        if (logPane.classList.contains("active")) {
             scrollToLog();
-        } else if (tabButton && typeof bootstrap !== "undefined") {
-            // Reopen the correct tab if the page reload resets the active tab.
+            return;
+        }
+
+        const tabButton = document.querySelector(
+            '[data-bs-target="#violationRecord"], ' +
+                'a[href="#violationRecord"][data-bs-toggle="tab"], ' +
+                'a[href="#violationRecord"][data-bs-toggle="pill"]',
+        );
+
+        if (tabButton && typeof bootstrap !== "undefined") {
             tabButton.addEventListener("shown.bs.tab", scrollToLog, {
                 once: true,
             });
@@ -210,6 +210,8 @@ document.addEventListener("DOMContentLoaded", function () {
             bootstrap.Tab.getOrCreateInstance(tabButton).show();
         }
     }
+
+    window.addEventListener("load", restoreIndividualLogPosition);
 
     window.addEventListener("load", function () {
         restoreIndividualLogPosition();
