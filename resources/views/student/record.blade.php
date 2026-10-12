@@ -600,6 +600,107 @@
     min-height: 0 !important;
 }
 
+
+/* Final column sizing correction for the Individual Violations Log */
+.individual-log-card .table-responsive > table,
+.individual-violations-table {
+    width: 1700px !important;
+    min-width: 1700px !important;
+    table-layout: fixed !important;
+}
+
+/* Violation Type */
+.individual-log-card .table-responsive > table th:nth-child(1),
+.individual-log-card .table-responsive > table td:nth-child(1),
+.individual-violations-table th:nth-child(1),
+.individual-violations-table td:nth-child(1) {
+    width: 300px !important;
+}
+
+/* Date Recorded */
+.individual-log-card .table-responsive > table th:nth-child(2),
+.individual-log-card .table-responsive > table td:nth-child(2),
+.individual-violations-table th:nth-child(2),
+.individual-violations-table td:nth-child(2) {
+    width: 180px !important;
+}
+
+/* Category */
+.individual-log-card .table-responsive > table th:nth-child(3),
+.individual-log-card .table-responsive > table td:nth-child(3),
+.individual-violations-table th:nth-child(3),
+.individual-violations-table td:nth-child(3) {
+    width: 280px !important;
+}
+
+/* Record Status */
+.individual-log-card .table-responsive > table th:nth-child(4),
+.individual-log-card .table-responsive > table td:nth-child(4),
+.individual-violations-table th:nth-child(4),
+.individual-violations-table td:nth-child(4) {
+    width: 180px !important;
+}
+
+/* Remarks */
+.individual-log-card .table-responsive > table th:nth-child(5),
+.individual-log-card .table-responsive > table td:nth-child(5),
+.individual-violations-table th:nth-child(5),
+.individual-violations-table td:nth-child(5) {
+    width: 220px !important;
+}
+
+/* Evidence */
+.individual-log-card .table-responsive > table th:nth-child(6),
+.individual-log-card .table-responsive > table td:nth-child(6),
+.individual-violations-table th:nth-child(6),
+.individual-violations-table td:nth-child(6) {
+    width: 240px !important;
+}
+
+/* Sanction Request */
+.individual-log-card .table-responsive > table th:nth-child(7),
+.individual-log-card .table-responsive > table td:nth-child(7),
+.individual-violations-table th:nth-child(7),
+.individual-violations-table td:nth-child(7) {
+    width: 300px !important;
+}
+
+/* Keep text readable without breaking words unnecessarily */
+.individual-log-card .table-responsive > table td,
+.individual-violations-table td {
+    vertical-align: middle !important;
+    line-height: 1.4 !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: none !important;
+    padding: 0.8rem 1rem !important;
+}
+
+/* Keep status labels on one line */
+.individual-log-card .table-responsive > table td:nth-child(4) .badge,
+.individual-log-card .table-responsive > table td:nth-child(4) .portal-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+}
+
+/* Keep action labels readable */
+.individual-log-card .table-responsive > table td:nth-child(7) .btn,
+.individual-log-card .table-responsive > table td:nth-child(7) .sanction-state {
+    width: 100%;
+    max-width: 230px;
+    min-height: 44px;
+    padding: 0.65rem 0.8rem !important;
+    line-height: 1.3 !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+}
+
+
 /* Responsive filters */
 
 @media (max-width: 767.98px) {
