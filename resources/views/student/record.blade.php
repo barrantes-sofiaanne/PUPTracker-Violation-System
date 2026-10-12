@@ -1473,27 +1473,73 @@
                 </thead>
                 <tbody>
                     @forelse($violations as $violation)
-                        @php
-                            $isPendingLog = strtolower((string) $violation->status) === 'pending';
-                            $resolvedType = $violation->resolvedViolationType();
-                            $typeId = (string) ($resolvedType?->violation_type_id ?? $violation->violation_type_id ?? '');
-                            $categoryId = (string) ($resolvedType?->violation_category_id ?? '');
-                            $sanctionRequest = $sanctionRequestsByType[$typeId] ?? null;
-                            $requestStatus = strtolower((string) ($sanctionRequest->status ?? ''));
-                            $isActiveRequest = (bool) ($sanctionRequest->is_active ?? false);
-                            $hasAssignedSanction = isset($assignedSanctionViolationIds[$violation->violation_id]);
-                            $isWarningLevelViolation = isset($warningLevelViolationIds[(int) $violation->violation_id]);
-                            $rowSanctionStatus = $hasAssignedSanction
-                                ? 'assigned'
-                                : (($requestStatus === 'pending' && $isActiveRequest)
-                                    ? 'pending'
-                                    : ($requestStatus === 'approved'
-                                        ? 'approved'
-                                        : ($requestStatus === 'declined'
-                                            ? 'declined'
-                                            : ($isWarningLevelViolation ? 'no-request' : 'needs'))));
-                            $rowDate = \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d');
-                        @endphp
+                       
+@php
+    $isPendingLog = strtolower((string) $violation->status) === 'pending';
+
+    $resolvedType = $violation->resolvedViolationType();
+
+    $typeId = (string) (
+        $resolvedType?->violation_type_id
+        ?? $violation->violation_type_id
+        ?? ''
+    );
+
+    $categoryId = (string) (
+        $resolvedType?->violation_category_id ?? ''
+    );
+
+    // Resolve the request for this violation type.
+    $sanctionRequest = $typeId !== ''
+        ? (
+            $sanctionRequestsByType->get($typeId)
+            ?? $sanctionRequestsByType->get((int) $typeId)
+        )
+        : null;
+
+    $requestStatus = strtolower(trim(
+        (string) ($sanctionRequest->status ?? '')
+    ));
+
+    $isActiveRequest = (bool) (
+        $sanctionRequest->is_active ?? false
+    );
+
+    $hasAssignedSanction = isset(
+        $assignedSanctionViolationIds[$violation->violation_id]
+    );
+
+    // Preserve the existing warning-level detection.
+    $isWarningLevelViolation = isset(
+        $warningLevelViolationIds[(int) $violation->violation_id]
+    );
+
+    // Warning-level violations must not be treated as needing a request.
+    $rowSanctionStatus = $isWarningLevelViolation
+        ? 'no-request'
+        : (
+            $hasAssignedSanction
+                ? 'assigned'
+                : (
+                    $requestStatus === 'pending' && $isActiveRequest
+                        ? 'pending'
+                        : (
+                            $requestStatus === 'approved' && !$isActiveRequest
+                                ? 'approved'
+                                : (
+                                    $requestStatus === 'declined' && !$isActiveRequest
+                                        ? 'declined'
+                                        : 'needs'
+                                )
+                        )
+                )
+        );
+
+    $rowDate = \Carbon\Carbon::parse(
+        $violation->violation_date
+    )->format('Y-m-d');
+@endphp
+
                         <tr data-category-id="{{ $categoryId }}" data-violation-type-id="{{ $typeId }}" data-violation-date="{{ $rowDate }}" data-sanction-status="{{ $rowSanctionStatus }}">
                             <td class="violation-type-col">{{ $violation->violation_type_display }}</td>
                             <td class="violation-date-col">
