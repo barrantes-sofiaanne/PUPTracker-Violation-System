@@ -29,6 +29,14 @@
                     <span class="admin-filter-label">Status</span>
                     <div><x-admin.badge :status="strtolower($sanctionRequest->status ?: 'pending')" :label="$sanctionRequest->status ?: 'Pending'" /></div>
                 </div>
+                @if ($sanctionRequest->is_resubmission)
+    <div class="col-12">
+        <span class="badge bg-info text-dark">
+            <i class="bi bi-arrow-repeat me-1"></i>
+            Resubmitted Request
+        </span>
+    </div>
+@endif
                 <div class="col-md-3">
                     <span class="admin-filter-label">Requested</span>
                     <div>{{ optional($sanctionRequest->request_date)->format('M d, Y h:i A') ?: 'Date unavailable' }}</div>
@@ -49,6 +57,19 @@
                     <span class="admin-filter-label">Sanction Details</span>
                     <div class="border rounded-3 p-3 bg-light">{{ $assignedSanction?->disciplinary_sanction ?: 'No matching sanction is configured yet.' }}</div>
                 </div>
+                @if (
+    $sanctionRequest->status === 'Declined' &&
+    $sanctionRequest->decline_reason
+)
+    <div class="col-12">
+        <span class="admin-filter-label">Decline Reason</span>
+
+        <div class="border border-warning rounded-3 p-3 bg-light">
+            <i class="bi bi-info-circle text-warning me-1"></i>
+            {{ $sanctionRequest->decline_reason }}
+        </div>
+    </div>
+@endif
             </div>
 
             @if($sanctionRequest->is_active)
@@ -136,9 +157,47 @@
     });
     </script>
     @endpush
-                    <form action="{{ route('admin.sanctions.requests.decline', $sanctionRequest) }}" method="POST" class="mt-2">
+                                        <form
+                        action="{{ route('admin.sanctions.requests.decline', $sanctionRequest) }}"
+                        method="POST"
+                        class="mt-3"
+                        onsubmit="return confirm('Decline this sanction request and notify the student?');"
+                    >
                         @csrf
-                        <button type="submit" class="admin-btn admin-btn-danger"><i class="bi bi-x-circle"></i>Decline Request</button>
+
+                        <div class="mb-3">
+                            <label for="decline_reason" class="admin-filter-label">
+                                Reason for Declining
+                                <span class="text-danger">*</span>
+                            </label>
+
+                            <textarea
+                                id="decline_reason"
+                                name="decline_reason"
+                                class="form-control"
+                                rows="4"
+                                minlength="5"
+                                maxlength="2000"
+                                required
+                                placeholder="Explain why this sanction request is being declined."
+                            >{{ old('decline_reason') }}</textarea>
+
+                            @error('decline_reason')
+                                <div class="text-danger small mt-1">
+                                    {{ $message }}
+                                </div>
+                            @enderror
+
+                            <small class="text-muted">
+                                The student will be able to view this reason and use it
+                                to address the issue before submitting another request.
+                            </small>
+                        </div>
+
+                        <button type="submit" class="admin-btn admin-btn-danger">
+                            <i class="bi bi-x-circle me-1"></i>
+                            Decline Request
+                        </button>
                     </form>
                 </div>
             @else

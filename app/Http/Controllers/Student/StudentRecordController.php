@@ -488,29 +488,36 @@ $offenseCount = Violation::where('student_number', $user->student_number)
         ]);
 
     }
+$isResubmission = SanctionRequest::where(
+    'student_number',
+    $user->student_number
+)
+    ->where('violation_type_id', $violationType->violation_type_id)
+    ->where('status', 'Declined')
+    ->where('is_active', false)
+    ->exists();
 
-    DB::beginTransaction();
+DB::beginTransaction();
 
-    try {
+try {
+    $sanctionRequest = SanctionRequest::create([
+        'student_number' => $user->student_number,
+        'violation_type_id' => $violationType->violation_type_id,
+        'request_date' => now(),
+        'is_active' => true,
+        'status' => 'Pending',
+        'is_resubmission' => $isResubmission,
+        'decline_reason' => null,
+        'approved_by_admin_id' => null,
+        'approved_at' => null,
+    ]);
 
-        $sanctionRequest = SanctionRequest::create([
-
-            'student_number' => $user->student_number,
-
-            'violation_type_id' => $request->violation_type_id,
-
-            'request_date' => now(),
-
-            'is_active' => true,
-
-            'status' => 'Pending',
-
-            'approved_by_admin_id' => null,
-
-            'approved_at' => null,
-
-        ]);
-
+    // Keep the existing code below this point:
+    // - Find the latest effective violation
+    // - Notify the administrator
+    // - Notify the student
+    // - Commit the transaction
+    // - Return the existing success response
         // Validate the student has a matching confirmed violation before
         // queueing the request. The actual StudentSanctionRecord is NOT created
         // here — it is created only after an administrator approves the request
