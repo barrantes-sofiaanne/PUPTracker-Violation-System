@@ -589,71 +589,121 @@
 }
 
 /* ---------------------------------------------------------
-   Individual Violations Log
-   Give the Actions column enough room for readable controls. On narrow
-   screens the table scrolls horizontally instead of breaking button labels.
+   Individual Violations Log — elevated maroon / gold portal styling
    --------------------------------------------------------- */
-.individual-table-responsive {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto !important;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
+.individual-log-card {
+    border: 1px solid rgba(112, 0, 0, .10) !important;
+    border-radius: 1.1rem !important;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 12px 34px rgba(43, 24, 24, .07) !important;
 }
-
-.individual-violations-table {
-    width: 1400px !important;
-    min-width: 1400px !important;
-    max-width: none !important;
-    table-layout: fixed !important;
-}
-
-.individual-violations-table th,
-.individual-violations-table td {
-    box-sizing: border-box;
-    vertical-align: middle;
-    white-space: normal;
-    word-break: normal;
-    overflow-wrap: break-word;
-    hyphens: none;
-    padding: 0.9rem 0.65rem;
-}
-
-.individual-violations-table .violation-type-col { width: 19%; }
-.individual-violations-table .violation-date-col { width: 13%; }
-.individual-violations-table .category-col { width: 15%; }
-.individual-violations-table .status-col { width: 11%; }
-.individual-violations-table .remarks-col { width: 13%; }
-.individual-violations-table .attachments-col { width: 11%; }
-.individual-violations-table .individual-actions-col { width: 18%; min-width: 230px; text-align: center; }
-.individual-violations-table .individual-actions-col > div {
-    display: flex !important;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.55rem !important;
-    width: 100%;
-    max-width: 230px;
-    margin-inline: auto;
-}
-.individual-violations-table .individual-actions-col .btn {
+.individual-log-header {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    width: 100%;
-    max-width: 230px;
-    min-width: 0;
-    min-height: 44px;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    line-height: 1.25;
-    padding: 0.65rem 0.75rem;
-    margin: 0;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem !important;
+    color: #fff;
+    background: linear-gradient(115deg, #650000 0%, #8b0808 58%, #a21b1b 100%);
+    border: 0 !important;
 }
+.individual-log-heading { display: flex; align-items: center; gap: .9rem; min-width: 0; }
+.individual-log-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.8rem; height: 2.8rem; flex: 0 0 2.8rem;
+    border: 1px solid rgba(255,255,255,.24); border-radius: .9rem;
+    background: rgba(255,255,255,.12); font-size: 1.25rem;
+}
+.individual-log-title { margin: 0; font-size: 1.2rem; font-weight: 750; letter-spacing: -.02em; color: #fff; }
+.individual-log-subtitle { margin: .22rem 0 0; color: rgba(255,255,255,.78); font-size: .84rem; line-height: 1.4; }
+.individual-log-count {
+    display: inline-flex; align-items: center; gap: .4rem; flex: 0 0 auto;
+    padding: .45rem .75rem; border: 1px solid rgba(255,255,255,.25); border-radius: 999px;
+    background: rgba(255,255,255,.12); color: #fff; font-size: .78rem; font-weight: 700;
+}
+.individual-table-responsive {
+    width: 100%; max-width: 100%; overflow-x: auto !important; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+.individual-violations-table {
+    width: 100%; min-width: 1120px; max-width: none !important; table-layout: fixed !important;
+    margin: 0 !important; border-collapse: separate; border-spacing: 0;
+}
+.individual-violations-table thead th {
+    padding: .95rem .9rem !important; color: #6d1515; background: #fff7e2;
+    border-top: 1px solid #f4e4bd !important; border-bottom: 1px solid #f0e3c8 !important;
+    font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .075em;
+}
+.individual-violations-table tbody td {
+    box-sizing: border-box; vertical-align: middle; white-space: normal; word-break: normal;
+    overflow-wrap: anywhere; hyphens: none; padding: 1.05rem .9rem;
+    border-bottom: 1px solid #f0eeee; color: #34313a; background: #fff; line-height: 1.5;
+}
+.individual-violations-table tbody tr:last-child td { border-bottom: 0; }
+.individual-violations-table tbody tr { transition: background-color .18s ease; }
+.individual-violations-table tbody tr:hover td { background: #fffdf8; }
+.individual-violations-table .violation-type-col { width: 19%; font-weight: 750; color: #3f2020; }
+.individual-violations-table .violation-date-col { width: 13%; line-height: 1.5; color: #625d66; font-size: .86rem; }
+.individual-violations-table .category-col { width: 15%; color: #625d66; font-size: .86rem; }
+.individual-violations-table .status-col { width: 12%; }
+.individual-violations-table .remarks-col { width: 14%; color: #625d66; }
+.individual-violations-table .attachments-col { width: 11%; }
+.individual-violations-table .individual-actions-col { width: 16%; min-width: 190px; text-align: center; }
+.individual-violations-table .individual-actions-col > div {
+    display: flex !important; flex-direction: column; align-items: stretch; gap: .55rem !important;
+    width: 100%; max-width: 230px; margin-inline: auto;
+}
+.individual-violations-table .individual-actions-col .btn {
+    display: flex; align-items: center; justify-content: center; gap: .45rem; width: 100%;
+    max-width: 230px; min-width: 0; min-height: 44px; white-space: normal !important;
+    word-break: normal !important; overflow-wrap: break-word !important; line-height: 1.25;
+    padding: .68rem .8rem; margin: 0; border-radius: .75rem; font-weight: 700;
+    transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.individual-violations-table .individual-actions-col .request-sanction-btn {
+    border: 1px solid #780000; color: #fff; background: linear-gradient(120deg, #710000, #960d0d);
+    box-shadow: 0 5px 13px rgba(120, 0, 0, .13);
+}
+.individual-violations-table .individual-actions-col .request-sanction-btn:hover {
+    color: #fff; background: #5f0000; transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(120, 0, 0, .2);
+}
+.sanction-state {
+    display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+    width: 100%; padding: .68rem .75rem; border: 1px solid transparent; border-radius: .75rem;
+    font-size: .8rem; font-weight: 750; line-height: 1.25; text-align: center;
+}
+.sanction-state-pending { color: #815300; background: #fff4d5; border-color: #f4df9d; }
+.sanction-state-approved { color: #116448; background: #e2f5ec; border-color: #bce7d2; }
+.sanction-state-declined { color: #9b2727; background: #fff0f0; border-color: #f2cdcd; }
+.sanction-state-assigned { color: #4d5664; background: #f0f2f5; border-color: #dfe3e8; }
 
-.individual-violations-table .violation-date-col {
-    line-height: 1.45;
+.individual-log-filters-wrap { padding: 1.1rem 1.25rem !important; border-bottom: 1px solid #eee2d5; background: #fffdf9; }
+.individual-log-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; align-items: end; }
+.individual-filter-field label, .individual-status-filter-row label { display: block; margin-bottom: .4rem; color: #5d1515; font-size: .78rem; font-weight: 750; }
+.individual-filter-field .form-select, .individual-filter-field .form-control, .individual-status-filter-row .form-select { min-height: 42px; border-color: #e5d7c8; border-radius: .65rem; font-size: .88rem; }
+.individual-filter-actions { display: flex; gap: .5rem; grid-column: 1 / -1; }
+.individual-filter-apply { color: #fff; background: #800909; border: 1px solid #800909; border-radius: .65rem; font-weight: 700; }
+.individual-filter-apply:hover { color: #fff; background: #650606; }
+.individual-filter-clear { border: 1px solid #d9c8b8; color: #5d1515; border-radius: .65rem; font-weight: 650; }
+.individual-status-filter-row { display: flex; align-items: center; gap: .75rem; margin-top: 1rem; }
+.individual-status-filter-row label { margin: 0; white-space: nowrap; }
+.individual-status-filter-row .form-select { max-width: 260px; }
+@media (max-width: 767.98px) { .individual-log-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .individual-filter-actions { grid-column: 1 / -1; } .individual-status-filter-row { align-items: flex-start; flex-direction: column; gap: .4rem; } .individual-status-filter-row .form-select { max-width: none; width: 100%; } }
+@media (max-width: 420px) { .individual-log-filters { grid-template-columns: 1fr; } }
+
+.individual-log-empty { padding: 3.25rem 1rem !important; text-align: center; color: #77717a !important; }
+.individual-log-empty-icon {
+    display: inline-flex; align-items: center; justify-content: center; width: 3rem; height: 3rem;
+    margin-bottom: .75rem; border-radius: 1rem; color: #850909; background: #fff3df; font-size: 1.35rem;
+}
+@media (max-width: 640px) {
+    .individual-log-header { align-items: flex-start; padding: 1rem !important; }
+    .individual-log-title { font-size: 1rem; }
+    .individual-log-subtitle { font-size: .78rem; }
+    .individual-log-icon { width: 2.35rem; height: 2.35rem; flex-basis: 2.35rem; }
+    .individual-log-count { font-size: .7rem; padding: .38rem .55rem; }
 }
 
 /* ---------------------------------------------------------
@@ -1003,7 +1053,7 @@
         colspan="6"
         class="text-center py-5 text-muted">
 
-        No outstanding violations found.
+        No violation summary records found.
 
     </td>
 
@@ -1025,209 +1075,168 @@
 {{-- Individual Violations Log --}}
 {{-- ================================================= --}}
 
-<div class="card shadow-sm border-0">
+<div class="card individual-log-card mb-4">
+    <div class="card-header individual-log-header">
+        <div class="individual-log-heading">
+            <span class="individual-log-icon"><i class="bi bi-journal-check"></i></span>
+            <div>
+                <h5 class="individual-log-title">Individual Violations Log</h5>
+                <p class="individual-log-subtitle">Review your confirmed records and track sanction requests.</p>
+            </div>
+        </div>
+        <span class="individual-log-count"><i class="bi bi-list-check"></i>{{ $violations->total() }} {{ $violations->total() === 1 ? 'record' : 'records' }}</span>
+    </div>
 
-    <div class="card-header bg-white">
-
-        <h5 class="mb-0">
-
-            Individual Violations Log
-
-        </h5>
-
+    <div class="card-body individual-log-filters-wrap">
+        <form method="GET" action="{{ route('student.record') }}" class="individual-log-filters" id="individualLogFilters">
+            <div class="individual-filter-field">
+                <label for="filterCategory">Category</label>
+                <select class="form-select" id="filterCategory" name="category_id">
+                    <option value="">All Categories</option>
+                    @foreach($recordedViolationCategories as $category)
+                        <option value="{{ $category->violation_category_id }}" @selected((string)($filters['category_id'] ?? '') === (string)$category->violation_category_id)>{{ $category->category_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="individual-filter-field">
+                <label for="filterViolationType">Violation Type</label>
+                <select class="form-select" id="filterViolationType" name="violation_type_id" data-selected="{{ $filters['violation_type_id'] ?? '' }}">
+                    <option value="">All Violation Types</option>
+                    @foreach($recordedViolationTypes as $type)
+                        <option value="{{ $type->violation_type_id }}" data-category-id="{{ $type->violation_category_id }}" @selected((string)($filters['violation_type_id'] ?? '') === (string)$type->violation_type_id)>{{ $type->violation_type }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="individual-filter-field">
+                <label for="filterDateFrom">From Date</label>
+                <input class="form-control" type="date" id="filterDateFrom" name="date_from" value="{{ $filters['date_from'] ?? '' }}" max="{{ $filters['date_to'] ?? '' }}">
+            </div>
+            <div class="individual-filter-field">
+                <label for="filterDateTo">To Date</label>
+                <input class="form-control" type="date" id="filterDateTo" name="date_to" value="{{ $filters['date_to'] ?? '' }}" min="{{ $filters['date_from'] ?? '' }}">
+            </div>
+            <div class="individual-filter-actions">
+                <button class="btn individual-filter-apply" type="submit"><i class="bi bi-funnel me-1"></i>Apply Filters</button>
+                <a class="btn individual-filter-clear" href="{{ route('student.record') }}">Clear</a>
+            </div>
+        </form>
+        <div class="individual-status-filter-row">
+            <label for="filterSanctionStatus">Sanction Status</label>
+            <select class="form-select" id="filterSanctionStatus">
+                <option value="all">All Statuses</option>
+                <option value="needs">Needs Request</option>
+                <option value="pending">Request Pending</option>
+                <option value="approved">Approved</option>
+                <option value="declined">Declined</option>
+                <option value="assigned">Sanction Assigned</option>
+            </select>
+            <span class="small text-muted" id="individualFilterCount" aria-live="polite"></span>
+        </div>
     </div>
 
     <div class="card-body p-0">
-
         <div class="table-responsive individual-table-responsive">
-
-        <table class="table table-hover align-middle mb-0 portal-table individual-violations-table">
-
-            <thead>
-
-                <tr>
-
-                    <th>
-
-                        Violation Type
-
-                    </th>
-
-                    <th>
-
-                        Date
-
-                    </th>
-
-                    <th>
-
-                        Category
-
-                    </th>
-
-                    <th>
-
-                        Status
-
-                    </th>
-
-                    <th>
-
-                        Remarks
-
-                    </th>
-
-                    <th>
-
-                        Attachments
-
-                    </th>
-
-                    <th>Actions</th>
-                </tr>
-
-            </thead>
-
-            <tbody>
-
-                @forelse($violations as $violation)
-
-@php
-    $isPendingLog =
-        strtolower((string) $violation->status) === 'pending';
-@endphp
-
+            <table class="table align-middle individual-violations-table">
+                <thead>
                     <tr>
-
-                        <td class="violation-type-col">
-                            {{ $violation->violation_type_display }}
-                        </td>
-                        <td class="violation-date-col">
-                            {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}
-                        </td>
-
-                        <td class="category-col">
-                            {{ $violation->violation_category_display }}
-                        </td>
-
-                        <td class="status-col">
-                            @if($isPendingLog)
-
-                                <span class="portal-badge goldenrod">
-                                    Pending Confirmation
-                                </span>
-
-                            @else
-
-                                {{-- Presentation label only: a non-pending row is a
-                                     confirmed violation. The stored status value is
-                                     unchanged. --}}
-                                <span class="portal-badge success">
-                                    Confirmed
-                                </span>
-
-                            @endif
-
-                        </td>
-
-                        <td class="remarks-col">
-                            {{ $violation->description ?: 'No remarks' }}
-                        </td>
-
-                        <td class="attachments-col">
-                            @if($isPendingLog)
-
-                                <span class="text-muted small">
-                                    Available after confirmation
-                                </span>
-
-                            @else
-
+                        <th>Violation Type</th>
+                        <th>Date Recorded</th>
+                        <th>Category</th>
+                        <th>Record Status</th>
+                        <th>Remarks</th>
+                        <th>Evidence</th>
+                        <th>Sanction Request</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($violations as $violation)
+                        @php
+                            $isPendingLog = strtolower((string) $violation->status) === 'pending';
+                            $resolvedType = $violation->resolvedViolationType();
+                            $typeId = (string) ($resolvedType?->violation_type_id ?? $violation->violation_type_id ?? '');
+                            $categoryId = (string) ($resolvedType?->violation_category_id ?? '');
+                            $sanctionRequest = $sanctionRequestsByType[$typeId] ?? null;
+                            $requestStatus = strtolower((string) ($sanctionRequest->status ?? ''));
+                            $isActiveRequest = (bool) ($sanctionRequest->is_active ?? false);
+                            $hasAssignedSanction = isset($assignedSanctionViolationIds[$violation->violation_id]);
+                            $rowSanctionStatus = $hasAssignedSanction ? 'assigned' : (($requestStatus === 'pending' && $isActiveRequest) ? 'pending' : ($requestStatus === 'approved' ? 'approved' : ($requestStatus === 'declined' ? 'declined' : 'needs')));
+                            $rowDate = \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d');
+                        @endphp
+                        <tr data-category-id="{{ $categoryId }}" data-violation-type-id="{{ $typeId }}" data-violation-date="{{ $rowDate }}" data-sanction-status="{{ $rowSanctionStatus }}">
+                            <td class="violation-type-col">{{ $violation->violation_type_display }}</td>
+                            <td class="violation-date-col">
+                                <div>{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y') }}</div>
+                                <small class="text-muted">{{ \Carbon\Carbon::parse($violation->violation_date)->format('h:i A') }}</small>
+                            </td>
+                            <td class="category-col">{{ $violation->violation_category_display }}</td>
+                            <td class="status-col">
+                                <span class="portal-badge success"><i class="bi bi-check-circle me-1"></i>Confirmed</span>
+                            </td>
+                            <td class="remarks-col">{{ $violation->description ?: 'No remarks provided' }}</td>
+                            <td class="attachments-col">
                                 @php
-                                    $visibleEvidence = collect($violation->evidence ?? [])
-                                        ->filter(fn ($e) => ! empty($e->disk_path));
+                                    $visibleEvidence = collect($violation->evidence ?? [])->filter(fn ($e) => !empty($e->disk_path));
                                 @endphp
-
                                 @if ($visibleEvidence->isNotEmpty())
                                     @foreach ($visibleEvidence as $item)
-                                        <a
-                                            href="{{ route('student.violations.evidence', [
-    'evidence' => $item->access_key,
-]) }}"
-                                            target="_blank"
-                                            rel="noopener"
-                                            class="btn btn-sm btn-outline-secondary me-1 mb-1"
-                                            title="Open {{ $item->original_name ?: 'evidence' }}">
-                                            <i class="bi bi-paperclip"></i>
-                                            {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
+                                        <a href="{{ route('student.violations.evidence', ['evidence' => $item->access_key]) }}"
+                                           target="_blank" rel="noopener"
+                                           class="btn btn-sm btn-outline-secondary me-1 mb-1"
+                                           title="Open {{ $item->original_name ?: 'evidence' }}">
+                                            <i class="bi bi-paperclip"></i> {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
                                         </a>
                                     @endforeach
                                 @else
-                                    <span class="text-muted">—</span>
+                                    <span class="text-muted small"><i class="bi bi-paperclip me-1"></i>No attachment</span>
                                 @endif
-
-                            @endif
-
-                        </td>
-
-                        <td class="individual-actions-col">
-                            @if(!$isPendingLog)
-                                @if(isset($warningLevelViolationIds[$violation->violation_id]))
+                            </td>
+                            <td class="individual-actions-col">
+                                @if($isPendingLog)
+                                    <span class="text-muted small">Available after confirmation</span>
+                                @elseif(isset($warningLevelViolationIds[(int) $violation->violation_id]))
                                     <div class="alert alert-warning py-2 px-3 mb-0 small text-start" role="note">
                                         <strong class="d-block mb-1">
                                             <i class="bi bi-info-circle me-1" aria-hidden="true"></i>Warning-Level Violation
                                         </strong>
                                         A sanction request is not required for this violation. Please check the Sanction Record tab for the related guidance note.
                                     </div>
-                                @elseif(!isset($assignedSanctionViolationIds[$violation->violation_id]))
-                                    <button type="button"
-                                        class="btn portal-btn btn-sm w-100 request-sanction-btn"
-                                        data-violation-type-id="{{ $violation->violation_type_id }}">
-                                        <i class="bi bi-send me-1"></i>Request Sanction
+                                @elseif($requestStatus === 'pending' && (bool) ($sanctionRequest->is_active ?? false))
+                                    <span class="sanction-state sanction-state-pending"><i class="bi bi-hourglass-split"></i>Request Pending</span>
+                                    <small class="d-block text-muted mt-2">Submitted for admin review</small>
+                                @elseif($requestStatus === 'approved')
+                                    @if($hasAssignedSanction)
+                                        <span class="sanction-state sanction-state-assigned"><i class="bi bi-check2-circle"></i>Sanction Assigned</span>
+                                    @else
+                                        <span class="sanction-state sanction-state-approved"><i class="bi bi-check-circle-fill"></i>Request Approved</span>
+                                    @endif
+                                @elseif($hasAssignedSanction)
+                                    <span class="sanction-state sanction-state-assigned"><i class="bi bi-shield-check"></i>Sanction Assigned</span>
+                                @elseif($requestStatus === 'declined')
+                                    <span class="sanction-state sanction-state-declined"><i class="bi bi-x-circle"></i>Request Declined</span>
+                                    <button type="button" class="btn request-sanction-btn mt-2" data-violation-type-id="{{ $typeId }}">
+                                        <i class="bi bi-arrow-repeat"></i> Request Again
                                     </button>
                                 @else
-                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" disabled>
-                                        <i class="bi bi-check-circle me-1"></i>Sanction Assigned
+                                    <button type="button" class="btn request-sanction-btn" data-violation-type-id="{{ $typeId }}">
+                                        <i class="bi bi-send"></i> Request Sanction
                                     </button>
+                                    <small class="d-block text-muted mt-2">Start a sanction request</small>
                                 @endif
-                            @else
-                                <span class="text-muted small">Available after confirmation</span>
-                            @endif
-                        </td>
-                    </tr>
-
-                @empty
-
-                    <tr>
-
-                        <td
-                            colspan="7"
-                            class="text-center py-5">
-
-                            No individual violations found.
-
-                        </td>
-
-                    </tr>
-
-                @endforelse
-
-            </tbody>
-
-        </table>
-
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="individual-log-empty">
+                                <span class="individual-log-empty-icon"><i class="bi bi-journal-x"></i></span>
+                                <div class="fw-bold text-dark mb-1">No violation records yet</div>
+                                <div class="small">Confirmed violation records will appear here when available.</div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
-
     </div>
-
-    <div class="card-footer">
-
-        {{ $violations->links() }}
-
-    </div>
-
-</div>
-
 </div>
 
 {{-- ================================================= --}}
