@@ -20,7 +20,7 @@
 <link rel="stylesheet" href="{{ asset('css/portal.css') }}">
 <link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
 
-
+<style>
 /* =========================================================
    Individual Violations Log
    Consolidated responsive styling
@@ -677,6 +677,7 @@
     }
 }
 
+</style>
 @endpush
 
 @section('content')
