@@ -775,6 +775,41 @@
     }
 }
 
+/* Individual Violations Log: remove unnecessary bottom space */
+.individual-log-card,
+.individual-log-card .card-body {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: 0 0 auto;
+}
+
+.individual-log-card {
+    margin-bottom: 1.5rem !important;
+    padding-bottom: 0 !important;
+}
+
+.individual-log-card .table-responsive,
+.individual-log-card .individual-table-responsive {
+    height: auto !important;
+    min-height: 0 !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.individual-violations-table {
+    margin-bottom: 0 !important;
+}
+
+.individual-log-card nav[aria-label],
+.individual-log-card .pagination {
+    margin-bottom: 1rem !important;
+}
+
+.individual-log-card .card-footer {
+    height: auto !important;
+    min-height: 0 !important;
+}
+
 /* ---------------------------------------------------------
    Mobile: keep multi-column records readable.
    Do NOT squeeze the summary columns into the phone viewport.
@@ -872,6 +907,68 @@
         line-height: 1.35 !important;
         padding: 0.8rem 0.5rem !important;
     }
+}
+
+/* Individual Violations Log: natural height and pagination spacing */
+.individual-log-card {
+    height: auto !important;
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.individual-log-card > .card-body {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: initial !important;
+}
+
+.individual-log-card > .card-body.p-0 {
+    padding: 0 !important;
+}
+
+.individual-log-card .individual-table-responsive {
+    display: block;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+}
+
+.individual-log-card .individual-violations-table {
+    margin-bottom: 0 !important;
+}
+
+.individual-log-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    border-top: 1px solid #f0eeee;
+    background: #fff;
+}
+
+.individual-log-pagination nav {
+    max-width: 100%;
+    margin: 0;
+}
+
+.individual-log-pagination .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0 !important;
+    gap: 0.2rem;
+}
+
+.individual-log-pagination svg {
+    width: 1rem;
+    height: 1rem;
 }
 
 </style>
@@ -1292,10 +1389,19 @@
                         </tr>
                     @endforelse
                 </tbody>
+
             </table>
         </div>
+
+        {{-- Individual Violations Log pagination --}}
+        @if ($violations->hasPages())
+            <div class="individual-log-pagination px-3 py-3">
+                {{ $violations->links() }}
+            </div>
+        @endif
     </div>
 </div>
+
 
 {{-- ================================================= --}}
 {{-- Sanction Record --}}
