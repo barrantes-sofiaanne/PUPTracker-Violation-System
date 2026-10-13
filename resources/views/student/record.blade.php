@@ -2646,6 +2646,47 @@
         font-size: .88rem;
     }
 }
+/* Mobile filter layout: keep the Clear button in its own row. */
+@media (max-width: 575.98px) {
+    #individualLogFilters {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-items: stretch;
+    }
+
+    #individualLogFilters .individual-status-filter-row {
+        grid-column: 1 / -1;
+        grid-row: auto;
+        order: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.4rem;
+        min-width: 0;
+    }
+
+    #individualLogFilters .individual-status-filter-row #individualFilterCount {
+        grid-column: 1;
+        justify-self: start;
+        text-align: left;
+    }
+
+    #individualLogFilters .individual-filter-actions {
+        grid-column: 1 / -1;
+        grid-row: auto;
+        order: 2;
+        justify-content: stretch;
+        width: 100%;
+        margin-top: 0.15rem;
+    }
+
+    #individualLogFilters .individual-filter-clear {
+        display: block;
+        width: 100%;
+        min-height: 44px;
+        margin: 0;
+    }
+}
+
 </style>
 
 @endpush
