@@ -4373,12 +4373,46 @@ const deletionEvidenceFields =
         cameraStatus.textContent = 'Camera is off.';
     }
 
-    function removeCapturedPhoto() {
-        cameraImageData = null;
-        photoPreview.removeAttribute('src');
-        photoPreview.classList.add('d-none');
-        removePhotoButton.classList.add('d-none');
+   
+function removeCapturedPhoto() {
+    if (capturedCameraImage) {
+        capturedCameraImage = null;
     }
+
+    const cameraImageInput =
+        document.getElementById('cameraImageInput');
+
+    if (cameraImageInput) {
+        cameraImageInput.value = '';
+    }
+
+    const capturedPhotoPreview =
+        document.getElementById('capturedPhotoPreview');
+
+    if (capturedPhotoPreview) {
+        capturedPhotoPreview.removeAttribute('src');
+        capturedPhotoPreview.classList.add('d-none');
+    }
+
+    const removeCapturedPhotoButton =
+        document.getElementById('removeCorrectivePhoto');
+
+    if (removeCapturedPhotoButton) {
+        removeCapturedPhotoButton.classList.add('d-none');
+    }
+
+    const captureStatus =
+        document.getElementById('correctiveCameraStatus');
+
+    if (captureStatus) {
+        captureStatus.textContent = '';
+    }
+
+    cameraImageData = null;
+    photoPreview.removeAttribute('src');
+    photoPreview.classList.add('d-none');
+    removePhotoButton.classList.add('d-none');
+}
 
     function resetForm() {
         actionSelect.value = '';
