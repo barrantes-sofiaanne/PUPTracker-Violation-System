@@ -2,6 +2,7 @@
 
 @php
     $isItAdministrator = auth('admin')->check() && auth('admin')->user()->isItAdministrator();
+    $ossStaffRoleId = $adminRoles->firstWhere('roles_name', 'OSS Staff')?->roles_id ?? null;
 @endphp
 
 @section('title', 'User Management')
@@ -36,7 +37,7 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link {{ request('tab') === 'security' ? 'active' : '' }}" id="security-tab" data-bs-toggle="tab" data-bs-target="#security-pane" type="button" role="tab">
                         <i class="bi bi-person-workspace me-1"></i>
-                        SecuritySecurity &amp; OSS Staff
+                        Security &amp; OSS Staff
                     </button>
                 </li>
                 @endif
@@ -420,10 +421,14 @@
                                     <i class="bi bi-arrow-repeat me-1"></i>
                                     Refresh
                                 </a>
-                                <button type="button" class="admin-btn admin-btn-danger" data-bs-toggle="modal" data-bs-target="#createSecurityModal">
-                                    <i class="bi bi-plus-lg me-1"></i>
-                                    Add Security
-                                </button>
+<button
+    type="button"
+    class="admin-btn admin-btn-danger"
+    data-bs-toggle="modal"
+    data-bs-target="#createSecurityModal">
+    <i class="bi bi-person-plus-fill me-1"></i>
+    Add Security/OSS Staff
+</button>
                             </div>
                         </div>
                     </form>
@@ -553,7 +558,16 @@
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" class="form-control"></div>
                 <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" class="form-control" required></div>
-                <div class="col-md-6"><label class="form-label">Role</label><select name="role_id" class="form-select" required>@foreach($adminRoles as $role)<option value="{{ $role->roles_id }}">{{ $role->roles_name }}</option>@endforeach</select></div>
+                <div class="col-md-6">
+                    <label class="form-label">Role <span class="required-asterisk">*</span></label>
+                    <select name="role_id" id="create_admin_role_id" class="form-select" required>
+                        @foreach ($adminRoles->whereIn('roles_name', ['Admin', 'IT Administrator']) as $role)
+                            <option value="{{ $role->roles_id }}" {{ $role->roles_name === 'Admin' ? 'selected' : '' }}>
+                                {{ $role->roles_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" class="form-select" required>@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
             </div></div>
             <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Create Admin</button></div>
@@ -561,22 +575,93 @@
     </div></div>
 </div>
 
-<div class="modal fade admin-modal" id="createSecurityModal" tabindex="-1" aria-labelledby="createSecurityModalLabel" aria-hidden="true" role="dialog" aria-modal="true">
-    <div class="modal-dialog"><div class="modal-content admin-modal-content">
-        <form method="POST" action="{{ route('admin.users.security.store') }}">
-            @csrf
-            <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createSecurityModalLabel">Create Security Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
-            <div class="modal-body admin-modal-body"><div class="row g-3">
-                <div class="col-12"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
-                <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" class="form-control" required></div>
-                <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" class="form-control"></div>
-                <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" class="form-control" required></div>
-                <div class="col-md-6"><label class="form-label">Position</label><input name="position" id="create_security_position" class="form-control" value="Security Personnel" readonly tabindex="-1"></div>
-            </div></div>
-            <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Create Security</button></div>
-        </form>
-    </div></div>
+
+<div class="modal fade admin-modal" id="createSecurityModal"
+     tabindex="-1" aria-labelledby="createSecurityModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content admin-modal-content">
+            <form id="createSecurityAccountForm"
+                  method="POST"
+                  action="{{ route('admin.users.security.store') }}">
+                @csrf
+                <input type="hidden" id="ossStaffRoleId" value="{{ $ossStaffRoleId }}">
+                <input type="hidden" id="securityFormRoleId" name="role_id" value="{{ $ossStaffRoleId }}" disabled>
+
+                <div class="modal-header admin-modal-header">
+                    <h5 class="modal-title admin-modal-title" id="createSecurityModalLabel">
+                        Create Security/OSS Staff Account
+                    </h5>
+                    <button type="button" class="btn-close admin-modal-close"
+                            data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body admin-modal-body">
+                    <div class="row g-3">
+
+                        <div class="col-12">
+                            <label for="securityAccountType" class="form-label">
+                                Account Type <span class="required-asterisk">*</span>
+                            </label>
+                            <select id="securityAccountType" class="form-select" required>
+                                <option value="security">Security Personnel</option>
+                                <option value="oss_staff">OSS Staff</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Email <span class="required-asterisk">*</span></label>
+                            <input name="email" type="email" class="form-control" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">First Name <span class="required-asterisk">*</span></label>
+                            <input name="firstname" class="form-control" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Middle Name</label>
+                            <input name="middlename" class="form-control">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Last Name <span class="required-asterisk">*</span></label>
+                            <input name="lastname" class="form-control" required>
+                        </div>
+
+                        <div class="col-12" id="securityPositionGroup">
+                            <label class="form-label">Position</label>
+                            <input name="position" id="create_security_position"
+                                   class="form-control" value="Security Personnel" readonly>
+                        </div>
+
+                        <div class="col-12 d-none" id="ossStaffStatusGroup">
+                            <label class="form-label">Status <span class="required-asterisk">*</span></label>
+                            <select name="status_id" id="oss_staff_status_id" class="form-select" disabled>
+                                @foreach($statuses as $status)
+                                    <option value="{{ $status->status_id }}"
+                                        {{ strtolower($status->status_name) === 'active' ? 'selected' : '' }}>
+                                        {{ $status->status_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="modal-footer admin-modal-footer">
+                    <button type="button" class="admin-btn admin-btn-neutral"
+                            data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="admin-btn admin-btn-primary"
+                            id="createSecurityAccountSubmit">
+                        Create Security Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
 
 <div class="modal fade admin-modal" id="editStudentModal" tabindex="-1" aria-labelledby="editStudentModalLabel" aria-hidden="true" role="dialog" aria-modal="true"><div class="modal-dialog modal-lg"><div class="modal-content admin-modal-content">
     <form id="editStudentForm" method="POST">@csrf @method('PUT')
@@ -639,7 +724,14 @@
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="admin_firstname" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" id="admin_middlename" class="form-control"></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" id="admin_lastname" class="form-control" required></div>
-            <div class="col-md-6"><label class="form-label">Role</label><select name="role_id" id="admin_role_id" class="form-select">@foreach($adminRoles as $role)<option value="{{ $role->roles_id }}">{{ $role->roles_name }}</option>@endforeach</select></div>
+            <div class="col-md-6">
+                <label for="admin_role_id" class="form-label">Role <span class="required-asterisk">*</span></label>
+                <select name="role_id" id="admin_role_id" class="form-select" required>
+                    @foreach ($adminRoles->whereIn('roles_name', ['Admin', 'IT Administrator']) as $role)
+                        <option value="{{ $role->roles_id }}">{{ $role->roles_name }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="col-md-6"><label class="form-label">Status</label><select name="status_id" id="admin_status_id" class="form-select">@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
         </div></div>
         <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Update Admin</button></div>
@@ -735,6 +827,7 @@
 </div></div></div>
 
 <script>
+    
 document.querySelectorAll('.editStudentBtn').forEach(function (button) {
     button.addEventListener('click', function () {
         document.getElementById('student_number').value = this.dataset.id;
@@ -1001,5 +1094,57 @@ if (importFileInput && importSelectedFileName) {
         }
     });
 }
+
+(function () {
+    const accountType = document.getElementById('securityAccountType');
+    const form = document.getElementById('createSecurityAccountForm');
+    const positionGroup = document.getElementById('securityPositionGroup');
+    const statusGroup = document.getElementById('ossStaffStatusGroup');
+    const statusSelect = document.getElementById('oss_staff_status_id');
+    const roleIdInput = document.getElementById('securityFormRoleId');
+    const ossStaffRoleId = document.getElementById('ossStaffRoleId');
+    const submitButton = document.getElementById('createSecurityAccountSubmit');
+
+    if (!accountType || !form) return;
+
+    const securityUrl = "{{ route('admin.users.security.store') }}";
+    const adminUrl = "{{ route('admin.users.admins.store') }}";
+
+    function updateAccountType() {
+        const isOssStaff = accountType.value === 'oss_staff';
+
+        form.action = isOssStaff ? adminUrl : securityUrl;
+
+        positionGroup.classList.toggle('d-none', isOssStaff);
+        statusGroup.classList.toggle('d-none', !isOssStaff);
+
+        statusSelect.disabled = !isOssStaff;
+        statusSelect.required = isOssStaff;
+
+        if (roleIdInput) {
+            roleIdInput.disabled = !isOssStaff;
+            roleIdInput.value = ossStaffRoleId ? ossStaffRoleId.value : '';
+        }
+
+        if (isOssStaff && (!roleIdInput || !roleIdInput.value)) {
+            submitButton.disabled = true;
+            submitButton.title = 'OSS Staff role is not configured. Contact the system administrator.';
+        } else {
+            submitButton.disabled = false;
+            submitButton.removeAttribute('title');
+        }
+
+        submitButton.textContent = isOssStaff
+            ? 'Create OSS Staff'
+            : 'Create Security Account';
+    }
+
+    accountType.addEventListener('change', updateAccountType);
+
+    document.getElementById('createSecurityModal')
+        .addEventListener('show.bs.modal', updateAccountType);
+
+    updateAccountType();
+})();
 </script>
 @endsection
