@@ -19,9 +19,7 @@
 {{-- Re-apply the shared Student Portal UI after student.css --}}
 <link rel="stylesheet" href="{{ asset('css/portal.css') }}">
 <link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
-
 <style>
-    
 /* Keep the two tab panes independent. */
 #studentRecordTabsContent > .tab-pane,
 .tab-content > #violationRecord,
@@ -1501,7 +1499,100 @@
         flex-basis: 100%;
     }
 }
+/* =====================================================
+   Submit Proof Modal — Mobile Scrolling Fix
+   ===================================================== */
 
+#submitProofModal {
+    --proof-modal-gap: 0.5rem;
+}
+
+#submitProofModal .modal-dialog {
+    width: calc(100% - 1rem);
+    max-width: 620px;
+    height: calc(100vh - 1rem);
+    height: calc(100dvh - 1rem);
+    margin: 0.5rem auto;
+}
+
+/* Constrain the complete modal to the available height */
+#submitProofModal .modal-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Keep the title and close button visible */
+#submitProofModal .modal-header {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+/* Allow the content to scroll independently */
+#submitProofModal .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Keep the footer visible when it is a direct child
+   of .modal-content */
+#submitProofModal .modal-content > .modal-footer {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 2;
+    background: #fff;
+    padding: 0.85rem 1rem;
+    border-top: 1px solid #eee5e5;
+}
+
+/* Make action buttons fit narrow screens */
+#submitProofModal .modal-footer .btn {
+    min-width: 0;
+    min-height: 44px;
+    white-space: normal;
+}
+
+@media (max-width: 575.98px) {
+    #submitProofModal .modal-dialog {
+        width: calc(100% - 1rem);
+        max-width: none;
+        height: calc(100vh - 1rem);
+        height: calc(100dvh - 1rem);
+        margin: 0.5rem auto;
+    }
+
+    #submitProofModal .modal-content {
+        border-radius: 0.85rem;
+    }
+
+    #submitProofModal .modal-header {
+        gap: 0.6rem;
+        padding: 1rem;
+    }
+
+    #submitProofModal .modal-body {
+        padding: 1rem;
+    }
+
+    #submitProofModal .modal-footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    #submitProofModal .modal-footer .btn {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+}
 </style>
 @endpush
 
