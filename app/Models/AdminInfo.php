@@ -22,5 +22,6 @@ class AdminInfo extends Model
         'lastname',
         'status_id',
         'role_id',
+        'name_suffix',
     ];
 }

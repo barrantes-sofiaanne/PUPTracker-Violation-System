@@ -487,6 +487,7 @@ $ossStaff = Admin::query()
 
             'role_id' =>
                 'required|exists:roles_tbl,roles_id',
+                'name_suffix' => $validated['name_suffix'] ?? null,
         ]);
 
         $admin = null;
@@ -566,6 +567,8 @@ $ossStaff = Admin::query()
 
             'lastname' =>
                 'required|string|max:50',
+                'name_suffix' => 'nullable|string|max:20',
+'status_id' => 'required|exists:status_tbl,status_id',
         ]);
 
         $security = null;
@@ -635,7 +638,7 @@ $ossStaff = Admin::query()
 
             'password' =>
                 'nullable|string|min:8',
-        ]);
+'name_suffix' => 'nullable|string|max:20',        ]);
 
         $adminEmailBefore = $admin->email;
 
@@ -893,6 +896,8 @@ $ossStaff = Admin::query()
 
             'password' =>
                 'nullable|string|min:8',
+                'name_suffix' => 'nullable|string|max:20',
+'status_id' => 'required|exists:status_tbl,status_id',
         ]);
 
         $securityEmailBefore =
@@ -2627,51 +2632,26 @@ $ossStaff = Admin::query()
         return 1;
     }
 
-    private function buildSecurityInfoData(
-        array $data
-    ): array {
+   private function buildSecurityInfoData(array $data): array
+{
+    $securityInfoData = [];
 
-        $securityInfoData = [];
+    $fields = [
+        'firstname' => 'firstname',
+        'middlename' => 'middlename',
+        'lastname' => 'lastname',
+        'name_suffix' => 'name_suffix',
+        'status_id' => 'status_id',
+    ];
 
-        if (
-            Schema::hasColumn(
-                'security_info_tbl',
-                'firstname'
-            )
-        ) {
-
-            $securityInfoData['firstname'] =
-                $data['firstname']
-                ?? '';
+    foreach ($fields as $input => $column) {
+        if (Schema::hasColumn('security_info_tbl', $column)) {
+            $securityInfoData[$column] = $data[$input] ?? null;
         }
-
-        if (
-            Schema::hasColumn(
-                'security_info_tbl',
-                'middlename'
-            )
-        ) {
-
-            $securityInfoData['middlename'] =
-                $data['middlename']
-                ?? null;
-        }
-
-        if (
-            Schema::hasColumn(
-                'security_info_tbl',
-                'lastname'
-            )
-        ) {
-
-            $securityInfoData['lastname'] =
-                $data['lastname']
-                ?? '';
-        }
-
-        return $securityInfoData;
     }
 
+    return $securityInfoData;
+}
     /*
     |--------------------------------------------------------------------------
     | Student Status Helpers

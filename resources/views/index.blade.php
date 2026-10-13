@@ -18,7 +18,7 @@
         <a href="{{ route('security.login') }}" class="portal-btn">
             <span class="portal-icon"><i class="bi bi-shield-fill-check"></i></span>
             <span class="portal-copy">
-                <strong>Security Portal</strong>
+                <strong>Security and OSS Staff Portal</strong>
                 <small>Security &amp; OSS Staff sign-in</small>
             </span>
             <i class="bi bi-arrow-up-right portal-arrow" aria-hidden="true"></i>
