@@ -3142,7 +3142,16 @@
 
         <button type="button"
                 class="btn btn-outline-danger btn-sm corrective-action-btn mt-2"
-                data-violation-id="{{ $violation->violation_id }}">
+                data-violation-id="{{ $violation->violation_id }}"
+                
+data-current-category-id="{{ $categoryId }}"
+data-current-category="{{ $violation->violation_category_display }}"
+data-current-type-id="{{ $typeId }}"
+data-current-type="{{ $violation->violation_type_display }}"
+data-current-date="{{ \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d\TH:i') }}"
+data-current-date-display="{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}"
+data-current-description="{{ $violation->description ?? '' }}"
+>
             <i class="bi bi-pencil-square me-1"></i>
             Request Correction / Deletion
         </button>
@@ -3176,7 +3185,16 @@
 
         <button type="button"
                 class="btn btn-outline-danger btn-sm corrective-action-btn mt-2"
-                data-violation-id="{{ $violation->violation_id }}">
+                data-violation-id="{{ $violation->violation_id }}"
+                
+data-current-category-id="{{ $categoryId }}"
+data-current-category="{{ $violation->violation_category_display }}"
+data-current-type-id="{{ $typeId }}"
+data-current-type="{{ $violation->violation_type_display }}"
+data-current-date="{{ \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d\TH:i') }}"
+data-current-date-display="{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}"
+data-current-description="{{ $violation->description ?? '' }}"
+>
             <i class="bi bi-pencil-square me-1"></i>
             Request Correction / Deletion
         </button>
@@ -3706,63 +3724,135 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
                     </select>
                 </div>
 
-                <div id="correctionFields" class="d-none">
-                    <hr>
-                    <h6 class="fw-bold">Proposed Correct Information</h6>
-                    <p class="small text-muted">
-                        Select the correct violation type and provide the updated
-                        information you want the administrator to review.
-                    </p>
+                
+<div id="correctionFields" class="d-none">
+    <hr>
 
-                    <div class="mb-3">
-                        <label for="correctionCategory" class="form-label">
-                            Violation Category
-                        </label>
-                        <select id="correctionCategory" class="form-select">
-                            <option value="">Select category</option>
-                            @foreach($violationCategories as $category)
-                                <option value="{{ $category->violation_category_id }}">
-                                    {{ $category->category_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+    <h6 class="fw-bold mb-1">Compare Violation Information</h6>
+    <p class="small text-muted mb-3">
+        Edit the information on the left. The original recorded values
+        are shown on the right for comparison.
+    </p>
 
-                    <div class="mb-3">
-                        <label for="correctionViolationType" class="form-label">
-                            Correct Violation Type
-                        </label>
-                        <select id="correctionViolationType" class="form-select">
-                            <option value="">Select violation type</option>
-                            @foreach($violationTypes as $type)
-                                @if($type->violationCategory)
-                                    <option
-                                        value="{{ $type->violation_type_id }}"
-                                        data-category-id="{{ $type->violation_category_id }}">
-                                        {{ $type->violation_type }}
-                                    </option>
-                                @endif
-                            @endforeach
-                        </select>
-                    </div>
+    <div class="row g-4">
+        <!-- LEFT: REQUESTED CHANGES -->
+        <div class="col-12 col-md-6">
+            <div class="border rounded-3 p-3 h-100">
+                <h6 class="fw-bold text-danger mb-3">
+                    <i class="bi bi-pencil-square me-1"></i>
+                    Requested Changes
+                </h6>
 
-                    <div class="mb-3">
-                        <label for="correctionViolationDate" class="form-label">
-                            Correct Date and Time
-                        </label>
-                        <input type="datetime-local" id="correctionViolationDate"
-                               class="form-control">
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="correctionDescription" class="form-label">
-                            Correct Remarks / Description
-                        </label>
-                        <textarea id="correctionDescription" class="form-control"
-                                  rows="3" maxlength="2000"
-                                  placeholder="Enter the correct information"></textarea>
-                    </div>
+                <div class="mb-3">
+                    <label for="correctionCategory" class="form-label">
+                        Violation Category
+                    </label>
+                    <select id="correctionCategory" class="form-select">
+                        <option value="">Select category</option>
+                        @foreach($violationCategories as $category)
+                            <option value="{{ $category->violation_category_id }}">
+                                {{ $category->category_name }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
+
+                <div class="mb-3">
+                    <label for="correctionViolationType" class="form-label">
+                        Correct Violation Type
+                    </label>
+                    <select id="correctionViolationType" class="form-select">
+                        <option value="">Select violation type</option>
+                        @foreach($violationTypes as $type)
+                            @if($type->violationCategory)
+                                <option
+                                    value="{{ $type->violation_type_id }}"
+                                    data-category-id="{{ $type->violation_category_id }}">
+                                    {{ $type->violation_type }}
+                                </option>
+                            @endif
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="correctionViolationDate" class="form-label">
+                        Correct Date and Time
+                    </label>
+                    <input type="datetime-local"
+                           id="correctionViolationDate"
+                           class="form-control">
+                </div>
+
+                <div class="mb-0">
+                    <label for="correctionDescription" class="form-label">
+                        Correct Remarks / Description
+                    </label>
+                    <textarea id="correctionDescription"
+                              class="form-control"
+                              rows="4"
+                              maxlength="2000"
+                              placeholder="Enter the correct information"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: ORIGINAL INFORMATION -->
+        <div class="col-12 col-md-6">
+            <div class="border rounded-3 p-3 h-100 bg-light">
+                <h6 class="fw-bold text-secondary mb-3">
+                    <i class="bi bi-file-earmark-text me-1"></i>
+                    Current Recorded Information
+                </h6>
+
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">
+                        Violation Category
+                    </div>
+                    <div id="currentViolationCategory"
+                         class="fw-semibold text-break">—</div>
+                </div>
+
+                <hr>
+
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">
+                        Violation Type
+                    </div>
+                    <div id="currentViolationType"
+                         class="fw-semibold text-break">—</div>
+                </div>
+
+                <hr>
+
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">
+                        Recorded Date and Time
+                    </div>
+                    <div id="currentViolationDate"
+                         class="fw-semibold text-break">—</div>
+                </div>
+
+                <hr>
+
+                <div>
+                    <div class="small text-muted mb-1">
+                        Recorded Remarks / Description
+                    </div>
+                    <div id="currentViolationDescription"
+                         class="text-break"
+                         style="white-space: pre-wrap;">—</div>
+                </div>
+
+                <div class="small text-muted mt-3">
+                    <i class="bi bi-lock me-1"></i>
+                    Original information is read-only.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
                 <div id="deletionFields" class="d-none">
                     <hr>
@@ -4181,6 +4271,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const violationTypeSelect = document.getElementById('correctionViolationType');
     const dateInput = document.getElementById('correctionViolationDate');
     const descriptionInput = document.getElementById('correctionDescription');
+    const currentCategoryDisplay =
+    document.getElementById('currentViolationCategory');
+
+const currentTypeDisplay =
+    document.getElementById('currentViolationType');
+
+const currentDateDisplay =
+    document.getElementById('currentViolationDate');
+
+const currentDescriptionDisplay =
+    document.getElementById('currentViolationDescription');
     const reasonInput = document.getElementById('correctiveActionReason');
     const evidenceInput = document.getElementById('correctiveEvidenceFiles');
     const submitButton = document.getElementById('submitCorrectiveAction');
@@ -4244,10 +4345,7 @@ const deletionEvidenceFields =
         correctionFields.classList.add('d-none');
         deletionFields.classList.add('d-none');
 
-        categorySelect.value = '';
-        violationTypeSelect.value = '';
-        dateInput.value = '';
-        descriptionInput.value = '';
+
         reasonInput.value = '';
         evidenceInput.value = '';
 
@@ -4256,13 +4354,46 @@ const deletionEvidenceFields =
         stopCamera();
     }
 
-    document.querySelectorAll('.corrective-action-btn').forEach(button => {
-        button.addEventListener('click', function () {
-            selectedViolationId = this.dataset.violationId;
-            resetForm();
-            modal.show();
-        });
+    
+document.querySelectorAll('.corrective-action-btn').forEach(button => {
+    button.addEventListener('click', function () {
+        selectedViolationId = this.dataset.violationId;
+
+        resetForm();
+
+        // Display the original values of the selected violation.
+        currentCategoryDisplay.textContent =
+            this.dataset.currentCategory || 'Not recorded';
+
+        currentTypeDisplay.textContent =
+            this.dataset.currentType || 'Not recorded';
+
+        currentDateDisplay.textContent =
+            this.dataset.currentDateDisplay || 'Not recorded';
+
+        currentDescriptionDisplay.textContent =
+            this.dataset.currentDescription || 'No remarks provided';
+
+        // Pre-fill proposed values with the existing values.
+        // The student can then change only what needs correction.
+        categorySelect.value =
+            this.dataset.currentCategoryId || '';
+
+        categorySelect.dispatchEvent(new Event('change'));
+
+        violationTypeSelect.value =
+            this.dataset.currentTypeId || '';
+
+        dateInput.value =
+            this.dataset.currentDate || '';
+
+        descriptionInput.value =
+            this.dataset.currentDescription || '';
+
+        modal.show();
     });
+});
+
 
     actionSelect.addEventListener('change', function () {
         clearError();
