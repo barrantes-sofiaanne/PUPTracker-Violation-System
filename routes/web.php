@@ -310,13 +310,6 @@ Route::middleware(['auth:student', 'student.profile.complete', 'session.inactivi
     ->whereNumber('violation')
     ->name('student.violations.correction-options');
 
-        Route::get(
-    '/violations/{violation}/correction-options',
-    [StudentRecordController::class, 'correctionOptions']
-)
-    ->whereNumber('violation')
-    ->name('student.violations.correction-options');
-
         Route::post('/request-sanction', [StudentRecordController::class, 'requestSanction'])
             ->name('student.request-sanction');
 

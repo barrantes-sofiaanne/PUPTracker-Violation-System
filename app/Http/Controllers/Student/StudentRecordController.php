@@ -98,14 +98,16 @@ $filters = request()->validate([
     'date_to' => 'nullable|date|after_or_equal:date_from',
 ]);
 
-        $violationsQuery = Violation::with([
-            'violationType.violationCategory',
-            'violationType.disciplinarySanctions',
-            'evidence',
-        ])
-            ->where('student_number', $user->student_number)
-            // Only administrator-confirmed records are visible to students.
-            ->where('status', Violation::STATUS_CONFIRMED);
+
+$violationsQuery = Violation::with([
+    'violationType.violationCategory',
+    'violationType.disciplinarySanctions',
+    'evidence',
+])
+    ->where('student_number', $user->student_number)
+    // Only confirmed, non-deleted violations are visible to students.
+    ->where('status', Violation::STATUS_CONFIRMED);
+
 
         if (!empty($filters['category_id'])) {
             $violationsQuery->whereHas('violationType', function ($query) use ($filters) {
@@ -621,16 +623,14 @@ public function correctionOptions(Request $request, Violation $violation)
 
     abort_unless($type->violationCategory !== null, 422, 'The selected violation type has no category.');
 
-    $effectiveCount = Violation::query()
-        ->where('student_number', $user->student_number)
-        ->where('violation_type_id', $type->violation_type_id)
-        ->where('violation_id', '!=', $violation->violation_id)
-        ->notDenied()
-        ->where(function ($query) {
-            $query->whereNull('status')
-                ->orWhere('status', '!=', Violation::STATUS_PENDING);
-        })
-        ->count() + 1;
+
+$effectiveCount = Violation::query()
+    ->where('student_number', $user->student_number)
+    ->where('violation_type_id', $type->violation_type_id)
+    ->where('violation_id', '!=', $violation->violation_id)
+    ->effective()
+    ->count() + 1;
+
 
     $offenseLevel = match ($effectiveCount) {
         1 => '1st Offense',
@@ -877,8 +877,8 @@ public function requestCorrection(
 
         $dateChanged =
             $currentDate &&
-            $currentDate->format('Y-m-d H:i:s')
-            !== $requestedDate->format('Y-m-d H:i:s');
+            $currentDate->format('Y-m-d H:i') !== $requestedDate->format('Y-m-d H:i');
+            
 
         if ($typeChanged || $dateChanged) {
             return back()->withErrors([
@@ -907,8 +907,7 @@ public function requestCorrection(
     $sameDate =
         $violation->violation_date
         && \Carbon\Carbon::parse($violation->violation_date)
-            ->format('Y-m-d H:i:s')
-        === $requestedDate->format('Y-m-d H:i:s');
+            ->format('Y-m-d H:i') !== $requestedDate->format('Y-m-d H:i');
 
     $sameDescription =
         trim((string) ($violation->description ?? ''))

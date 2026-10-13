@@ -3025,8 +3025,7 @@
                         <th>Record Status</th>
                         <th>Remarks</th>
                         <th>Evidence</th>
-                        <th>Sanction Request</th>
-                    </tr>
+<th>Available Actions</th>                    </tr>
                 </thead>
                 <tbody>
                     @forelse($violations as $violation)
@@ -3125,37 +3124,65 @@
                                     <span class="text-muted small"><i class="bi bi-paperclip me-1"></i>No attachment</span>
                                 @endif
                             </td>
-                            <td class="individual-actions-col">
-                                @if($isPendingLog)
-                                    <span class="text-muted small">Available after confirmation</span>
-                                @elseif($isWarningLevelViolation)
-                                    <div class="warning-sanction-notice p-3 mb-0 small text-start" role="note">
-                                        <strong class="d-flex align-items-center gap-2 mb-2">
-                                            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
-                                            Warning-Level Violation
-                                        </strong>
-                                        <p class="mb-0">A sanction request is not required for this warning-level violation. Please review the corresponding disciplinary sanction in the Summary by Violation table and comply with the details provided.</p>
-                                    </div>
-                                @elseif($isActiveRequest)
-                                    <span class="sanction-state sanction-state-pending"><i class="bi bi-hourglass-split"></i>Request Pending</span>
-                                    <small class="d-block text-muted mt-2">Submitted for admin review</small>
-                                @elseif($hasAssignedSanction)
-                                    <span class="sanction-state sanction-state-assigned"><i class="bi bi-shield-check"></i>Sanction Assigned</span>
-                                @elseif($requestStatus === 'declined' && !$isActiveRequest)
-                                    <span class="sanction-state sanction-state-declined"><i class="bi bi-x-circle"></i>Request Declined</span>
-                                    <button type="button" class="btn request-sanction-btn mt-2" data-violation-type-id="{{ $typeId }}">
-                                        <i class="bi bi-arrow-repeat"></i> Request Again
-                                    </button>
-                                @else
-                                    <button type="button" class="btn request-sanction-btn"
-                                            data-violation-type-id="{{ $typeId }}">
-                                        <i class="bi bi-send"></i> Request Sanction
-                                    </button>
-                                    <small class="d-block text-muted mt-2">
-                                        Start a sanction request
-                                    </small>
-                                @endif 
-                            </td>
+
+<td class="individual-actions-col">
+    @if($isPendingLog)
+        <span class="text-muted small">Available after confirmation</span>
+    @elseif($isWarningLevelViolation)
+        <div class="warning-sanction-notice p-3 mb-2 small text-start" role="note">
+            <strong class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                Warning-Level Violation
+            </strong>
+            <p class="mb-0">
+                A sanction request is not required for this warning-level
+                violation. Review the disciplinary details above.
+            </p>
+        </div>
+
+        <button type="button"
+                class="btn btn-outline-danger btn-sm corrective-action-btn mt-2"
+                data-violation-id="{{ $violation->violation_id }}">
+            <i class="bi bi-pencil-square me-1"></i>
+            Request Correction / Deletion
+        </button>
+    @else
+        @if($isActiveRequest)
+            <span class="sanction-state sanction-state-pending">
+                <i class="bi bi-hourglass-split"></i>Request Pending
+            </span>
+            <small class="d-block text-muted mt-2">Submitted for admin review</small>
+        @elseif($hasAssignedSanction)
+            <span class="sanction-state sanction-state-assigned">
+                <i class="bi bi-shield-check"></i>Sanction Assigned
+            </span>
+        @elseif($requestStatus === 'declined' && !$isActiveRequest)
+            <span class="sanction-state sanction-state-declined">
+                <i class="bi bi-x-circle"></i>Request Declined
+            </span>
+            <button type="button"
+                    class="btn request-sanction-btn mt-2"
+                    data-violation-type-id="{{ $typeId }}">
+                <i class="bi bi-arrow-repeat"></i> Request Again
+            </button>
+        @else
+            <button type="button"
+                    class="btn request-sanction-btn"
+                    data-violation-type-id="{{ $typeId }}">
+                <i class="bi bi-send"></i> Request Sanction
+            </button>
+            <small class="d-block text-muted mt-2">Start a sanction request</small>
+        @endif
+
+        <button type="button"
+                class="btn btn-outline-danger btn-sm corrective-action-btn mt-2"
+                data-violation-id="{{ $violation->violation_id }}">
+            <i class="bi bi-pencil-square me-1"></i>
+            Request Correction / Deletion
+        </button>
+    @endif
+</td>
+
                         </tr>
                     @empty
                         <tr>
@@ -3640,6 +3667,190 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
         </div>
     </div>
 </div>
+
+{{-- Corrective Action Request Modal --}}
+<div class="modal fade" id="correctiveActionModal" tabindex="-1"
+     aria-labelledby="correctiveActionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold" id="correctiveActionModalLabel">
+                        Request Record Correction or Deletion
+                    </h5>
+                    <p class="text-muted small mb-0">
+                        Your request will be reviewed by an authorized administrator.
+                    </p>
+                </div>
+                <button type="button" class="btn-close"
+                        data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="alert alert-info small">
+                    Submitting a request does not immediately change or remove your
+                    violation record. Changes require administrative approval.
+                </div>
+
+                <div id="correctiveActionError" class="alert alert-danger d-none"
+                     role="alert" aria-live="polite"></div>
+
+                <div class="mb-3">
+                    <label for="correctiveActionType" class="form-label fw-semibold">
+                        What would you like to request?
+                    </label>
+                    <select id="correctiveActionType" class="form-select" required>
+                        <option value="">Choose an action</option>
+                        <option value="correction">Correction of Information</option>
+                        <option value="deletion">Request Deletion of Record</option>
+                    </select>
+                </div>
+
+                <div id="correctionFields" class="d-none">
+                    <hr>
+                    <h6 class="fw-bold">Proposed Correct Information</h6>
+                    <p class="small text-muted">
+                        Select the correct violation type and provide the updated
+                        information you want the administrator to review.
+                    </p>
+
+                    <div class="mb-3">
+                        <label for="correctionCategory" class="form-label">
+                            Violation Category
+                        </label>
+                        <select id="correctionCategory" class="form-select">
+                            <option value="">Select category</option>
+                            @foreach($violationCategories as $category)
+                                <option value="{{ $category->violation_category_id }}">
+                                    {{ $category->category_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="correctionViolationType" class="form-label">
+                            Correct Violation Type
+                        </label>
+                        <select id="correctionViolationType" class="form-select">
+                            <option value="">Select violation type</option>
+                            @foreach($violationTypes as $type)
+                                @if($type->violationCategory)
+                                    <option
+                                        value="{{ $type->violation_type_id }}"
+                                        data-category-id="{{ $type->violation_category_id }}">
+                                        {{ $type->violation_type }}
+                                    </option>
+                                @endif
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="correctionViolationDate" class="form-label">
+                            Correct Date and Time
+                        </label>
+                        <input type="datetime-local" id="correctionViolationDate"
+                               class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="correctionDescription" class="form-label">
+                            Correct Remarks / Description
+                        </label>
+                        <textarea id="correctionDescription" class="form-control"
+                                  rows="3" maxlength="2000"
+                                  placeholder="Enter the correct information"></textarea>
+                    </div>
+                </div>
+
+                <div id="deletionFields" class="d-none">
+                    <hr>
+                    <h6 class="fw-bold">Deletion Request</h6>
+                    <p class="small text-muted">
+                        Explain why this record should be removed from your active
+                        student record. The administrator will review your request
+                        and any evidence provided.
+                    </p>
+                </div>
+
+                <div class="mb-3">
+                    <label for="correctiveActionReason" class="form-label fw-semibold">
+                        Reason for Request <span class="text-danger">*</span>
+                    </label>
+                    <textarea id="correctiveActionReason" class="form-control"
+                              rows="4" minlength="10" maxlength="2000"
+                              placeholder="Explain your request in at least 10 characters."
+                              required></textarea>
+                    <div class="form-text">Minimum 10 characters.</div>
+                </div>
+<div id="deletionEvidenceFields" class="d-none">
+                <div class="mb-3">
+                    <label for="correctiveEvidenceFiles" class="form-label fw-semibold">
+                        Supporting Evidence (Optional)
+                    </label>
+                    <input type="file" id="correctiveEvidenceFiles"
+                           class="form-control" multiple
+                           accept=".jpg,.jpeg,.png,.webp,.pdf">
+                    <div class="form-text">
+                        Up to 5 files, maximum 10 MB each. JPG, PNG, WEBP, or PDF.
+                    </div>
+                </div>
+
+                <div class="border rounded p-3 mb-3">
+                    <h6 class="fw-semibold">Optional Camera Evidence</h6>
+                    <p class="small text-muted">
+                        Only activate the camera if you want to capture a photo
+                        as supporting evidence. Your camera will not start automatically.
+                    </p>
+
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button type="button" id="startCorrectiveCamera"
+                                class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-camera me-1"></i>Open Camera
+                        </button>
+                        <button type="button" id="captureCorrectivePhoto"
+                                class="btn btn-outline-danger btn-sm" disabled>
+                            Capture Photo
+                        </button>
+                        <button type="button" id="stopCorrectiveCamera"
+                                class="btn btn-outline-secondary btn-sm" disabled>
+                            Turn Camera Off
+                        </button>
+                        <button type="button" id="removeCorrectivePhoto"
+                                class="btn btn-outline-secondary btn-sm d-none">
+                            Remove Photo
+                        </button>
+                    </div>
+
+                    <video id="correctiveCameraPreview"
+                           class="w-100 rounded d-none"
+                           autoplay muted playsinline
+                           style="max-height:300px;background:#111"></video>
+
+                    <canvas id="correctiveCameraCanvas" class="d-none"></canvas>
+
+                    <img id="correctiveCameraPhoto" alt="Captured evidence preview"
+                         class="img-fluid rounded d-none"
+                         style="max-height:300px">
+
+                    <p id="correctiveCameraStatus" class="small text-muted mb-0"
+                       aria-live="polite">Camera is off.</p>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="submitCorrectiveAction"
+                        class="btn btn-danger">
+                    <i class="bi bi-send me-1"></i>Submit Request
+                </button>
+            </div>
+        </div>
+    </div>
+</div></div>
+
 @endsection
 
 @push('scripts')
@@ -3956,6 +4167,318 @@ if (officialArea) {
 
 </script>
 
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modalElement = document.getElementById('correctiveActionModal');
+    if (!modalElement) return;
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+    const actionSelect = document.getElementById('correctiveActionType');
+    const correctionFields = document.getElementById('correctionFields');
+    const deletionFields = document.getElementById('deletionFields');
+    const categorySelect = document.getElementById('correctionCategory');
+    const violationTypeSelect = document.getElementById('correctionViolationType');
+    const dateInput = document.getElementById('correctionViolationDate');
+    const descriptionInput = document.getElementById('correctionDescription');
+    const reasonInput = document.getElementById('correctiveActionReason');
+    const evidenceInput = document.getElementById('correctiveEvidenceFiles');
+    const submitButton = document.getElementById('submitCorrectiveAction');
+    const errorBox = document.getElementById('correctiveActionError');
+
+    const video = document.getElementById('correctiveCameraPreview');
+    const canvas = document.getElementById('correctiveCameraCanvas');
+    const photoPreview = document.getElementById('correctiveCameraPhoto');
+    const cameraStatus = document.getElementById('correctiveCameraStatus');
+    const startCameraButton = document.getElementById('startCorrectiveCamera');
+    const captureButton = document.getElementById('captureCorrectivePhoto');
+    const stopCameraButton = document.getElementById('stopCorrectiveCamera');
+    const removePhotoButton = document.getElementById('removeCorrectivePhoto');
+const deletionEvidenceFields =
+    document.getElementById('deletionEvidenceFields');
+    
+    let selectedViolationId = null;
+    let cameraStream = null;
+    let cameraImageData = null;
+
+    const correctionUrlTemplate = "{{ route('student.violations.correction-request', ['violation' => 987654321]) }}";
+    const deletionUrlTemplate = "{{ route('student.violations.deletion-request', ['violation' => 987654321]) }}";
+
+    function routeFor(template, id) {
+        return template.replace('987654321', encodeURIComponent(String(id)));
+    }
+
+    function showError(message) {
+        errorBox.textContent = message || 'Unable to submit the request.';
+        errorBox.classList.remove('d-none');
+    }
+
+    function clearError() {
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+    function stopCamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraStream = null;
+        }
+
+        video.srcObject = null;
+        video.classList.add('d-none');
+        captureButton.disabled = true;
+        stopCameraButton.disabled = true;
+        startCameraButton.disabled = false;
+        cameraStatus.textContent = 'Camera is off.';
+    }
+
+    function removeCapturedPhoto() {
+        cameraImageData = null;
+        photoPreview.removeAttribute('src');
+        photoPreview.classList.add('d-none');
+        removePhotoButton.classList.add('d-none');
+    }
+
+    function resetForm() {
+        actionSelect.value = '';
+        correctionFields.classList.add('d-none');
+        deletionFields.classList.add('d-none');
+
+        categorySelect.value = '';
+        violationTypeSelect.value = '';
+        dateInput.value = '';
+        descriptionInput.value = '';
+        reasonInput.value = '';
+        evidenceInput.value = '';
+
+        clearError();
+        removeCapturedPhoto();
+        stopCamera();
+    }
+
+    document.querySelectorAll('.corrective-action-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            selectedViolationId = this.dataset.violationId;
+            resetForm();
+            modal.show();
+        });
+    });
+
+    actionSelect.addEventListener('change', function () {
+        clearError();
+
+        correctionFields.classList.toggle(
+            'd-none',
+            this.value !== 'correction'
+        );
+        deletionFields.classList.toggle(
+            'd-none',
+            this.value !== 'deletion'
+        );
+    });
+
+    categorySelect.addEventListener('change', function () {
+        const categoryId = this.value;
+
+        Array.from(violationTypeSelect.options).forEach(option => {
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+
+            option.hidden = !categoryId ||
+                option.dataset.categoryId !== categoryId;
+
+            if (option.hidden && option.selected) {
+                violationTypeSelect.value = '';
+            }
+        });
+    });
+
+    startCameraButton.addEventListener('click', async function () {
+        clearError();
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showError('Camera access is unavailable in this browser or page context. You can upload evidence instead.');
+            return;
+        }
+
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: { facingMode: 'environment' }
+            });
+
+            video.srcObject = cameraStream;
+            video.classList.remove('d-none');
+            captureButton.disabled = false;
+            stopCameraButton.disabled = false;
+            startCameraButton.disabled = true;
+            cameraStatus.textContent =
+                'Camera is on. Capture a photo only when you are ready.';
+        } catch (error) {
+            stopCamera();
+            showError('Camera access was not granted or is unavailable. You can still upload evidence.');
+        }
+    });
+
+    captureButton.addEventListener('click', function () {
+        if (!cameraStream || !video.videoWidth || !video.videoHeight) {
+            showError('Wait for the camera preview to become ready, then try again.');
+            return;
+        }
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        cameraImageData = canvas.toDataURL('image/jpeg', 0.85);
+        photoPreview.src = cameraImageData;
+        photoPreview.classList.remove('d-none');
+        removePhotoButton.classList.remove('d-none');
+        cameraStatus.textContent = 'Photo captured. It will only be sent if you submit this request.';
+        clearError();
+        stopCamera();
+    });
+
+    stopCameraButton.addEventListener('click', stopCamera);
+
+    removePhotoButton.addEventListener('click', function () {
+        removeCapturedPhoto();
+        cameraStatus.textContent = 'Captured photo removed.';
+    });
+
+    modalElement.addEventListener('hidden.bs.modal', function () {
+        stopCamera();
+    });
+
+    submitButton.addEventListener('click', async function () {
+        clearError();
+
+        if (!selectedViolationId) {
+            showError('Please select a violation record first.');
+            return;
+        }
+
+        const action = actionSelect.value;
+        const reason = reasonInput.value.trim();
+
+        if (!['correction', 'deletion'].includes(action)) {
+            showError('Please choose correction or deletion.');
+            return;
+        }
+
+        if (reason.length < 10) {
+            showError('Please provide a reason containing at least 10 characters.');
+            reasonInput.focus();
+            return;
+        }
+
+        if (action === 'correction') {
+            if (!categorySelect.value || !violationTypeSelect.value ||
+                !dateInput.value || !descriptionInput.value.trim()) {
+                showError('Please complete the category, violation type, date/time, and description for the proposed correction.');
+                return;
+            }
+        }
+
+        const files = Array.from(evidenceInput.files || []);
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+        const maxFileSize = 10 * 1024 * 1024;
+
+        if (files.length > 5) {
+            showError('You can attach up to 5 evidence files.');
+            return;
+        }
+
+        for (const file of files) {
+            const extension = (file.name.split('.').pop() || '').toLowerCase();
+
+            if (!allowedExtensions.includes(extension) || file.size > maxFileSize) {
+                showError('Each evidence file must be JPG, JPEG, PNG, WEBP, or PDF and no larger than 10 MB.');
+                return;
+            }
+        }
+
+        const formData = new FormData();
+        formData.append('reason', reason);
+
+        if (action === 'correction') {
+            formData.append('violation_category_id', categorySelect.value);
+            formData.append('violation_type_id', violationTypeSelect.value);
+            formData.append('violation_date', dateInput.value.replace('T', ' ') + ':00');
+            formData.append('description', descriptionInput.value.trim());
+        } else {
+            files.forEach(file => formData.append('evidence_files[]', file));
+
+            if (cameraImageData) {
+                formData.append('camera_image', cameraImageData);
+            }
+        }
+
+        const url = action === 'correction'
+            ? routeFor(correctionUrlTemplate, selectedViolationId)
+            : routeFor(deletionUrlTemplate, selectedViolationId);
+
+        submitButton.disabled = true;
+        submitButton.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Submitting...';
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+            if (!csrfToken) {
+                throw new Error('The security token is missing. Refresh the page and try again.');
+            }
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: formData
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                if (data.errors) {
+                    const messages = Object.values(data.errors).flat();
+                    throw new Error(messages.join(' '));
+                }
+
+                throw new Error(data.message || 'The request could not be submitted.');
+            }
+
+            stopCamera();
+            modal.hide();
+
+            if (typeof Swal !== 'undefined') {
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Request Submitted',
+                    text: data.message || 'Your request was submitted for administrative review.'
+                });
+            } else {
+                alert(data.message || 'Your request was submitted for review.');
+            }
+
+            window.location.reload();
+        } catch (error) {
+            showError(error.message || 'An unexpected error occurred. Please try again.');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.innerHTML =
+                '<i class="bi bi-send me-1"></i>Submit Request';
+        }
+    });
+});
+</script>
+
 <script src="{{ asset('js/student-record.js') }}"></script>
+
 
 @endpush
