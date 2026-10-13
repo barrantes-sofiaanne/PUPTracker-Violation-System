@@ -4327,9 +4327,9 @@ const currentDescriptionDisplay =
     const submitButton = document.getElementById('submitCorrectiveAction');
     const errorBox = document.getElementById('correctiveActionError');
 
-    const video = document.getElementById('correctiveCameraPreview');
-    const canvas = document.getElementById('correctiveCameraCanvas');
-    const photoPreview = document.getElementById('correctiveCameraPhoto');
+const video = document.getElementById('correctiveCameraVideo');
+const canvas = document.getElementById('correctiveCameraCanvas');
+const photoPreview = document.getElementById('correctiveCameraPreview');
     const cameraStatus = document.getElementById('correctiveCameraStatus');
     const startCameraButton = document.getElementById('startCorrectiveCamera');
     const captureButton = document.getElementById('captureCorrectivePhoto');
@@ -4359,59 +4359,62 @@ const deletionEvidenceFields =
         errorBox.classList.add('d-none');
     }
 
-    function stopCamera() {
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(track => track.stop());
-            cameraStream = null;
-        }
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
 
+    if (video) {
         video.srcObject = null;
         video.classList.add('d-none');
+    }
+
+    if (captureButton) {
+        captureButton.classList.add('d-none');
         captureButton.disabled = true;
+    }
+
+    if (stopCameraButton) {
+        stopCameraButton.classList.add('d-none');
         stopCameraButton.disabled = true;
+    }
+
+    if (startCameraButton) {
+        startCameraButton.classList.remove('d-none');
         startCameraButton.disabled = false;
+    }
+
+    if (cameraStatus) {
         cameraStatus.textContent = 'Camera is off.';
     }
+}
 
-   
 function removeCapturedPhoto() {
-    if (capturedCameraImage) {
-        capturedCameraImage = null;
+    // Clear the captured image used for submission.
+    cameraImageData = null;
+
+    // Clear and hide the photo preview.
+    if (photoPreview) {
+        photoPreview.removeAttribute('src');
+        photoPreview.classList.add('d-none');
     }
 
-    const cameraImageInput =
-        document.getElementById('cameraImageInput');
+    // Hide the Remove Photo button.
+    if (removePhotoButton) {
+        removePhotoButton.classList.add('d-none');
+    }
+
+    // Clear a temporary image input if one exists.
+    const cameraImageInput = document.getElementById('cameraImageInput');
 
     if (cameraImageInput) {
         cameraImageInput.value = '';
     }
 
-    const capturedPhotoPreview =
-        document.getElementById('capturedPhotoPreview');
-
-    if (capturedPhotoPreview) {
-        capturedPhotoPreview.removeAttribute('src');
-        capturedPhotoPreview.classList.add('d-none');
+    if (cameraStatus) {
+        cameraStatus.textContent = 'Captured photo removed.';
     }
-
-    const removeCapturedPhotoButton =
-        document.getElementById('removeCorrectivePhoto');
-
-    if (removeCapturedPhotoButton) {
-        removeCapturedPhotoButton.classList.add('d-none');
-    }
-
-    const captureStatus =
-        document.getElementById('correctiveCameraStatus');
-
-    if (captureStatus) {
-        captureStatus.textContent = '';
-    }
-
-    cameraImageData = null;
-    photoPreview.removeAttribute('src');
-    photoPreview.classList.add('d-none');
-    removePhotoButton.classList.add('d-none');
 }
 
     function resetForm() {
