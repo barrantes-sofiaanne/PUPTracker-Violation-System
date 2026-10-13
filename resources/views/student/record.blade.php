@@ -3874,60 +3874,98 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
                               required></textarea>
                     <div class="form-text">Minimum 10 characters.</div>
                 </div>
-<div id="deletionEvidenceFields" class="d-none">
-                <div class="mb-3">
-                    <label for="correctiveEvidenceFiles" class="form-label fw-semibold">
-                        Supporting Evidence (Optional)
-                    </label>
-                    <input type="file" id="correctiveEvidenceFiles"
-                           class="form-control" multiple
-                           accept=".jpg,.jpeg,.png,.webp,.pdf">
-                    <div class="form-text">
-                        Up to 5 files, maximum 10 MB each. JPG, PNG, WEBP, or PDF.
-                    </div>
-                </div>
 
-                <div class="border rounded p-3 mb-3">
-                    <h6 class="fw-semibold">Optional Camera Evidence</h6>
-                    <p class="small text-muted">
-                        Only activate the camera if you want to capture a photo
-                        as supporting evidence. Your camera will not start automatically.
-                    </p>
+<div id="deletionEvidenceFields" class="mt-4">
 
-                    <div class="d-flex flex-wrap gap-2 mb-3">
-                        <button type="button" id="startCorrectiveCamera"
-                                class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-camera me-1"></i>Open Camera
-                        </button>
-                        <button type="button" id="captureCorrectivePhoto"
-                                class="btn btn-outline-danger btn-sm" disabled>
-                            Capture Photo
-                        </button>
-                        <button type="button" id="stopCorrectiveCamera"
-                                class="btn btn-outline-secondary btn-sm" disabled>
-                            Turn Camera Off
-                        </button>
-                        <button type="button" id="removeCorrectivePhoto"
-                                class="btn btn-outline-secondary btn-sm d-none">
-                            Remove Photo
-                        </button>
-                    </div>
+    <hr>
 
-                    <video id="correctiveCameraPreview"
-                           class="w-100 rounded d-none"
-                           autoplay muted playsinline
-                           style="max-height:300px;background:#111"></video>
+    <h6 class="fw-bold">Supporting Evidence (Optional)</h6>
+    <p class="text-muted small">
+        Upload supporting images or documents for the administrator
+        to review.
+    </p>
 
-                    <canvas id="correctiveCameraCanvas" class="d-none"></canvas>
+    <div class="mb-4">
+        <label for="correctiveEvidenceFiles" class="form-label">
+            Upload Evidence
+        </label>
+        <input type="file"
+               id="correctiveEvidenceFiles"
+               class="form-control"
+               accept=".jpg,.jpeg,.png,.webp,.pdf"
+               multiple>
 
-                    <img id="correctiveCameraPhoto" alt="Captured evidence preview"
-                         class="img-fluid rounded d-none"
-                         style="max-height:300px">
+        <div class="form-text">
+            Maximum 5 files, up to 10 MB per file.
+        </div>
+    </div>
 
-                    <p id="correctiveCameraStatus" class="small text-muted mb-0"
-                       aria-live="polite">Camera is off.</p>
-                </div>
-            </div>
+    <hr>
+
+    <h6 class="fw-bold">Camera Evidence (Optional)</h6>
+    <p class="text-muted small">
+        You may take a photo using your device's camera to support
+        your deletion request.
+    </p>
+
+    <div class="border rounded-3 p-3 text-center">
+        <video id="correctiveCameraVideo"
+               class="w-100 rounded d-none"
+               autoplay
+               playsinline></video>
+
+        <canvas id="correctiveCameraCanvas"
+                class="d-none"></canvas>
+
+        <div id="correctiveCameraPlaceholder"
+             class="border rounded bg-light p-4 mb-3">
+            <i class="bi bi-camera fs-1 text-secondary"></i>
+            <p class="mb-0 mt-2 text-muted">
+                Camera preview will appear here when you start the camera.
+            </p>
+        </div>
+
+        <img id="correctiveCameraPreview"
+             class="img-fluid rounded d-none mb-3"
+             alt="Captured camera evidence">
+
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+            <button type="button"
+                    id="startCorrectiveCamera"
+                    class="btn btn-outline-primary">
+                <i class="bi bi-camera-video me-1"></i>
+                Start Camera
+            </button>
+
+            <button type="button"
+                    id="captureCorrectivePhoto"
+                    class="btn btn-primary d-none">
+                <i class="bi bi-camera me-1"></i>
+                Capture Photo
+            </button>
+
+            <button type="button"
+                    id="stopCorrectiveCamera"
+                    class="btn btn-outline-secondary d-none">
+                Stop Camera
+            </button>
+
+            <button type="button"
+                    id="removeCorrectivePhoto"
+                    class="btn btn-outline-danger d-none">
+                Remove Photo
+            </button>
+        </div>
+
+        <div id="correctiveCameraStatus"
+             class="small text-muted mt-3"
+             role="status"
+             aria-live="polite">
+            Camera is not active.
+        </div>
+    </div>
+</div>
+
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary"
@@ -3947,6 +3985,8 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const deletionEvidenceFields =
+    document.getElementById('deletionEvidenceFields');
     // Deep-link support: if the URL contains #sanctionRecord, open the
     // Sanction Record tab automatically (used by notification links).
     if (window.location.hash === '#sanctionRecord') {
@@ -4395,18 +4435,14 @@ document.querySelectorAll('.corrective-action-btn').forEach(button => {
 });
 
 
-    actionSelect.addEventListener('change', function () {
-        clearError();
+   actionSelect.addEventListener('change', function () {
+    const isDeletion = this.value === 'deletion';
 
-        correctionFields.classList.toggle(
-            'd-none',
-            this.value !== 'correction'
-        );
-        deletionFields.classList.toggle(
-            'd-none',
-            this.value !== 'deletion'
-        );
-    });
+    correctionFields.classList.toggle('d-none', isDeletion);
+    deletionFields.classList.toggle('d-none', !isDeletion);
+
+    deletionEvidenceFields.classList.toggle('d-none', !isDeletion);
+});
 
     categorySelect.addEventListener('change', function () {
         const categoryId = this.value;
@@ -4537,9 +4573,22 @@ document.querySelectorAll('.corrective-action-btn').forEach(button => {
         formData.append('reason', reason);
 
         if (action === 'correction') {
-            formData.append('violation_category_id', categorySelect.value);
-            formData.append('violation_type_id', violationTypeSelect.value);
-            formData.append('violation_date', dateInput.value.replace('T', ' ') + ':00');
+
+formData.append(
+    'requested_violation_category_id',
+    categorySelect.value
+);
+
+formData.append(
+    'requested_violation_type_id',
+    violationTypeSelect.value
+);
+
+formData.append(
+    'requested_violation_date',
+    dateInput.value.replace('T', ' ') + ':00'
+);
+
             formData.append('description', descriptionInput.value.trim());
         } else {
             files.forEach(file => formData.append('evidence_files[]', file));
