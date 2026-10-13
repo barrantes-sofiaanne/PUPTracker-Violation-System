@@ -4514,12 +4514,24 @@ document.querySelectorAll('.corrective-action-btn').forEach(button => {
             });
 
             video.srcObject = cameraStream;
-            video.classList.remove('d-none');
-            captureButton.disabled = false;
-            stopCameraButton.disabled = false;
-            startCameraButton.disabled = true;
-            cameraStatus.textContent =
-                'Camera is on. Capture a photo only when you are ready.';
+video.classList.remove('d-none');
+
+if (captureButton) {
+    captureButton.classList.remove('d-none');
+    captureButton.disabled = false;
+}
+
+if (stopCameraButton) {
+    stopCameraButton.classList.remove('d-none');
+    stopCameraButton.disabled = false;
+}
+
+if (startCameraButton) {
+    startCameraButton.disabled = true;
+}
+
+cameraStatus.textContent =
+    'Camera is on. Capture a photo only when you are ready.';
         } catch (error) {
             stopCamera();
             showError('Camera access was not granted or is unavailable. You can still upload evidence.');
