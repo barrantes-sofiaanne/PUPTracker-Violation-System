@@ -2258,6 +2258,24 @@
     box-shadow: 0 1rem 3rem rgba(25, 15, 15, .22);
 }
 
+/* The form must also be a flex container; otherwise its body grows with
+   all of its contents and the modal has nothing that can scroll. */
+#submitProofModal #submitProofForm {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#submitProofModal #submitProofForm .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
 #submitProofModal .modal-header {
     display: flex;
     align-items: flex-start;
