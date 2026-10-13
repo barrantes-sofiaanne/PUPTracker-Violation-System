@@ -22,6 +22,9 @@ public function index()
     // and exclude denied violations.
     $this->applyRecorderScope($baseViolations);
 
+    // Read the student search input.
+$search = trim((string) request()->query('search', ''));
+
     // ------------------------------------------------------------
     // BASIC COUNTS
     // ------------------------------------------------------------
@@ -38,17 +41,22 @@ public function index()
 
     // Recent Violations intentionally remains a 7-day metric.
     // This is different from Total Violations.
-    $recentViolations = Violation::with([
-            'student',
-            'violationType.violationCategory'
-        ])
-        ->where(function (Builder $query) {
-            $this->applyRecorderScope($query);
-        })
-        ->where('violation_date', '>=', now()->subDays(7))
-        ->latest('violation_date')
-        ->take(10)
-        ->get();
+
+$recentViolations = Violation::with([
+        'student',
+        'violationType.violationCategory'
+    ])
+    ->where(function (Builder $query) {
+        $this->applyRecorderScope($query);
+    })
+    ->where('violation_date', '>=', now()->subDays(7))
+    ->when($search !== '', function (Builder $query) use ($search) {
+        $this->applyStudentSearch($query, $search);
+    })
+    ->latest('violation_date')
+    ->take(10)
+    ->get();
+
 
 
     // ------------------------------------------------------------
@@ -86,6 +94,9 @@ $violationsByCategory = Violation::with([
     ->where(function (Builder $query) {
         $this->applyRecorderScope($query);
     })
+    ->when($search !== '', function (Builder $query) use ($search) {
+        $this->applyStudentSearch($query, $search);
+    })
     ->get()
     ->groupBy(
         fn ($violation) => $violation->violation_category_display
@@ -98,6 +109,8 @@ $violationsByCategory = Violation::with([
     })
     ->sortByDesc('count')
     ->values();
+
+$categoryTotal = $violationsByCategory->sum('count');
 
 
 // ------------------------------------------------------------
@@ -141,16 +154,42 @@ $violationsByOffenseLevel = (clone $baseViolations)
     ])->get();
 
 
-    return view('security.dashboard', compact(
-        'activeStudents',
-        'totalViolations',
-        'recentViolations',
-        'activeOffenders',
-        'violationsByCategory',
-        'violationsByOffenseLevel',
-        'categories'
-    ));
+return view('security.dashboard', compact(
+    'activeStudents',
+    'totalViolations',
+    'recentViolations',
+    'activeOffenders',
+    'violationsByCategory',
+    'categoryTotal',
+    'violationsByOffenseLevel',
+    'categories',
+    'search'
+));
 }
+
+private function applyStudentSearch(
+    Builder $query,
+    string $search
+): void {
+    $term = '%' . $search . '%';
+
+    $query->where(function (Builder $studentQuery) use ($term) {
+        $studentQuery
+            ->where('student_number', 'like', $term)
+            ->orWhereHas('student', function (Builder $userQuery) use ($term) {
+                $userQuery->where(function (Builder $nameQuery) use ($term) {
+                    $nameQuery
+                        ->where('first_name', 'like', $term)
+                        ->orWhere('last_name', 'like', $term)
+                        ->orWhereRaw(
+                            "CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?",
+                            [$term]
+                        );
+                });
+            });
+    });
+}
+
 
     private function applyRecorderScope($query): void
     {

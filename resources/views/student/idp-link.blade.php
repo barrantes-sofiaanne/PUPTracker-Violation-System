@@ -147,12 +147,12 @@
                         $ladderizedOffered = $selectedProgramId !== ''
                             && in_array((int) $selectedProgramId, array_map('intval', $ladderizedProgramIds), true);
                     @endphp
-                    <select
-                        id="program_id"
-                        name="program_id"
-                        class="form-select @error('program_id') is-invalid @enderror"
-                        data-ladderized-programs='@json(array_values($ladderizedProgramIds))'
-                        required>
+                  <select
+    id="program_id"
+    name="program_id"
+    class="form-select @error('program_id') is-invalid @enderror"
+    data-ladderized-programs='@json(array_values($ladderizedProgramIds))'
+    required>
                         <option value="">Select Program/Course</option>
                         @foreach ($programs as $program)
                             <option value="{{ $program->program_id }}"
@@ -179,24 +179,24 @@
                         Ladderized
                     </label>
                     <div class="form-check form-check-inline">
-                        <input
-                            class="form-check-input @error('ladderized') is-invalid @enderror"
-                            type="radio"
-                            name="ladderized"
-                            id="ladderizedYes"
-                            value="1"
-                            @checked((string) old('ladderized') === '1')>
-                        <label class="form-check-label" for="ladderizedYes">Yes</label>
+<input
+    class="form-check-input @error('ladderized') is-invalid @enderror"
+    type="radio"
+    name="ladderized"
+    id="ladderizedYes"
+    value="1"
+    @checked((string) old('ladderized') === '1')>
+<label class="form-check-label" for="ladderizedYes">Yes</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input
-                            class="form-check-input @error('ladderized') is-invalid @enderror"
-                            type="radio"
-                            name="ladderized"
-                            id="ladderizedNo"
-                            value="0"
-                            @checked((string) old('ladderized') === '0' || old('ladderized') === null)>
-                        <label class="form-check-label" for="ladderizedNo">No</label>
+<input
+    class="form-check-input @error('ladderized') is-invalid @enderror"
+    type="radio"
+    name="ladderized"
+    id="ladderizedNo"
+    value="0"
+    @checked((string) old('ladderized') === '0')>
+<label class="form-check-label" for="ladderizedNo">No</label>
                     </div>
                     <small class="form-text text-muted d-block">
                         Choose <strong>Yes</strong> if you are enrolled under the ladderized
@@ -358,34 +358,54 @@ document.addEventListener('DOMContentLoaded', function () {
 // this never hard-codes an id and automatically follows any change to
 // GRADUATION_REVIEW_LADDERIZED_PROGRAMS. The server re-checks the program
 // before storing the flag, so this is presentation only.
+
 document.addEventListener('DOMContentLoaded', function () {
     const programSelect = document.getElementById('program_id');
     const wrap = document.getElementById('ladderizedWrap');
+
     if (!programSelect || !wrap) {
         return;
     }
 
     let ladderizedIds = [];
+
     try {
-        ladderizedIds = JSON.parse(programSelect.dataset.ladderizedPrograms || '[]').map(Number);
+        ladderizedIds = JSON.parse(
+            programSelect.dataset.ladderizedPrograms || '[]'
+        ).map(Number);
     } catch (e) {
         ladderizedIds = [];
     }
 
     function syncLadderizedVisibility() {
-        const offered = ladderizedIds.indexOf(Number(programSelect.value)) !== -1;
+        const offered = ladderizedIds.includes(
+            Number(programSelect.value)
+        );
+
         wrap.classList.toggle('d-none', !offered);
 
-        // Leaving a ladderizable program must also drop the answer, so the
-        // "No" default applies if a non-ladderized program is then submitted.
-        if (!offered) {
-            const no = document.getElementById('ladderizedNo');
-            if (no) { no.checked = true; }
-        }
+        const yes = document.getElementById('ladderizedYes');
+        const no = document.getElementById('ladderizedNo');
+
+        [yes, no].forEach(function (radio) {
+            if (!radio) return;
+
+            if (offered) {
+                radio.setAttribute('required', 'required');
+            } else {
+                radio.removeAttribute('required');
+                radio.checked = false;
+            }
+        });
     }
 
-    programSelect.addEventListener('change', syncLadderizedVisibility);
+    programSelect.addEventListener(
+        'change',
+        syncLadderizedVisibility
+    );
+
     syncLadderizedVisibility();
 });
+
 </script>
 @endpush

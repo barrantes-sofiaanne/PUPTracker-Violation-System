@@ -74,39 +74,13 @@ class Admin extends Authenticatable
     );
 }
 
-    public function isItAdministrator(): bool
-    {
-        try {
-            if (!Schema::hasTable('admin_info_tbl')) {
-                return false;
-            }
-
-            $adminInfo = $this->adminInfo;
-
-            $candidates = [
-                $adminInfo?->position,
-                $adminInfo?->Position,
-                $adminInfo?->designation,
-                $adminInfo?->role,
-                $adminInfo?->title,
-            ];
-
-            foreach ($candidates as $candidate) {
-                if (is_string($candidate) && strcasecmp(trim($candidate), 'IT Administrator') === 0) {
-                    return true;
-                }
-            }
-
-            return false;
-        } catch (\Throwable $e) {
-            // If there's any error checking admin info, default to false
-            \Illuminate\Support\Facades\Log::warning('Error checking admin info', [
-                'admin_id' => $this->id,
-                'error' => $e->getMessage(),
-            ]);
-            return false;
-        }
-    }
+ public function isItAdministrator(): bool
+{
+    return strcasecmp(
+        trim((string) $this->roleName()),
+        'IT Administrator'
+    ) === 0;
+}
 
     /**
      * Resolve this administrator's assigned role NAME (e.g. "Admin" or
@@ -176,13 +150,7 @@ class Admin extends Authenticatable
      */
     public function isItAdministratorRole(): bool
     {
-        $roleName = $this->roleName();
-
-        if ($roleName !== null) {
-            return strcasecmp($roleName, 'IT Administrator') === 0;
-        }
-
-        return $this->isItAdministrator();
+       return $this->isItAdministrator();
     }
 
     /** The `roles_tbl.roles_name` value that marks an OSS Staff account. */

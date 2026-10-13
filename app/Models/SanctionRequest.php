@@ -34,12 +34,15 @@ class SanctionRequest extends Model
     'status',
     'approved_by_admin_id',
     'approved_at',
+    'decline_reason',
+'is_resubmission',
 ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'request_date' => 'datetime',
         'approved_at' => 'datetime',
+        'is_resubmission' => 'boolean',
     ];
 
     /*

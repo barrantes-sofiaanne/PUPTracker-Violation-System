@@ -297,7 +297,7 @@ if (! $student->isActiveAccount()) {
                 $pendingRecord->update([
                     'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
                     'assigned_by_admin_id' => $adminId,
-                    'date_assigned' => $scheduledDate,
+                    'date_assigned' => now(),
                     'deadline_date' => $deadlineDate,
                     // Service assignment (null for non-service sanctions).
                     'designated_office' => $designatedOffice,
@@ -312,7 +312,7 @@ if (! $student->isActiveAccount()) {
                     'assigned_sanction_id' => $assignedSanction?->disciplinary_sanction_id,
                     'assigned_by_admin_id' => $adminId,
                     'status' => StudentSanctionRecord::STATUS_IN_PROGRESS,
-                    'date_assigned' => $scheduledDate,
+                    'date_assigned' => now(),
                     'deadline_date' => $deadlineDate,
                     // Service assignment (null for non-service sanctions).
                     'designated_office' => $designatedOffice,
@@ -328,21 +328,54 @@ if (! $student->isActiveAccount()) {
             ]);
 
             try {
-                $deadlineMessage = $deadlineDate
-                    ? ' Deadline to complete: ' . $deadlineDate->format('M d, Y') . '.'
-                    : '';
-                $serviceMessage = $designatedOffice
-                    ? ' Designated office: ' . $designatedOffice . '.'
-                        . ($startingDate ? ' Starting date: ' . $startingDate->format('M d, Y') . '.' : '')
-                    : '';
-                app(\App\Services\StudentNotificationService::class)->create(
-                    studentNumber: $student->student_number,
-                    type: 'sanction',
-                    title: 'Sanction Request Approved',
-                    message: 'Your sanction request was approved. Please check your Sanction Record tab. Scheduled date: ' . $scheduledDate->format('M d, Y') . '.' . $serviceMessage . $deadlineMessage,
-                    targetType: 'sanction_request',
-                    targetId: (int) $sanctionRequest->request_id,
-                );
+$dateAssignedMessage = ' Date Assigned: '
+    . $scheduledDate->format('M d, Y') . '.';
+
+$serviceMessage = $designatedOffice
+    ? ' Designated Office: ' . $designatedOffice . '.'
+        . ($startingDate
+            ? ' Starting Date: ' . $startingDate->format('M d, Y') . '.'
+            : '')
+    : '';
+
+
+$deadlineMessage = $deadlineDate
+    ? ' Deadline to Complete: ' . $deadlineDate->format('M d, Y') . '.'
+    : '';
+
+if ($designatedOffice && $startingDate) {
+    // Service sanctions: tell the student where and when to render service.
+    $serviceMessage = ' Designated Office: ' . $designatedOffice . '.'
+        . ' Starting Date: ' . $startingDate->format('M d, Y') . '.';
+
+    $notificationMessage =
+        'Your sanction request has been approved. '
+        . 'Please review your Sanction Record tab for the details '
+        . 'of your assigned service.'
+        . ' Date Assigned: ' . $scheduledDate->format('M d, Y') . '.'
+        . $serviceMessage
+        . $deadlineMessage;
+} else {
+    // Other sanctions: direct the student to the note and personal intervention.
+    $notificationMessage =
+        'Your sanction request has been approved. '
+        . 'Please open the Sanction Record tab in your account '
+        . 'and read the note regarding your assigned sanction. '
+        . 'You are required to visit the Office of Student Services '
+        . 'for personal intervention.'
+        . ' Date Assigned: ' . $scheduledDate->format('M d, Y') . '.'
+        . $deadlineMessage;
+}
+
+app(\App\Services\StudentNotificationService::class)->create(
+    studentNumber: $student->student_number,
+    type: 'sanction',
+    title: 'Sanction Request Approved',
+    message: $notificationMessage,
+    targetType: 'sanction_request',
+    targetId: (int) $sanctionRequest->request_id,
+);
+
             } catch (\Throwable $e) {
                 // Notification must never break the approval.
             }
@@ -362,52 +395,80 @@ if (! $student->isActiveAccount()) {
         return back()->with('success', 'Sanction request approved and added to the student sanction tab.');
     }
 
-    public function declineRequest(SanctionRequest $sanctionRequest): RedirectResponse
-    {
-        if (!$sanctionRequest->is_active) {
-            return back()->withErrors([
-                'sanction_request' => 'This sanction request has already been processed.',
-            ]);
+   public function declineRequest(
+    Request $request,
+    SanctionRequest $sanctionRequest
+): RedirectResponse {
+    $validated = $request->validate([
+        'decline_reason' => [
+            'required',
+            'string',
+            'min:5',
+            'max:2000',
+        ],
+    ]);
+$reason = trim($validated['decline_reason']);
+    if (!$sanctionRequest->is_active) {
+        return back()->withErrors([
+            'sanction_request' =>
+                'This sanction request has already been processed.',
+        ]);
+    }
+
+    $reason = trim($validated['decline_reason']);
+    $adminId = Auth::guard('admin')->id();
+
+    DB::transaction(function () use (
+        $sanctionRequest,
+        $adminId,
+        $reason
+    ): void {
+        $student = $sanctionRequest->student;
+
+        $sanctionRequest->update([
+            'is_active' => false,
+            'status' => 'Declined',
+            'decline_reason' => $reason,
+            'approved_by_admin_id' => $adminId,
+            'approved_at' => now(),
+        ]);
+
+        if ($student) {
+            try {
+                app(
+                    \App\Services\StudentNotificationService::class
+                )->create(
+                    studentNumber: $student->student_number,
+                    type: 'sanction',
+                    title: 'Sanction Request Declined',
+                    message: 'Your sanction request was declined. Reason: '
+                        . $reason
+                        . ' You may submit a new request after addressing this reason.',
+                    targetType: 'sanction_request',
+                    targetId: (int) $sanctionRequest->request_id,
+                );
+            } catch (\Throwable $e) {
+                // A notification failure must not undo the decline.
+            }
         }
 
-        $adminId = Auth::guard('admin')->id();
+        AuditLog::create([
+            'actor_type' => 'admin',
+            'actor_id' => $adminId,
+            'action' => 'Decline',
+            'module' => 'Sanction Requests',
+            'description' => 'Declined sanction request #'
+                . $sanctionRequest->request_id
+                . '. Reason: '
+                . $reason,
+        ]);
+    });
 
-        DB::transaction(function () use ($sanctionRequest, $adminId): void {
-            $student = $sanctionRequest->student;
-
-            $sanctionRequest->update([
-                'is_active' => false,
-                'status' => 'Declined',
-                'approved_by_admin_id' => $adminId,
-                'approved_at' => now(),
-            ]);
-
-            if ($student) {
-                try {
-                    app(\App\Services\StudentNotificationService::class)->create(
-                        studentNumber: $student->student_number,
-                        type: 'sanction',
-                        title: 'Sanction Request Declined',
-                        message: 'Your sanction request was declined by the administration.',
-                        targetType: 'sanction_request',
-                        targetId: (int) $sanctionRequest->request_id,
-                    );
-                } catch (\Throwable $e) {
-                    // Notification must never break the decline.
-                }
-            }
-
-            AuditLog::create([
-                'actor_type' => 'admin',
-                'actor_id' => $adminId,
-                'action' => 'Decline',
-                'module' => 'Sanction Requests',
-                'description' => 'Declined sanction request #' . $sanctionRequest->request_id . '.',
-            ]);
-        });
-
-        return back()->with('success', 'Sanction request declined and the student was notified.');
-    }
+    return back()->with(
+        'success',
+        'Sanction request declined and the student was notified.'
+    );
+}
 
     public function acceptProof(StudentSanctionRecord $studentSanctionRecord): RedirectResponse
     {

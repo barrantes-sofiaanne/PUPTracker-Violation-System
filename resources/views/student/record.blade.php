@@ -21,759 +21,1113 @@
 <link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
 
 <style>
-/* ==========================================================================
-   Submit Proof of Completion modal (scoped to this page)
-   ========================================================================== */
-/* The dialog is centred both ways and constrained to the viewport. Previously
-   this page's own stylesheet restyled bare `.modal-content`/`.modal-header`
-   (width, transform, padding), which overrode Bootstrap's centring and made
-   this dialog sit oddly. That leak is now scoped in student.css, and the
-   centring is stated explicitly here so it cannot regress. */
-#submitProofModal .modal-dialog {
-    width: 100%;
-    max-width: 500px;
-    margin: 0.5rem auto;
+    
+/* Keep the two tab panes independent. */
+#studentRecordTabsContent > .tab-pane,
+.tab-content > #violationRecord,
+.tab-content > #sanctionRecord {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: initial !important;
+    align-self: stretch;
 }
 
-#submitProofModal .modal-content {
-    width: 100%;
+/* Bootstrap should hide inactive tab panes. */
+.tab-content > .tab-pane:not(.active) {
+    display: none !important;
 }
 
-#submitProofModal #submitProofForm {
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-}
-
-#submitProofModal .modal-body {
-    min-height: 0;
-    flex: 1 1 auto;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-}
-
-#submitProofModal .modal-header {
-    align-items: flex-start;
-    gap: 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-#submitProofModal .modal-title {
-    color: var(--pup-maroon);
-    font-size: 1.15rem;
-}
-#submitProofModal .modal-subtitle {
-    color: var(--secondary-text);
-    font-size: 0.85rem;
-    margin-top: 0.25rem;
-    line-height: 1.4;
-}
-#submitProofModal .modal-body {
-    padding: 1.25rem 1.5rem;
-}
-/* Vertical scrolling for tall content is handled by Bootstrap's
-   `modal-dialog-scrollable` (which caps the dialog at the viewport and scrolls
-   only the body). A fixed `max-height` on the body previously fought that rule
-   and made the dialog unnecessarily short — and therefore look off-centre — on
-   shorter screens, so it was removed. */
-#submitProofModal .modal-footer {
-    border-top: 1px solid var(--border-color);
-    margin-top: 0;
-    padding: 0.9rem 1.5rem;
-}
-#submitProofModal .proof-section {
-    margin-bottom: 1.5rem;
-}
-#submitProofModal .proof-section-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--pup-maroon);
-    font-weight: 700;
-    font-size: 0.92rem;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    margin-bottom: 0.6rem;
-}
-#submitProofModal .proof-step-number {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.35rem;
-    height: 1.35rem;
-    border-radius: 50%;
-    background: var(--pup-maroon);
-    color: #fff;
-    font-size: 0.75rem;
-    font-weight: 700;
-    line-height: 1;
-}
-#submitProofModal .proof-body-text {
-    color: var(--secondary-text);
-    font-size: 0.88rem;
-    line-height: 1.5;
-}
-#submitProofModal .proof-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-    background: var(--hover-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 0.6rem;
-    padding: 0.9rem;
-}
-#submitProofModal .proof-detail-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    min-width: 0;
-}
-#submitProofModal .proof-detail-label {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    color: var(--secondary-text);
-    font-weight: 600;
-}
-#submitProofModal .proof-detail-value {
-    font-size: 0.92rem;
-    color: var(--primary-text);
-    font-weight: 600;
-    word-break: break-word;
-}
-#submitProofModal .official-form-area {
-    margin-top: 0.85rem;
-    padding: 0.75rem 0.9rem;
-    border: 1px dashed var(--border-color);
-    border-radius: 0.5rem;
-    background: var(--secondary-bg);
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-}
-#submitProofModal .official-form-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--primary-text);
-}
-#submitProofModal .proof-upload-zone {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    gap: 0.5rem;
-    padding: 1.6rem 1rem;
-    border: 2px dashed var(--border-color);
-    border-radius: 0.7rem;
-    background: var(--secondary-bg);
-    cursor: pointer;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
-}
-#submitProofModal .proof-upload-zone:hover,
-#submitProofModal .proof-upload-zone:focus-visible,
-#submitProofModal .proof-upload-zone-active {
-    border-color: var(--pup-maroon);
-    background: var(--hover-bg);
-    outline: none;
-}
-#submitProofModal .proof-file-input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-    clip-path: inset(50%);
-}
-#submitProofModal .proof-upload-icon {
-    font-size: 2rem;
-    color: var(--pup-maroon);
-    line-height: 1;
-}
-#submitProofModal .proof-upload-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--primary-text);
-}
-#submitProofModal .proof-upload-hint {
-    font-size: 0.82rem;
-    color: var(--secondary-text);
-}
-#submitProofModal .proof-upload-zone .btn {
-    padding: 0.4rem 1.1rem;
-    font-size: 0.85rem;
-}
-#submitProofModal .proof-file-selected {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    padding: 0.7rem 0.9rem;
-    border: 1px solid var(--border-color);
-    border-radius: 0.6rem;
-    background: var(--hover-bg);
-}
-#submitProofModal .proof-file-chip {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    min-width: 0;
-}
-#submitProofModal .proof-file-icon {
-    font-size: 1.4rem;
-    color: var(--status-completed-text);
-    flex-shrink: 0;
-}
-#submitProofModal .proof-file-meta {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-#submitProofModal .proof-file-name {
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: var(--primary-text);
-    word-break: break-all;
-}
-#submitProofModal .proof-file-size {
-    font-size: 0.78rem;
-    color: var(--secondary-text);
-}
-#submitProofModal .proof-formats {
-    font-size: 0.78rem;
-    color: var(--secondary-text);
-    text-align: center;
-    margin: 0.45rem 0 0;
-}
-#submitProofModal .invalid-proof-feedback {
-    margin-top: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.4rem;
-    font-size: 0.82rem;
-    color: #b02a37;
-    background: var(--status-sanction-bg);
-    border: 1px solid rgba(207, 19, 34, 0.25);
-}
-#submitProofModal .proof-guidelines {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.35rem;
-}
-#submitProofModal .proof-guidelines li {
-    position: relative;
-    padding-left: 1.4rem;
-    font-size: 0.85rem;
-    color: var(--secondary-text);
-    line-height: 1.45;
-}
-#submitProofModal .proof-guidelines li::before {
-    content: "\2713";
-    position: absolute;
-    left: 0;
-    top: 0;
-    color: var(--pup-maroon);
-    font-weight: 700;
-}
-#submitProofModal .proof-char-counter {
-    font-size: 0.75rem;
-    margin-top: 0.2rem;
-}
-#submitProofModal .proof-review-alert {
-    border: 1px solid rgba(128, 0, 0, 0.25);
-    border-left: 4px solid var(--pup-maroon);
-    background: var(--hover-bg);
-    border-radius: 0.5rem;
-    padding: 0.9rem 1rem;
-    color: var(--primary-text);
-    font-size: 0.85rem;
-    line-height: 1.5;
-}
-#submitProofModal .proof-review-alert p {
-    margin-bottom: 0.25rem;
-}
-#submitProofModal .proof-review-alert .bi-shield-check {
-    color: var(--pup-maroon);
-}
-#submitProofModal .proof-confirm .form-check-label {
-    font-size: 0.88rem;
-    color: var(--primary-text);
-    line-height: 1.4;
-}
-#submitProofModal .proof-confirm .form-check-input:checked {
-    background-color: var(--pup-maroon);
-    border-color: var(--pup-maroon);
-}
-#submitProofModal .proof-confirm .form-check-input:focus {
-    box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.2);
-    border-color: var(--pup-maroon);
-}
-#submitProofModal .btn:focus-visible,
-#submitProofModal .proof-upload-zone:focus-visible,
-#submitProofModal .form-control:focus,
-#submitProofModal .form-check-input:focus {
-    outline: none;
-    box-shadow: 0 0 0 0.2rem rgba(128, 0, 0, 0.25);
-}
-@media (max-width: 767.98px) {
-    #submitProofModal .modal-dialog {
-        width: calc(100% - 1rem);
-        max-width: none;
-        margin: 0.5rem auto;
-    }
-
-    #submitProofModal .modal-content {
-        border-radius: 0.6rem;
-    }
-
-    #submitProofModal .modal-header {
-        padding: 1rem;
-    }
-
-    #submitProofModal #submitProofForm {
-    min-height: 0;
-}
-
-#submitProofModal .modal-body {
-    min-height: 0;
-    overflow-y: auto;
-}
-
-    #submitProofModal .modal-footer {
-        padding: 0.8rem 1rem;
-    }
-
-    #submitProofModal .proof-detail-grid {
-        grid-template-columns: 1fr;
-        gap: 0.6rem;
-    }
-
-    #submitProofModal .official-form-area {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    #submitProofModal .official-form-label {
-        text-align: center;
-    }
-
-    #submitProofModal .official-form-area .btn {
-        width: 100%;
-    }
-
-    #submitProofModal .proof-file-selected {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    #submitProofModal .proof-file-chip {
-        width: 100%;
-    }
-
-    #submitProofModal .proof-file-selected .btn {
-        width: 100%;
-    }
-
-    #submitProofModal .modal-footer {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    #submitProofModal .modal-footer .btn {
-        flex: 1 1 0;
-        width: auto;
-    }
-}
-
-/* Every action button inside the Submit Proof modal uses the same maroon
-   treatment as the Submit Proof button itself (the project's .portal-btn).
-   Hover / focus / disabled come from the shared .portal-btn rules, so the
-   states stay consistent with the rest of the system. */
-#submitProofModal .btn.portal-btn,
-#submitProofModal .btn.portal-btn-outline {
-    font-weight: 600;
-}
-
-/* The "Choose File" affordance is a styled span acting as a button, so it
-   needs pointer + disabled affordances to match the real buttons. */
-#submitProofModal .proof-upload-zone .btn.portal-btn {
-    cursor: pointer;
-}
-
-/* Highlight applied when arriving from the dashboard's Approaching Deadlines
-   card (?sanction=<record_id>). Uses a maroon accent bar plus a tint so the
-   selected sanction is identifiable without relying on colour alone (the row
-   is also focused programmatically). */
-#sanctionRecord tr.sanction-row-highlight > td {
-    background-color: rgba(128, 0, 0, 0.06);
-    box-shadow: inset 0 0 0 9999px rgba(128, 0, 0, 0.02);
-}
-
-#sanctionRecord tr.sanction-row-highlight > td:first-child {
-    border-left: 4px solid var(--pup-maroon);
-}
-
-#sanctionRecord tr.sanction-row-highlight {
-    outline: 2px solid rgba(128, 0, 0, 0.35);
-    outline-offset: -2px;
-}
-
-/* Community/Campus Service assignment (read-only to the student). */
-.service-assignment-details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    padding-top: 0.5rem;
-    border-top: 1px dashed var(--border-color);
-}
-.service-assignment-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    font-size: 0.85rem;
-}
-.service-assignment-label {
-    color: var(--secondary-text);
-    white-space: nowrap;
-}
-/* Shown instead of the Proof of Completion upload for sanctions that are not
-   Community/Campus Service — those are settled through a personal
-   consultation at the Office of Student Services. */
-.consultation-notice {
-    display: flex;
-    gap: 0.4rem;
-    padding: 0.55rem 0.65rem;
-    border-radius: 0.5rem;
-    border: 1px solid rgba(128, 0, 0, 0.25);
-    border-left: 3px solid var(--pup-maroon);
-    background: var(--hover-bg);
-    color: var(--primary-text);
-    line-height: 1.45;
-}
-.consultation-notice i {
-    color: var(--pup-maroon);
-    flex-shrink: 0;
-}
-@media (max-width: 576px) {
-    /* Keep the Sanction Record table usable on mobile: let the service
-       assignment details and action buttons stack and wrap instead of
-       overflowing. */
-    .service-assignment-row {
-        flex-direction: column;
-        gap: 0.1rem;
-    }
-    .service-assignment-details .fw-semibold {
-        word-break: break-word;
-    }
-    .submit-proof-btn,
-    #sanctionRecord .btn {
-        width: 100%;
-    }
+/* Let the active tab determine the content height. */
+.tab-content {
+    height: auto !important;
+    min-height: 0 !important;
+    align-items: stretch;
 }
 
 /* =========================================================
-   Violation Record tables
+   Individual Violations Log
+   Consolidated responsive styling
    ========================================================= */
 
-/* ---------------------------------------------------------
-   Summary by Violation
-   --------------------------------------------------------- */
-.summary-table-responsive {
+.individual-log-card {
     width: 100%;
-    max-width: 100%;
-    overflow-x: auto !important;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
+    height: auto !important;
+    min-height: 0 !important;
+    margin-bottom: 1.5rem !important;
+    padding-bottom: 0 !important;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid rgba(112, 0, 0, 0.10) !important;
+    border-radius: 1.1rem !important;
+    box-shadow: 0 12px 34px rgba(43, 24, 24, 0.07) !important;
 }
 
-.summary-violations-table {
-    width: 1200px !important;
-    min-width: 1200px !important;
-    max-width: none !important;
-    table-layout: fixed !important;
-    border-collapse: collapse;
+.individual-log-card > .card-body {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: initial !important;
 }
 
-/* Six summary columns = 100%. Evidence belongs in the individual log. */
-.summary-category-col { width: 16%; }
-.summary-violation-type-col { width: 24%; }
-.summary-offense-col { width: 12%; }
-.summary-status-col { width: 14%; }
-.summary-remarks-col { width: 16%; }
-.summary-sanction-col { width: 18%; }
-
-.summary-violations-table th,
-.summary-violations-table td {
-    box-sizing: border-box;
-    vertical-align: middle !important;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    hyphens: none !important;
+.individual-log-card > .card-body.p-0 {
+    padding: 0 !important;
 }
 
-.summary-violations-table thead th {
-    text-align: center !important;
-    line-height: 1.2 !important;
-    font-size: 0.82rem !important;
-    padding: 0.8rem 0.55rem !important;
-}
+/* Header */
 
-.summary-violations-table tbody td {
-    line-height: 1.4 !important;
-    padding: 1rem 0.65rem !important;
-}
-
-/* Keep normal words intact; only allow emergency breaking of a very long
-   unbroken value. */
-.summary-violations-table .summary-category-col,
-.summary-violations-table .summary-violation-type-col,
-.summary-violations-table .summary-offense-col,
-.summary-violations-table .summary-remarks-col,
-.summary-violations-table .summary-sanction-col {
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-}
-
-/* Status */
-.summary-violations-table .summary-status-col {
-    text-align: center !important;
-}
-
-.summary-violations-table .summary-status-col .portal-badge,
-.summary-violations-table .summary-status-col .badge {
-    display: inline-block;
-    max-width: 100%;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    text-align: center;
-    line-height: 1.2 !important;
-}
-
-/* Action */
-.summary-violations-table .summary-action-col {
-    text-align: center !important;
-    vertical-align: middle !important;
-}
-
-.summary-action-col .summary-action-buttons {
+.individual-log-header {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
-    width: 100%;
-    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem !important;
+    color: #fff !important;
+    background: linear-gradient(
+        115deg,
+        #650000 0%,
+        #8b0808 58%,
+        #a21b1b 100%
+    ) !important;
+    border: 0 !important;
+    opacity: 1 !important;
 }
 
-.summary-action-col .summary-action-buttons .btn {
+.individual-log-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    min-width: 0;
+}
+
+.individual-log-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.8rem;
+    height: 2.8rem;
+    flex: 0 0 2.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.12);
+    font-size: 1.25rem;
+}
+
+.individual-log-title,
+.individual-log-header .individual-log-title {
+    margin: 0;
+    color: #fff !important;
+    font-size: 1.2rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+}
+
+.individual-log-subtitle,
+.individual-log-header .individual-log-subtitle {
+    margin: 0.22rem 0 0;
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-size: 0.84rem;
+    line-height: 1.4;
+}
+
+.individual-log-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 0 0 auto;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+/* Filters */
+
+
+/* Filters */
+
+.individual-log-filters-wrap {
+    padding: 1.1rem 1.25rem !important;
+    border-bottom: 1px solid #eee2d5;
+    background: #fffdf9;
+}
+
+.individual-log-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.85rem 1rem;
+    align-items: end;
+}
+
+.individual-filter-field {
+    min-width: 0;
+}
+
+.individual-filter-field label,
+.individual-status-filter-row label {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: #5d1515;
+    font-size: 0.78rem;
+    font-weight: 750;
+}
+
+.individual-filter-field .form-select,
+.individual-filter-field .form-control,
+.individual-status-filter-row .form-select {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    border-color: #e5d7c8;
+    border-radius: 0.65rem;
+    font-size: 0.88rem;
+}
+
+.individual-status-filter-row {
+    display: grid;
+    grid-template-columns: max-content minmax(180px, 260px) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.55rem 0.75rem;
+    grid-column: 1 / 4;
+    grid-row: 2;
+    min-width: 0;
+}
+
+.individual-status-filter-row label {
+    margin: 0;
+    white-space: nowrap;
+}
+
+.individual-status-filter-row .form-select {
+    max-width: 260px;
+}
+
+.individual-status-filter-row #individualFilterCount {
+    grid-column: 3;
+    justify-self: end;
+    max-width: 100%;
+    color: #716663;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: right;
+    line-height: 1.35;
+    font-size: 0.82rem;
+}
+
+.individual-filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    grid-column: 4 / 5;
+    grid-row: 2;
+}
+
+.individual-filter-clear {
+    min-width: 110px;
+    border: 1px solid #d9c8b8;
+    color: #5d1515;
+    background: #fffdf9;
+    border-radius: 0.65rem;
+    font-weight: 650;
+    padding: 0.65rem 1.25rem;
+}
+
+.individual-filter-clear:hover {
+    border-color: #800909;
+    color: #800909;
+    background: #fff8f3;
+}
+
+@media (max-width: 991.98px) {
+    .individual-log-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .individual-status-filter-row {
+        grid-column: 1 / 2;
+        grid-row: 3;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.4rem;
+    }
+
+    .individual-status-filter-row label {
+        margin: 0;
+    }
+
+    .individual-status-filter-row .form-select {
+        max-width: none;
+    }
+
+    .individual-status-filter-row #individualFilterCount {
+        grid-column: 1;
+        justify-self: start;
+        text-align: left;
+    }
+
+    .individual-filter-actions {
+        grid-column: 2 / 3;
+        grid-row: 3;
+        align-self: end;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .individual-log-filters-wrap {
+        padding: 1rem !important;
+    }
+
+    .individual-log-filters {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.8rem;
+    }
+
+    .individual-status-filter-row,
+    .individual-filter-actions {
+        grid-column: 1 / -1;
+        grid-row: auto;
+    }
+
+    .individual-filter-actions {
+        justify-content: flex-start;
+    }
+
+    .individual-filter-clear {
+        width: 100%;
+    }
+}
+
+/* Table scrolling container */
+
+.individual-log-card .individual-table-responsive,
+.individual-table-responsive {
     display: block;
     width: 100%;
     max-width: 100%;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+}
+
+/* Table layout.
+   The seven columns are deliberately given enough space.
+   Horizontal scrolling is preferable to breaking every word. */
+
+.individual-log-card .individual-violations-table,
+.individual-violations-table {
+    width: 1500px !important;
+    min-width: 1500px !important;
+    max-width: none !important;
+    margin: 0 !important;
+    table-layout: fixed !important;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* Column widths:
+   1 = violation type
+   2 = date
+   3 = category
+   4 = status
+   5 = remarks
+   6 = attachments
+   7 = action
+*/
+
+.individual-violations-table .violation-type-col,
+.individual-violations-table th:nth-child(1),
+.individual-violations-table td:nth-child(1) {
+    width: 260px;
+}
+
+.individual-violations-table .violation-date-col,
+.individual-violations-table th:nth-child(2),
+.individual-violations-table td:nth-child(2) {
+    width: 180px;
+}
+
+.individual-violations-table .category-col,
+.individual-violations-table th:nth-child(3),
+.individual-violations-table td:nth-child(3) {
+    width: 260px;
+}
+
+.individual-violations-table .status-col,
+.individual-violations-table th:nth-child(4),
+.individual-violations-table td:nth-child(4) {
+    width: 175px;
+}
+
+.individual-violations-table .remarks-col,
+.individual-violations-table th:nth-child(5),
+.individual-violations-table td:nth-child(5) {
+    width: 210px;
+}
+
+.individual-violations-table .attachments-col,
+.individual-violations-table th:nth-child(6),
+.individual-violations-table td:nth-child(6) {
+    width: 205px;
     min-width: 0;
+}
+
+.individual-violations-table .individual-actions-col,
+.individual-violations-table th:nth-child(7),
+.individual-violations-table td:nth-child(7) {
+    width: 210px;
+    min-width: 0;
+    text-align: center;
+}
+
+/* Header cells */
+
+.individual-violations-table thead th {
+    box-sizing: border-box;
+    padding: 0.95rem 1rem !important;
+    color: #6d1515;
+    background: #fff7e2;
+    border-top: 1px solid #f4e4bd !important;
+    border-bottom: 1px solid #f0e3c8 !important;
+    font-size: 0.78rem !important;
+    font-weight: 800;
+    line-height: 1.35 !important;
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.045em;
+    vertical-align: middle;
     white-space: normal !important;
     word-break: normal !important;
     overflow-wrap: break-word !important;
     hyphens: none !important;
-    text-align: center;
-    line-height: 1.25 !important;
-    padding: 0.65rem 0.45rem !important;
-    font-size: 0.85rem !important;
 }
 
-/* ---------------------------------------------------------
-   Individual Violations Log
-   Give the Actions column enough room for readable controls. On narrow
-   screens the table scrolls horizontally instead of breaking button labels.
-   --------------------------------------------------------- */
-.individual-table-responsive {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto !important;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-}
+/* Body cells */
 
-.individual-violations-table {
-    width: 1400px !important;
-    min-width: 1400px !important;
-    max-width: none !important;
-    table-layout: fixed !important;
-}
-
-.individual-violations-table th,
-.individual-violations-table td {
+.individual-violations-table tbody td {
     box-sizing: border-box;
+    padding: 1rem !important;
+    color: #34313a;
+    background: #fff;
+    border-bottom: 1px solid #f0eeee;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    text-align: left;
     vertical-align: middle;
-    white-space: normal;
-    word-break: normal;
-    overflow-wrap: break-word;
-    hyphens: none;
-    padding: 0.9rem 0.65rem;
-}
-
-.individual-violations-table .violation-type-col { width: 19%; }
-.individual-violations-table .violation-date-col { width: 13%; }
-.individual-violations-table .category-col { width: 15%; }
-.individual-violations-table .status-col { width: 11%; }
-.individual-violations-table .remarks-col { width: 13%; }
-.individual-violations-table .attachments-col { width: 11%; }
-.individual-violations-table .individual-actions-col { width: 18%; min-width: 230px; text-align: center; }
-.individual-violations-table .individual-actions-col > div {
-    display: flex !important;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.55rem !important;
-    width: 100%;
-    max-width: 230px;
-    margin-inline: auto;
-}
-.individual-violations-table .individual-actions-col .btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    width: 100%;
-    max-width: 230px;
-    min-width: 0;
-    min-height: 44px;
     white-space: normal !important;
     word-break: normal !important;
     overflow-wrap: break-word !important;
-    line-height: 1.25;
-    padding: 0.65rem 0.75rem;
-    margin: 0;
+    hyphens: none !important;
 }
 
+.individual-violations-table tbody tr {
+    transition: background-color 0.18s ease;
+}
+
+.individual-violations-table tbody tr:hover td {
+    background: #fffdf8;
+}
+
+.individual-violations-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+/* Dates */
+
 .individual-violations-table .violation-date-col {
+    white-space: normal !important;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Status badges: do not split Confirmed into separate fragments */
+
+.individual-violations-table .status-col {
+    text-align: center !important;
+}
+
+.individual-violations-table .status-col .portal-badge,
+.individual-violations-table .status-col .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    width: auto;
+    max-width: 100%;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.82rem !important;
+    font-weight: 700;
+    line-height: 1.25 !important;
+    text-align: center;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+}
+
+.individual-violations-table .status-col .portal-badge i,
+.individual-violations-table .status-col .badge i {
+    flex: 0 0 auto;
+}
+
+/* Remarks */
+
+.individual-violations-table .remarks-col {
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+}
+
+/* Attachments */
+
+.individual-violations-table .attachments-col {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+}
+
+.individual-violations-table .attachments-col a {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    max-width: 100%;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+    line-height: 1.4;
+}
+
+.individual-violations-table .attachments-col a i {
+    flex: 0 0 auto;
+    margin-top: 0.15rem;
+}
+
+.individual-violations-table .attachments-col .text-muted {
+    display: inline-block;
     line-height: 1.45;
 }
 
-/* ---------------------------------------------------------
-   Tablet / desktop tightening
-   --------------------------------------------------------- */
-@media (max-width: 1200px) {
-    .summary-violations-table thead th {
-        font-size: 0.78rem;
-        padding-left: 0.35rem !important;
-        padding-right: 0.35rem !important;
+/* Sanction action buttons */
+
+.individual-violations-table .individual-actions-col {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.individual-violations-table .individual-actions-col > div {
+    width: 100%;
+    max-width: 190px;
+    margin: 0 auto;
+}
+
+.individual-violations-table .individual-actions-col .btn,
+.individual-violations-table .individual-actions-col .sanction-state {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    max-width: 190px;
+    min-width: 0;
+    min-height: 44px;
+    margin: 0;
+    padding: 0.7rem 0.8rem !important;
+    border-radius: 0.75rem;
+    font-size: 0.85rem !important;
+    font-weight: 700;
+    line-height: 1.3 !important;
+    text-align: center;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: none !important;
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease,
+        background 0.18s ease;
+}
+
+.individual-violations-table .individual-actions-col .btn i,
+.individual-violations-table .individual-actions-col .sanction-state i {
+    flex: 0 0 auto;
+}
+
+.individual-violations-table .individual-actions-col .request-sanction-btn {
+    color: #fff;
+    background: linear-gradient(120deg, #710000, #960d0d);
+    border: 1px solid #780000;
+    box-shadow: 0 5px 13px rgba(120, 0, 0, 0.13);
+}
+
+.individual-violations-table .individual-actions-col .request-sanction-btn:hover {
+    color: #fff;
+    background: #5f0000;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(120, 0, 0, 0.2);
+}
+
+/* Sanction states */
+
+.individual-violations-table .sanction-state {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: 1px solid transparent;
+    font-size: 0.82rem !important;
+}
+
+.sanction-state-pending {
+    color: #815300;
+    background: #fff4d5;
+    border-color: #f4df9d;
+}
+
+.sanction-state-approved {
+    color: #116448;
+    background: #e2f5ec;
+    border-color: #bce7d2;
+}
+
+.sanction-state-declined {
+    color: #9b2727;
+    background: #fff0f0;
+    border-color: #f2cdcd;
+}
+
+.sanction-state-assigned {
+    color: #4d5664;
+    background: #f0f2f5;
+    border-color: #dfe3e8;
+}
+
+/* Informational notices in the action column */
+
+.individual-violations-table .individual-actions-col .alert {
+    width: 100%;
+    max-width: 190px;
+    margin: 0 auto;
+    line-height: 1.45;
+    text-align: left;
+    word-break: normal;
+    overflow-wrap: break-word;
+}
+
+/* Empty state */
+
+.individual-log-empty {
+    padding: 3.25rem 1rem !important;
+    color: #77717a !important;
+    text-align: center;
+}
+
+.individual-log-empty-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 0.75rem;
+    border-radius: 1rem;
+    color: #850909;
+    background: #fff3df;
+    font-size: 1.35rem;
+}
+
+/* Pagination: preserve Laravel pagination and eliminate excess space */
+
+.individual-log-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    width: 100%;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 1rem !important;
+    border-top: 1px solid #f0eeee;
+    background: #fff;
+}
+
+.individual-log-pagination nav {
+    max-width: 100%;
+    margin: 0;
+}
+
+.individual-log-pagination .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin: 0 !important;
+}
+
+.individual-log-pagination svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Natural card height: prevent a large blank area below the log */
+
+.individual-log-card .table-responsive,
+.individual-log-card .individual-table-responsive {
+    height: auto !important;
+    min-height: 0 !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.individual-log-card .individual-violations-table {
+    margin-bottom: 0 !important;
+}
+
+.individual-log-card nav[aria-label],
+.individual-log-card .pagination {
+    margin-bottom: 0 !important;
+}
+
+.individual-log-card .card-footer {
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+
+/* Fix excessive wrapping in the Individual Violations Log Evidence column */
+.individual-log-card .table-responsive > table th:nth-child(6),
+.individual-log-card .table-responsive > table td:nth-child(6),
+.individual-violations-table th:nth-child(6),
+.individual-violations-table td:nth-child(6) {
+    width: 260px !important;
+    min-width: 260px !important;
+}
+
+/* Keep attachment links compact and aligned */
+.individual-log-card .table-responsive > table td:nth-child(6) a,
+.individual-violations-table td:nth-child(6) a {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    max-width: 100%;
+    line-height: 1.4 !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+}
+
+/* Keep attachment icons from consuming text width */
+.individual-log-card .table-responsive > table td:nth-child(6) a i,
+.individual-violations-table td:nth-child(6) a i {
+    flex: 0 0 auto;
+    margin-top: 0.15rem;
+}
+
+/* Keep the empty attachment message compact */
+.individual-log-card .table-responsive > table td:nth-child(6) .text-muted,
+.individual-violations-table td:nth-child(6) .text-muted {
+    display: inline-block;
+    line-height: 1.4 !important;
+    overflow-wrap: normal;
+}
+
+/* Slightly compact row spacing without hiding content */
+.individual-log-card .table-responsive > table tbody td,
+.individual-violations-table tbody td {
+    padding-top: 0.65rem !important;
+    padding-bottom: 0.65rem !important;
+    line-height: 1.35 !important;
+}
+
+/* Fix excess height in the Student Record tab pane */
+#violationRecord.tab-pane,
+#sanctionRecord.tab-pane {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: 0 0 auto !important;
+    align-self: flex-start !important;
+}
+
+/* Prevent the tab content from stretching the record tabs */
+#violationRecord.tab-pane.show.active,
+#sanctionRecord.tab-pane.show.active {
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+/* Keep the tab-content wrapper content-sized */
+.tab-content:has(> #violationRecord),
+.tab-content:has(> #sanctionRecord) {
+    height: auto !important;
+    min-height: 0 !important;
+    flex: 0 0 auto !important;
+    align-self: flex-start !important;
+}
+
+/* Keep the log card and pagination at their natural height */
+#violationRecord .individual-log-card {
+    height: auto !important;
+    min-height: 0 !important;
+    margin-bottom: 1rem !important;
+}
+
+#violationRecord .individual-log-pagination {
+    height: auto !important;
+    min-height: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+
+/* Responsive filters */
+
+@media (max-width: 767.98px) {
+    .individual-log-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .summary-violations-table tbody td {
-        padding-left: 0.4rem !important;
-        padding-right: 0.4rem !important;
+    .individual-filter-actions {
+        grid-column: 1 / -1;
     }
 
-    .summary-action-col .summary-action-buttons .btn {
-        font-size: 0.8rem;
-        padding-left: 0.3rem;
-        padding-right: 0.3rem;
+    .individual-status-filter-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.4rem;
+    }
+
+    .individual-status-filter-row #individualFilterCount {
+        grid-column: auto;
+    }
+
+    .individual-status-filter-row .form-select {
+        width: 100%;
+        max-width: none;
     }
 }
 
-/* ---------------------------------------------------------
-   Mobile: keep multi-column records readable.
-   Do NOT squeeze the summary columns into the phone viewport.
-   The table becomes horizontally scrollable instead.
-   --------------------------------------------------------- */
-@media (max-width: 767.98px) {
-    .summary-table-responsive,
-    .individual-table-responsive {
-        width: 100%;
-        max-width: 100%;
-        overflow-x: auto !important;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior-x: contain;
+@media (max-width: 640px) {
+    .individual-log-header {
+        align-items: flex-start;
+        padding: 1rem !important;
     }
 
-    .summary-violations-table {
-        width: 1200px !important;
-        min-width: 1200px !important;
-        max-width: none !important;
-        table-layout: fixed !important;
+    .individual-log-title {
+        font-size: 1rem;
     }
 
-    .summary-violations-table th,
-    .summary-violations-table td {
-        word-break: normal !important;
-        overflow-wrap: normal !important;
-        hyphens: none !important;
+    .individual-log-subtitle {
+        font-size: 0.78rem;
     }
 
-    .summary-violations-table thead th {
-        font-size: 0.78rem !important;
-        line-height: 1.2 !important;
-        padding: 0.75rem 0.5rem !important;
+    .individual-log-icon {
+        width: 2.35rem;
+        height: 2.35rem;
+        flex-basis: 2.35rem;
     }
 
-    .summary-violations-table tbody td {
-        font-size: 0.88rem !important;
-        line-height: 1.4 !important;
-        padding: 1rem 0.55rem !important;
-    }
-
-    .summary-action-col .summary-action-buttons {
-        gap: 0.45rem;
-    }
-
-    .summary-action-col .summary-action-buttons .btn {
-        font-size: 0.82rem !important;
-        line-height: 1.25 !important;
-        padding: 0.65rem 0.45rem !important;
-        white-space: normal !important;
-        word-break: normal !important;
-        overflow-wrap: normal !important;
-    }
-
-    .individual-violations-table {
-        width: 1400px !important;
-        min-width: 1400px !important;
-        max-width: none !important;
-        table-layout: fixed !important;
-    }
-
-    .individual-violations-table th,
-    .individual-violations-table td {
-        word-break: normal !important;
-        overflow-wrap: break-word !important;
-        hyphens: none !important;
-        white-space: normal !important;
-    }
-
-    .individual-violations-table .individual-actions-col > div {
-        max-width: 230px;
-    }
-
-    .individual-violations-table .individual-actions-col .btn {
-        width: 100%;
-        max-width: 230px;
-        min-height: 44px;
-        font-size: 0.85rem !important;
-        line-height: 1.25 !important;
-        padding: 0.6rem 0.65rem !important;
-        white-space: normal !important;
-        overflow-wrap: break-word !important;
+    .individual-log-count {
+        padding: 0.38rem 0.55rem;
+        font-size: 0.7rem;
     }
 
     .individual-violations-table thead th {
-        font-size: 0.8rem !important;
-        line-height: 1.2 !important;
-        padding: 0.7rem 0.5rem !important;
-        white-space: normal !important;
+        padding: 0.8rem 0.7rem !important;
+        font-size: 0.76rem !important;
     }
 
     .individual-violations-table tbody td {
-        font-size: 0.84rem !important;
-        line-height: 1.35 !important;
-        padding: 0.8rem 0.5rem !important;
+        padding: 0.85rem 0.7rem !important;
+        font-size: 0.86rem;
+    }
+
+    .individual-log-pagination {
+        padding: 0.85rem 0.5rem !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .individual-log-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .individual-log-header {
+        flex-wrap: wrap;
+    }
+
+    .individual-log-count {
+        margin-left: 3.25rem;
+    }
+}
+
+
+
+/* Warning-level consequence card: informational only, not an assigned record. */
+.warning-consequence-card {
+    border: 1px solid #f0dca3 !important;
+    border-left: 4px solid #c58a08 !important;
+    border-radius: 1rem !important;
+    background: #fffaf0;
+    box-shadow: 0 8px 24px rgba(83, 55, 0, 0.06) !important;
+    overflow: hidden;
+}
+.warning-consequence-card .card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 1rem 1.25rem;
+    background: #fff4d6 !important;
+    border-bottom: 1px solid #f0e0b8;
+}
+.warning-consequence-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.8rem;
+    color: #805600;
+    background: #ffe7a3;
+    font-size: 1.15rem;
+}
+.warning-consequence-card .card-body {
+    padding: 1rem 1.25rem;
+}
+.warning-consequence-item {
+    padding: 1rem 0;
+    border-bottom: 1px solid #f0e6d0;
+}
+.warning-consequence-item:first-child { padding-top: 0; }
+.warning-consequence-item:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+.warning-consequence-label {
+    color: #79571a;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.warning-consequence-value {
+    color: #332b1e;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+.warning-consequence-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid #e9d28e;
+    border-radius: 999px;
+    color: #775400;
+    background: #fff1c5;
+    font-size: 0.78rem;
+    font-weight: 750;
+}
+.warning-sanction-notice {
+    border: 1px solid #f0dca3;
+    border-left: 3px solid #c58a08;
+    border-radius: 0.75rem;
+    background: #fffaf0;
+    color: #473919;
+}
+.warning-sanction-notice .btn {
+    white-space: normal;
+}
+
+/* Give the consultation note the same deliberate callout treatment as the
+   other portal guidance panels instead of rendering it as plain table text. */
+.consultation-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(128, 0, 0, 0.18);
+    border-left: 4px solid #800909;
+    border-radius: 0.85rem;
+    background: #fff8ef;
+    color: #342c2c;
+    line-height: 1.5;
+    white-space: normal;
+}
+.consultation-notice > i {
+    flex: 0 0 auto;
+    margin-top: 0.15rem;
+    color: #800909;
+    font-size: 1.1rem;
+}
+.consultation-notice-title {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #720606;
+    font-size: 0.88rem;
+    font-weight: 800;
+}
+.consultation-notice-text {
+    margin: 0;
+    font-size: 0.84rem;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 576px) {
+    .warning-consequence-card .card-header,
+    .warning-consequence-card .card-body { padding: 0.9rem; }
+    .consultation-notice { padding: 0.75rem; }
+}
+
+/* Match the Individual Violations Log title bar to Summary by Violation. */
+.individual-log-titlebar {
+    padding: 1rem 1.25rem !important;
+    background: #fff !important;
+    border-bottom: 1px solid #eee2d5 !important;
+}
+.individual-log-titlebar h5 {
+    color: #800909 !important;
+    font-size: 1.15rem;
+    font-weight: 750;
+}
+.individual-log-record-count {
+    color: #6c5555;
+    font-size: 0.8rem;
+    font-weight: 650;
+}
+
+/* Keep the filter panel aligned without changing its visual styling. */
+.individual-log-filters-wrap { overflow: visible; }
+.individual-log-filters { align-items: end; }
+@media (max-width: 640px) {
+    .individual-log-filters-wrap { padding: 1rem !important; }
+    .individual-log-filters { grid-template-columns: minmax(0, 1fr); }
+    .individual-filter-actions,
+    .individual-status-filter-row { grid-column: 1 / -1; }
+}
+
+
+/* Student Record: responsive sanction request buttons */
+.individual-violations-table .individual-actions-col .request-sanction-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 190px;
+    min-height: 44px;
+    padding: 0.7rem 0.85rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: break-word;
+    text-align: center;
+}
+
+.individual-violations-table .individual-actions-col
+.request-sanction-btn i {
+    flex: 0 0 auto;
+}
+
+/* Confirmation modal */
+#requestSanctionConfirmModal .modal-dialog {
+    width: calc(100% - 2rem);
+    max-width: 480px;
+    margin: 1rem auto;
+}
+
+#requestSanctionConfirmModal .modal-content {
+    border: 0;
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+#requestSanctionConfirmModal .modal-header {
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+}
+
+#requestSanctionConfirmModal .modal-title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+#requestSanctionConfirmModal .modal-body {
+    overflow-wrap: anywhere;
+}
+
+#requestSanctionConfirmModal .modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+#requestSanctionConfirmModal .modal-footer .btn {
+    min-height: 44px;
+}
+
+/* Mobile phones */
+@media (max-width: 575.98px) {
+    .individual-violations-table .individual-actions-col {
+        padding: 0.75rem !important;
+    }
+
+    .individual-violations-table .individual-actions-col
+    .request-sanction-btn {
+        max-width: 100%;
+        min-height: 46px;
+        padding: 0.7rem 0.6rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    #requestSanctionConfirmModal .modal-dialog {
+        width: auto;
+        max-width: none;
+        margin: 0.5rem;
+    }
+
+    #requestSanctionConfirmModal .modal-content {
+        border-radius: 0.85rem;
+    }
+
+    #requestSanctionConfirmModal .modal-header {
+        padding: 0.85rem 1rem;
+    }
+
+    #requestSanctionConfirmModal .modal-title {
+        font-size: 1.05rem;
+        line-height: 1.35;
+    }
+
+    #requestSanctionConfirmModal .modal-body {
+        padding: 1rem;
+    }
+
+    #requestSanctionConfirmModal .modal-footer {
+        padding: 0.75rem 1rem;
+    }
+
+    #requestSanctionConfirmModal .modal-footer .btn {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+}
+
+/* Extra-small phones */
+@media (max-width: 380px) {
+    #requestSanctionConfirmModal .modal-dialog {
+        margin: 0.25rem;
+    }
+
+    #requestSanctionConfirmModal .modal-header,
+    #requestSanctionConfirmModal .modal-body {
+        padding: 0.75rem;
+    }
+
+    #requestSanctionConfirmModal .modal-footer {
+        padding: 0.75rem;
     }
 }
 
@@ -1003,7 +1357,7 @@
         colspan="6"
         class="text-center py-5 text-muted">
 
-        No outstanding violations found.
+        No violation summary records found.
 
     </td>
 
@@ -1025,203 +1379,251 @@
 {{-- Individual Violations Log --}}
 {{-- ================================================= --}}
 
-<div class="card shadow-sm border-0">
+<div class="card individual-log-card mb-4">
+    <div class="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-2 individual-log-titlebar">
+        <h5 class="mb-0">Individual Violations Log</h5>
+        <span class="individual-log-record-count">{{ $violations->total() }} {{ $violations->total() === 1 ? 'record' : 'records' }}</span>
+    </div>
 
-    <div class="card-header bg-white">
+    <div class="card-body individual-log-filters-wrap">
+        <form method="GET" action="{{ route('student.record') }}" class="individual-log-filters" id="individualLogFilters">
+            <div class="individual-filter-field">
+                <label for="filterCategory">Category</label>
+                <select class="form-select" id="filterCategory" name="category_id">
+                    <option value="">All Categories</option>
+                    @foreach($recordedViolationCategories as $category)
+                        <option value="{{ $category->violation_category_id }}" @selected((string)($filters['category_id'] ?? '') === (string)$category->violation_category_id)>{{ $category->category_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="individual-filter-field">
+                <label for="filterViolationType">Violation Type</label>
+                <select class="form-select" id="filterViolationType" name="violation_type_id" data-selected="{{ $filters['violation_type_id'] ?? '' }}">
+                    <option value="">All Violation Types</option>
+                    @foreach($recordedViolationTypes as $type)
+                        <option value="{{ $type->violation_type_id }}" data-category-id="{{ $type->violation_category_id }}" @selected((string)($filters['violation_type_id'] ?? '') === (string)$type->violation_type_id)>{{ $type->violation_type }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="individual-filter-field">
+                <label for="filterDateFrom">From Date</label>
+                <input class="form-control" type="date" id="filterDateFrom" name="date_from" value="{{ $filters['date_from'] ?? '' }}" max="{{ $filters['date_to'] ?? '' }}">
+            </div>
+            <div class="individual-filter-field">
+                <label for="filterDateTo">To Date</label>
+                <input class="form-control" type="date" id="filterDateTo" name="date_to" value="{{ $filters['date_to'] ?? '' }}" min="{{ $filters['date_from'] ?? '' }}">
+            </div>
 
-        <h5 class="mb-0">
+<div class="individual-filter-actions">
+    <a class="btn individual-filter-clear"
+       href="{{ route('student.record') }}">Clear</a>
+</div>
 
-            Individual Violations Log
 
-        </h5>
+<div class="individual-status-filter-row">
+    <label for="filterSanctionStatus">Sanction Status</label>
 
+    <select class="form-select"
+            id="filterSanctionStatus"
+            name="sanction_status">
+        <option value="all" @selected(request('sanction_status', 'all') === 'all')>
+            All Statuses
+        </option>
+        <option value="needs" @selected(request('sanction_status') === 'needs')>
+            Needs Request
+        </option>
+        <option value="no-request" @selected(request('sanction_status') === 'no-request')>
+            No Request Required
+        </option>
+        <option value="pending" @selected(request('sanction_status') === 'pending')>
+            Request Pending
+        </option>
+        <option value="approved" @selected(request('sanction_status') === 'approved')>
+            Approved
+        </option>
+        <option value="declined" @selected(request('sanction_status') === 'declined')>
+            Declined
+        </option>
+        <option value="assigned" @selected(request('sanction_status') === 'assigned')>
+            Sanction Assigned
+        </option>
+    </select>
+
+    <span class="small text-muted"
+          id="individualFilterCount"
+          aria-live="polite"></span>
+</div>
+
+        </form>
     </div>
 
     <div class="card-body p-0">
-
         <div class="table-responsive individual-table-responsive">
-
-        <table class="table table-hover align-middle mb-0 portal-table individual-violations-table">
-
-            <thead>
-
-                <tr>
-
-                    <th>
-
-                        Violation Type
-
-                    </th>
-
-                    <th>
-
-                        Date
-
-                    </th>
-
-                    <th>
-
-                        Category
-
-                    </th>
-
-                    <th>
-
-                        Status
-
-                    </th>
-
-                    <th>
-
-                        Remarks
-
-                    </th>
-
-                    <th>
-
-                        Attachments
-
-                    </th>
-
-                    <th>Actions</th>
-                </tr>
-
-            </thead>
-
-            <tbody>
-
-                @forelse($violations as $violation)
-
+            <table class="table align-middle individual-violations-table">
+                <thead>
+                    <tr>
+                        <th>Violation Type</th>
+                        <th>Date Recorded</th>
+                        <th>Category</th>
+                        <th>Record Status</th>
+                        <th>Remarks</th>
+                        <th>Evidence</th>
+                        <th>Sanction Request</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($violations as $violation)
+                       
 @php
-    $isPendingLog =
-        strtolower((string) $violation->status) === 'pending';
+    $isPendingLog = strtolower((string) $violation->status) === 'pending';
+
+    $resolvedType = $violation->resolvedViolationType();
+
+    $typeId = (string) (
+        $resolvedType?->violation_type_id
+        ?? $violation->violation_type_id
+        ?? ''
+    );
+
+    $categoryId = (string) (
+        $resolvedType?->violation_category_id ?? ''
+    );
+
+    // Resolve the request for this violation type.
+    $sanctionRequest = $typeId !== ''
+        ? (
+            data_get($sanctionRequestsByType, $typeId)
+            ?? data_get($sanctionRequestsByType, (int) $typeId)
+        )
+        : null;
+
+    $requestStatus = strtolower(trim(
+        (string) ($sanctionRequest->status ?? '')
+    ));
+
+    $isActiveRequest = (bool) (
+        $sanctionRequest->is_active ?? false
+    );
+
+    $hasAssignedSanction = isset(
+        $assignedSanctionViolationIds[$violation->violation_id]
+    );
+
+    // Preserve the existing warning-level detection.
+    $isWarningLevelViolation = isset(
+        $warningLevelViolationIds[(int) $violation->violation_id]
+    );
+
+    // Warning-level violations must not be treated as needing a request.
+    $rowSanctionStatus = $isWarningLevelViolation
+        ? 'no-request'
+        : (
+            $hasAssignedSanction
+                ? 'assigned'
+                : (
+                    $requestStatus === 'pending' && $isActiveRequest
+                        ? 'pending'
+                        : (
+                            $requestStatus === 'approved' && !$isActiveRequest
+                                ? 'approved'
+                                : (
+                                    $requestStatus === 'declined' && !$isActiveRequest
+                                        ? 'declined'
+                                        : 'needs'
+                                )
+                        )
+                )
+        );
+
+    $rowDate = \Carbon\Carbon::parse(
+        $violation->violation_date
+    )->format('Y-m-d');
 @endphp
 
-                    <tr>
-
-                        <td class="violation-type-col">
-                            {{ $violation->violation_type_display }}
-                        </td>
-                        <td class="violation-date-col">
-                            {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}
-                        </td>
-
-                        <td class="category-col">
-                            {{ $violation->violation_category_display }}
-                        </td>
-
-                        <td class="status-col">
-                            @if($isPendingLog)
-
-                                <span class="portal-badge goldenrod">
-                                    Pending Confirmation
-                                </span>
-
-                            @else
-
-                                {{-- Presentation label only: a non-pending row is a
-                                     confirmed violation. The stored status value is
-                                     unchanged. --}}
-                                <span class="portal-badge success">
-                                    Confirmed
-                                </span>
-
-                            @endif
-
-                        </td>
-
-                        <td class="remarks-col">
-                            {{ $violation->description ?: 'No remarks' }}
-                        </td>
-
-                        <td class="attachments-col">
-                            @if($isPendingLog)
-
-                                <span class="text-muted small">
-                                    Available after confirmation
-                                </span>
-
-                            @else
-
+                        <tr data-category-id="{{ $categoryId }}" data-violation-type-id="{{ $typeId }}" data-violation-date="{{ $rowDate }}" data-sanction-status="{{ $rowSanctionStatus }}">
+                            <td class="violation-type-col">{{ $violation->violation_type_display }}</td>
+                            <td class="violation-date-col">
+                                <div>{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y') }}</div>
+                                <small class="text-muted">{{ \Carbon\Carbon::parse($violation->violation_date)->format('h:i A') }}</small>
+                            </td>
+                            <td class="category-col">{{ $violation->violation_category_display }}</td>
+                            <td class="status-col">
+                                <span class="portal-badge success"><i class="bi bi-check-circle me-1"></i>Confirmed</span>
+                            </td>
+                            <td class="remarks-col">{{ $violation->description ?: 'No remarks provided' }}</td>
+                            <td class="attachments-col">
                                 @php
-                                    $visibleEvidence = collect($violation->evidence ?? [])
-                                        ->filter(fn ($e) => ! empty($e->disk_path));
+                                    $visibleEvidence = collect($violation->evidence ?? [])->filter(fn ($e) => !empty($e->disk_path));
                                 @endphp
-
                                 @if ($visibleEvidence->isNotEmpty())
                                     @foreach ($visibleEvidence as $item)
-                                        <a
-                                            href="{{ route('student.violations.evidence', [
-    'evidence' => $item->access_key,
-]) }}"
-                                            target="_blank"
-                                            rel="noopener"
-                                            class="btn btn-sm btn-outline-secondary me-1 mb-1"
-                                            title="Open {{ $item->original_name ?: 'evidence' }}">
-                                            <i class="bi bi-paperclip"></i>
-                                            {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
+                                        <a href="{{ route('student.violations.evidence', ['evidence' => $item->access_key]) }}"
+                                           target="_blank" rel="noopener"
+                                           class="btn btn-sm btn-outline-secondary me-1 mb-1"
+                                           title="Open {{ $item->original_name ?: 'evidence' }}">
+                                            <i class="bi bi-paperclip"></i> {{ Str::limit($item->original_name ?: 'Evidence', 18) }}
                                         </a>
                                     @endforeach
                                 @else
-                                    <span class="text-muted">—</span>
+                                    <span class="text-muted small"><i class="bi bi-paperclip me-1"></i>No attachment</span>
                                 @endif
-
-                            @endif
-
-                        </td>
-
-                        <td class="individual-actions-col">
-                            @if(!$isPendingLog)
-                                @if(!isset($assignedSanctionViolationIds[$violation->violation_id]))
-                                    <button type="button"
-                                        class="btn portal-btn btn-sm w-100 request-sanction-btn"
-                                        data-violation-type-id="{{ $violation->violation_type_id }}">
-                                        <i class="bi bi-send me-1"></i>Request Sanction
+                            </td>
+                            <td class="individual-actions-col">
+                                @if($isPendingLog)
+                                    <span class="text-muted small">Available after confirmation</span>
+                                @elseif($isWarningLevelViolation)
+                                    <div class="warning-sanction-notice p-3 mb-0 small text-start" role="note">
+                                        <strong class="d-flex align-items-center gap-2 mb-2">
+                                            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                                            Warning-Level Violation
+                                        </strong>
+                                        <p class="mb-0">A sanction request is not required for this warning-level violation. Please review the corresponding disciplinary sanction in the Summary by Violation table and comply with the details provided.</p>
+                                    </div>
+                                @elseif($isActiveRequest)
+                                    <span class="sanction-state sanction-state-pending"><i class="bi bi-hourglass-split"></i>Request Pending</span>
+                                    <small class="d-block text-muted mt-2">Submitted for admin review</small>
+                                @elseif($hasAssignedSanction)
+                                    <span class="sanction-state sanction-state-assigned"><i class="bi bi-shield-check"></i>Sanction Assigned</span>
+                                @elseif($requestStatus === 'declined' && !$isActiveRequest)
+                                    <span class="sanction-state sanction-state-declined"><i class="bi bi-x-circle"></i>Request Declined</span>
+                                    <button type="button" class="btn request-sanction-btn mt-2" data-violation-type-id="{{ $typeId }}">
+                                        <i class="bi bi-arrow-repeat"></i> Request Again
                                     </button>
                                 @else
-                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" disabled>
-                                        <i class="bi bi-check-circle me-1"></i>Sanction Assigned
+                                    <button type="button" class="btn request-sanction-btn"
+                                            data-violation-type-id="{{ $typeId }}">
+                                        <i class="bi bi-send"></i> Request Sanction
                                     </button>
-                                @endif
-                            @else
-                                <span class="text-muted small">Available after confirmation</span>
-                            @endif
-                        </td>
-                    </tr>
+                                    <small class="d-block text-muted mt-2">
+                                        Start a sanction request
+                                    </small>
+                                @endif 
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="individual-log-empty">
+                                <span class="individual-log-empty-icon"><i class="bi bi-journal-x"></i></span>
+                                <div class="fw-bold text-dark mb-1">No violation records yet</div>
+                                <div class="small">Confirmed violation records will appear here when available.</div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
 
-                @empty
-
-                    <tr>
-
-                        <td
-                            colspan="7"
-                            class="text-center py-5">
-
-                            No individual violations found.
-
-                        </td>
-
-                    </tr>
-
-                @endforelse
-
-            </tbody>
-
-        </table>
-
+            </table>
         </div>
 
+        {{-- Individual Violations Log pagination --}}
+        @if ($violations->hasPages())
+            <div class="individual-log-pagination px-3 py-3">
+                {{ $violations->links() }}
+            </div>
+        @endif
     </div>
-
-    <div class="card-footer">
-
-        {{ $violations->links() }}
-
-    </div>
-
 </div>
 
-</div>
+</div><!-- End Violation Record tab pane -->
 
 {{-- ================================================= --}}
 {{-- Sanction Record --}}
@@ -1462,14 +1864,19 @@
                                             data-office="{{ $record->designated_office ?? '' }}"
                                             data-starting-date="{{ optional($record->starting_date)->format('M d, Y') ?? '' }}"
                                             data-required-hours="{{ $record->required_hours ?? '' }}"
-data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}"                                            <i class="bi bi-upload me-1"></i>Submit Proof
-                                        </button>
+data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
+    <i class="bi bi-upload me-1"></i>Submit Proof
+</button>
                                     @else
                                         {{-- Every other sanction is settled through a personal
                                              consultation at the Office of Student Services, so
                                              no proof of completion is required from the student. --}}
-                                        <div class="consultation-notice small" role="note">
-                                            <i class="bi bi-info-circle-fill me-1" aria-hidden="true"></i>{{ \App\Models\StudentSanctionRecord::CONSULTATION_NOTICE }}
+                                        <div class="consultation-notice" role="note">
+                                            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                                            <div>
+                                                <span class="consultation-notice-title">Personal consultation required</span>
+                                                <p class="consultation-notice-text">{{ \App\Models\StudentSanctionRecord::CONSULTATION_NOTICE }}</p>
+                                            </div>
                                         </div>
                                     @endif
 
@@ -1507,8 +1914,6 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}"          
         </div>
 
     </div>
-
-</div>
 
 </div>
 

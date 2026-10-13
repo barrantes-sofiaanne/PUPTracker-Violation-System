@@ -129,9 +129,19 @@ class StudentController extends Controller
                 'students_page'
             )
             ->withQueryString();
-
+$ossStaffRoleId = Role::query()
+    ->where('roles_name', 'OSS Staff')
+    ->value('roles_id');
+    
         $admins = Admin::query()
             ->with('adminInfo')
+            ->where(function ($query) use ($ossStaffRoleId) {
+    if ($ossStaffRoleId) {
+        $query->whereDoesntHave('adminInfo', function ($infoQuery) use ($ossStaffRoleId) {
+            $infoQuery->where('role_id', $ossStaffRoleId);
+        });
+    }
+})
             ->when(
                 $request->filled('admin_search'),
                 function ($query) use ($request) {
@@ -170,7 +180,36 @@ class StudentController extends Controller
                 'admins_page'
             )
             ->withQueryString();
+$ossStaff = Admin::query()
+    ->with('adminInfo')
+    ->whereHas('adminInfo', function ($query) use ($ossStaffRoleId) {
+        if ($ossStaffRoleId) {
+            $query->where('role_id', $ossStaffRoleId);
+        } else {
+            $query->whereRaw('1 = 0');
+        }
+    })
+    ->when(
+        $request->filled('security_search'),
+        function ($query) use ($request) {
+            $search = '%' . trim($request->security_search) . '%';
 
+            $query->where(function ($searchQuery) use ($search) {
+                $searchQuery
+                    ->where('email', 'like', $search)
+                    ->orWhere('username', 'like', $search)
+                    ->orWhereHas('adminInfo', function ($infoQuery) use ($search) {
+                        $infoQuery
+                            ->where('firstname', 'like', $search)
+                            ->orWhere('middlename', 'like', $search)
+                            ->orWhere('lastname', 'like', $search);
+                    });
+            });
+        }
+    )
+    ->orderBy('id')
+    ->paginate(15, ['*'], 'oss_staff_page')
+    ->withQueryString();
         $securities = Security::query()
             ->with('securityInfo')
             ->when(

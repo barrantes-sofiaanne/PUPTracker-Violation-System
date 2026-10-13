@@ -29,6 +29,14 @@
                     <span class="admin-filter-label">Status</span>
                     <div><x-admin.badge :status="strtolower($sanctionRequest->status ?: 'pending')" :label="$sanctionRequest->status ?: 'Pending'" /></div>
                 </div>
+                @if ($sanctionRequest->is_resubmission)
+    <div class="col-12">
+        <span class="badge bg-info text-dark">
+            <i class="bi bi-arrow-repeat me-1"></i>
+            Resubmitted Request
+        </span>
+    </div>
+@endif
                 <div class="col-md-3">
                     <span class="admin-filter-label">Requested</span>
                     <div>{{ optional($sanctionRequest->request_date)->format('M d, Y h:i A') ?: 'Date unavailable' }}</div>
@@ -49,6 +57,19 @@
                     <span class="admin-filter-label">Sanction Details</span>
                     <div class="border rounded-3 p-3 bg-light">{{ $assignedSanction?->disciplinary_sanction ?: 'No matching sanction is configured yet.' }}</div>
                 </div>
+                @if (
+    $sanctionRequest->status === 'Declined' &&
+    $sanctionRequest->decline_reason
+)
+    <div class="col-12">
+        <span class="admin-filter-label">Decline Reason</span>
+
+        <div class="border border-warning rounded-3 p-3 bg-light">
+            <i class="bi bi-info-circle text-warning me-1"></i>
+            {{ $sanctionRequest->decline_reason }}
+        </div>
+    </div>
+@endif
             </div>
 
             @if($sanctionRequest->is_active)
@@ -56,7 +77,7 @@
                     <form action="{{ route('admin.sanctions.requests.approve', $sanctionRequest) }}" method="POST" class="d-flex flex-wrap align-items-end gap-2" data-sanction-text="{{ $assignedSanction?->disciplinary_sanction ?? '' }}" data-service-sanction="{{ !empty($isServiceSanction) ? '1' : '0' }}">
                         @csrf
                         <div>
-                            <label for="notification_date" class="admin-filter-label">Notification / Date Assigned</label>
+                            <label for="notification_date" class="admin-filter-label">Date Assigned</label>
                             <input type="date" id="notification_date" name="notification_date" class="form-control" value="{{ now()->format('Y-m-d') }}" required>
                         </div>
                             <div>
@@ -136,10 +157,48 @@
     });
     </script>
     @endpush
-                    <form action="{{ route('admin.sanctions.requests.decline', $sanctionRequest) }}" method="POST" class="mt-2">
-                        @csrf
-                        <button type="submit" class="admin-btn admin-btn-danger"><i class="bi bi-x-circle"></i>Decline Request</button>
-                    </form>
+                    <form
+    action="{{ route('admin.sanctions.requests.decline', $sanctionRequest) }}"
+    method="POST"
+    class="mt-3"
+    onsubmit="return confirm('Decline this sanction request and notify the student?');"
+>
+    @csrf
+
+    <div class="mb-3">
+        <label for="decline_reason" class="form-label fw-semibold">
+            Reason for Declining
+            <span class="text-danger">*</span>
+        </label>
+
+        <textarea
+            id="decline_reason"
+            name="decline_reason"
+            class="form-control"
+            rows="4"
+            minlength="5"
+            maxlength="2000"
+            required
+            placeholder="Enter the reason for declining this sanction request..."
+        >{{ old('decline_reason') }}</textarea>
+
+        @error('decline_reason')
+            <div class="text-danger small mt-1">
+                {{ $message }}
+            </div>
+        @enderror
+
+        <small class="text-muted">
+            Please explain why this request is being declined.
+            The student will be able to view your reason.
+        </small>
+    </div>
+
+    <button type="submit" class="admin-btn admin-btn-danger">
+        <i class="bi bi-x-circle me-1"></i>
+        Decline Request
+    </button>
+</form>
                 </div>
             @else
                 <div class="border-top mt-4 pt-4 text-muted">This request has already been processed.</div>
