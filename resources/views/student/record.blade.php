@@ -1130,6 +1130,377 @@
         padding: 0.75rem;
     }
 }
+/* Submit Proof modal: responsive layout */
+#submitProofModal .modal-dialog {
+    width: calc(100% - 2rem);
+    max-width: 620px;
+    margin: 1rem auto;
+}
+
+#submitProofModal .modal-content {
+    min-width: 0;
+    max-height: calc(100dvh - 2rem);
+    overflow: hidden;
+    border: 0;
+    border-radius: 1rem;
+    box-shadow: 0 1rem 3rem rgba(25, 15, 15, .22);
+}
+
+#submitProofModal .modal-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem 1.25rem 1rem;
+    border-bottom: 1px solid #eee5e5;
+}
+
+#submitProofModal .modal-header > div {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+#submitProofModal .modal-title {
+    margin: 0 0 .35rem;
+    color: #800909;
+    font-size: clamp(1.15rem, 3.5vw, 1.45rem);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .modal-subtitle {
+    color: #52525b;
+    font-size: .96rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .btn-close {
+    flex: 0 0 auto;
+    margin: .15rem 0 0 auto;
+    padding: .55rem;
+}
+
+#submitProofModal .modal-body {
+    min-width: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 1.15rem 1.25rem;
+}
+
+#submitProofModal .proof-section {
+    min-width: 0;
+    margin: 0 0 1.25rem;
+    padding: 0 0 1.1rem;
+    border-bottom: 1px solid #eee5e5;
+}
+
+#submitProofModal .proof-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+#submitProofModal .proof-section-title {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    margin: 0 0 .7rem;
+    color: #800909;
+    font-size: 1.05rem;
+    font-weight: 750;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .proof-step-number {
+    display: inline-flex;
+    flex: 0 0 1.65rem;
+    width: 1.65rem;
+    height: 1.65rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #800909;
+    color: #fff;
+    font-size: .85rem;
+    font-weight: 700;
+}
+
+#submitProofModal .proof-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+}
+
+#submitProofModal .proof-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    min-width: 0;
+    padding: .75rem;
+    border: 1px solid #eee2e2;
+    border-radius: .65rem;
+    background: #fffafa;
+}
+
+#submitProofModal .proof-detail-label {
+    color: #6b6262;
+    font-size: .78rem;
+    font-weight: 650;
+}
+
+#submitProofModal .proof-detail-value {
+    color: #292525;
+    font-size: .92rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+#submitProofModal .proof-body-text {
+    color: #454047;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .official-form-area {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .5rem;
+    margin-top: .85rem;
+}
+
+#submitProofModal .official-form-label {
+    font-size: .9rem;
+    font-weight: 650;
+}
+
+#submitProofModal .official-form-area .btn {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+}
+
+#submitProofModal .proof-upload-zone {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 180px;
+    padding: 1.25rem;
+    border: 2px dashed #d8bcbc;
+    border-radius: .85rem;
+    background: #fffafa;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s ease,
+                background-color .15s ease;
+}
+
+#submitProofModal .proof-upload-zone:focus-visible {
+    outline: 3px solid rgba(128, 9, 9, .25);
+    outline-offset: 3px;
+}
+
+#submitProofModal .proof-upload-zone-active {
+    border-color: #800909;
+    background: #fff1f1;
+}
+
+#submitProofModal .proof-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+#submitProofModal .proof-upload-icon {
+    display: block;
+    margin-bottom: .5rem;
+    color: #800909;
+    font-size: 2rem;
+}
+
+#submitProofModal .proof-upload-title {
+    color: #302929;
+    font-weight: 750;
+}
+
+#submitProofModal .proof-upload-hint,
+#submitProofModal .proof-formats {
+    color: #706767;
+    font-size: .84rem;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .proof-formats {
+    margin: .5rem 0 0;
+}
+
+#submitProofModal .proof-file-selected {
+    width: 100%;
+    min-width: 0;
+}
+
+#submitProofModal .proof-file-chip {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    min-width: 0;
+    margin-bottom: .8rem;
+    text-align: left;
+}
+
+#submitProofModal .proof-file-icon {
+    flex: 0 0 auto;
+    color: #198754;
+    font-size: 1.6rem;
+}
+
+#submitProofModal .proof-file-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+#submitProofModal .proof-file-name {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    font-weight: 650;
+}
+
+#submitProofModal .proof-file-size {
+    color: #706767;
+    font-size: .82rem;
+}
+
+#submitProofModal .proof-guidelines {
+    padding-left: 1.25rem;
+    margin-bottom: 0;
+    color: #454047;
+}
+
+#submitProofModal .proof-guidelines li {
+    margin-bottom: .4rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .proof-review-alert {
+    padding: .85rem;
+    border: 1px solid #ead6a6;
+    border-radius: .7rem;
+    background: #fff9e9;
+    color: #55451e;
+}
+
+#submitProofModal .proof-confirm {
+    display: grid;
+    grid-template-columns: 1.1rem minmax(0, 1fr);
+    gap: .6rem;
+    align-items: start;
+}
+
+#submitProofModal .proof-confirm .form-check-input {
+    float: none;
+    margin: .25rem 0 0;
+}
+
+#submitProofModal .proof-confirm .form-check-label {
+    min-width: 0;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .proof-confirm .form-text {
+    grid-column: 2;
+}
+
+#submitProofModal .modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid #eee5e5;
+}
+
+#submitProofModal .modal-footer .btn {
+    flex: 1 1 140px;
+    min-width: 0;
+    white-space: normal;
+}
+
+#submitProofModal .invalid-proof-feedback {
+    margin-top: .5rem;
+    color: #b02a37;
+    font-size: .875rem;
+    overflow-wrap: anywhere;
+}
+
+/* Mobile layout */
+@media (max-width: 575.98px) {
+    #submitProofModal .modal-dialog {
+        width: calc(100% - 1rem);
+        max-width: none;
+        margin: .5rem auto;
+    }
+
+    #submitProofModal .modal-content {
+        max-height: calc(100dvh - 1rem);
+        border-radius: .8rem;
+    }
+
+    #submitProofModal .modal-header {
+        gap: .6rem;
+        padding: 1rem 1rem .85rem;
+    }
+
+    #submitProofModal .modal-body {
+        padding: 1rem;
+    }
+
+    #submitProofModal .modal-footer {
+        padding: .85rem 1rem;
+    }
+
+    #submitProofModal .proof-detail-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: .5rem;
+    }
+
+    #submitProofModal .proof-detail-item {
+        padding: .65rem .75rem;
+    }
+
+    #submitProofModal .proof-upload-zone {
+        min-height: 155px;
+        padding: 1rem .75rem;
+    }
+
+    #submitProofModal .official-form-area .btn {
+        width: 100%;
+    }
+}
+
+/* Extra-small phones */
+@media (max-width: 360px) {
+    #submitProofModal .modal-title {
+        font-size: 1.08rem;
+    }
+
+    #submitProofModal .modal-subtitle {
+        font-size: .88rem;
+    }
+
+    #submitProofModal .modal-footer .btn {
+        flex-basis: 100%;
+    }
+}
 
 </style>
 @endpush
