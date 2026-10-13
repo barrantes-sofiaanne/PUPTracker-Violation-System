@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Validation\Rule;
 use App\Models\Gender;
 use App\Models\Program;
 use App\Models\Section;
@@ -453,7 +454,18 @@ $request->session()->put('show_privacy_consent_modal', true);
             'gender_id' => ['required', 'integer', 'exists:gender_tbl,gender_id'],
             // Only submitted when the chosen program offers the option; the
             // server re-checks the program before it is stored.
-            'ladderized' => ['nullable', 'in:0,1'],
+            
+'ladderized' => [
+    Rule::requiredIf(fn () => $this->programSupportsLadderized(
+        Program::query()
+            ->whereKey((int) $request->input('program_id'))
+            ->value('program_name')
+    )),
+    'nullable',
+    'in:0,1',
+],
+'ladderized.required' => 'Please choose whether you are a ladderized student.',
+'ladderized.in' => 'Please choose whether you are a ladderized student.',
             // The student must acknowledge the Information Privacy Notice.
             'privacy_acknowledged' => ['accepted'],
         ], [

@@ -4,6 +4,7 @@
     $isItAdministrator = auth('admin')->check() && auth('admin')->user()->isItAdministrator();
 @endphp
 
+@section('title', 'User Management')
 @section('content')
 <div class="container-fluid">
     {{-- Standardized header (Security-style hero). The PHT clock is opt-in and
@@ -107,6 +108,14 @@
                                     aria-controls="studentFiltersCollapse">
                                     <i class="bi bi-funnel me-1"></i>
                                     Filter
+                                </button>
+                                <button
+                                    type="button"
+                                    class="admin-btn admin-btn-primary"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#createStudentModal">
+                                    <i class="bi bi-person-plus-fill me-1"></i>
+                                    Add Student
                                 </button>
                                 <button type="button" class="admin-btn admin-btn-neutral" data-bs-toggle="modal" data-bs-target="#importAccountsModal" data-import-account-type="student">
                                     <i class="bi bi-box-arrow-in-down-right me-1"></i>
