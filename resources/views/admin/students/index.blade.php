@@ -36,7 +36,7 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link {{ request('tab') === 'security' ? 'active' : '' }}" id="security-tab" data-bs-toggle="tab" data-bs-target="#security-pane" type="button" role="tab">
                         <i class="bi bi-person-workspace me-1"></i>
-                        Security
+                        SecuritySecurity &amp; OSS Staff
                     </button>
                 </li>
                 @endif
@@ -340,7 +340,6 @@
                                 <tr>
                                     <th>Name</th>
                                     <th>Email</th>
-                                    <th>Position</th>
                                     <th>Role</th>
                                     <th>Status</th>
                                     <th>Action</th>
@@ -351,7 +350,6 @@
                                     <tr>
                                         <td>{{ trim(($admin->adminInfo->firstname ?? '') . ' ' . ($admin->adminInfo->lastname ?? '')) ?: '—' }}</td>
                                         <td>{{ $admin->email }}</td>
-                                        <td>{{ $admin->adminInfo->Position ?? 'Admin' }}</td>
                                         <td>{{ $adminRoles->firstWhere('roles_id', $admin->adminInfo->role_id ?? 1)->roles_name ?? 'Admin' }}</td>
                                         <td>
                                             @php
@@ -372,7 +370,6 @@
                                                     data-firstname="{{ $admin->adminInfo->firstname ?? '' }}"
                                                     data-middlename="{{ $admin->adminInfo->middlename ?? '' }}"
                                                     data-lastname="{{ $admin->adminInfo->lastname ?? '' }}"
-                                                    data-position="{{ $admin->adminInfo->Position ?? 'Admin' }}"
                                                     data-status="{{ $admin->adminInfo->status_id ?? 1 }}"
                                                     data-role="{{ $admin->adminInfo->role_id ?? 1 }}">
                                                     <i class="bi bi-pencil-square me-1"></i>Edit
@@ -385,7 +382,7 @@
                                     </tr>
                                 @empty
                                     <x-admin.empty-state
-                                        :colspan="6"
+                                        :colspan="5"
                                         icon="bi-person-badge"
                                         title="No admin accounts found"
                                         message="No admin accounts match your search."
