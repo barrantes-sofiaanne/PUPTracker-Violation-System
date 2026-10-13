@@ -271,12 +271,29 @@ private function sendDecisionEmail(
         ->first();
 
     if (! $student) {
+        Log::warning('Student notification email skipped: student account not found', [
+            'notification_id' => $notification->notification_id ?? null,
+            'student_number' => $studentNumber,
+        ]);
+
         return;
     }
 
-    $email = trim((string) $student->email);
+    // Prefer the primary email, then fall back to the IDP email.
+    $email = trim((string) ($student->email ?? ''));
 
     if ($email === '') {
+        $email = trim((string) ($student->idp_email ?? ''));
+    }
+
+    if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        Log::warning('Student notification email skipped: no valid email address', [
+            'notification_id' => $notification->notification_id ?? null,
+            'student_number' => $studentNumber,
+            'has_primary_email' => trim((string) ($student->email ?? '')) !== '',
+            'has_idp_email' => trim((string) ($student->idp_email ?? '')) !== '',
+        ]);
+
         return;
     }
 
@@ -301,23 +318,38 @@ private function sendDecisionEmail(
                 recipientName: $studentName,
                 actionUrl: $actionUrl,
                 actionText: str_starts_with(
-    (string) ($notification->title ?? ''),
-    'Correction Request'
-)
-    ? 'View Correction Status'
-    : 'View Student Record',
+                    (string) ($notification->title ?? ''),
+                    'Correction Request'
+                )
+                    ? 'View Correction Status'
+                    : 'View Student Record',
             )
         );
-    } catch (\Throwable $e) {
-        // Email failure must never prevent the notification
-        // or the underlying Admin decision from succeeding.
 
-        app(\App\Services\EmailIncidentService::class)->record(
-            emailType: 'Student Violation Decision Notification',
-            errorMessage: $e->getMessage(),
-            relatedRecordType: 'Notification',
-            relatedRecordId: $notification->notification_id ?? null,
-        );
+        Log::info('Student notification email sent successfully', [
+            'notification_id' => $notification->notification_id ?? null,
+            'student_number' => $studentNumber,
+        ]);
+    } catch (\Throwable $e) {
+        Log::error('Failed to send student notification email', [
+            'notification_id' => $notification->notification_id ?? null,
+            'student_number' => $studentNumber,
+            'error' => $e->getMessage(),
+        ]);
+
+        try {
+            app(\App\Services\EmailIncidentService::class)->record(
+                emailType: 'Student Notification',
+                errorMessage: $e->getMessage(),
+                relatedRecordType: 'Notification',
+                relatedRecordId: $notification->notification_id ?? null,
+            );
+        } catch (\Throwable $incidentError) {
+            Log::error('Failed to record student email incident', [
+                'notification_id' => $notification->notification_id ?? null,
+                'error' => $incidentError->getMessage(),
+            ]);
+        }
     }
 }
 }
