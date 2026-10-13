@@ -295,19 +295,20 @@ $ossStaff = Admin::query()
             ->get();
 
         return view(
-            'admin.students.index',
-            compact(
-                'students',
-                'admins',
-                'securities',
-                'programs',
-                'years',
-                'sections',
-                'genders',
-                'statuses',
-                'adminRoles'
-            )
-        );
+    'admin.students.index',
+    compact(
+        'students',
+        'admins',
+        'ossStaff',
+        'securities',
+        'programs',
+        'years',
+        'sections',
+        'genders',
+        'statuses',
+        'adminRoles'
+    )
+);
     }
 
     /*
@@ -487,7 +488,10 @@ $ossStaff = Admin::query()
 
             'role_id' =>
                 'required|exists:roles_tbl,roles_id',
-                'name_suffix' => $validated['name_suffix'] ?? null,
+                
+
+            'name_suffix' =>
+                'nullable|string|max:20',
         ]);
 
         $admin = null;
@@ -525,6 +529,9 @@ $ossStaff = Admin::query()
 
                     'lastname' =>
                         $validated['lastname'],
+
+                    'name_suffix' =>
+                        $this->nullableTrim($validated['name_suffix'] ?? null),
 
                     'status_id' =>
                         $validated['status_id'],
@@ -567,8 +574,12 @@ $ossStaff = Admin::query()
 
             'lastname' =>
                 'required|string|max:50',
-                'name_suffix' => 'nullable|string|max:20',
-'status_id' => 'required|exists:status_tbl,status_id',
+
+            'name_suffix' =>
+                'nullable|string|max:20',
+
+            'status_id' =>
+                'required|exists:status_tbl,status_id',
         ]);
 
         $security = null;
@@ -638,7 +649,10 @@ $ossStaff = Admin::query()
 
             'password' =>
                 'nullable|string|min:8',
-'name_suffix' => 'nullable|string|max:20',        ]);
+
+            'name_suffix' =>
+                'nullable|string|max:20',
+        ]);
 
         $adminEmailBefore = $admin->email;
 
@@ -652,6 +666,9 @@ $ossStaff = Admin::query()
 
                 'lastname' =>
                     $admin->adminInfo->lastname,
+
+                'name_suffix' =>
+                    $admin->adminInfo->name_suffix,
 
                 'status_id' =>
                     $admin->adminInfo->status_id,
@@ -697,6 +714,9 @@ $ossStaff = Admin::query()
 
                     'lastname' =>
                         $validated['lastname'],
+
+                    'name_suffix' =>
+                        $this->nullableTrim($validated['name_suffix'] ?? null),
 
                     'status_id' =>
                         $validated['status_id'],
@@ -826,6 +846,9 @@ $ossStaff = Admin::query()
             'lastname' =>
                 'Last Name',
 
+            'name_suffix' =>
+                'Suffix',
+
             'status_id' =>
                 'Status',
 
@@ -896,8 +919,12 @@ $ossStaff = Admin::query()
 
             'password' =>
                 'nullable|string|min:8',
-                'name_suffix' => 'nullable|string|max:20',
-'status_id' => 'required|exists:status_tbl,status_id',
+
+            'name_suffix' =>
+                'nullable|string|max:20',
+
+            'status_id' =>
+                'required|exists:status_tbl,status_id',
         ]);
 
         $securityEmailBefore =
@@ -912,6 +939,12 @@ $ossStaff = Admin::query()
 
             'lastname' =>
                 $security->securityInfo->lastname ?? '',
+
+            'name_suffix' =>
+                $security->securityInfo->name_suffix ?? '',
+
+            'status_id' =>
+                $security->securityInfo->status_id ?? null,
         ];
 
         DB::transaction(function () use (
@@ -1067,6 +1100,12 @@ $ossStaff = Admin::query()
 
             'lastname' =>
                 'Last Name',
+
+            'name_suffix' =>
+                'Suffix',
+
+            'status_id' =>
+                'Status',
         ];
 
         $fresh =
@@ -1081,6 +1120,12 @@ $ossStaff = Admin::query()
 
             'lastname' =>
                 $fresh?->securityInfo?->lastname ?? '',
+
+            'name_suffix' =>
+                $fresh?->securityInfo?->name_suffix ?? '',
+
+            'status_id' =>
+                $fresh?->securityInfo?->status_id ?? '',
         ];
 
         foreach (
