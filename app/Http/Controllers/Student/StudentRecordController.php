@@ -497,15 +497,6 @@ $offenseCount = Violation::where('student_number', $user->student_number)
     }
 
     // Only Community Service and Campus Service use the student
-    // sanction-request and scheduling workflow.
-    if (! StudentSanctionRecord::requiresStudentSanctionRequest(
-        $assignedSanction->disciplinary_sanction
-    )) {
-        return response()->json([
-            'success' => false,
-            'message' => 'This sanction does not require a student sanction request. Please follow the instructions in your Sanction Record tab.',
-        ], 422);
-    }
 
     // Preserve the standard sanction-request workflow for configured
     // sanctions. The administrator remains responsible for reviewing requests.
