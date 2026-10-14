@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -556,22 +557,50 @@ class StudentController extends Controller
 
     public function storeSecurity(Request $request)
     {
-        $validated = $request->validate([
-            'email' =>
-                'required|email|max:255|unique:security,email',
+       $validated = $request->validate([
+    'email' => [
+        'required',
+        'email',
+        'max:255',
+        'unique:security,email',
+    ],
 
-            'firstname' =>
-                'required|string|max:50',
+    'firstname' => [
+        'required',
+        'string',
+        'max:50',
+        "regex:/^[\p{L}]+(?:[ .’'-][\p{L}]+)*$/u",
+    ],
 
-            'middlename' =>
-                'nullable|string|max:50',
+    'middlename' => [
+        'nullable',
+        'string',
+        'max:50',
+        "regex:/^[\p{L}]+(?:[ .’'-][\p{L}]+)*$/u",
+    ],
 
-            'lastname' =>
-                'required|string|max:50',
+    'lastname' => [
+        'required',
+        'string',
+        'max:50',
+        "regex:/^[\p{L}]+(?:[ .’'-][\p{L}]+)*$/u",
+    ],
 
-            'name_suffix' =>
-                'nullable|string|max:20',
-        ]);
+    'name_suffix' => [
+        'nullable',
+        'string',
+        Rule::in([
+            'Jr',
+            'Jr.',
+            'Sr',
+            'Sr.',
+            'II',
+            'III',
+            'IV',
+            'V',
+        ]),
+    ],
+]);
 
         $security = null;
 
@@ -894,24 +923,55 @@ class StudentController extends Controller
     ) {
 
         $validated = $request->validate([
-            'email' =>
-                'required|email|max:255|unique:security,email,' . $security->id,
+    'email' => [
+        'required',
+        'email',
+        'max:255',
+        'unique:security,email,' . $security->id,
+    ],
 
-            'firstname' =>
-                'required|string|max:50',
+    'firstname' => [
+        'required',
+        'string',
+        'max:50',
+        "regex:/^[\p{L}]+(?:[ .’'-][\p{L}]+)*$/u",
+    ],
 
-            'middlename' =>
-                'nullable|string|max:50',
+    'middlename' => [
+        'nullable',
+        'string',
+        'max:50',
+        "regex:/^[\p{L}]+(?:[ .’'-][\p{L}]+)*$/u",
+    ],
 
-            'lastname' =>
-                'required|string|max:50',
+    'lastname' => [
+        'required',
+        'string',
+        'max:50',
+        "regex:/^[\p{L}]+(?:[ .’'-][\p{L}]+)*$/u",
+    ],
 
-            'name_suffix' =>
-                'nullable|string|max:20',
+    'name_suffix' => [
+        'nullable',
+        'string',
+        Rule::in([
+            'Jr',
+            'Jr.',
+            'Sr',
+            'Sr.',
+            'II',
+            'III',
+            'IV',
+            'V',
+        ]),
+    ],
 
-            'password' =>
-                'nullable|string|min:8',
-        ]);
+    'password' => [
+        'nullable',
+        'string',
+        'min:8',
+    ],
+]);
 
         $securityEmailBefore =
             $security->email;

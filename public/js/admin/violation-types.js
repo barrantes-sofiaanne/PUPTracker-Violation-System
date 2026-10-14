@@ -45,7 +45,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 },
             );
 
-            const result = await response.json();
+            const responseText = await response.text();
+
+            let result;
+
+            try {
+                result = JSON.parse(responseText);
+            } catch {
+                result = {
+                    message:
+                        responseText ||
+                        "The server returned an empty response.",
+                };
+            }
 
             if (!response.ok) {
                 throw result;

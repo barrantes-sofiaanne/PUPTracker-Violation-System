@@ -82,26 +82,13 @@ class SanctionRequestDecisionService
                     ->orderBy('disciplinary_sanction_id')
                     ->first();
 
-                $sanctionText = strtolower((string) ($assignedSanction?->disciplinary_sanction ?? ''));
-                if ($decision === self::DECISION_APPROVED && $sanctionText !== '' && str_contains($sanctionText, 'warning')) {
-                    throw ValidationException::withMessages([
-                        'sanction_request' => 'Warning-level violations should remain in the individual violations log and cannot be moved to sanction records.',
-                    ]);
-                }
-
                 // Only Community Service / Campus Service sanctions should
                 // arrive through the student Request Sanction workflow because
                 // those sanctions require administration scheduling. OSS
                 // consultation sanctions (including the existing
                 // Student-Assistance Service instruction) are assigned directly
                 // and must not be approved as student-requested sanctions.
-                if ($decision === self::DECISION_APPROVED
-                    && ! StudentSanctionRecord::requiresStudentSanctionRequest($assignedSanction?->disciplinary_sanction)) {
-                    throw ValidationException::withMessages([
-                        'sanction_request' => 'This sanction does not require a student sanction request. The student must follow the instruction in the Sanction Record tab.',
-                    ]);
-                }
-
+               
                 if ($decision === self::DECISION_APPROVED && $latestViolation) {
                     $pendingRecord = StudentSanctionRecord::where('student_number', $student->student_number)
                         ->where('violation_id', $latestViolation->violation_id)

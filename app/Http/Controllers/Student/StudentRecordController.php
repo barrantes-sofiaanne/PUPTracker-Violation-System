@@ -361,10 +361,8 @@ $workflowStatus = $hasSanctionWorkflow
         // Only sanctions that require administration scheduling (Community or
         // Campus Service) expose Request Sanction in the student UI.
 'requires_sanction_request' =>
-    ! $hasSanctionWorkflow
-    && StudentSanctionRecord::requiresStudentSanctionRequest(
-        $disciplinarySanction
-    ),
+    !  $disciplinarySanction !== 'N/A'
+    && ! $hasSanctionWorkflow,
         'violation_status' => $status,
 
         'workflow_status' => $workflowStatus,
@@ -485,6 +483,8 @@ $offenseCount = Violation::where('student_number', $user->student_number)
             'message' => 'No disciplinary sanction is configured for this violation yet.'
         ], 422);
     }
+
+    // Only Community Service and Campus Service use the student
 
     // Preserve the standard sanction-request workflow for configured
     // sanctions. The administrator remains responsible for reviewing requests.

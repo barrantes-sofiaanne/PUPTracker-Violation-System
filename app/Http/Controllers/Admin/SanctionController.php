@@ -269,11 +269,7 @@ if (! $student->isActiveAccount()) {
                     ->first();
 
             $sanctionText = strtolower((string) ($assignedSanction?->disciplinary_sanction ?? ''));
-            if ($sanctionText !== '' && str_contains($sanctionText, 'warning')) {
-                throw ValidationException::withMessages([
-                    'sanction_request' => 'Warning-level violations should remain in the individual violations log and cannot be moved to sanction records.',
-                ]);
-            }
+           
 
             // A manually entered deadline always wins. Otherwise derive one
             // from durations stated in the sanction (e.g. "one month
