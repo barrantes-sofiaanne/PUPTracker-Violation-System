@@ -3078,21 +3078,23 @@
     
     // All confirmed violations can enter the sanction-request workflow,
     // including warning-level violations.
-    $rowSanctionStatus = $hasAssignedSanction
-        ? 'assigned'
-        : (
-            $requestStatus === 'pending' && $isActiveRequest
-                ? 'pending'
-                : (
-                    $requestStatus === 'approved' && !$isActiveRequest
-                        ? 'approved'
-                        : (
-                            $requestStatus === 'declined' && !$isActiveRequest
-                                ? 'declined'
-                                : 'needs'
-                        )
-                )
-        );
+// All confirmed violations can request administrator approval,
+// regardless of whether the assigned sanction is a warning.
+$rowSanctionStatus = $hasAssignedSanction
+    ? 'assigned'
+    : (
+        $requestStatus === 'pending' && $isActiveRequest
+            ? 'pending'
+            : (
+                $requestStatus === 'approved' && !$isActiveRequest
+                    ? 'approved'
+                    : (
+                        $requestStatus === 'declined' && !$isActiveRequest
+                            ? 'declined'
+                            : 'needs'
+                    )
+            )
+    );
 
 
     $rowDate = \Carbon\Carbon::parse(
@@ -3132,17 +3134,7 @@
 <td class="individual-actions-col">
     @if($isPendingLog)
         <span class="text-muted small">Available after confirmation</span>
-    @elseif($isWarningLevelViolation)
-        <div class="warning-sanction-notice p-3 mb-2 small text-start" role="note">
-            <strong class="d-flex align-items-center gap-2 mb-2">
-                <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
-                Warning-Level Violation
-            </strong>
-            <p class="mb-0">
-                A sanction request is not required for this warning-level
-                violation. Review the disciplinary details above.
-            </p>
-        </div>
+
 
         @if($hasPendingCorrection)
             <button type="button" class="btn btn-outline-secondary btn-sm corrective-action-btn mt-2" disabled aria-disabled="true" title="Your request is pending administrator review.">
@@ -4315,79 +4307,14 @@ const deletionEvidenceFields =
         errorBox.classList.add('d-none');
     }
 
-function stopCamera() {
-    if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop());
-        cameraStream = null;
-    }
+function resetForm() {
+    const form = document.getElementById('correctionDeletionForm');
 
-    if (video) {
-        video.srcObject = null;
-        video.classList.add('d-none');
-    }
-
-    if (captureButton) {
-        captureButton.classList.add('d-none');
-        captureButton.disabled = true;
-    }
-
-    if (stopCameraButton) {
-        stopCameraButton.classList.add('d-none');
-        stopCameraButton.disabled = true;
-    }
-
-    if (startCameraButton) {
-        startCameraButton.classList.remove('d-none');
-        startCameraButton.disabled = false;
-    }
-
-    if (cameraStatus) {
-        cameraStatus.textContent = 'Camera is off.';
+    if (form) {
+        form.reset();
     }
 }
-
-function removeCapturedPhoto() {
-    // Clear the captured image used for submission.
-    cameraImageData = null;
-
-    // Clear and hide the photo preview.
-    if (photoPreview) {
-        photoPreview.removeAttribute('src');
-        photoPreview.classList.add('d-none');
-    }
-
-    // Hide the Remove Photo button.
-    if (removePhotoButton) {
-        removePhotoButton.classList.add('d-none');
-    }
-
-    // Clear a temporary image input if one exists.
-    const cameraImageInput = document.getElementById('cameraImageInput');
-
-    if (cameraImageInput) {
-        cameraImageInput.value = '';
-    }
-
-    if (cameraStatus) {
-        cameraStatus.textContent = 'Captured photo removed.';
-    }
-}
-
-    function resetForm() {
-        actionSelect.value = '';
-        correctionFields.classList.add('d-none');
-        deletionFields.classList.add('d-none');
-
-
-        reasonInput.value = '';
-        evidenceInput.value = '';
-
-        clearError();
-        removeCapturedPhoto();
-        stopCamera();
-    }
-
-    
+   
 document.querySelectorAll('.corrective-action-btn').forEach(button => {
     button.addEventListener('click', function () {
         selectedViolationId = this.dataset.violationId;
@@ -4455,76 +4382,7 @@ document.querySelectorAll('.corrective-action-btn').forEach(button => {
         });
     });
 
-    startCameraButton.addEventListener('click', async function () {
-        clearError();
 
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            showError('Camera access is unavailable in this browser or page context. You can upload evidence instead.');
-            return;
-        }
-
-        try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({
-                audio: false,
-                video: { facingMode: 'environment' }
-            });
-
-            video.srcObject = cameraStream;
-video.classList.remove('d-none');
-
-if (captureButton) {
-    captureButton.classList.remove('d-none');
-    captureButton.disabled = false;
-}
-
-if (stopCameraButton) {
-    stopCameraButton.classList.remove('d-none');
-    stopCameraButton.disabled = false;
-}
-
-if (startCameraButton) {
-    startCameraButton.disabled = true;
-}
-
-cameraStatus.textContent =
-    'Camera is on. Capture a photo only when you are ready.';
-        } catch (error) {
-            stopCamera();
-            showError('Camera access was not granted or is unavailable. You can still upload evidence.');
-        }
-    });
-
-    captureButton.addEventListener('click', function () {
-        if (!cameraStream || !video.videoWidth || !video.videoHeight) {
-            showError('Wait for the camera preview to become ready, then try again.');
-            return;
-        }
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        const context = canvas.getContext('2d');
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        cameraImageData = canvas.toDataURL('image/jpeg', 0.85);
-        photoPreview.src = cameraImageData;
-        photoPreview.classList.remove('d-none');
-        removePhotoButton.classList.remove('d-none');
-        cameraStatus.textContent = 'Photo captured. It will only be sent if you submit this request.';
-        clearError();
-        stopCamera();
-    });
-
-    stopCameraButton.addEventListener('click', stopCamera);
-
-    removePhotoButton.addEventListener('click', function () {
-        removeCapturedPhoto();
-        cameraStatus.textContent = 'Captured photo removed.';
-    });
-
-    modalElement.addEventListener('hidden.bs.modal', function () {
-        stopCamera();
-    });
 
     submitButton.addEventListener('click', async function () {
         clearError();
