@@ -71,19 +71,59 @@
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success">
-            <i class="bi bi-check-circle me-1"></i>
-            {{ session('success') }}
-        </div>
-    @endif
+@php
 
-    @if($errors->has('correction_request'))
-        <div class="alert alert-danger">
-            <i class="bi bi-exclamation-triangle me-1"></i>
-            {{ $errors->first('correction_request') }}
-        </div>
-    @endif
+@if(session('success') || session('error') || $errors->has('correction_request'))
+    <div
+        id="decision-alert-data"
+        data-success="{{ session('success') }}"
+        data-error="{{ session('error') ?? $errors->first('correction_request') }}"
+        hidden>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const alertData = document.getElementById('decision-alert-data');
+
+        if (!alertData) {
+            return;
+        }
+
+        const successMessage = alertData.dataset.success;
+        const errorMessage = alertData.dataset.error;
+
+        if (typeof Swal === 'undefined') {
+            if (successMessage) {
+                alert(successMessage);
+            } else if (errorMessage) {
+                alert(errorMessage);
+            }
+            return;
+        }
+
+        if (successMessage) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Successful!',
+                text: successMessage,
+                confirmButtonText: 'OK'
+            });
+        } else if (errorMessage) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Action Failed',
+                text: errorMessage,
+                confirmButtonText: 'OK'
+            });
+        }
+    });
+    </script>
+@endif
+
+
+</script>
+
+
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -209,549 +249,254 @@
     </div>
 
     {{-- Review modals are placed outside the table. --}}
-    @foreach($requests as $correctionRequest)
-        @php
-            $violation = $correctionRequest->violation;
-            $student = $violation?->student;
-
-            $currentType = $violation?->violation_type_display
-                ?? 'Unknown Violation';
-
-            $currentCategory =
-                $violation?->violationType?->violationCategory?->category_name
-                ?? 'Not recorded';
-
-            $requestedType =
-                $correctionRequest->requestedViolationType?->violation_type
-                ?? $currentType;
-
-            $requestedCategory =
-                $correctionRequest->requestedViolationType
-                    ?->violationCategory?->category_name
-                ?? 'Not specified';
-
-            $evidenceFiles = $correctionRequest->isDeletionRequest()
-                ? ($correctionRequest->deletion_evidence ?? [])
-                : [];
-        @endphp
-
-        <div
-            class="modal fade"
-            id="reviewRequestModal{{ $correctionRequest->request_id }}"
-            tabindex="-1"
-            aria-labelledby="reviewRequestTitle{{ $correctionRequest->request_id }}"
-            aria-hidden="true">
-
-            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
-                <div class="modal-content">
-
-                    <div class="modal-header">
-                        <div>
-                            <h5
-                                class="modal-title fw-bold"
-                                id="reviewRequestTitle{{ $correctionRequest->request_id }}">
-
-                                {{
-                                    $correctionRequest->isDeletionRequest()
-                                        ? 'Review Deletion Request'
-                                        : 'Review Correction Request'
-                                }}
-                            </h5>
-
-                            <div class="small text-muted">
-                                Request #{{ $correctionRequest->request_id }}
-                                · Violation #{{ $correctionRequest->violation_id }}
-                            </div>
-                        </div>
-
-                        <button
-                            type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal"
-                            aria-label="Close">
-                        </button>
-                    </div>
-
-                    <div class="modal-body">
-
-                        {{-- Student and request information --}}
-                        <div class="row g-3 mb-3">
-
-                            <div class="col-12 col-md-4">
-                                <div class="review-modal-section">
-                                    <div class="review-modal-label">Student</div>
-
-                                    <div class="fw-semibold">
-                                        {{ trim(
-                                            ($student?->first_name ?? '') . ' ' .
-                                            ($student?->last_name ?? '')
-                                        ) ?: 'Student' }}
-                                    </div>
-
-                                    <div class="small text-muted">
-                                        {{ $correctionRequest->student_number }}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-12 col-md-4">
-                                <div class="review-modal-section">
-                                    <div class="review-modal-label">
-                                        Request submitted
-                                    </div>
-
-                                    <div class="fw-semibold">
-                                        {{ $correctionRequest->created_at?->format(
-                                            'M d, Y h:i A'
-                                        ) ?? 'N/A' }}
-                                    </div>
-
-                                    <div class="mt-2">
-                                        <span class="badge {{
-                                            $correctionRequest->isDeletionRequest()
-                                                ? 'bg-danger'
-                                                : 'bg-primary'
-                                        }}">
-                                            {{
-                                                $correctionRequest->isDeletionRequest()
-                                                    ? 'Deletion'
-                                                    : 'Correction'
-                                            }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-12 col-md-4">
-                                <div class="review-modal-section">
-                                    <div class="review-modal-label">
-                                        Student's reason
-                                    </div>
-
-                                    <div style="white-space:pre-wrap;overflow-wrap:anywhere">
-                                        {{ $correctionRequest->reason ?: 'No reason provided.' }}
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-
-                        {{-- Correction request comparison --}}
-                        @if(!$correctionRequest->isDeletionRequest())
-
-                            <h6 class="fw-bold mb-2">
-                                Compare violation details
-                            </h6>
-
-                            <div class="row g-3 mb-3">
-
-                                <div class="col-12 col-md-6">
-                                    <div class="review-modal-section bg-light">
-                                        <div class="review-modal-label">
-                                            Current record
-                                        </div>
-
-                                        <div class="mb-2">
-                                            <span class="small text-muted">
-                                                Category
-                                            </span>
-                                            <div class="fw-semibold">
-                                                {{ $currentCategory }}
-                                            </div>
-                                        </div>
-
-                                        <div class="mb-2">
-                                            <span class="small text-muted">
-                                                Violation type
-                                            </span>
-                                            <div class="fw-semibold">
-                                                {{ $currentType }}
-                                            </div>
-                                        </div>
-
-                                        <div class="mb-2">
-                                            <span class="small text-muted">
-                                                Date and time
-                                            </span>
-                                            <div class="fw-semibold">
-                                                {{ $violation?->violation_date
-                                                    ? \Carbon\Carbon::parse(
-                                                        $violation->violation_date
-                                                    )->format('M d, Y h:i A')
-                                                    : 'N/A' }}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <span class="small text-muted">
-                                                Description / remarks
-                                            </span>
-
-                                            <div style="white-space:pre-wrap;overflow-wrap:anywhere">
-                                                {{ $violation?->description ?: 'No remarks' }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-12 col-md-6">
-                                    <div class="review-modal-section">
-                                        <div class="review-modal-label">
-                                            Student's requested correction
-                                        </div>
-
-                                        <div class="mb-2">
-                                            <span class="small text-muted">
-                                                Requested category
-                                            </span>
-                                            <div class="fw-semibold">
-                                                {{ $requestedCategory }}
-                                            </div>
-                                        </div>
-
-                                        <div class="mb-2">
-                                            <span class="small text-muted">
-                                                Requested violation type
-                                            </span>
-                                            <div class="fw-semibold">
-                                                {{ $requestedType }}
-                                            </div>
-                                        </div>
-
-                                        <div class="mb-2">
-                                            <span class="small text-muted">
-                                                Requested date and time
-                                            </span>
-                                            <div class="fw-semibold">
-                                                {{ $correctionRequest->requested_violation_date?->format(
-                                                    'M d, Y h:i A'
-                                                ) ?? 'N/A' }}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <span class="small text-muted">
-                                                Requested description / remarks
-                                            </span>
-
-                                            <div style="white-space:pre-wrap;overflow-wrap:anywhere">
-                                                {{ $correctionRequest->requested_description ?: 'No remarks provided' }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                        @else
-
-                            {{-- Deletion request review --}}
-                            <div class="alert alert-warning">
-                                <i class="bi bi-exclamation-triangle me-1"></i>
-                                The student is requesting removal of this violation
-                                from active records. Review the reason and evidence
-                                before deciding.
-                            </div>
-
-                            <h6 class="fw-bold mb-2">
-                                Violation record requested for deletion
-                            </h6>
-
-                            <div class="review-modal-section mb-3">
-                                <div class="row g-3">
-
-                                    <div class="col-12 col-md-4">
-                                        <div class="review-modal-label">
-                                            Category
-                                        </div>
-                                        <div>{{ $currentCategory }}</div>
-                                    </div>
-
-                                    <div class="col-12 col-md-4">
-                                        <div class="review-modal-label">
-                                            Violation type
-                                        </div>
-                                        <div>{{ $currentType }}</div>
-                                    </div>
-
-                                    <div class="col-12 col-md-4">
-                                        <div class="review-modal-label">
-                                            Date and time
-                                        </div>
-                                        <div>
-                                            {{ $violation?->violation_date
-                                                ? \Carbon\Carbon::parse(
-                                                    $violation->violation_date
-                                                )->format('M d, Y h:i A')
-                                                : 'N/A' }}
-                                        </div>
-                                    </div>
-
-                                    <div class="col-12">
-                                        <div class="review-modal-label">
-                                            Description / remarks
-                                        </div>
-
-                                        <div style="white-space:pre-wrap;overflow-wrap:anywhere">
-                                            {{ $violation?->description ?: 'No remarks' }}
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-
-                            <h6 class="fw-bold mb-2">
-                                Student's supporting evidence
-                            </h6>
-
-                            @if(count($evidenceFiles))
-
-                                <div class="row g-3 mb-3">
-
-                                    @foreach($evidenceFiles as $fileIndex => $file)
-                                        @php
-                                            $evidenceUrl = route(
-                                                'violation-change-requests.evidence',
-                                                [
-                                                    'correctionRequest' => $correctionRequest->request_id,
-                                                    'fileIndex' => $fileIndex
-                                                ]
-                                            );
-
-                                            $evidenceName =
-                                                $file['name'] ?? 'Evidence file';
-
-                                            $evidenceMime =
-                                                strtolower($file['mime'] ?? '');
-
-                                            $evidenceExtension =
-                                                strtolower(
-                                                    pathinfo(
-                                                        $evidenceName,
-                                                        PATHINFO_EXTENSION
-                                                    )
-                                                );
-
-                                            $isImageEvidence =
-                                                str_starts_with(
-                                                    $evidenceMime,
-                                                    'image/'
-                                                ) ||
-                                                in_array(
-                                                    $evidenceExtension,
-                                                    ['jpg', 'jpeg', 'png', 'webp', 'gif'],
-                                                    true
-                                                );
-
-                                            $isPdfEvidence =
-                                                $evidenceMime === 'application/pdf' ||
-                                                $evidenceExtension === 'pdf';
-                                        @endphp
-
-                                        <div class="col-12 {{
-                                            $isImageEvidence || $isPdfEvidence
-                                                ? 'col-lg-6'
-                                                : ''
-                                        }}">
-                                            <div class="review-modal-section">
-
-                                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                                                    <div class="fw-semibold text-break">
-                                                        <i class="bi {{
-                                                            $isPdfEvidence
-                                                                ? 'bi-file-earmark-pdf text-danger'
-                                                                : ($isImageEvidence
-                                                                    ? 'bi-file-earmark-image text-primary'
-                                                                    : 'bi-paperclip')
-                                                        }} me-1"></i>
-
-                                                        {{ $evidenceName }}
-                                                    </div>
-
-                                                    <a
-                                                        class="btn btn-sm btn-outline-secondary flex-shrink-0"
-                                                        href="{{ $evidenceUrl }}"
-                                                        target="_blank"
-                                                        rel="noopener">
-                                                        <i class="bi bi-box-arrow-up-right me-1"></i>
-                                                        Open
-                                                    </a>
-                                                </div>
-
-                                                @if($isImageEvidence)
-
-                                                    <a
-                                                        href="{{ $evidenceUrl }}"
-                                                        target="_blank"
-                                                        rel="noopener">
-                                                        <img
-                                                            class="review-evidence-image"
-                                                            src="{{ $evidenceUrl }}"
-                                                            alt="Student-submitted evidence"
-                                                            loading="lazy">
-                                                    </a>
-
-                                                @elseif($isPdfEvidence)
-
-                                                    <iframe
-                                                        class="review-evidence-pdf"
-                                                        src="{{ $evidenceUrl }}#toolbar=1&navpanes=0"
-                                                        title="PDF evidence: {{ $evidenceName }}">
-                                                    </iframe>
-
-                                                @else
-
-                                                    <div class="small text-muted">
-                                                        Preview is not available
-                                                        for this file type. Use Open
-                                                        to view or download it.
-                                                    </div>
-
-                                                @endif
-
-                                            </div>
-                                        </div>
-                                    @endforeach
-
-                                </div>
-
-                            @else
-
-                                <div class="alert alert-light border">
-                                    No supporting evidence was attached to
-                                    this deletion request.
-                                </div>
-
-                            @endif
-                        @endif
-
-                        <hr class="my-4">
-
-                        <h6 class="fw-bold mb-3">
-                            Administrator decision
-                        </h6>
-
-                        <div class="row g-3">
-
-                            {{-- Approve --}}
-                            <div class="col-12 col-lg-6">
-                                <div class="review-action-card approve">
-
-                                    <h6 class="text-success fw-bold">
-                                        <i class="bi bi-check-circle-fill me-1"></i>
-                                        Approve Request
-                                    </h6>
-
-                                    <p class="small text-muted">
-                                        {{
-                                            $correctionRequest->isDeletionRequest()
-                                                ? 'Approving removes this violation from active records and preserves the decision in the audit log.'
-                                                : 'Approving applies the requested correction to the violation record.'
-                                        }}
-                                    </p>
-
-                                    <form
-                                        method="POST"
-                                        action="{{ route(
-                                            'violation-correction-requests.approve',
-                                            ['correctionRequest' => $correctionRequest->request_id]
-                                        ) }}">
-
-                                        @csrf
-
-                                        <label
-                                            class="form-label small"
-                                            for="approveRemarks{{ $correctionRequest->request_id }}">
-                                            Approval remarks (optional)
-                                        </label>
-
-                                        <textarea
-                                            id="approveRemarks{{ $correctionRequest->request_id }}"
-                                            name="review_remarks"
-                                            class="form-control mb-3"
-                                            rows="3"
-                                            maxlength="2000"
-                                            placeholder="Optional approval remarks"></textarea>
-
-                                        <button
-                                            type="submit"
-                                            class="btn btn-success w-100">
-                                            <i class="bi bi-check-circle me-1"></i>
-                                            {{
-                                                $correctionRequest->isDeletionRequest()
-                                                    ? 'Approve Deletion'
-                                                    : 'Approve & Correct'
-                                            }}
-                                        </button>
-                                    </form>
-
-                                </div>
-                            </div>
-
-                            {{-- Reject --}}
-                            <div class="col-12 col-lg-6">
-                                <div class="review-action-card reject">
-
-                                    <h6 class="text-danger fw-bold">
-                                        <i class="bi bi-x-circle-fill me-1"></i>
-                                        Reject Request
-                                    </h6>
-
-                                    <p class="small text-muted">
-                                        A rejection reason is required.
-                                        The violation record will remain unchanged.
-                                    </p>
-
-                                    <form
-                                        method="POST"
-                                        action="{{ route(
-                                            'violation-correction-requests.reject',
-                                            ['correctionRequest' => $correctionRequest->request_id]
-                                        ) }}">
-
-                                        @csrf
-
-                                        <label
-                                            class="form-label small"
-                                            for="rejectRemarks{{ $correctionRequest->request_id }}">
-                                            Reason for rejection
-                                            <span class="text-danger">(required)</span>
-                                        </label>
-
-                                        <textarea
-                                            id="rejectRemarks{{ $correctionRequest->request_id }}"
-                                            name="review_remarks"
-                                            class="form-control mb-3"
-                                            rows="3"
-                                            minlength="10"
-                                            maxlength="2000"
-                                            required
-                                            placeholder="Explain why this request is rejected (minimum 10 characters)"></textarea>
-
-                                        <div class="form-text mb-3">
-                                            Enter at least 10 characters.
-                                        </div>
-
-                                        <button
-                                            type="submit"
-                                            class="btn btn-outline-danger w-100">
-                                            <i class="bi bi-x-circle me-1"></i>
-                                            {{
-                                                $correctionRequest->isDeletionRequest()
-                                                    ? 'Reject Deletion'
-                                                    : 'Reject Request'
-                                            }}
-                                        </button>
-                                    </form>
-
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endforeach
+@foreach($requests as $correctionRequest)
+
+    {{-- Original review modal --}}
+    <div class="modal fade"
+         id="reviewRequestModal{{ $correctionRequest->request_id }}">
+
+        {{-- Existing review content and new decision buttons --}}
+
+    </div>
+    {{-- Original review modal ends here --}}
+
+    {{-- Remarks modal --}}
+    <div class="modal fade"
+         id="decisionRemarksModal{{ $correctionRequest->request_id }}">
+        {{-- Remarks form --}}
+    </div>
+
+    {{-- Confirmation modal --}}
+    <div class="modal fade"
+         id="decisionConfirmModal{{ $correctionRequest->request_id }}">
+        {{-- Confirmation controls --}}
+    </div>
+
+    {{-- Hidden Laravel submission form --}}
+    <form id="decisionSubmitForm{{ $correctionRequest->request_id }}"
+          method="POST"
+          class="d-none">
+        @csrf
+        <input type="hidden" name="review_remarks" value="">
+    </form>
+
+@endforeach
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const actionButtons = document.querySelectorAll(
+        '[data-decision-action]'
+    );
+
+    actionButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            const action = button.dataset.decisionAction;
+            const reviewModalId = button.dataset.reviewModal;
+            const remarksModalId = button.dataset.remarksModal;
+
+            const reviewModalElement =
+                document.getElementById(reviewModalId);
+
+            const remarksModalElement =
+                document.getElementById(remarksModalId);
+
+            if (!reviewModalElement || !remarksModalElement) {
+                return;
+            }
+
+            const confirmModalElement = document.getElementById(
+                remarksModalId.replace(
+                    'decisionRemarksModal',
+                    'decisionConfirmModal'
+                )
+            );
+
+            const submitForm = document.getElementById(
+                remarksModalId.replace(
+                    'decisionRemarksModal',
+                    'decisionSubmitForm'
+                )
+            );
+
+            if (!confirmModalElement || !submitForm) {
+                return;
+            }
+
+            const remarksInput = remarksModalElement.querySelector(
+                '.decision-remarks-input'
+            );
+
+            const remarksError = remarksModalElement.querySelector(
+                '.decision-remarks-error'
+            );
+
+            const actionLabel = remarksModalElement.querySelector(
+                '.decision-action-label'
+            );
+
+            const remarksLabel = remarksModalElement.querySelector(
+                '.decision-remarks-label'
+            );
+
+            const remarksHelp = remarksModalElement.querySelector(
+                '.decision-remarks-help'
+            );
+
+            const confirmMessage = confirmModalElement.querySelector(
+                '.decision-confirm-message'
+            );
+
+            const confirmButton = confirmModalElement.querySelector(
+                '.decision-confirm-submit'
+            );
+
+            // Reset the remarks form for each new decision.
+            remarksInput.value = '';
+            remarksError.textContent = '';
+            remarksError.classList.add('d-none');
+
+            remarksInput.required = action === 'reject';
+            remarksInput.minLength = action === 'reject' ? 10 : 0;
+
+            actionLabel.textContent =
+                action === 'approve'
+                    ? 'Approve Request'
+                    : 'Reject Request';
+
+            remarksLabel.textContent =
+                action === 'approve'
+                    ? 'Approval remarks (optional)'
+                    : 'Reason for rejection (required)';
+
+            remarksHelp.textContent =
+                action === 'approve'
+                    ? 'You may leave this field blank.'
+                    : 'Enter at least 10 characters explaining your decision.';
+
+            remarksInput.placeholder =
+                action === 'approve'
+                    ? 'Optional approval remarks'
+                    : 'Explain why this request is rejected';
+
+            confirmMessage.textContent =
+                action === 'approve'
+                    ? 'Are you sure you want to approve this request?'
+                    : 'Are you sure you want to reject this request?';
+
+            confirmButton.textContent =
+                action === 'approve'
+                    ? 'Confirm Approval'
+                    : 'Confirm Rejection';
+
+            confirmButton.classList.toggle(
+                'btn-success',
+                action === 'approve'
+            );
+
+            confirmButton.classList.toggle(
+                'btn-danger',
+                action === 'reject'
+            );
+
+            // Save the selected action and destination.
+            remarksModalElement.dataset.selectedAction = action;
+
+            submitForm.action =
+                action === 'approve'
+                    ? remarksModalElement.dataset.approveUrl
+                    : remarksModalElement.dataset.rejectUrl;
+
+            // Close the review modal before opening the remarks modal.
+            const reviewModal =
+                bootstrap.Modal.getOrCreateInstance(reviewModalElement);
+
+            reviewModalElement.addEventListener(
+                'hidden.bs.modal',
+                function () {
+                    bootstrap.Modal.getOrCreateInstance(
+                        remarksModalElement
+                    ).show();
+                },
+                { once: true }
+            );
+
+            reviewModal.hide();
+
+            // Validate remarks before showing final confirmation.
+            const remarksForm = remarksModalElement.querySelector(
+                '.decision-remarks-form'
+            );
+
+            remarksForm.onsubmit = function (event) {
+                event.preventDefault();
+
+                const remarks = remarksInput.value.trim();
+
+                if (
+                    remarksModalElement.dataset.selectedAction === 'reject'
+                    && remarks.length < 10
+                ) {
+                    remarksError.textContent =
+                        'The rejection reason must contain at least 10 characters.';
+
+                    remarksError.classList.remove('d-none');
+                    remarksInput.focus();
+
+                    return;
+                }
+
+                remarksError.textContent = '';
+                remarksError.classList.add('d-none');
+
+                submitForm.querySelector(
+                    '[name="review_remarks"]'
+                ).value = remarks;
+
+                // Close remarks modal before opening confirmation.
+                remarksModalElement.addEventListener(
+                    'hidden.bs.modal',
+                    function () {
+                        bootstrap.Modal.getOrCreateInstance(
+                            confirmModalElement
+                        ).show();
+                    },
+                    { once: true }
+                );
+
+                bootstrap.Modal.getOrCreateInstance(
+                    remarksModalElement
+                ).hide();
+            };
+
+            // Submit to Laravel only after final confirmation.
+            confirmButton.onclick = function () {
+                if (confirmButton.disabled) {
+                    return;
+                }
+
+                confirmButton.disabled = true;
+                confirmButton.innerHTML =
+                    '<span class="spinner-border spinner-border-sm me-1" ' +
+                    'role="status" aria-hidden="true"></span> Processing...';
+
+                submitForm.submit();
+            };
+
+            // Restore the button if the admin cancels confirmation.
+            confirmModalElement.addEventListener(
+                'hidden.bs.modal',
+                function () {
+                    confirmButton.disabled = false;
+                    confirmButton.textContent =
+                        action === 'approve'
+                            ? 'Confirm Approval'
+                            : 'Confirm Rejection';
+                },
+                { once: true }
+            );
+        });
+    });
+});
+</script>
+
 @endsection
