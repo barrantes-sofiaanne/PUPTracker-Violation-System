@@ -3902,70 +3902,6 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
 
     <hr>
 
-    <h6 class="fw-bold">Camera Evidence (Optional)</h6>
-    <p class="text-muted small">
-        You may take a photo using your device's camera to support
-        your deletion request.
-    </p>
-
-    <div class="border rounded-3 p-3 text-center">
-        <video id="correctiveCameraVideo"
-               class="w-100 rounded d-none"
-               autoplay
-               playsinline></video>
-
-        <canvas id="correctiveCameraCanvas"
-                class="d-none"></canvas>
-
-        <div id="correctiveCameraPlaceholder"
-             class="border rounded bg-light p-4 mb-3">
-            <i class="bi bi-camera fs-1 text-secondary"></i>
-            <p class="mb-0 mt-2 text-muted">
-                Camera preview will appear here when you start the camera.
-            </p>
-        </div>
-
-        <img id="correctiveCameraPreview"
-             class="img-fluid rounded d-none mb-3"
-             alt="Captured camera evidence">
-
-        <div class="d-flex flex-wrap justify-content-center gap-2">
-            <button type="button"
-                    id="startCorrectiveCamera"
-                    class="btn btn-outline-primary">
-                <i class="bi bi-camera-video me-1"></i>
-                Start Camera
-            </button>
-
-            <button type="button"
-                    id="captureCorrectivePhoto"
-                    class="btn btn-primary d-none">
-                <i class="bi bi-camera me-1"></i>
-                Capture Photo
-            </button>
-
-            <button type="button"
-                    id="stopCorrectiveCamera"
-                    class="btn btn-outline-secondary d-none">
-                Stop Camera
-            </button>
-
-            <button type="button"
-                    id="removeCorrectivePhoto"
-                    class="btn btn-outline-danger d-none">
-                Remove Photo
-            </button>
-        </div>
-
-        <div id="correctiveCameraStatus"
-             class="small text-muted mt-3"
-             role="status"
-             aria-live="polite">
-            Camera is not active.
-        </div>
-    </div>
-</div>
-
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary"
@@ -4327,20 +4263,11 @@ const currentDescriptionDisplay =
     const submitButton = document.getElementById('submitCorrectiveAction');
     const errorBox = document.getElementById('correctiveActionError');
 
-const video = document.getElementById('correctiveCameraVideo');
-const canvas = document.getElementById('correctiveCameraCanvas');
-const photoPreview = document.getElementById('correctiveCameraPreview');
-    const cameraStatus = document.getElementById('correctiveCameraStatus');
-    const startCameraButton = document.getElementById('startCorrectiveCamera');
-    const captureButton = document.getElementById('captureCorrectivePhoto');
-    const stopCameraButton = document.getElementById('stopCorrectiveCamera');
-    const removePhotoButton = document.getElementById('removeCorrectivePhoto');
 const deletionEvidenceFields =
     document.getElementById('deletionEvidenceFields');
     
     let selectedViolationId = null;
-    let cameraStream = null;
-    let cameraImageData = null;
+
 
     const correctionUrlTemplate = "{{ route('student.violations.correction-request', ['violation' => 987654321]) }}";
     const deletionUrlTemplate = "{{ route('student.violations.deletion-request', ['violation' => 987654321]) }}";
@@ -4641,10 +4568,6 @@ formData.append(
             formData.append('description', descriptionInput.value.trim());
         } else {
             files.forEach(file => formData.append('evidence_files[]', file));
-
-            if (cameraImageData) {
-                formData.append('camera_image', cameraImageData);
-            }
         }
 
         const url = action === 'correction'
