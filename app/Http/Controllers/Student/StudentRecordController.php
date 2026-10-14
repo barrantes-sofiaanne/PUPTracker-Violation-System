@@ -361,10 +361,8 @@ $workflowStatus = $hasSanctionWorkflow
         // Only sanctions that require administration scheduling (Community or
         // Campus Service) expose Request Sanction in the student UI.
 'requires_sanction_request' =>
-    ! $hasSanctionWorkflow
-    && StudentSanctionRecord::requiresStudentSanctionRequest(
-        $disciplinarySanction
-    ),
+    !  $disciplinarySanction !== 'N/A'
+    && ! $hasSanctionWorkflow,
         'violation_status' => $status,
 
         'workflow_status' => $workflowStatus,
