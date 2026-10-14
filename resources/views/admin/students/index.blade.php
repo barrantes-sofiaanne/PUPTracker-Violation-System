@@ -349,7 +349,7 @@
                             <tbody>
                                 @forelse($admins as $admin)
                                     <tr>
-                                        <td>{{ trim(($admin->adminInfo->firstname ?? '') . ' ' . ($admin->adminInfo->lastname ?? '')) ?: '—' }}</td>
+                                        <td>{{ trim(($admin->adminInfo->firstname ?? '') . ' ' . ($admin->adminInfo->lastname ?? '') . ' ' . ($admin->adminInfo->name_suffix ?? '')) ?: '—' }}</td>
                                         <td>{{ $admin->email }}</td>
                                         <td>{{ $adminRoles->firstWhere('roles_id', $admin->adminInfo->role_id ?? 1)->roles_name ?? 'Admin' }}</td>
                                         <td>
@@ -371,6 +371,7 @@
                                                     data-firstname="{{ $admin->adminInfo->firstname ?? '' }}"
                                                     data-middlename="{{ $admin->adminInfo->middlename ?? '' }}"
                                                     data-lastname="{{ $admin->adminInfo->lastname ?? '' }}"
+                                                    data-suffix="{{ $admin->adminInfo->name_suffix ?? '' }}"
                                                     data-status="{{ $admin->adminInfo->status_id ?? 1 }}"
                                                     data-role="{{ $admin->adminInfo->role_id ?? 1 }}">
                                                     <i class="bi bi-pencil-square me-1"></i>Edit
@@ -456,7 +457,8 @@
                                         $securityLastName = $security->securityInfo->lastname
                                             ?? $security->securityProfile->lastname
                                             ?? '';
-                                        $securityFullName = trim($securityFirstName . ' ' . $securityMiddleName . ' ' . $securityLastName);
+                                        $securitySuffix = $security->securityInfo->name_suffix ?? '';
+                                        $securityFullName = trim($securityFirstName . ' ' . $securityMiddleName . ' ' . $securityLastName . ' ' . $securitySuffix);
                                     @endphp
                                     <tr>
                                         <td>{{ $securityFullName ?: '—' }}</td>
@@ -472,6 +474,7 @@
                                                     data-firstname="{{ $securityFirstName }}"
                                                     data-middlename="{{ $securityMiddleName }}"
                                                     data-lastname="{{ $securityLastName }}"
+                                                    data-suffix="{{ $securitySuffix }}"
                                                     data-position="{{ optional($security->securityProfile)->position ?? '' }}">
                                                     <i class="bi bi-pencil-square me-1"></i>Edit
                                                 </button>
@@ -497,7 +500,8 @@
                                         $ossFirstName = $ossUser->adminInfo->firstname ?? '';
                                         $ossMiddleName = $ossUser->adminInfo->middlename ?? '';
                                         $ossLastName = $ossUser->adminInfo->lastname ?? '';
-                                        $ossFullName = trim($ossFirstName . ' ' . $ossMiddleName . ' ' . $ossLastName);
+                                        $ossSuffix = $ossUser->adminInfo->name_suffix ?? '';
+                                        $ossFullName = trim($ossFirstName . ' ' . $ossMiddleName . ' ' . $ossLastName . ' ' . $ossSuffix);
                                         $ossStatus = strtolower(trim((string) optional($statuses->firstWhere('status_id', $ossUser->adminInfo->status_id ?? 1))->status_name));
                                         $ossRoleId = $ossUser->adminInfo->role_id ?? $ossStaffRoleId;
                                     @endphp
@@ -521,6 +525,7 @@
                                                     data-firstname="{{ $ossFirstName }}"
                                                     data-middlename="{{ $ossMiddleName }}"
                                                     data-lastname="{{ $ossLastName }}"
+                                                    data-suffix="{{ $ossSuffix }}"
                                                     data-status="{{ $ossUser->adminInfo->status_id ?? 1 }}"
                                                     data-role="{{ $ossRoleId }}">
                                                     <i class="bi bi-pencil-square me-1"></i>Edit
@@ -600,7 +605,8 @@
                 <div class="col-12"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" class="form-control"></div>
-                <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" class="form-control" required></div>
+                <div class="col-md-4"><label class="form-label">Last Name <span class="required-asterisk">*</span></label><input name="lastname" class="form-control" required></div>
+                <div class="col-md-4"><label class="form-label">Suffix</label><input name="name_suffix" class="form-control" maxlength="20" placeholder="e.g. Jr., Sr., III"></div>
                 <div class="col-md-6">
                     <label class="form-label">Role <span class="required-asterisk">*</span></label>
                     <select name="role_id" id="create_admin_role_id" class="form-select" required>
@@ -632,7 +638,7 @@
 
                 <div class="modal-header admin-modal-header">
                     <h5 class="modal-title admin-modal-title" id="createSecurityModalLabel">
-                        Create Security/OSS Staff Account
+                        Create Security Account
                     </h5>
                     <button type="button" class="btn-close admin-modal-close"
                             data-bs-dismiss="modal" aria-label="Close"></button>
@@ -669,6 +675,11 @@
                         <div class="col-md-4">
                             <label class="form-label">Last Name <span class="required-asterisk">*</span></label>
                             <input name="lastname" class="form-control" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Suffix</label>
+                            <input name="name_suffix" class="form-control" maxlength="20" placeholder="e.g. Jr., Sr., III">
                         </div>
 
                         <div class="col-12" id="securityPositionGroup">
@@ -767,6 +778,7 @@
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="admin_firstname" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" id="admin_middlename" class="form-control"></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" id="admin_lastname" class="form-control" required></div>
+            <div class="col-md-4"><label class="form-label">Suffix</label><input name="name_suffix" id="admin_name_suffix" class="form-control" maxlength="20" placeholder="e.g. Jr., Sr., III"></div>
             <div class="col-md-6">
                 <label for="admin_role_id" class="form-label">Role <span class="required-asterisk">*</span></label>
                 <select name="role_id" id="admin_role_id" class="form-select" required>
@@ -797,6 +809,7 @@
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="security_firstname" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" id="security_middlename" class="form-control"></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" id="security_lastname" class="form-control" required></div>
+            <div class="col-md-4"><label class="form-label">Suffix</label><input name="name_suffix" id="security_name_suffix" class="form-control" maxlength="20" placeholder="e.g. Jr., Sr., III"></div>
             <div class="col-md-6"><label class="form-label">Position</label><input name="position" id="security_position" class="form-control" value="Security Personnel" readonly tabindex="-1"></div>
         </div></div>
         <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Update Security</button></div>
@@ -960,6 +973,7 @@ document.querySelectorAll('.editAdminBtn').forEach(function (button) {
         document.getElementById('admin_firstname').value = this.dataset.firstname;
         document.getElementById('admin_middlename').value = this.dataset.middlename;
         document.getElementById('admin_lastname').value = this.dataset.lastname;
+        document.getElementById('admin_name_suffix').value = this.dataset.suffix || '';
         document.getElementById('admin_status_id').value = this.dataset.status;
         document.getElementById('admin_role_id').value = this.dataset.role;
         document.getElementById('editAdminForm').action = "{{ url('/admin/users/admins') }}/" + this.dataset.id;
@@ -981,6 +995,7 @@ document.querySelectorAll('.editSecurityBtn').forEach(function (button) {
         document.getElementById('security_firstname').value = this.dataset.firstname;
         document.getElementById('security_middlename').value = this.dataset.middlename;
         document.getElementById('security_lastname').value = this.dataset.lastname;
+        document.getElementById('security_name_suffix').value = this.dataset.suffix || '';
         document.getElementById('security_position').value = this.dataset.position || '';
         document.getElementById('editSecurityForm').action = "{{ url('/admin/users/security') }}/" + this.dataset.id;
         new bootstrap.Modal(document.getElementById('editSecurityModal')).show();
@@ -1147,11 +1162,12 @@ if (importFileInput && importSelectedFileName) {
     const roleIdInput = document.getElementById('securityFormRoleId');
     const ossStaffRoleId = document.getElementById('ossStaffRoleId');
     const submitButton = document.getElementById('createSecurityAccountSubmit');
+    const modalTitle = document.getElementById('createSecurityModalLabel');
 
     if (!accountType || !form) return;
 
-    const securityUrl = '{{ route("admin.users.security.store") }}';
-    const adminUrl = '{{ route("admin.users.admins.store") }}';
+const securityUrl = form.dataset.securityUrl;
+const adminUrl = form.dataset.adminUrl;
 
     function updateAccountType() {
         const isOssStaff = accountType.value === 'oss_staff';
@@ -1175,6 +1191,12 @@ if (importFileInput && importSelectedFileName) {
         } else {
             submitButton.disabled = false;
             submitButton.removeAttribute('title');
+        }
+
+        if (modalTitle) {
+            modalTitle.textContent = isOssStaff
+                ? 'Create OSS Staff Account'
+                : 'Create Security Account';
         }
 
         submitButton.textContent = isOssStaff

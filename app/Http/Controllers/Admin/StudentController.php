@@ -478,6 +478,9 @@ class StudentController extends Controller
             'lastname' =>
                 'required|string|max:50',
 
+            'name_suffix' =>
+                'nullable|string|max:20',
+
             'status_id' =>
                 'required|exists:status_tbl,status_id',
 
@@ -521,6 +524,9 @@ class StudentController extends Controller
                     'lastname' =>
                         $validated['lastname'],
 
+                    'name_suffix' =>
+                        $this->nullableTrim($validated['name_suffix'] ?? null),
+
                     'status_id' =>
                         $validated['status_id'],
 
@@ -562,6 +568,9 @@ class StudentController extends Controller
 
             'lastname' =>
                 'required|string|max:50',
+
+            'name_suffix' =>
+                'nullable|string|max:20',
         ]);
 
         $security = null;
@@ -623,6 +632,9 @@ class StudentController extends Controller
             'lastname' =>
                 'required|string|max:50',
 
+            'name_suffix' =>
+                'nullable|string|max:20',
+
             'status_id' =>
                 'required|exists:status_tbl,status_id',
 
@@ -645,6 +657,9 @@ class StudentController extends Controller
 
                 'lastname' =>
                     $admin->adminInfo->lastname,
+
+                'name_suffix' =>
+                    $admin->adminInfo->name_suffix ?? '',
 
                 'status_id' =>
                     $admin->adminInfo->status_id,
@@ -690,6 +705,9 @@ class StudentController extends Controller
 
                     'lastname' =>
                         $validated['lastname'],
+
+                    'name_suffix' =>
+                        $this->nullableTrim($validated['name_suffix'] ?? null),
 
                     'status_id' =>
                         $validated['status_id'],
@@ -817,6 +835,9 @@ class StudentController extends Controller
             'lastname' =>
                 'Last Name',
 
+            'name_suffix' =>
+                'Suffix',
+
             'status_id' =>
                 'Status',
 
@@ -885,6 +906,9 @@ class StudentController extends Controller
             'lastname' =>
                 'required|string|max:50',
 
+            'name_suffix' =>
+                'nullable|string|max:20',
+
             'password' =>
                 'nullable|string|min:8',
         ]);
@@ -901,6 +925,9 @@ class StudentController extends Controller
 
             'lastname' =>
                 $security->securityInfo->lastname ?? '',
+
+            'name_suffix' =>
+                $security->securityInfo->name_suffix ?? '',
         ];
 
         DB::transaction(function () use (
@@ -1056,6 +1083,9 @@ class StudentController extends Controller
 
             'lastname' =>
                 'Last Name',
+
+            'name_suffix' =>
+                'Suffix',
         ];
 
         $fresh =
@@ -1070,6 +1100,9 @@ class StudentController extends Controller
 
             'lastname' =>
                 $fresh?->securityInfo?->lastname ?? '',
+
+            'name_suffix' =>
+                $fresh?->securityInfo?->name_suffix ?? '',
         ];
 
         foreach (
@@ -2661,6 +2694,11 @@ class StudentController extends Controller
             $securityInfoData['lastname'] =
                 $data['lastname']
                 ?? '';
+        }
+
+        if (Schema::hasColumn('security_info_tbl', 'name_suffix')) {
+            $securityInfoData['name_suffix'] =
+                $this->nullableTrim($data['name_suffix'] ?? null);
         }
 
         return $securityInfoData;
