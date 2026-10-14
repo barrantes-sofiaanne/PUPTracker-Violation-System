@@ -80,17 +80,27 @@ protected $casts = [
     public const STATUS_PENDING = 'pending';
     public const STATUS_CONFIRMED = 'confirmed';
     public const STATUS_DENIED = 'denied';
-
+public const STATUS_DELETED = 'deleted';
     /**
      * A violation is "effective" (counts toward the record) once confirmed.
      * Admin-recorded or legacy rows without an explicit status also count.
      */
-    public function getIsEffectiveAttribute(): bool
-    {
-        $status = strtolower(trim((string) ($this->attributes['status'] ?? '')));
 
-        return $status !== self::STATUS_PENDING && $status !== self::STATUS_DENIED;
-    }
+
+public function getIsEffectiveAttribute(): bool
+{
+    $status = strtolower(
+        trim((string) ($this->attributes['status'] ?? ''))
+    );
+
+    return ! in_array($status, [
+        self::STATUS_PENDING,
+        self::STATUS_DENIED,
+        self::STATUS_DELETED,
+    ], true);
+}
+
+
 
     /**
      * Scope: ONLY violations that count toward the official record, dashboards,

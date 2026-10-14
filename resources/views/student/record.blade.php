@@ -21,1117 +21,2674 @@
 <link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
 
 <style>
-    
-/* Keep the two tab panes independent. */
 #studentRecordTabsContent > .tab-pane,
+
 .tab-content > #violationRecord,
+
 .tab-content > #sanctionRecord {
+
     height: auto !important;
+
     min-height: 0 !important;
+
     flex: initial !important;
+
     align-self: stretch;
+
 }
+
+
 
 /* Bootstrap should hide inactive tab panes. */
+
 .tab-content > .tab-pane:not(.active) {
+
     display: none !important;
+
 }
+
+
 
 /* Let the active tab determine the content height. */
+
 .tab-content {
+
     height: auto !important;
+
     min-height: 0 !important;
+
     align-items: stretch;
+
 }
 
-/* =========================================================
-   Individual Violations Log
-   Consolidated responsive styling
-   ========================================================= */
+
+
+/* =========================================================*
+
+*   Individual Violations Log*
+
+*   Consolidated responsive styling*
+
+*   ========================================================= */
+
+
 
 .individual-log-card {
+
     width: 100%;
+
     height: auto !important;
+
     min-height: 0 !important;
+
     margin-bottom: 1.5rem !important;
+
     padding-bottom: 0 !important;
+
     overflow: hidden;
+
     background: #fff;
+
     border: 1px solid rgba(112, 0, 0, 0.10) !important;
+
     border-radius: 1.1rem !important;
+
     box-shadow: 0 12px 34px rgba(43, 24, 24, 0.07) !important;
+
 }
+
+
 
 .individual-log-card > .card-body {
+
     height: auto !important;
+
     min-height: 0 !important;
+
     flex: initial !important;
+
 }
 
+
+
 .individual-log-card > .card-body.p-0 {
+
     padding: 0 !important;
+
 }
+
+
 
 /* Header */
 
+
+
 .individual-log-header {
+
     display: flex;
+
     align-items: center;
+
     justify-content: space-between;
+
     gap: 1rem;
+
     padding: 1.25rem 1.5rem !important;
+
     color: #fff !important;
+
     background: linear-gradient(
+
         115deg,
+
         #650000 0%,
+
         #8b0808 58%,
+
         #a21b1b 100%
+
     ) !important;
+
     border: 0 !important;
+
     opacity: 1 !important;
+
 }
 
+
+
 .individual-log-heading {
+
     display: flex;
+
     align-items: center;
+
     gap: 0.9rem;
+
+    min-width: 0;
+
+}
+
+
+
+.individual-log-icon {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: 2.8rem;
+
+    height: 2.8rem;
+
+    flex: 0 0 2.8rem;
+
+    border: 1px solid rgba(255, 255, 255, 0.24);
+
+    border-radius: 0.9rem;
+
+    background: rgba(255, 255, 255, 0.12);
+
+    font-size: 1.25rem;
+
+}
+
+
+
+.individual-log-title,
+
+.individual-log-header .individual-log-title {
+
+    margin: 0;
+
+    color: #fff !important;
+
+    font-size: 1.2rem;
+
+    font-weight: 750;
+
+    letter-spacing: -0.02em;
+
+}
+
+
+
+.individual-log-subtitle,
+
+.individual-log-header .individual-log-subtitle {
+
+    margin: 0.22rem 0 0;
+
+    color: rgba(255, 255, 255, 0.85) !important;
+
+    font-size: 0.84rem;
+
+    line-height: 1.4;
+
+}
+
+
+
+.individual-log-count {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 0.4rem;
+
+    flex: 0 0 auto;
+
+    padding: 0.45rem 0.75rem;
+
+    border: 1px solid rgba(255, 255, 255, 0.25);
+
+    border-radius: 999px;
+
+    background: rgba(255, 255, 255, 0.12);
+
+    color: #fff;
+
+    font-size: 0.78rem;
+
+    font-weight: 700;
+
+}
+
+
+
+/* Filters */
+
+
+
+
+
+/* Filters */
+
+
+
+.individual-log-filters-wrap {
+
+    padding: 1.1rem 1.25rem !important;
+
+    border-bottom: 1px solid #eee2d5;
+
+    background: #fffdf9;
+
+}
+
+
+
+.individual-log-filters {
+
+    display: grid;
+
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+
+    gap: 0.85rem 1rem;
+
+    align-items: end;
+
+}
+
+
+
+.individual-filter-field {
+
+    min-width: 0;
+
+}
+
+
+
+.individual-filter-field label,
+
+.individual-status-filter-row label {
+
+    display: block;
+
+    margin-bottom: 0.4rem;
+
+    color: #5d1515;
+
+    font-size: 0.78rem;
+
+    font-weight: 750;
+
+}
+
+
+
+.individual-filter-field .form-select,
+
+.individual-filter-field .form-control,
+
+.individual-status-filter-row .form-select {
+
+    width: 100%;
+
+    min-width: 0;
+
+    min-height: 42px;
+
+    border-color: #e5d7c8;
+
+    border-radius: 0.65rem;
+
+    font-size: 0.88rem;
+
+}
+
+
+
+.individual-status-filter-row {
+
+    display: grid;
+
+    grid-template-columns: max-content minmax(180px, 260px) minmax(0, 1fr);
+
+    align-items: center;
+
+    gap: 0.55rem 0.75rem;
+
+    grid-column: 1 / 4;
+
+    grid-row: 2;
+
+    min-width: 0;
+
+}
+
+
+
+.individual-status-filter-row label {
+
+    margin: 0;
+
+    white-space: nowrap;
+
+}
+
+
+
+.individual-status-filter-row .form-select {
+
+    max-width: 260px;
+
+}
+
+
+
+.individual-status-filter-row #individualFilterCount {
+
+    grid-column: 3;
+
+    justify-self: end;
+
+    max-width: 100%;
+
+    color: #716663;
+
+    white-space: normal;
+
+    overflow-wrap: anywhere;
+
+    text-align: right;
+
+    line-height: 1.35;
+
+    font-size: 0.82rem;
+
+}
+
+
+
+.individual-filter-actions {
+
+    display: flex;
+
+    justify-content: flex-end;
+
+    align-items: center;
+
+    grid-column: 4 / 5;
+
+    grid-row: 2;
+
+}
+
+
+
+.individual-filter-clear {
+
+    min-width: 110px;
+
+    border: 1px solid #d9c8b8;
+
+    color: #5d1515;
+
+    background: #fffdf9;
+
+    border-radius: 0.65rem;
+
+    font-weight: 650;
+
+    padding: 0.65rem 1.25rem;
+
+}
+
+
+
+.individual-filter-clear:hover {
+
+    border-color: #800909;
+
+    color: #800909;
+
+    background: #fff8f3;
+
+}
+
+
+
+@media (max-width: 991.98px) {
+
+    .individual-log-filters {
+
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    }
+
+
+
+    .individual-status-filter-row {
+
+        grid-column: 1 / 2;
+
+        grid-row: 3;
+
+        grid-template-columns: minmax(0, 1fr);
+
+        gap: 0.4rem;
+
+    }
+
+
+
+    .individual-status-filter-row label {
+
+        margin: 0;
+
+    }
+
+
+
+    .individual-status-filter-row .form-select {
+
+        max-width: none;
+
+    }
+
+
+
+    .individual-status-filter-row #individualFilterCount {
+
+        grid-column: 1;
+
+        justify-self: start;
+
+        text-align: left;
+
+    }
+
+
+
+    .individual-filter-actions {
+
+        grid-column: 2 / 3;
+
+        grid-row: 3;
+
+        align-self: end;
+
+    }
+
+}
+
+
+
+@media (max-width: 575.98px) {
+
+    .individual-log-filters-wrap {
+
+        padding: 1rem !important;
+
+    }
+
+
+
+    .individual-log-filters {
+
+        grid-template-columns: minmax(0, 1fr);
+
+        gap: 0.8rem;
+
+    }
+
+
+
+    .individual-status-filter-row,
+
+    .individual-filter-actions {
+
+        grid-column: 1 / -1;
+
+        grid-row: auto;
+
+    }
+
+
+
+    .individual-filter-actions {
+
+        justify-content: flex-start;
+
+    }
+
+
+
+    .individual-filter-clear {
+
+        width: 100%;
+
+    }
+
+}
+
+
+
+/* Table scrolling container */
+
+
+
+.individual-log-card .individual-table-responsive,
+
+.individual-table-responsive {
+
+    display: block;
+
+    width: 100%;
+
+    max-width: 100%;
+
+    height: auto !important;
+
+    min-height: 0 !important;
+
+    margin: 0 !important;
+
+    padding: 0 !important;
+
+    overflow-x: auto !important;
+
+    overflow-y: hidden;
+
+    -webkit-overflow-scrolling: touch;
+
+    overscroll-behavior-x: contain;
+
+}
+
+
+
+/* Table layout.
+
+*   The seven columns are deliberately given enough space.*
+
+*   Horizontal scrolling is preferable to breaking every word. */
+
+
+
+.individual-log-card .individual-violations-table,
+
+.individual-violations-table {
+
+    width: 1500px !important;
+
+    min-width: 1500px !important;
+
+    max-width: none !important;
+
+    margin: 0 !important;
+
+    table-layout: fixed !important;
+
+    border-collapse: separate;
+
+    border-spacing: 0;
+
+}
+
+
+
+/* Column widths:
+
+*   1 = violation type*
+
+*   2 = date*
+
+*   3 = category*
+
+*   4 = status*
+
+*   5 = remarks*
+
+*   6 = attachments*
+
+*   7 = action*
+
+*/
+
+
+
+.individual-violations-table .violation-type-col,
+
+.individual-violations-table th:nth-child(1),
+
+.individual-violations-table td:nth-child(1) {
+
+    width: 260px;
+
+}
+
+
+
+.individual-violations-table .violation-date-col,
+
+.individual-violations-table th:nth-child(2),
+
+.individual-violations-table td:nth-child(2) {
+
+    width: 180px;
+
+}
+
+
+
+.individual-violations-table .category-col,
+
+.individual-violations-table th:nth-child(3),
+
+.individual-violations-table td:nth-child(3) {
+
+    width: 260px;
+
+}
+
+
+
+.individual-violations-table .status-col,
+
+.individual-violations-table th:nth-child(4),
+
+.individual-violations-table td:nth-child(4) {
+
+    width: 175px;
+
+}
+
+
+
+.individual-violations-table .remarks-col,
+
+.individual-violations-table th:nth-child(5),
+
+.individual-violations-table td:nth-child(5) {
+
+    width: 210px;
+
+}
+
+
+
+.individual-violations-table .attachments-col,
+
+.individual-violations-table th:nth-child(6),
+
+.individual-violations-table td:nth-child(6) {
+
+    width: 205px;
+
+    min-width: 0;
+
+}
+
+
+
+.individual-violations-table .individual-actions-col,
+
+.individual-violations-table th:nth-child(7),
+
+.individual-violations-table td:nth-child(7) {
+
+    width: 210px;
+
+    min-width: 0;
+
+    text-align: center;
+
+}
+
+
+
+/* Header cells */
+
+
+
+.individual-violations-table thead th {
+
+    box-sizing: border-box;
+
+    padding: 0.95rem 1rem !important;
+
+    color: #6d1515;
+
+    background: #fff7e2;
+
+    border-top: 1px solid #f4e4bd !important;
+
+    border-bottom: 1px solid #f0e3c8 !important;
+
+    font-size: 0.78rem !important;
+
+    font-weight: 800;
+
+    line-height: 1.35 !important;
+
+    text-align: left;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.045em;
+
+    vertical-align: middle;
+
+    white-space: normal !important;
+
+    word-break: normal !important;
+
+    overflow-wrap: break-word !important;
+
+    hyphens: none !important;
+
+}
+
+
+
+/* Body cells */
+
+
+
+.individual-violations-table tbody td {
+
+    box-sizing: border-box;
+
+    padding: 1rem !important;
+
+    color: #34313a;
+
+    background: #fff;
+
+    border-bottom: 1px solid #f0eeee;
+
+    font-size: 0.92rem;
+
+    line-height: 1.5;
+
+    text-align: left;
+
+    vertical-align: middle;
+
+    white-space: normal !important;
+
+    word-break: normal !important;
+
+    overflow-wrap: break-word !important;
+
+    hyphens: none !important;
+
+}
+
+
+
+.individual-violations-table tbody tr {
+
+    transition: background-color 0.18s ease;
+
+}
+
+
+
+.individual-violations-table tbody tr:hover td {
+
+    background: #fffdf8;
+
+}
+
+
+
+.individual-violations-table tbody tr:last-child td {
+
+    border-bottom: 0;
+
+}
+
+
+
+/* Dates */
+
+
+
+.individual-violations-table .violation-date-col {
+
+    white-space: normal !important;
+
+    font-variant-numeric: tabular-nums;
+
+}
+
+
+
+/* Status badges: do not split Confirmed into separate fragments */
+
+
+
+.individual-violations-table .status-col {
+
+    text-align: center !important;
+
+}
+
+
+
+.individual-violations-table .status-col .portal-badge,
+
+.individual-violations-table .status-col .badge {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 0.35rem;
+
+    width: auto;
+
+    max-width: 100%;
+
+    padding: 0.55rem 0.8rem;
+
+    font-size: 0.82rem !important;
+
+    font-weight: 700;
+
+    line-height: 1.25 !important;
+
+    text-align: center;
+
+    white-space: nowrap !important;
+
+    word-break: keep-all !important;
+
+    overflow-wrap: normal !important;
+
+    hyphens: none !important;
+
+}
+
+
+
+.individual-violations-table .status-col .portal-badge i,
+
+.individual-violations-table .status-col .badge i {
+
+    flex: 0 0 auto;
+
+}
+
+
+
+/* Remarks */
+
+
+
+.individual-violations-table .remarks-col {
+
+    overflow-wrap: break-word !important;
+
+    word-break: normal !important;
+
+}
+
+
+
+/* Attachments */
+
+
+
+.individual-violations-table .attachments-col {
+
+    overflow-wrap: normal !important;
+
+    word-break: normal !important;
+
+}
+
+
+
+.individual-violations-table .attachments-col a {
+
+    display: inline-flex;
+
+    align-items: flex-start;
+
+    gap: 0.35rem;
+
+    max-width: 100%;
+
+    white-space: normal !important;
+
+    overflow-wrap: anywhere !important;
+
+    word-break: normal !important;
+
+    line-height: 1.4;
+
+}
+
+
+
+.individual-violations-table .attachments-col a i {
+
+    flex: 0 0 auto;
+
+    margin-top: 0.15rem;
+
+}
+
+
+
+.individual-violations-table .attachments-col .text-muted {
+
+    display: inline-block;
+
+    line-height: 1.45;
+
+}
+
+
+
+/* Sanction action buttons */
+
+
+
+.individual-violations-table .individual-actions-col {
+
+    text-align: center;
+
+    vertical-align: middle;
+
+}
+
+
+
+.individual-violations-table .individual-actions-col > div {
+
+    width: 100%;
+
+    max-width: 190px;
+
+    margin: 0 auto;
+
+}
+
+
+
+.individual-violations-table .individual-actions-col .btn,
+
+.individual-violations-table .individual-actions-col .sanction-state {
+
+    box-sizing: border-box;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 0.4rem;
+
+    width: 100%;
+
+    max-width: 190px;
+
+    min-width: 0;
+
+    min-height: 44px;
+
+    margin: 0;
+
+    padding: 0.7rem 0.8rem !important;
+
+    border-radius: 0.75rem;
+
+    font-size: 0.85rem !important;
+
+    font-weight: 700;
+
+    line-height: 1.3 !important;
+
+    text-align: center;
+
+    white-space: normal !important;
+
+    word-break: normal !important;
+
+    overflow-wrap: break-word !important;
+
+    hyphens: none !important;
+
+    transition:
+
+        transform 0.18s ease,
+
+        box-shadow 0.18s ease,
+
+        background 0.18s ease;
+
+}
+
+
+
+.individual-violations-table .individual-actions-col .btn i,
+
+.individual-violations-table .individual-actions-col .sanction-state i {
+
+    flex: 0 0 auto;
+
+}
+
+
+
+.individual-violations-table .individual-actions-col .request-sanction-btn {
+
+    color: #fff;
+
+    background: linear-gradient(120deg, #710000, #960d0d);
+
+    border: 1px solid #780000;
+
+    box-shadow: 0 5px 13px rgba(120, 0, 0, 0.13);
+
+}
+
+
+
+.individual-violations-table .individual-actions-col .request-sanction-btn:hover {
+
+    color: #fff;
+
+    background: #5f0000;
+
+    transform: translateY(-1px);
+
+    box-shadow: 0 8px 18px rgba(120, 0, 0, 0.2);
+
+}
+
+
+
+/* Sanction states */
+
+
+
+.individual-violations-table .sanction-state {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 0.4rem;
+
+    border: 1px solid transparent;
+
+    font-size: 0.82rem !important;
+
+}
+
+
+
+.sanction-state-pending {
+
+    color: #815300;
+
+    background: #fff4d5;
+
+    border-color: #f4df9d;
+
+}
+
+
+
+.sanction-state-approved {
+
+    color: #116448;
+
+    background: #e2f5ec;
+
+    border-color: #bce7d2;
+
+}
+
+
+
+.sanction-state-declined {
+
+    color: #9b2727;
+
+    background: #fff0f0;
+
+    border-color: #f2cdcd;
+
+}
+
+
+
+.sanction-state-assigned {
+
+    color: #4d5664;
+
+    background: #f0f2f5;
+
+    border-color: #dfe3e8;
+
+}
+
+
+
+/* Informational notices in the action column */
+
+
+
+.individual-violations-table .individual-actions-col .alert {
+
+    width: 100%;
+
+    max-width: 190px;
+
+    margin: 0 auto;
+
+    line-height: 1.45;
+
+    text-align: left;
+
+    word-break: normal;
+
+    overflow-wrap: break-word;
+
+}
+
+
+
+/* Empty state */
+
+
+
+.individual-log-empty {
+
+    padding: 3.25rem 1rem !important;
+
+    color: #77717a !important;
+
+    text-align: center;
+
+}
+
+
+
+.individual-log-empty-icon {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: 3rem;
+
+    height: 3rem;
+
+    margin-bottom: 0.75rem;
+
+    border-radius: 1rem;
+
+    color: #850909;
+
+    background: #fff3df;
+
+    font-size: 1.35rem;
+
+}
+
+
+
+/* Pagination: preserve Laravel pagination and eliminate excess space */
+
+
+
+.individual-log-pagination {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-wrap: wrap;
+
+    gap: 0.75rem;
+
+    width: 100%;
+
+    height: auto !important;
+
+    min-height: 0 !important;
+
+    margin: 0 !important;
+
+    padding: 1rem !important;
+
+    border-top: 1px solid #f0eeee;
+
+    background: #fff;
+
+}
+
+
+
+.individual-log-pagination nav {
+
+    max-width: 100%;
+
+    margin: 0;
+
+}
+
+
+
+.individual-log-pagination .pagination {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-wrap: wrap;
+
+    gap: 0.2rem;
+
+    margin: 0 !important;
+
+}
+
+
+
+.individual-log-pagination svg {
+
+    width: 1rem;
+
+    height: 1rem;
+
+}
+
+
+
+/* Natural card height: prevent a large blank area below the log */
+
+
+
+.individual-log-card .table-responsive,
+
+.individual-log-card .individual-table-responsive {
+
+    height: auto !important;
+
+    min-height: 0 !important;
+
+    margin-bottom: 0 !important;
+
+    padding-bottom: 0 !important;
+
+}
+
+
+
+.individual-log-card .individual-violations-table {
+
+    margin-bottom: 0 !important;
+
+}
+
+
+
+.individual-log-card nav[aria-label],
+
+.individual-log-card .pagination {
+
+    margin-bottom: 0 !important;
+
+}
+
+
+
+.individual-log-card .card-footer {
+
+    height: auto !important;
+
+    min-height: 0 !important;
+
+}
+
+
+
+
+
+/* Fix excessive wrapping in the Individual Violations Log Evidence column */
+
+.individual-log-card .table-responsive > table th:nth-child(6),
+
+.individual-log-card .table-responsive > table td:nth-child(6),
+
+.individual-violations-table th:nth-child(6),
+
+.individual-violations-table td:nth-child(6) {
+
+    width: 260px !important;
+
+    min-width: 260px !important;
+
+}
+
+
+
+/* Keep attachment links compact and aligned */
+
+.individual-log-card .table-responsive > table td:nth-child(6) a,
+
+.individual-violations-table td:nth-child(6) a {
+
+    display: inline-flex;
+
+    align-items: flex-start;
+
+    gap: 0.4rem;
+
+    max-width: 100%;
+
+    line-height: 1.4 !important;
+
+    white-space: normal !important;
+
+    word-break: normal !important;
+
+    overflow-wrap: anywhere !important;
+
+}
+
+
+
+/* Keep attachment icons from consuming text width */
+
+.individual-log-card .table-responsive > table td:nth-child(6) a i,
+
+.individual-violations-table td:nth-child(6) a i {
+
+    flex: 0 0 auto;
+
+    margin-top: 0.15rem;
+
+}
+
+
+
+/* Keep the empty attachment message compact */
+
+.individual-log-card .table-responsive > table td:nth-child(6) .text-muted,
+
+.individual-violations-table td:nth-child(6) .text-muted {
+
+    display: inline-block;
+
+    line-height: 1.4 !important;
+
+    overflow-wrap: normal;
+
+}
+
+
+
+/* Slightly compact row spacing without hiding content */
+
+.individual-log-card .table-responsive > table tbody td,
+
+.individual-violations-table tbody td {
+
+    padding-top: 0.65rem !important;
+
+    padding-bottom: 0.65rem !important;
+
+    line-height: 1.35 !important;
+
+}
+
+
+
+/* Fix excess height in the Student Record tab pane */
+
+#violationRecord.tab-pane,
+
+#sanctionRecord.tab-pane {
+
+    height: auto !important;
+
+    min-height: 0 !important;
+
+    flex: 0 0 auto !important;
+
+    align-self: flex-start !important;
+
+}
+
+
+
+/* Prevent the tab content from stretching the record tabs */
+
+#violationRecord.tab-pane.show.active,
+
+#sanctionRecord.tab-pane.show.active {
+
+    height: auto !important;
+
+    min-height: 0 !important;
+
+}
+
+
+
+/* Keep the tab-content wrapper content-sized */
+
+.tab-content:has(> #violationRecord),
+
+.tab-content:has(> #sanctionRecord) {
+
+    height: auto !important;
+
+    min-height: 0 !important;
+
+    flex: 0 0 auto !important;
+
+    align-self: flex-start !important;
+
+}
+
+
+
+/* Keep the log card and pagination at their natural height */
+
+#violationRecord .individual-log-card {
+
+    height: auto !important;
+
+    min-height: 0 !important;
+
+    margin-bottom: 1rem !important;
+
+}
+
+
+
+#violationRecord .individual-log-pagination {
+
+    height: auto !important;
+
+    min-height: 0 !important;
+
+    margin-bottom: 0 !important;
+
+}
+
+
+
+
+
+/* Responsive filters */
+
+
+
+@media (max-width: 767.98px) {
+
+    .individual-log-filters {
+
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    }
+
+
+
+    .individual-filter-actions {
+
+        grid-column: 1 / -1;
+
+    }
+
+
+
+    .individual-status-filter-row {
+
+        grid-template-columns: minmax(0, 1fr);
+
+        gap: 0.4rem;
+
+    }
+
+
+
+    .individual-status-filter-row #individualFilterCount {
+
+        grid-column: auto;
+
+    }
+
+
+
+    .individual-status-filter-row .form-select {
+
+        width: 100%;
+
+        max-width: none;
+
+    }
+
+}
+
+
+
+@media (max-width: 640px) {
+
+    .individual-log-header {
+
+        align-items: flex-start;
+
+        padding: 1rem !important;
+
+    }
+
+
+
+    .individual-log-title {
+
+        font-size: 1rem;
+
+    }
+
+
+
+    .individual-log-subtitle {
+
+        font-size: 0.78rem;
+
+    }
+
+
+
+    .individual-log-icon {
+
+        width: 2.35rem;
+
+        height: 2.35rem;
+
+        flex-basis: 2.35rem;
+
+    }
+
+
+
+    .individual-log-count {
+
+        padding: 0.38rem 0.55rem;
+
+        font-size: 0.7rem;
+
+    }
+
+
+
+    .individual-violations-table thead th {
+
+        padding: 0.8rem 0.7rem !important;
+
+        font-size: 0.76rem !important;
+
+    }
+
+
+
+    .individual-violations-table tbody td {
+
+        padding: 0.85rem 0.7rem !important;
+
+        font-size: 0.86rem;
+
+    }
+
+
+
+    .individual-log-pagination {
+
+        padding: 0.85rem 0.5rem !important;
+
+    }
+
+}
+
+
+
+@media (max-width: 420px) {
+
+    .individual-log-filters {
+
+        grid-template-columns: 1fr;
+
+    }
+
+
+
+    .individual-log-header {
+
+        flex-wrap: wrap;
+
+    }
+
+
+
+    .individual-log-count {
+
+        margin-left: 3.25rem;
+
+    }
+
+}
+
+
+
+
+
+
+
+/* Warning-level consequence card: informational only, not an assigned record. */
+
+.warning-consequence-card {
+
+    border: 1px solid #f0dca3 !important;
+
+    border-left: 4px solid #c58a08 !important;
+
+    border-radius: 1rem !important;
+
+    background: #fffaf0;
+
+    box-shadow: 0 8px 24px rgba(83, 55, 0, 0.06) !important;
+
+    overflow: hidden;
+
+}
+
+.warning-consequence-card .card-header {
+
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 0.8rem;
+
+    padding: 1rem 1.25rem;
+
+    background: #fff4d6 !important;
+
+    border-bottom: 1px solid #f0e0b8;
+
+}
+
+.warning-consequence-icon {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex: 0 0 2.5rem;
+
+    width: 2.5rem;
+
+    height: 2.5rem;
+
+    border-radius: 0.8rem;
+
+    color: #805600;
+
+    background: #ffe7a3;
+
+    font-size: 1.15rem;
+
+}
+
+.warning-consequence-card .card-body {
+
+    padding: 1rem 1.25rem;
+
+}
+
+.warning-consequence-item {
+
+    padding: 1rem 0;
+
+    border-bottom: 1px solid #f0e6d0;
+
+}
+
+.warning-consequence-item:first-child { padding-top: 0; }
+
+.warning-consequence-item:last-child {
+
+    padding-bottom: 0;
+
+    border-bottom: 0;
+
+}
+
+.warning-consequence-label {
+
+    color: #79571a;
+
+    font-size: 0.75rem;
+
+    font-weight: 800;
+
+    letter-spacing: 0.04em;
+
+    text-transform: uppercase;
+
+}
+
+.warning-consequence-value {
+
+    color: #332b1e;
+
+    font-weight: 700;
+
+    overflow-wrap: anywhere;
+
+}
+
+.warning-consequence-status {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 0.35rem;
+
+    padding: 0.35rem 0.65rem;
+
+    border: 1px solid #e9d28e;
+
+    border-radius: 999px;
+
+    color: #775400;
+
+    background: #fff1c5;
+
+    font-size: 0.78rem;
+
+    font-weight: 750;
+
+}
+
+.warning-sanction-notice {
+
+    border: 1px solid #f0dca3;
+
+    border-left: 3px solid #c58a08;
+
+    border-radius: 0.75rem;
+
+    background: #fffaf0;
+
+    color: #473919;
+
+}
+
+.warning-sanction-notice .btn {
+
+    white-space: normal;
+
+}
+
+
+
+/* Give the consultation note the same deliberate callout treatment as the
+
+*   other portal guidance panels instead of rendering it as plain table text. */
+
+.consultation-notice {
+
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 0.7rem;
+
+    width: 100%;
+
+    padding: 0.9rem 1rem;
+
+    border: 1px solid rgba(128, 0, 0, 0.18);
+
+    border-left: 4px solid #800909;
+
+    border-radius: 0.85rem;
+
+    background: #fff8ef;
+
+    color: #342c2c;
+
+    line-height: 1.5;
+
+    white-space: normal;
+
+}
+
+.consultation-notice > i {
+
+    flex: 0 0 auto;
+
+    margin-top: 0.15rem;
+
+    color: #800909;
+
+    font-size: 1.1rem;
+
+}
+
+.consultation-notice-title {
+
+    display: block;
+
+    margin-bottom: 0.25rem;
+
+    color: #720606;
+
+    font-size: 0.88rem;
+
+    font-weight: 800;
+
+}
+
+.consultation-notice-text {
+
+    margin: 0;
+
+    font-size: 0.84rem;
+
+    overflow-wrap: anywhere;
+
+}
+
+@media (max-width: 576px) {
+
+    .warning-consequence-card .card-header,
+
+    .warning-consequence-card .card-body { padding: 0.9rem; }
+
+    .consultation-notice { padding: 0.75rem; }
+
+}
+
+
+
+/* Match the Individual Violations Log title bar to Summary by Violation. */
+
+.individual-log-titlebar {
+
+    padding: 1rem 1.25rem !important;
+
+    background: #fff !important;
+
+    border-bottom: 1px solid #eee2d5 !important;
+
+}
+
+.individual-log-titlebar h5 {
+
+    color: #800909 !important;
+
+    font-size: 1.15rem;
+
+    font-weight: 750;
+
+}
+
+.individual-log-record-count {
+
+    color: #6c5555;
+
+    font-size: 0.8rem;
+
+    font-weight: 650;
+
+}
+
+
+
+/* Keep the filter panel aligned without changing its visual styling. */
+
+.individual-log-filters-wrap { overflow: visible; }
+
+.individual-log-filters { align-items: end; }
+
+@media (max-width: 640px) {
+
+    .individual-log-filters-wrap { padding: 1rem !important; }
+
+    .individual-log-filters { grid-template-columns: minmax(0, 1fr); }
+
+    .individual-filter-actions,
+
+    .individual-status-filter-row { grid-column: 1 / -1; }
+
+}
+
+
+
+
+
+/* Student Record: responsive sanction request buttons */
+
+.individual-violations-table .individual-actions-col .request-sanction-btn {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 0.5rem;
+
+    width: 100%;
+
+    max-width: 190px;
+
+    min-height: 44px;
+
+    padding: 0.7rem 0.85rem;
+
+    border-radius: 0.75rem;
+
+    font-size: 0.875rem;
+
+    font-weight: 700;
+
+    line-height: 1.35;
+
+    white-space: normal;
+
+    overflow-wrap: break-word;
+
+    text-align: center;
+
+}
+
+
+
+.individual-violations-table .individual-actions-col
+
+.request-sanction-btn i {
+
+    flex: 0 0 auto;
+
+}
+
+
+
+/* Confirmation modal */
+
+#requestSanctionConfirmModal .modal-dialog {
+
+    width: calc(100% - 2rem);
+
+    max-width: 480px;
+
+    margin: 1rem auto;
+
+}
+
+
+
+#requestSanctionConfirmModal .modal-content {
+
+    border: 0;
+
+    border-radius: 1rem;
+
+    overflow: hidden;
+
+}
+
+
+
+#requestSanctionConfirmModal .modal-header {
+
+    flex-wrap: nowrap;
+
+    gap: 0.75rem;
+
+}
+
+
+
+#requestSanctionConfirmModal .modal-title {
+
+    min-width: 0;
+
+    overflow-wrap: anywhere;
+
+}
+
+
+
+#requestSanctionConfirmModal .modal-body {
+
+    overflow-wrap: anywhere;
+
+}
+
+
+
+#requestSanctionConfirmModal .modal-footer {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 0.5rem;
+
+}
+
+
+
+#requestSanctionConfirmModal .modal-footer .btn {
+
+    min-height: 44px;
+
+}
+
+
+
+/* Mobile phones */
+
+@media (max-width: 575.98px) {
+
+    .individual-violations-table .individual-actions-col {
+
+        padding: 0.75rem !important;
+
+    }
+
+
+
+    .individual-violations-table .individual-actions-col
+
+    .request-sanction-btn {
+
+        max-width: 100%;
+
+        min-height: 46px;
+
+        padding: 0.7rem 0.6rem !important;
+
+        font-size: 0.85rem !important;
+
+    }
+
+
+
+    #requestSanctionConfirmModal .modal-dialog {
+
+        width: auto;
+
+        max-width: none;
+
+        margin: 0.5rem;
+
+    }
+
+
+
+    #requestSanctionConfirmModal .modal-content {
+
+        border-radius: 0.85rem;
+
+    }
+
+
+
+    #requestSanctionConfirmModal .modal-header {
+
+        padding: 0.85rem 1rem;
+
+    }
+
+
+
+    #requestSanctionConfirmModal .modal-title {
+
+        font-size: 1.05rem;
+
+        line-height: 1.35;
+
+    }
+
+
+
+    #requestSanctionConfirmModal .modal-body {
+
+        padding: 1rem;
+
+    }
+
+
+
+    #requestSanctionConfirmModal .modal-footer {
+
+        padding: 0.75rem 1rem;
+
+    }
+
+
+
+    #requestSanctionConfirmModal .modal-footer .btn {
+
+        flex: 1 1 100%;
+
+        width: 100%;
+
+    }
+
+}
+
+
+
+/* Extra-small phones */
+
+@media (max-width: 380px) {
+
+    #requestSanctionConfirmModal .modal-dialog {
+
+        margin: 0.25rem;
+
+    }
+
+
+
+    #requestSanctionConfirmModal .modal-header,
+
+    #requestSanctionConfirmModal .modal-body {
+
+        padding: 0.75rem;
+
+    }
+
+
+
+    #requestSanctionConfirmModal .modal-footer {
+
+        padding: 0.75rem;
+
+    }
+
+}
+
+/* =====================================================
+   SUBMIT PROOF MODAL — RESPONSIVE LAYOUT AND SCROLLING
+   ===================================================== */
+#submitProofModal .modal-dialog {
+    width: calc(100% - 2rem);
+    max-width: 830px;
+    margin: 1rem auto;
+}
+
+#submitProofModal .modal-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    min-height: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 1rem;
+    box-shadow: 0 1rem 3rem rgba(25, 15, 15, .22);
+}
+
+/* The form must also be a flex container; otherwise its body grows with
+   all of its contents and the modal has nothing that can scroll. */
+#submitProofModal #submitProofForm {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#submitProofModal #submitProofForm .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+#submitProofModal .modal-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 1.25rem 1.25rem 1rem;
+    border-bottom: 1px solid #eee5e5;
+}
+
+#submitProofModal .modal-header > div {
+    flex: 1 1 auto;
     min-width: 0;
 }
 
-.individual-log-icon {
+#submitProofModal .modal-title {
+    margin: 0 0 .35rem;
+    color: #800909;
+    font-size: clamp(1.15rem, 3.5vw, 1.45rem);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .modal-subtitle {
+    color: #52525b;
+    font-size: .96rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .btn-close {
+    flex: 0 0 auto;
+    margin: .15rem 0 0 auto;
+    padding: .55rem;
+}
+
+#submitProofModal .modal-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 1.15rem 1.25rem;
+}
+
+#submitProofModal .proof-section {
+    min-width: 0;
+    margin: 0 0 1.25rem;
+    padding: 0 0 1.1rem;
+    border-bottom: 1px solid #eee5e5;
+}
+
+#submitProofModal .proof-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+#submitProofModal .proof-section-title {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    margin: 0 0 .7rem;
+    color: #800909;
+    font-size: 1.05rem;
+    font-weight: 750;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .proof-step-number {
     display: inline-flex;
+    flex: 0 0 1.65rem;
+    width: 1.65rem;
+    height: 1.65rem;
     align-items: center;
     justify-content: center;
-    width: 2.8rem;
-    height: 2.8rem;
-    flex: 0 0 2.8rem;
-    border: 1px solid rgba(255, 255, 255, 0.24);
-    border-radius: 0.9rem;
-    background: rgba(255, 255, 255, 0.12);
-    font-size: 1.25rem;
-}
-
-.individual-log-title,
-.individual-log-header .individual-log-title {
-    margin: 0;
-    color: #fff !important;
-    font-size: 1.2rem;
-    font-weight: 750;
-    letter-spacing: -0.02em;
-}
-
-.individual-log-subtitle,
-.individual-log-header .individual-log-subtitle {
-    margin: 0.22rem 0 0;
-    color: rgba(255, 255, 255, 0.85) !important;
-    font-size: 0.84rem;
-    line-height: 1.4;
-}
-
-.individual-log-count {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    flex: 0 0 auto;
-    padding: 0.45rem 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    background: #800909;
     color: #fff;
-    font-size: 0.78rem;
+    font-size: .85rem;
     font-weight: 700;
 }
 
-/* Filters */
-
-
-/* Filters */
-
-.individual-log-filters-wrap {
-    padding: 1.1rem 1.25rem !important;
-    border-bottom: 1px solid #eee2d5;
-    background: #fffdf9;
-}
-
-.individual-log-filters {
+#submitProofModal .proof-detail-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.85rem 1rem;
-    align-items: end;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
 }
 
-.individual-filter-field {
+#submitProofModal .proof-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
     min-width: 0;
+    padding: .75rem;
+    border: 1px solid #eee2e2;
+    border-radius: .65rem;
+    background: #fffafa;
 }
 
-.individual-filter-field label,
-.individual-status-filter-row label {
-    display: block;
-    margin-bottom: 0.4rem;
-    color: #5d1515;
-    font-size: 0.78rem;
-    font-weight: 750;
+#submitProofModal .proof-detail-label {
+    color: #6b6262;
+    font-size: .78rem;
+    font-weight: 650;
 }
 
-.individual-filter-field .form-select,
-.individual-filter-field .form-control,
-.individual-status-filter-row .form-select {
-    width: 100%;
-    min-width: 0;
-    min-height: 42px;
-    border-color: #e5d7c8;
-    border-radius: 0.65rem;
-    font-size: 0.88rem;
+#submitProofModal .proof-detail-value {
+    color: #292525;
+    font-size: .92rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
-.individual-status-filter-row {
-    display: grid;
-    grid-template-columns: max-content minmax(180px, 260px) minmax(0, 1fr);
+#submitProofModal .proof-body-text {
+    color: #454047;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .official-form-area {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .5rem;
+    margin-top: .85rem;
+}
+
+#submitProofModal .official-form-label {
+    font-size: .9rem;
+    font-weight: 650;
+}
+
+#submitProofModal .official-form-area .btn {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+}
+
+#submitProofModal .proof-upload-zone {
+    position: relative;
+    display: flex;
     align-items: center;
-    gap: 0.55rem 0.75rem;
-    grid-column: 1 / 4;
-    grid-row: 2;
+    justify-content: center;
     min-width: 0;
+    min-height: 180px;
+    padding: 1.25rem;
+    border: 2px dashed #d8bcbc;
+    border-radius: .85rem;
+    background: #fffafa;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s ease, background-color .15s ease;
 }
 
-.individual-status-filter-row label {
-    margin: 0;
+#submitProofModal .proof-upload-zone:focus-visible {
+    outline: 3px solid rgba(128, 9, 9, .25);
+    outline-offset: 3px;
+}
+
+#submitProofModal .proof-upload-zone-active {
+    border-color: #800909;
+    background: #fff1f1;
+}
+
+#submitProofModal .proof-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
     white-space: nowrap;
 }
 
-.individual-status-filter-row .form-select {
-    max-width: 260px;
-}
-
-.individual-status-filter-row #individualFilterCount {
-    grid-column: 3;
-    justify-self: end;
-    max-width: 100%;
-    color: #716663;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    text-align: right;
-    line-height: 1.35;
-    font-size: 0.82rem;
-}
-
-.individual-filter-actions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    grid-column: 4 / 5;
-    grid-row: 2;
-}
-
-.individual-filter-clear {
-    min-width: 110px;
-    border: 1px solid #d9c8b8;
-    color: #5d1515;
-    background: #fffdf9;
-    border-radius: 0.65rem;
-    font-weight: 650;
-    padding: 0.65rem 1.25rem;
-}
-
-.individual-filter-clear:hover {
-    border-color: #800909;
+#submitProofModal .proof-upload-icon {
+    display: block;
+    margin-bottom: .5rem;
     color: #800909;
-    background: #fff8f3;
+    font-size: 2rem;
 }
 
-@media (max-width: 991.98px) {
-    .individual-log-filters {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+#submitProofModal .proof-upload-title {
+    color: #302929;
+    font-weight: 750;
+}
+
+#submitProofModal .proof-upload-hint,
+#submitProofModal .proof-formats {
+    color: #706767;
+    font-size: .84rem;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .proof-formats {
+    margin: .5rem 0 0;
+}
+
+#submitProofModal .proof-file-selected {
+    width: 100%;
+    min-width: 0;
+}
+
+#submitProofModal .proof-file-chip {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    min-width: 0;
+    margin-bottom: .8rem;
+    text-align: left;
+}
+
+#submitProofModal .proof-file-icon {
+    flex: 0 0 auto;
+    color: #198754;
+    font-size: 1.6rem;
+}
+
+#submitProofModal .proof-file-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+#submitProofModal .proof-file-name {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    font-weight: 650;
+}
+
+#submitProofModal .proof-file-size {
+    color: #706767;
+    font-size: .82rem;
+}
+
+#submitProofModal .proof-guidelines {
+    padding-left: 1.25rem;
+    margin-bottom: 0;
+    color: #454047;
+}
+
+#submitProofModal .proof-guidelines li {
+    margin-bottom: .4rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .proof-review-alert {
+    padding: .85rem;
+    border: 1px solid #ead6a6;
+    border-radius: .7rem;
+    background: #fff9e9;
+    color: #55451e;
+}
+
+#submitProofModal .proof-confirm {
+    display: grid;
+    grid-template-columns: 1.1rem minmax(0, 1fr);
+    gap: .6rem;
+    align-items: start;
+}
+
+#submitProofModal .proof-confirm .form-check-input {
+    float: none;
+    margin: .25rem 0 0;
+}
+
+#submitProofModal .proof-confirm .form-check-label {
+    min-width: 0;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+#submitProofModal .proof-confirm .form-text {
+    grid-column: 2;
+}
+
+#submitProofModal .modal-footer {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: .6rem;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid #eee5e5;
+    background: #fff;
+}
+
+#submitProofModal .modal-footer .btn {
+    flex: 1 1 140px;
+    min-width: 0;
+    min-height: 44px;
+    white-space: normal;
+}
+
+#submitProofModal .invalid-proof-feedback {
+    margin-top: .5rem;
+    color: #b02a37;
+    font-size: .875rem;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 575.98px) {
+    #submitProofModal .modal-dialog {
+        width: calc(100% - 1rem);
+        max-width: none;
+        height: calc(100vh - 1rem);
+        height: calc(100dvh - 1rem);
+        margin: .5rem auto;
     }
 
-    .individual-status-filter-row {
-        grid-column: 1 / 2;
-        grid-row: 3;
+    #submitProofModal .modal-content {
+        height: 100%;
+        max-height: 100%;
+        min-height: 0;
+        border-radius: .85rem;
+    }
+
+    #submitProofModal .modal-header {
+        gap: .6rem;
+        padding: 1rem;
+    }
+
+    #submitProofModal .modal-body {
+        flex: 1 1 0%;
+        min-height: 0;
+        padding: 1rem;
+        overflow-y: auto;
+    }
+
+    #submitProofModal .modal-footer {
+        gap: .5rem;
+        padding: .75rem 1rem;
+    }
+
+    #submitProofModal .modal-footer .btn {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+
+    #submitProofModal .proof-detail-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: .5rem;
+    }
+
+    #submitProofModal .proof-detail-item {
+        padding: .65rem .75rem;
+    }
+
+    #submitProofModal .proof-upload-zone {
+        min-height: 155px;
+        padding: 1rem .75rem;
+    }
+
+    #submitProofModal .official-form-area .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 360px) {
+    #submitProofModal .modal-title {
+        font-size: 1.08rem;
+    }
+
+    #submitProofModal .modal-subtitle {
+        font-size: .88rem;
+    }
+}
+/* Mobile filter layout: keep the Clear button in its own row. */
+@media (max-width: 575.98px) {
+    #individualLogFilters {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-items: stretch;
+    }
+
+    #individualLogFilters .individual-status-filter-row {
+        grid-column: 1 / -1;
+        grid-row: auto;
+        order: 1;
+        display: grid;
         grid-template-columns: minmax(0, 1fr);
         gap: 0.4rem;
+        min-width: 0;
     }
 
-    .individual-status-filter-row label {
-        margin: 0;
-    }
-
-    .individual-status-filter-row .form-select {
-        max-width: none;
-    }
-
-    .individual-status-filter-row #individualFilterCount {
+    #individualLogFilters .individual-status-filter-row #individualFilterCount {
         grid-column: 1;
         justify-self: start;
         text-align: left;
     }
 
-    .individual-filter-actions {
-        grid-column: 2 / 3;
-        grid-row: 3;
-        align-self: end;
-    }
-}
-
-@media (max-width: 575.98px) {
-    .individual-log-filters-wrap {
-        padding: 1rem !important;
-    }
-
-    .individual-log-filters {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 0.8rem;
-    }
-
-    .individual-status-filter-row,
-    .individual-filter-actions {
+    #individualLogFilters .individual-filter-actions {
         grid-column: 1 / -1;
         grid-row: auto;
-    }
-
-    .individual-filter-actions {
-        justify-content: flex-start;
-    }
-
-    .individual-filter-clear {
+        order: 2;
+        justify-content: stretch;
         width: 100%;
-    }
-}
-
-/* Table scrolling container */
-
-.individual-log-card .individual-table-responsive,
-.individual-table-responsive {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    height: auto !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow-x: auto !important;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-}
-
-/* Table layout.
-   The seven columns are deliberately given enough space.
-   Horizontal scrolling is preferable to breaking every word. */
-
-.individual-log-card .individual-violations-table,
-.individual-violations-table {
-    width: 1500px !important;
-    min-width: 1500px !important;
-    max-width: none !important;
-    margin: 0 !important;
-    table-layout: fixed !important;
-    border-collapse: separate;
-    border-spacing: 0;
-}
-
-/* Column widths:
-   1 = violation type
-   2 = date
-   3 = category
-   4 = status
-   5 = remarks
-   6 = attachments
-   7 = action
-*/
-
-.individual-violations-table .violation-type-col,
-.individual-violations-table th:nth-child(1),
-.individual-violations-table td:nth-child(1) {
-    width: 260px;
-}
-
-.individual-violations-table .violation-date-col,
-.individual-violations-table th:nth-child(2),
-.individual-violations-table td:nth-child(2) {
-    width: 180px;
-}
-
-.individual-violations-table .category-col,
-.individual-violations-table th:nth-child(3),
-.individual-violations-table td:nth-child(3) {
-    width: 260px;
-}
-
-.individual-violations-table .status-col,
-.individual-violations-table th:nth-child(4),
-.individual-violations-table td:nth-child(4) {
-    width: 175px;
-}
-
-.individual-violations-table .remarks-col,
-.individual-violations-table th:nth-child(5),
-.individual-violations-table td:nth-child(5) {
-    width: 210px;
-}
-
-.individual-violations-table .attachments-col,
-.individual-violations-table th:nth-child(6),
-.individual-violations-table td:nth-child(6) {
-    width: 205px;
-    min-width: 0;
-}
-
-.individual-violations-table .individual-actions-col,
-.individual-violations-table th:nth-child(7),
-.individual-violations-table td:nth-child(7) {
-    width: 210px;
-    min-width: 0;
-    text-align: center;
-}
-
-/* Header cells */
-
-.individual-violations-table thead th {
-    box-sizing: border-box;
-    padding: 0.95rem 1rem !important;
-    color: #6d1515;
-    background: #fff7e2;
-    border-top: 1px solid #f4e4bd !important;
-    border-bottom: 1px solid #f0e3c8 !important;
-    font-size: 0.78rem !important;
-    font-weight: 800;
-    line-height: 1.35 !important;
-    text-align: left;
-    text-transform: uppercase;
-    letter-spacing: 0.045em;
-    vertical-align: middle;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    hyphens: none !important;
-}
-
-/* Body cells */
-
-.individual-violations-table tbody td {
-    box-sizing: border-box;
-    padding: 1rem !important;
-    color: #34313a;
-    background: #fff;
-    border-bottom: 1px solid #f0eeee;
-    font-size: 0.92rem;
-    line-height: 1.5;
-    text-align: left;
-    vertical-align: middle;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    hyphens: none !important;
-}
-
-.individual-violations-table tbody tr {
-    transition: background-color 0.18s ease;
-}
-
-.individual-violations-table tbody tr:hover td {
-    background: #fffdf8;
-}
-
-.individual-violations-table tbody tr:last-child td {
-    border-bottom: 0;
-}
-
-/* Dates */
-
-.individual-violations-table .violation-date-col {
-    white-space: normal !important;
-    font-variant-numeric: tabular-nums;
-}
-
-/* Status badges: do not split Confirmed into separate fragments */
-
-.individual-violations-table .status-col {
-    text-align: center !important;
-}
-
-.individual-violations-table .status-col .portal-badge,
-.individual-violations-table .status-col .badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    width: auto;
-    max-width: 100%;
-    padding: 0.55rem 0.8rem;
-    font-size: 0.82rem !important;
-    font-weight: 700;
-    line-height: 1.25 !important;
-    text-align: center;
-    white-space: nowrap !important;
-    word-break: keep-all !important;
-    overflow-wrap: normal !important;
-    hyphens: none !important;
-}
-
-.individual-violations-table .status-col .portal-badge i,
-.individual-violations-table .status-col .badge i {
-    flex: 0 0 auto;
-}
-
-/* Remarks */
-
-.individual-violations-table .remarks-col {
-    overflow-wrap: break-word !important;
-    word-break: normal !important;
-}
-
-/* Attachments */
-
-.individual-violations-table .attachments-col {
-    overflow-wrap: normal !important;
-    word-break: normal !important;
-}
-
-.individual-violations-table .attachments-col a {
-    display: inline-flex;
-    align-items: flex-start;
-    gap: 0.35rem;
-    max-width: 100%;
-    white-space: normal !important;
-    overflow-wrap: anywhere !important;
-    word-break: normal !important;
-    line-height: 1.4;
-}
-
-.individual-violations-table .attachments-col a i {
-    flex: 0 0 auto;
-    margin-top: 0.15rem;
-}
-
-.individual-violations-table .attachments-col .text-muted {
-    display: inline-block;
-    line-height: 1.45;
-}
-
-/* Sanction action buttons */
-
-.individual-violations-table .individual-actions-col {
-    text-align: center;
-    vertical-align: middle;
-}
-
-.individual-violations-table .individual-actions-col > div {
-    width: 100%;
-    max-width: 190px;
-    margin: 0 auto;
-}
-
-.individual-violations-table .individual-actions-col .btn,
-.individual-violations-table .individual-actions-col .sanction-state {
-    box-sizing: border-box;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    width: 100%;
-    max-width: 190px;
-    min-width: 0;
-    min-height: 44px;
-    margin: 0;
-    padding: 0.7rem 0.8rem !important;
-    border-radius: 0.75rem;
-    font-size: 0.85rem !important;
-    font-weight: 700;
-    line-height: 1.3 !important;
-    text-align: center;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: break-word !important;
-    hyphens: none !important;
-    transition:
-        transform 0.18s ease,
-        box-shadow 0.18s ease,
-        background 0.18s ease;
-}
-
-.individual-violations-table .individual-actions-col .btn i,
-.individual-violations-table .individual-actions-col .sanction-state i {
-    flex: 0 0 auto;
-}
-
-.individual-violations-table .individual-actions-col .request-sanction-btn {
-    color: #fff;
-    background: linear-gradient(120deg, #710000, #960d0d);
-    border: 1px solid #780000;
-    box-shadow: 0 5px 13px rgba(120, 0, 0, 0.13);
-}
-
-.individual-violations-table .individual-actions-col .request-sanction-btn:hover {
-    color: #fff;
-    background: #5f0000;
-    transform: translateY(-1px);
-    box-shadow: 0 8px 18px rgba(120, 0, 0, 0.2);
-}
-
-/* Sanction states */
-
-.individual-violations-table .sanction-state {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    border: 1px solid transparent;
-    font-size: 0.82rem !important;
-}
-
-.sanction-state-pending {
-    color: #815300;
-    background: #fff4d5;
-    border-color: #f4df9d;
-}
-
-.sanction-state-approved {
-    color: #116448;
-    background: #e2f5ec;
-    border-color: #bce7d2;
-}
-
-.sanction-state-declined {
-    color: #9b2727;
-    background: #fff0f0;
-    border-color: #f2cdcd;
-}
-
-.sanction-state-assigned {
-    color: #4d5664;
-    background: #f0f2f5;
-    border-color: #dfe3e8;
-}
-
-/* Informational notices in the action column */
-
-.individual-violations-table .individual-actions-col .alert {
-    width: 100%;
-    max-width: 190px;
-    margin: 0 auto;
-    line-height: 1.45;
-    text-align: left;
-    word-break: normal;
-    overflow-wrap: break-word;
-}
-
-/* Empty state */
-
-.individual-log-empty {
-    padding: 3.25rem 1rem !important;
-    color: #77717a !important;
-    text-align: center;
-}
-
-.individual-log-empty-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 3rem;
-    height: 3rem;
-    margin-bottom: 0.75rem;
-    border-radius: 1rem;
-    color: #850909;
-    background: #fff3df;
-    font-size: 1.35rem;
-}
-
-/* Pagination: preserve Laravel pagination and eliminate excess space */
-
-.individual-log-pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    width: 100%;
-    height: auto !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 1rem !important;
-    border-top: 1px solid #f0eeee;
-    background: #fff;
-}
-
-.individual-log-pagination nav {
-    max-width: 100%;
-    margin: 0;
-}
-
-.individual-log-pagination .pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.2rem;
-    margin: 0 !important;
-}
-
-.individual-log-pagination svg {
-    width: 1rem;
-    height: 1rem;
-}
-
-/* Natural card height: prevent a large blank area below the log */
-
-.individual-log-card .table-responsive,
-.individual-log-card .individual-table-responsive {
-    height: auto !important;
-    min-height: 0 !important;
-    margin-bottom: 0 !important;
-    padding-bottom: 0 !important;
-}
-
-.individual-log-card .individual-violations-table {
-    margin-bottom: 0 !important;
-}
-
-.individual-log-card nav[aria-label],
-.individual-log-card .pagination {
-    margin-bottom: 0 !important;
-}
-
-.individual-log-card .card-footer {
-    height: auto !important;
-    min-height: 0 !important;
-}
-
-
-/* Fix excessive wrapping in the Individual Violations Log Evidence column */
-.individual-log-card .table-responsive > table th:nth-child(6),
-.individual-log-card .table-responsive > table td:nth-child(6),
-.individual-violations-table th:nth-child(6),
-.individual-violations-table td:nth-child(6) {
-    width: 260px !important;
-    min-width: 260px !important;
-}
-
-/* Keep attachment links compact and aligned */
-.individual-log-card .table-responsive > table td:nth-child(6) a,
-.individual-violations-table td:nth-child(6) a {
-    display: inline-flex;
-    align-items: flex-start;
-    gap: 0.4rem;
-    max-width: 100%;
-    line-height: 1.4 !important;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: anywhere !important;
-}
-
-/* Keep attachment icons from consuming text width */
-.individual-log-card .table-responsive > table td:nth-child(6) a i,
-.individual-violations-table td:nth-child(6) a i {
-    flex: 0 0 auto;
-    margin-top: 0.15rem;
-}
-
-/* Keep the empty attachment message compact */
-.individual-log-card .table-responsive > table td:nth-child(6) .text-muted,
-.individual-violations-table td:nth-child(6) .text-muted {
-    display: inline-block;
-    line-height: 1.4 !important;
-    overflow-wrap: normal;
-}
-
-/* Slightly compact row spacing without hiding content */
-.individual-log-card .table-responsive > table tbody td,
-.individual-violations-table tbody td {
-    padding-top: 0.65rem !important;
-    padding-bottom: 0.65rem !important;
-    line-height: 1.35 !important;
-}
-
-/* Fix excess height in the Student Record tab pane */
-#violationRecord.tab-pane,
-#sanctionRecord.tab-pane {
-    height: auto !important;
-    min-height: 0 !important;
-    flex: 0 0 auto !important;
-    align-self: flex-start !important;
-}
-
-/* Prevent the tab content from stretching the record tabs */
-#violationRecord.tab-pane.show.active,
-#sanctionRecord.tab-pane.show.active {
-    height: auto !important;
-    min-height: 0 !important;
-}
-
-/* Keep the tab-content wrapper content-sized */
-.tab-content:has(> #violationRecord),
-.tab-content:has(> #sanctionRecord) {
-    height: auto !important;
-    min-height: 0 !important;
-    flex: 0 0 auto !important;
-    align-self: flex-start !important;
-}
-
-/* Keep the log card and pagination at their natural height */
-#violationRecord .individual-log-card {
-    height: auto !important;
-    min-height: 0 !important;
-    margin-bottom: 1rem !important;
-}
-
-#violationRecord .individual-log-pagination {
-    height: auto !important;
-    min-height: 0 !important;
-    margin-bottom: 0 !important;
-}
-
-
-/* Responsive filters */
-
-@media (max-width: 767.98px) {
-    .individual-log-filters {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 0.15rem;
     }
 
-    .individual-filter-actions {
-        grid-column: 1 / -1;
-    }
-
-    .individual-status-filter-row {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 0.4rem;
-    }
-
-    .individual-status-filter-row #individualFilterCount {
-        grid-column: auto;
-    }
-
-    .individual-status-filter-row .form-select {
+    #individualLogFilters .individual-filter-clear {
+        display: block;
         width: 100%;
-        max-width: none;
-    }
-}
-
-@media (max-width: 640px) {
-    .individual-log-header {
-        align-items: flex-start;
-        padding: 1rem !important;
-    }
-
-    .individual-log-title {
-        font-size: 1rem;
-    }
-
-    .individual-log-subtitle {
-        font-size: 0.78rem;
-    }
-
-    .individual-log-icon {
-        width: 2.35rem;
-        height: 2.35rem;
-        flex-basis: 2.35rem;
-    }
-
-    .individual-log-count {
-        padding: 0.38rem 0.55rem;
-        font-size: 0.7rem;
-    }
-
-    .individual-violations-table thead th {
-        padding: 0.8rem 0.7rem !important;
-        font-size: 0.76rem !important;
-    }
-
-    .individual-violations-table tbody td {
-        padding: 0.85rem 0.7rem !important;
-        font-size: 0.86rem;
-    }
-
-    .individual-log-pagination {
-        padding: 0.85rem 0.5rem !important;
-    }
-}
-
-@media (max-width: 420px) {
-    .individual-log-filters {
-        grid-template-columns: 1fr;
-    }
-
-    .individual-log-header {
-        flex-wrap: wrap;
-    }
-
-    .individual-log-count {
-        margin-left: 3.25rem;
-    }
-}
-
-
-
-/* Warning-level consequence card: informational only, not an assigned record. */
-.warning-consequence-card {
-    border: 1px solid #f0dca3 !important;
-    border-left: 4px solid #c58a08 !important;
-    border-radius: 1rem !important;
-    background: #fffaf0;
-    box-shadow: 0 8px 24px rgba(83, 55, 0, 0.06) !important;
-    overflow: hidden;
-}
-.warning-consequence-card .card-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.8rem;
-    padding: 1rem 1.25rem;
-    background: #fff4d6 !important;
-    border-bottom: 1px solid #f0e0b8;
-}
-.warning-consequence-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 2.5rem;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 0.8rem;
-    color: #805600;
-    background: #ffe7a3;
-    font-size: 1.15rem;
-}
-.warning-consequence-card .card-body {
-    padding: 1rem 1.25rem;
-}
-.warning-consequence-item {
-    padding: 1rem 0;
-    border-bottom: 1px solid #f0e6d0;
-}
-.warning-consequence-item:first-child { padding-top: 0; }
-.warning-consequence-item:last-child {
-    padding-bottom: 0;
-    border-bottom: 0;
-}
-.warning-consequence-label {
-    color: #79571a;
-    font-size: 0.75rem;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-.warning-consequence-value {
-    color: #332b1e;
-    font-weight: 700;
-    overflow-wrap: anywhere;
-}
-.warning-consequence-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.35rem 0.65rem;
-    border: 1px solid #e9d28e;
-    border-radius: 999px;
-    color: #775400;
-    background: #fff1c5;
-    font-size: 0.78rem;
-    font-weight: 750;
-}
-.warning-sanction-notice {
-    border: 1px solid #f0dca3;
-    border-left: 3px solid #c58a08;
-    border-radius: 0.75rem;
-    background: #fffaf0;
-    color: #473919;
-}
-.warning-sanction-notice .btn {
-    white-space: normal;
-}
-
-/* Give the consultation note the same deliberate callout treatment as the
-   other portal guidance panels instead of rendering it as plain table text. */
-.consultation-notice {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.7rem;
-    width: 100%;
-    padding: 0.9rem 1rem;
-    border: 1px solid rgba(128, 0, 0, 0.18);
-    border-left: 4px solid #800909;
-    border-radius: 0.85rem;
-    background: #fff8ef;
-    color: #342c2c;
-    line-height: 1.5;
-    white-space: normal;
-}
-.consultation-notice > i {
-    flex: 0 0 auto;
-    margin-top: 0.15rem;
-    color: #800909;
-    font-size: 1.1rem;
-}
-.consultation-notice-title {
-    display: block;
-    margin-bottom: 0.25rem;
-    color: #720606;
-    font-size: 0.88rem;
-    font-weight: 800;
-}
-.consultation-notice-text {
-    margin: 0;
-    font-size: 0.84rem;
-    overflow-wrap: anywhere;
-}
-@media (max-width: 576px) {
-    .warning-consequence-card .card-header,
-    .warning-consequence-card .card-body { padding: 0.9rem; }
-    .consultation-notice { padding: 0.75rem; }
-}
-
-/* Match the Individual Violations Log title bar to Summary by Violation. */
-.individual-log-titlebar {
-    padding: 1rem 1.25rem !important;
-    background: #fff !important;
-    border-bottom: 1px solid #eee2d5 !important;
-}
-.individual-log-titlebar h5 {
-    color: #800909 !important;
-    font-size: 1.15rem;
-    font-weight: 750;
-}
-.individual-log-record-count {
-    color: #6c5555;
-    font-size: 0.8rem;
-    font-weight: 650;
-}
-
-/* Keep the filter panel aligned without changing its visual styling. */
-.individual-log-filters-wrap { overflow: visible; }
-.individual-log-filters { align-items: end; }
-@media (max-width: 640px) {
-    .individual-log-filters-wrap { padding: 1rem !important; }
-    .individual-log-filters { grid-template-columns: minmax(0, 1fr); }
-    .individual-filter-actions,
-    .individual-status-filter-row { grid-column: 1 / -1; }
-}
-
-
-/* Student Record: responsive sanction request buttons */
-.individual-violations-table .individual-actions-col .request-sanction-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    max-width: 190px;
-    min-height: 44px;
-    padding: 0.7rem 0.85rem;
-    border-radius: 0.75rem;
-    font-size: 0.875rem;
-    font-weight: 700;
-    line-height: 1.35;
-    white-space: normal;
-    overflow-wrap: break-word;
-    text-align: center;
-}
-
-.individual-violations-table .individual-actions-col
-.request-sanction-btn i {
-    flex: 0 0 auto;
-}
-
-/* Confirmation modal */
-#requestSanctionConfirmModal .modal-dialog {
-    width: calc(100% - 2rem);
-    max-width: 480px;
-    margin: 1rem auto;
-}
-
-#requestSanctionConfirmModal .modal-content {
-    border: 0;
-    border-radius: 1rem;
-    overflow: hidden;
-}
-
-#requestSanctionConfirmModal .modal-header {
-    flex-wrap: nowrap;
-    gap: 0.75rem;
-}
-
-#requestSanctionConfirmModal .modal-title {
-    min-width: 0;
-    overflow-wrap: anywhere;
-}
-
-#requestSanctionConfirmModal .modal-body {
-    overflow-wrap: anywhere;
-}
-
-#requestSanctionConfirmModal .modal-footer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-#requestSanctionConfirmModal .modal-footer .btn {
-    min-height: 44px;
-}
-
-/* Mobile phones */
-@media (max-width: 575.98px) {
-    .individual-violations-table .individual-actions-col {
-        padding: 0.75rem !important;
-    }
-
-    .individual-violations-table .individual-actions-col
-    .request-sanction-btn {
-        max-width: 100%;
-        min-height: 46px;
-        padding: 0.7rem 0.6rem !important;
-        font-size: 0.85rem !important;
-    }
-
-    #requestSanctionConfirmModal .modal-dialog {
-        width: auto;
-        max-width: none;
-        margin: 0.5rem;
-    }
-
-    #requestSanctionConfirmModal .modal-content {
-        border-radius: 0.85rem;
-    }
-
-    #requestSanctionConfirmModal .modal-header {
-        padding: 0.85rem 1rem;
-    }
-
-    #requestSanctionConfirmModal .modal-title {
-        font-size: 1.05rem;
-        line-height: 1.35;
-    }
-
-    #requestSanctionConfirmModal .modal-body {
-        padding: 1rem;
-    }
-
-    #requestSanctionConfirmModal .modal-footer {
-        padding: 0.75rem 1rem;
-    }
-
-    #requestSanctionConfirmModal .modal-footer .btn {
-        flex: 1 1 100%;
-        width: 100%;
-    }
-}
-
-/* Extra-small phones */
-@media (max-width: 380px) {
-    #requestSanctionConfirmModal .modal-dialog {
-        margin: 0.25rem;
-    }
-
-    #requestSanctionConfirmModal .modal-header,
-    #requestSanctionConfirmModal .modal-body {
-        padding: 0.75rem;
-    }
-
-    #requestSanctionConfirmModal .modal-footer {
-        padding: 0.75rem;
+        min-height: 44px;
+        margin: 0;
     }
 }
 
 </style>
+
 @endpush
 
 @section('content')
@@ -1468,8 +3025,7 @@
                         <th>Record Status</th>
                         <th>Remarks</th>
                         <th>Evidence</th>
-                        <th>Sanction Request</th>
-                    </tr>
+<th>Available Actions</th>                    </tr>
                 </thead>
                 <tbody>
                     @forelse($violations as $violation)
@@ -1508,6 +3064,10 @@
     $hasAssignedSanction = isset(
         $assignedSanctionViolationIds[$violation->violation_id]
     );
+
+    // A pending correction/deletion request blocks both corrective actions
+    // and sanction requests until the administrator approves or rejects it.
+    $hasPendingCorrection = $pendingCorrectionRequests->has($violation->violation_id);
 
     // Preserve the existing warning-level detection.
     $isWarningLevelViolation = isset(
@@ -1568,37 +3128,108 @@
                                     <span class="text-muted small"><i class="bi bi-paperclip me-1"></i>No attachment</span>
                                 @endif
                             </td>
-                            <td class="individual-actions-col">
-                                @if($isPendingLog)
-                                    <span class="text-muted small">Available after confirmation</span>
-                                @elseif($isWarningLevelViolation)
-                                    <div class="warning-sanction-notice p-3 mb-0 small text-start" role="note">
-                                        <strong class="d-flex align-items-center gap-2 mb-2">
-                                            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
-                                            Warning-Level Violation
-                                        </strong>
-                                        <p class="mb-0">A sanction request is not required for this warning-level violation. Please review the corresponding disciplinary sanction in the Summary by Violation table and comply with the details provided.</p>
-                                    </div>
-                                @elseif($isActiveRequest)
-                                    <span class="sanction-state sanction-state-pending"><i class="bi bi-hourglass-split"></i>Request Pending</span>
-                                    <small class="d-block text-muted mt-2">Submitted for admin review</small>
-                                @elseif($hasAssignedSanction)
-                                    <span class="sanction-state sanction-state-assigned"><i class="bi bi-shield-check"></i>Sanction Assigned</span>
-                                @elseif($requestStatus === 'declined' && !$isActiveRequest)
-                                    <span class="sanction-state sanction-state-declined"><i class="bi bi-x-circle"></i>Request Declined</span>
-                                    <button type="button" class="btn request-sanction-btn mt-2" data-violation-type-id="{{ $typeId }}">
-                                        <i class="bi bi-arrow-repeat"></i> Request Again
-                                    </button>
-                                @else
-                                    <button type="button" class="btn request-sanction-btn"
-                                            data-violation-type-id="{{ $typeId }}">
-                                        <i class="bi bi-send"></i> Request Sanction
-                                    </button>
-                                    <small class="d-block text-muted mt-2">
-                                        Start a sanction request
-                                    </small>
-                                @endif 
-                            </td>
+
+<td class="individual-actions-col">
+    @if($isPendingLog)
+        <span class="text-muted small">Available after confirmation</span>
+    @elseif($isWarningLevelViolation)
+        <div class="warning-sanction-notice p-3 mb-2 small text-start" role="note">
+            <strong class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                Warning-Level Violation
+            </strong>
+            <p class="mb-0">
+                A sanction request is not required for this warning-level
+                violation. Review the disciplinary details above.
+            </p>
+        </div>
+
+        @if($hasPendingCorrection)
+            <button type="button" class="btn btn-outline-secondary btn-sm corrective-action-btn mt-2" disabled aria-disabled="true" title="Your request is pending administrator review.">
+                <i class="bi bi-hourglass-split me-1"></i>Request Pending Review
+            </button>
+            <small class="d-block text-muted mt-1">You can submit another request if this one is rejected.</small>
+        @elseif($hasAssignedSanction)
+            <button type="button" class="btn btn-outline-secondary btn-sm corrective-action-btn mt-2" disabled aria-disabled="true" title="A sanction has already been assigned.">
+                <i class="bi bi-shield-lock me-1"></i>Correction / Deletion Unavailable
+            </button>
+
+        @else
+            <button type="button"
+                    class="btn btn-outline-danger btn-sm corrective-action-btn mt-2"
+                    data-violation-id="{{ $violation->violation_id }}"
+                    data-current-category-id="{{ $categoryId }}"
+                    data-current-category="{{ $violation->violation_category_display }}"
+                    data-current-type-id="{{ $typeId }}"
+                    data-current-type="{{ $violation->violation_type_display }}"
+                    data-current-date="{{ \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d\TH:i') }}"
+                    data-current-date-display="{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}"
+                    data-current-description="{{ $violation->description ?? '' }}">
+                <i class="bi bi-pencil-square me-1"></i>
+                Request Correction / Deletion
+            </button>
+        @endif
+    @else
+        @if($isActiveRequest)
+            <span class="sanction-state sanction-state-pending">
+                <i class="bi bi-hourglass-split"></i>Request Pending
+            </span>
+            <small class="d-block text-muted mt-2">Submitted for admin review</small>
+        @elseif($hasAssignedSanction)
+            <span class="sanction-state sanction-state-assigned">
+                <i class="bi bi-shield-check"></i>Sanction Assigned
+            </span>
+        @elseif($hasPendingCorrection)
+            <span class="sanction-state sanction-state-pending" aria-live="polite">
+                <i class="bi bi-hourglass-split"></i>Correction Review Pending
+            </span>
+            <small class="d-block text-muted mt-2">Sanction requests are unavailable until this request is resolved.</small>
+        @elseif($requestStatus === 'declined' && !$isActiveRequest)
+            <span class="sanction-state sanction-state-declined">
+                <i class="bi bi-x-circle"></i>Request Declined
+            </span>
+            <button type="button"
+                    class="btn request-sanction-btn mt-2"
+                    data-violation-type-id="{{ $typeId }}">
+                <i class="bi bi-arrow-repeat"></i> Request Again
+            </button>
+        @else
+            <button type="button"
+                    class="btn request-sanction-btn"
+                    data-violation-type-id="{{ $typeId }}">
+                <i class="bi bi-send"></i> Request Sanction
+            </button>
+            <small class="d-block text-muted mt-2">Start a sanction request</small>
+        @endif
+
+        @if($hasPendingCorrection)
+            <button type="button" class="btn btn-outline-secondary btn-sm corrective-action-btn mt-2" disabled aria-disabled="true" title="Your request is pending administrator review.">
+                <i class="bi bi-hourglass-split me-1"></i>Request Pending Review
+            </button>
+            <small class="d-block text-muted mt-1">You can submit another request if this one is rejected.</small>
+        @elseif($hasAssignedSanction)
+            <button type="button" class="btn btn-outline-secondary btn-sm corrective-action-btn mt-2" disabled aria-disabled="true" title="A sanction has already been assigned.">
+                <i class="bi bi-shield-lock me-1"></i>Correction / Deletion Unavailable
+            </button>
+
+        @else
+            <button type="button"
+                    class="btn btn-outline-danger btn-sm corrective-action-btn mt-2"
+                    data-violation-id="{{ $violation->violation_id }}"
+                    data-current-category-id="{{ $categoryId }}"
+                    data-current-category="{{ $violation->violation_category_display }}"
+                    data-current-type-id="{{ $typeId }}"
+                    data-current-type="{{ $violation->violation_type_display }}"
+                    data-current-date="{{ \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d\TH:i') }}"
+                    data-current-date-display="{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}"
+                    data-current-description="{{ $violation->description ?? '' }}">
+                <i class="bi bi-pencil-square me-1"></i>
+                Request Correction / Deletion
+            </button>
+        @endif
+    @endif
+</td>
+
                         </tr>
                     @empty
                         <tr>
@@ -2083,12 +3714,244 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
         </div>
     </div>
 </div>
+
+{{-- Corrective Action Request Modal --}}
+<div class="modal fade" id="correctiveActionModal" tabindex="-1"
+     aria-labelledby="correctiveActionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold" id="correctiveActionModalLabel">
+                        Request Record Correction or Deletion
+                    </h5>
+                    <p class="text-muted small mb-0">
+                        Your request will be reviewed by an authorized administrator.
+                    </p>
+                </div>
+                <button type="button" class="btn-close"
+                        data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="alert alert-info small">
+                    Submitting a request does not immediately change or remove your
+                    violation record. Changes require administrative approval.
+                </div>
+
+                <div id="correctiveActionError" class="alert alert-danger d-none"
+                     role="alert" aria-live="polite"></div>
+
+                <div class="mb-3">
+                    <label for="correctiveActionType" class="form-label fw-semibold">
+                        What would you like to request?
+                    </label>
+                    <select id="correctiveActionType" class="form-select" required>
+                        <option value="">Choose an action</option>
+                        <option value="correction">Correction of Information</option>
+                        <option value="deletion">Request Deletion of Record</option>
+                    </select>
+                </div>
+
+                
+<div id="correctionFields" class="d-none">
+    <hr>
+
+    <h6 class="fw-bold mb-1">Compare Violation Information</h6>
+    <p class="small text-muted mb-3">
+        Edit the information on the left. The original recorded values
+        are shown on the right for comparison.
+    </p>
+
+    <div class="row g-4">
+        <!-- LEFT: REQUESTED CHANGES -->
+        <div class="col-12 col-md-6">
+            <div class="border rounded-3 p-3 h-100">
+                <h6 class="fw-bold text-danger mb-3">
+                    <i class="bi bi-pencil-square me-1"></i>
+                    Requested Changes
+                </h6>
+
+                <div class="mb-3">
+                    <label for="correctionCategory" class="form-label">
+                        Violation Category
+                    </label>
+                    <select id="correctionCategory" class="form-select">
+                        <option value="">Select category</option>
+                        @foreach($violationCategories as $category)
+                            <option value="{{ $category->violation_category_id }}">
+                                {{ $category->category_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="correctionViolationType" class="form-label">
+                        Correct Violation Type
+                    </label>
+                    <select id="correctionViolationType" class="form-select">
+                        <option value="">Select violation type</option>
+                        @foreach($violationTypes as $type)
+                            @if($type->violationCategory)
+                                <option
+                                    value="{{ $type->violation_type_id }}"
+                                    data-category-id="{{ $type->violation_category_id }}">
+                                    {{ $type->violation_type }}
+                                </option>
+                            @endif
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="correctionViolationDate" class="form-label">
+                        Correct Date and Time
+                    </label>
+                    <input type="datetime-local"
+                           id="correctionViolationDate"
+                           class="form-control">
+                </div>
+
+                <div class="mb-0">
+                    <label for="correctionDescription" class="form-label">
+                        Correct Remarks / Description
+                    </label>
+                    <textarea id="correctionDescription"
+                              class="form-control"
+                              rows="4"
+                              maxlength="2000"
+                              placeholder="Enter the correct information"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: ORIGINAL INFORMATION -->
+        <div class="col-12 col-md-6">
+            <div class="border rounded-3 p-3 h-100 bg-light">
+                <h6 class="fw-bold text-secondary mb-3">
+                    <i class="bi bi-file-earmark-text me-1"></i>
+                    Current Recorded Information
+                </h6>
+
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">
+                        Violation Category
+                    </div>
+                    <div id="currentViolationCategory"
+                         class="fw-semibold text-break">—</div>
+                </div>
+
+                <hr>
+
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">
+                        Violation Type
+                    </div>
+                    <div id="currentViolationType"
+                         class="fw-semibold text-break">—</div>
+                </div>
+
+                <hr>
+
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">
+                        Recorded Date and Time
+                    </div>
+                    <div id="currentViolationDate"
+                         class="fw-semibold text-break">—</div>
+                </div>
+
+                <hr>
+
+                <div>
+                    <div class="small text-muted mb-1">
+                        Recorded Remarks / Description
+                    </div>
+                    <div id="currentViolationDescription"
+                         class="text-break"
+                         style="white-space: pre-wrap;">—</div>
+                </div>
+
+                <div class="small text-muted mt-3">
+                    <i class="bi bi-lock me-1"></i>
+                    Original information is read-only.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+                <div id="deletionFields" class="d-none">
+                    <hr>
+                    <h6 class="fw-bold">Deletion Request</h6>
+                    <p class="small text-muted">
+                        Explain why this record should be removed from your active
+                        student record. The administrator will review your request
+                        and any evidence provided.
+                    </p>
+                </div>
+
+                <div class="mb-3">
+                    <label for="correctiveActionReason" class="form-label fw-semibold">
+                        Reason for Request <span class="text-danger">*</span>
+                    </label>
+                    <textarea id="correctiveActionReason" class="form-control"
+                              rows="4" minlength="10" maxlength="2000"
+                              placeholder="Explain your request in at least 10 characters."
+                              required></textarea>
+                    <div class="form-text">Minimum 10 characters.</div>
+                </div>
+
+<div id="deletionEvidenceFields" class="mt-4">
+
+    <hr>
+
+    <h6 class="fw-bold">Supporting Evidence (Optional)</h6>
+    <p class="text-muted small">
+        Upload supporting images or documents for the administrator
+        to review.
+    </p>
+
+    <div class="mb-4">
+        <label for="correctiveEvidenceFiles" class="form-label">
+            Upload Evidence
+        </label>
+        <input type="file"
+               id="correctiveEvidenceFiles"
+               class="form-control"
+               accept=".jpg,.jpeg,.png,.webp,.pdf"
+               multiple>
+
+        <div class="form-text">
+            Maximum 5 files, up to 10 MB per file.
+        </div>
+    </div>
+
+    <hr>
+
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="submitCorrectiveAction"
+                        class="btn btn-danger">
+                    <i class="bi bi-send me-1"></i>Submit Request
+                </button>
+            </div>
+        </div>
+    </div>
+</div></div>
+
 @endsection
 
 @push('scripts')
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const deletionEvidenceFields =
+    document.getElementById('deletionEvidenceFields');
     // Deep-link support: if the URL contains #sanctionRecord, open the
     // Sanction Record tab automatically (used by notification links).
     if (window.location.hash === '#sanctionRecord') {
@@ -2399,6 +4262,404 @@ if (officialArea) {
 
 </script>
 
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modalElement = document.getElementById('correctiveActionModal');
+    if (!modalElement) return;
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+    const actionSelect = document.getElementById('correctiveActionType');
+    const correctionFields = document.getElementById('correctionFields');
+    const deletionFields = document.getElementById('deletionFields');
+    const categorySelect = document.getElementById('correctionCategory');
+    const violationTypeSelect = document.getElementById('correctionViolationType');
+    const dateInput = document.getElementById('correctionViolationDate');
+    const descriptionInput = document.getElementById('correctionDescription');
+    const currentCategoryDisplay =
+    document.getElementById('currentViolationCategory');
+
+const currentTypeDisplay =
+    document.getElementById('currentViolationType');
+
+const currentDateDisplay =
+    document.getElementById('currentViolationDate');
+
+const currentDescriptionDisplay =
+    document.getElementById('currentViolationDescription');
+    const reasonInput = document.getElementById('correctiveActionReason');
+    const evidenceInput = document.getElementById('correctiveEvidenceFiles');
+    const submitButton = document.getElementById('submitCorrectiveAction');
+    const errorBox = document.getElementById('correctiveActionError');
+
+const deletionEvidenceFields =
+    document.getElementById('deletionEvidenceFields');
+    
+    let selectedViolationId = null;
+
+
+    const correctionUrlTemplate = "{{ route('student.violations.correction-request', ['violation' => 987654321]) }}";
+    const deletionUrlTemplate = "{{ route('student.violations.deletion-request', ['violation' => 987654321]) }}";
+
+    function routeFor(template, id) {
+        return template.replace('987654321', encodeURIComponent(String(id)));
+    }
+
+    function showError(message) {
+        errorBox.textContent = message || 'Unable to submit the request.';
+        errorBox.classList.remove('d-none');
+    }
+
+    function clearError() {
+        errorBox.textContent = '';
+        errorBox.classList.add('d-none');
+    }
+
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+
+    if (video) {
+        video.srcObject = null;
+        video.classList.add('d-none');
+    }
+
+    if (captureButton) {
+        captureButton.classList.add('d-none');
+        captureButton.disabled = true;
+    }
+
+    if (stopCameraButton) {
+        stopCameraButton.classList.add('d-none');
+        stopCameraButton.disabled = true;
+    }
+
+    if (startCameraButton) {
+        startCameraButton.classList.remove('d-none');
+        startCameraButton.disabled = false;
+    }
+
+    if (cameraStatus) {
+        cameraStatus.textContent = 'Camera is off.';
+    }
+}
+
+function removeCapturedPhoto() {
+    // Clear the captured image used for submission.
+    cameraImageData = null;
+
+    // Clear and hide the photo preview.
+    if (photoPreview) {
+        photoPreview.removeAttribute('src');
+        photoPreview.classList.add('d-none');
+    }
+
+    // Hide the Remove Photo button.
+    if (removePhotoButton) {
+        removePhotoButton.classList.add('d-none');
+    }
+
+    // Clear a temporary image input if one exists.
+    const cameraImageInput = document.getElementById('cameraImageInput');
+
+    if (cameraImageInput) {
+        cameraImageInput.value = '';
+    }
+
+    if (cameraStatus) {
+        cameraStatus.textContent = 'Captured photo removed.';
+    }
+}
+
+    function resetForm() {
+        actionSelect.value = '';
+        correctionFields.classList.add('d-none');
+        deletionFields.classList.add('d-none');
+
+
+        reasonInput.value = '';
+        evidenceInput.value = '';
+
+        clearError();
+        removeCapturedPhoto();
+        stopCamera();
+    }
+
+    
+document.querySelectorAll('.corrective-action-btn').forEach(button => {
+    button.addEventListener('click', function () {
+        selectedViolationId = this.dataset.violationId;
+
+        resetForm();
+
+        // Display the original values of the selected violation.
+        currentCategoryDisplay.textContent =
+            this.dataset.currentCategory || 'Not recorded';
+
+        currentTypeDisplay.textContent =
+            this.dataset.currentType || 'Not recorded';
+
+        currentDateDisplay.textContent =
+            this.dataset.currentDateDisplay || 'Not recorded';
+
+        currentDescriptionDisplay.textContent =
+            this.dataset.currentDescription || 'No remarks provided';
+
+        // Pre-fill proposed values with the existing values.
+        // The student can then change only what needs correction.
+        categorySelect.value =
+            this.dataset.currentCategoryId || '';
+
+        categorySelect.dispatchEvent(new Event('change'));
+
+        violationTypeSelect.value =
+            this.dataset.currentTypeId || '';
+
+        dateInput.value =
+            this.dataset.currentDate || '';
+
+        descriptionInput.value =
+            this.dataset.currentDescription || '';
+
+        modal.show();
+    });
+});
+
+
+   actionSelect.addEventListener('change', function () {
+    const isDeletion = this.value === 'deletion';
+
+    correctionFields.classList.toggle('d-none', isDeletion);
+    deletionFields.classList.toggle('d-none', !isDeletion);
+
+    deletionEvidenceFields.classList.toggle('d-none', !isDeletion);
+});
+
+    categorySelect.addEventListener('change', function () {
+        const categoryId = this.value;
+
+        Array.from(violationTypeSelect.options).forEach(option => {
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+
+            option.hidden = !categoryId ||
+                option.dataset.categoryId !== categoryId;
+
+            if (option.hidden && option.selected) {
+                violationTypeSelect.value = '';
+            }
+        });
+    });
+
+    startCameraButton.addEventListener('click', async function () {
+        clearError();
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showError('Camera access is unavailable in this browser or page context. You can upload evidence instead.');
+            return;
+        }
+
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: { facingMode: 'environment' }
+            });
+
+            video.srcObject = cameraStream;
+video.classList.remove('d-none');
+
+if (captureButton) {
+    captureButton.classList.remove('d-none');
+    captureButton.disabled = false;
+}
+
+if (stopCameraButton) {
+    stopCameraButton.classList.remove('d-none');
+    stopCameraButton.disabled = false;
+}
+
+if (startCameraButton) {
+    startCameraButton.disabled = true;
+}
+
+cameraStatus.textContent =
+    'Camera is on. Capture a photo only when you are ready.';
+        } catch (error) {
+            stopCamera();
+            showError('Camera access was not granted or is unavailable. You can still upload evidence.');
+        }
+    });
+
+    captureButton.addEventListener('click', function () {
+        if (!cameraStream || !video.videoWidth || !video.videoHeight) {
+            showError('Wait for the camera preview to become ready, then try again.');
+            return;
+        }
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        cameraImageData = canvas.toDataURL('image/jpeg', 0.85);
+        photoPreview.src = cameraImageData;
+        photoPreview.classList.remove('d-none');
+        removePhotoButton.classList.remove('d-none');
+        cameraStatus.textContent = 'Photo captured. It will only be sent if you submit this request.';
+        clearError();
+        stopCamera();
+    });
+
+    stopCameraButton.addEventListener('click', stopCamera);
+
+    removePhotoButton.addEventListener('click', function () {
+        removeCapturedPhoto();
+        cameraStatus.textContent = 'Captured photo removed.';
+    });
+
+    modalElement.addEventListener('hidden.bs.modal', function () {
+        stopCamera();
+    });
+
+    submitButton.addEventListener('click', async function () {
+        clearError();
+
+        if (!selectedViolationId) {
+            showError('Please select a violation record first.');
+            return;
+        }
+
+        const action = actionSelect.value;
+        const reason = reasonInput.value.trim();
+
+        if (!['correction', 'deletion'].includes(action)) {
+            showError('Please choose correction or deletion.');
+            return;
+        }
+
+        if (reason.length < 10) {
+            showError('Please provide a reason containing at least 10 characters.');
+            reasonInput.focus();
+            return;
+        }
+
+        if (action === 'correction') {
+            if (!categorySelect.value || !violationTypeSelect.value ||
+                !dateInput.value || !descriptionInput.value.trim()) {
+                showError('Please complete the category, violation type, date/time, and description for the proposed correction.');
+                return;
+            }
+        }
+
+        const files = Array.from(evidenceInput.files || []);
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+        const maxFileSize = 10 * 1024 * 1024;
+
+        if (files.length > 5) {
+            showError('You can attach up to 5 evidence files.');
+            return;
+        }
+
+        for (const file of files) {
+            const extension = (file.name.split('.').pop() || '').toLowerCase();
+
+            if (!allowedExtensions.includes(extension) || file.size > maxFileSize) {
+                showError('Each evidence file must be JPG, JPEG, PNG, WEBP, or PDF and no larger than 10 MB.');
+                return;
+            }
+        }
+
+        const formData = new FormData();
+        formData.append('reason', reason);
+
+        if (action === 'correction') {
+
+formData.append(
+    'requested_violation_category_id',
+    categorySelect.value
+);
+
+formData.append(
+    'requested_violation_type_id',
+    violationTypeSelect.value
+);
+
+formData.append(
+    'requested_violation_date',
+    dateInput.value.replace('T', ' ') + ':00'
+);
+
+            formData.append('description', descriptionInput.value.trim());
+        } else {
+            files.forEach(file => formData.append('evidence_files[]', file));
+        }
+
+        const url = action === 'correction'
+            ? routeFor(correctionUrlTemplate, selectedViolationId)
+            : routeFor(deletionUrlTemplate, selectedViolationId);
+
+        submitButton.disabled = true;
+        submitButton.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Submitting...';
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+            if (!csrfToken) {
+                throw new Error('The security token is missing. Refresh the page and try again.');
+            }
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: formData
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                if (data.errors) {
+                    const messages = Object.values(data.errors).flat();
+                    throw new Error(messages.join(' '));
+                }
+
+                throw new Error(data.message || 'The request could not be submitted.');
+            }
+
+            stopCamera();
+            modal.hide();
+
+            if (typeof Swal !== 'undefined') {
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Request Submitted',
+                    text: data.message || 'Your request was submitted for administrative review.'
+                });
+            } else {
+                alert(data.message || 'Your request was submitted for review.');
+            }
+
+            window.location.reload();
+        } catch (error) {
+            showError(error.message || 'An unexpected error occurred. Please try again.');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.innerHTML =
+                '<i class="bi bi-send me-1"></i>Submit Request';
+        }
+    });
+});
+</script>
+
 <script src="{{ asset('js/student-record.js') }}"></script>
+
 
 @endpush

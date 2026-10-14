@@ -13,6 +13,8 @@ class SecurityInfo extends Model
         'firstname',
         'middlename',
         'lastname',
+        'name_suffix',
+'status_id',
 
     ];
 }

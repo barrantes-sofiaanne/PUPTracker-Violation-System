@@ -1006,9 +1006,18 @@
 
                     @csrf
 
-                    <label for="notification_date" class="form-label fw-semibold">Date Assigned (shown in Student Sanction Record)</label>
+                   <label for="modal_notification_date"
+       class="form-label fw-semibold">
+    Date Assigned (shown in Student Sanction Record)
+</label>
 
-                    <input type="date" id="notification_date" name="notification_date" class="form-control" required>
+<input
+    type="date"
+    id="modal_notification_date"
+    name="notification_date"
+    class="form-control"
+    required
+>
 
                     <small class="text-muted">The selected date will be shown in the student's Sanction Record tab.</small>
 
@@ -1289,6 +1298,33 @@
 
 
 <style>
+    /* Keep the Sanction Request Review close button
+   inside its header on narrow mobile screens. */
+#sanctionRequestReviewModal .modal-header {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+#sanctionRequestReviewModal .modal-title {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+#sanctionRequestReviewModal .admin-modal-close {
+    position: static;
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+#sanctionRequestReviewModal input[type="date"] {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
     #reviewProofModal .review-proof-student-subtitle {
         color: rgba(255, 255, 255, .9);
         margin-top: 4px;
@@ -1680,8 +1716,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const rejectProofForm = document.getElementById('rejectProofForm');
 
-    const dateInput = document.getElementById('notification_date');
-
+const dateInput = document.getElementById('modal_notification_date');
     const today = new Date().toISOString().split('T')[0];
 
 

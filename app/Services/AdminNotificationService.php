@@ -97,7 +97,7 @@ if (
 // Email the operational Admins when a student submits a violation correction request.
 if (
     $audience === AdminNotification::AUDIENCE_ADMIN
-    && $type === 'violation_correction_request'
+    && in_array($type, ['violation_correction_request', 'violation_deletion_request'], true)
     && $targetType === 'violation_correction_request'
 ) {
     try {
@@ -532,12 +532,12 @@ private function sendViolationCorrectionRequestEmail(AdminNotification $notifica
                     notificationMessage: (string) $notification->message,
                     recipientName: (string) ($admin->username ?: 'Administrator'),
                     actionUrl: $this->openUrl($notification),
-                    actionText: 'Review Correction Request',
+                    actionText: 'Review Correction / Deletion Request',
                 )
             );
         } catch (\Throwable $e) {
             app(EmailIncidentService::class)->record(
-                emailType: 'Violation Correction Request Notification',
+                emailType: (string) ($notification->title ?? 'Violation Correction / Deletion Request') . ' Notification',
                 errorMessage: $e->getMessage(),
                 relatedRecordType: 'AdminNotification',
                 relatedRecordId: $notification->admin_notification_id,

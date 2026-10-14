@@ -20,6 +20,7 @@ class AdminInfo extends Model
         'firstname',
         'middlename',
         'lastname',
+        'name_suffix',
         'status_id',
         'role_id',
     ];

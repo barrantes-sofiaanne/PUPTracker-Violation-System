@@ -139,16 +139,20 @@ $students = User::with([
     |--------------------------------------------------------------------------
     */
 
-    $violationHistory = Violation::with([
-        'student.studentInfo.program',
-        'violationType.violationCategory',
-        'recorder.adminInfo',
-        // Eager-loaded so the history table's Evidence column can render the
-        // per-violation count without an N+1 query per row.
-        'evidence',
-    ])
-    ->notDenied()
-    ->latest('violation_date')
+$violationHistory = Violation::with([
+    'student.studentInfo.program',
+    'violationType.violationCategory',
+    'recorder.adminInfo',
+    'evidence',
+])
+->where(function ($query) {
+    $query->whereNull('status')
+        ->orWhereIn('status', [
+            Violation::STATUS_PENDING,
+            Violation::STATUS_CONFIRMED,
+            Violation::STATUS_DELETED,
+        ]);
+})    ->latest('violation_date')
     ->when($request->filled('history_search'), function ($query) use ($request) {
         $search = '%' . trim($request->input('history_search')) . '%';
         $query->where(function ($q) use ($search) {
@@ -1171,8 +1175,14 @@ return \App\Support\Responses::unexpectedError();
         'violationType.violationCategory',
         'recorder.adminInfo'
     ])
-    ->notDenied()
-    ->when($request->student, function ($query) use ($request) {
+->where(function ($query) {
+    $query->whereNull('status')
+        ->orWhereIn('status', [
+            Violation::STATUS_PENDING,
+            Violation::STATUS_CONFIRMED,
+            Violation::STATUS_DELETED,
+        ]);
+})    ->when($request->student, function ($query) use ($request) {
         $query->whereHas('student', function ($q) use ($request) {
             $q->where('student_number', 'like', "%{$request->student}%")
               ->orWhere('first_name', 'like', "%{$request->student}%")
