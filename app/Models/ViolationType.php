@@ -14,13 +14,14 @@ class ViolationType extends Model
 
     public $timestamps = false;
 
- protected $fillable = [
+protected $fillable = [
     'violation_type_id',
+    'violation_type',
     'violation_category_id',
     'resolution_number',
     'violation_description',
     'severity_level',
-    ];
+];
 
 public function violationCategory(): BelongsTo
 {
