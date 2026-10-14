@@ -484,18 +484,6 @@ $offenseCount = Violation::where('student_number', $user->student_number)
         ], 422);
     }
 
-    $sanctionText = strtolower(
-        trim((string) $assignedSanction->disciplinary_sanction)
-    );
-
-    // Warning-level violations remain in the individual violations log.
-    if ($sanctionText !== '' && str_contains($sanctionText, 'warning')) {
-        return response()->json([
-            'success' => false,
-            'message' => 'This violation is warning-level and does not require a sanction request. Please check your individual violations log.',
-        ], 422);
-    }
-
     // Only Community Service and Campus Service use the student
 
     // Preserve the standard sanction-request workflow for configured
