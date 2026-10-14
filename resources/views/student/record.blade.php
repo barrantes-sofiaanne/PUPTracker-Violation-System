@@ -3065,6 +3065,10 @@
         $assignedSanctionViolationIds[$violation->violation_id]
     );
 
+    // A pending correction/deletion request blocks both corrective actions
+    // and sanction requests until the administrator approves or rejects it.
+    $hasPendingCorrection = $pendingCorrectionRequests->has($violation->violation_id);
+
     // Preserve the existing warning-level detection.
     $isWarningLevelViolation = isset(
         $warningLevelViolationIds[(int) $violation->violation_id]
@@ -3140,21 +3144,31 @@
             </p>
         </div>
 
-        <button type="button"
-                class="btn btn-outline-danger btn-sm corrective-action-btn mt-2"
-                data-violation-id="{{ $violation->violation_id }}"
-                
-data-current-category-id="{{ $categoryId }}"
-data-current-category="{{ $violation->violation_category_display }}"
-data-current-type-id="{{ $typeId }}"
-data-current-type="{{ $violation->violation_type_display }}"
-data-current-date="{{ \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d\TH:i') }}"
-data-current-date-display="{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}"
-data-current-description="{{ $violation->description ?? '' }}"
->
-            <i class="bi bi-pencil-square me-1"></i>
-            Request Correction / Deletion
-        </button>
+        @if($hasPendingCorrection)
+            <button type="button" class="btn btn-outline-secondary btn-sm corrective-action-btn mt-2" disabled aria-disabled="true" title="Your request is pending administrator review.">
+                <i class="bi bi-hourglass-split me-1"></i>Request Pending Review
+            </button>
+            <small class="d-block text-muted mt-1">You can submit another request if this one is rejected.</small>
+        @elseif($hasAssignedSanction)
+            <button type="button" class="btn btn-outline-secondary btn-sm corrective-action-btn mt-2" disabled aria-disabled="true" title="A sanction has already been assigned.">
+                <i class="bi bi-shield-lock me-1"></i>Correction / Deletion Unavailable
+            </button>
+            <small class="d-block text-muted mt-1">A sanction has already been assigned to this violation.</small>
+        @else
+            <button type="button"
+                    class="btn btn-outline-danger btn-sm corrective-action-btn mt-2"
+                    data-violation-id="{{ $violation->violation_id }}"
+                    data-current-category-id="{{ $categoryId }}"
+                    data-current-category="{{ $violation->violation_category_display }}"
+                    data-current-type-id="{{ $typeId }}"
+                    data-current-type="{{ $violation->violation_type_display }}"
+                    data-current-date="{{ \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d\TH:i') }}"
+                    data-current-date-display="{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}"
+                    data-current-description="{{ $violation->description ?? '' }}">
+                <i class="bi bi-pencil-square me-1"></i>
+                Request Correction / Deletion
+            </button>
+        @endif
     @else
         @if($isActiveRequest)
             <span class="sanction-state sanction-state-pending">
@@ -3165,6 +3179,11 @@ data-current-description="{{ $violation->description ?? '' }}"
             <span class="sanction-state sanction-state-assigned">
                 <i class="bi bi-shield-check"></i>Sanction Assigned
             </span>
+        @elseif($hasPendingCorrection)
+            <span class="sanction-state sanction-state-pending" aria-live="polite">
+                <i class="bi bi-hourglass-split"></i>Correction Review Pending
+            </span>
+            <small class="d-block text-muted mt-2">Sanction requests are unavailable until this request is resolved.</small>
         @elseif($requestStatus === 'declined' && !$isActiveRequest)
             <span class="sanction-state sanction-state-declined">
                 <i class="bi bi-x-circle"></i>Request Declined
@@ -3183,21 +3202,31 @@ data-current-description="{{ $violation->description ?? '' }}"
             <small class="d-block text-muted mt-2">Start a sanction request</small>
         @endif
 
-        <button type="button"
-                class="btn btn-outline-danger btn-sm corrective-action-btn mt-2"
-                data-violation-id="{{ $violation->violation_id }}"
-                
-data-current-category-id="{{ $categoryId }}"
-data-current-category="{{ $violation->violation_category_display }}"
-data-current-type-id="{{ $typeId }}"
-data-current-type="{{ $violation->violation_type_display }}"
-data-current-date="{{ \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d\TH:i') }}"
-data-current-date-display="{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}"
-data-current-description="{{ $violation->description ?? '' }}"
->
-            <i class="bi bi-pencil-square me-1"></i>
-            Request Correction / Deletion
-        </button>
+        @if($hasPendingCorrection)
+            <button type="button" class="btn btn-outline-secondary btn-sm corrective-action-btn mt-2" disabled aria-disabled="true" title="Your request is pending administrator review.">
+                <i class="bi bi-hourglass-split me-1"></i>Request Pending Review
+            </button>
+            <small class="d-block text-muted mt-1">You can submit another request if this one is rejected.</small>
+        @elseif($hasAssignedSanction)
+            <button type="button" class="btn btn-outline-secondary btn-sm corrective-action-btn mt-2" disabled aria-disabled="true" title="A sanction has already been assigned.">
+                <i class="bi bi-shield-lock me-1"></i>Correction / Deletion Unavailable
+            </button>
+            <small class="d-block text-muted mt-1">A sanction has already been assigned to this violation.</small>
+        @else
+            <button type="button"
+                    class="btn btn-outline-danger btn-sm corrective-action-btn mt-2"
+                    data-violation-id="{{ $violation->violation_id }}"
+                    data-current-category-id="{{ $categoryId }}"
+                    data-current-category="{{ $violation->violation_category_display }}"
+                    data-current-type-id="{{ $typeId }}"
+                    data-current-type="{{ $violation->violation_type_display }}"
+                    data-current-date="{{ \Carbon\Carbon::parse($violation->violation_date)->format('Y-m-d\TH:i') }}"
+                    data-current-date-display="{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') }}"
+                    data-current-description="{{ $violation->description ?? '' }}">
+                <i class="bi bi-pencil-square me-1"></i>
+                Request Correction / Deletion
+            </button>
+        @endif
     @endif
 </td>
 

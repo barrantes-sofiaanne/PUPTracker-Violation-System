@@ -108,6 +108,10 @@ if (
             'Correction Request Pending',
             'Correction Request Approved',
             'Correction Request Rejected',
+            'Deletion Request Pending',
+            'Deletion Request Approved',
+            'Deletion Request Rejected',
+            'Violation Deletion Request Approved',
         ], true)
     )
 )

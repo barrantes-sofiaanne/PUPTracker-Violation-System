@@ -432,6 +432,27 @@ public function requestSanction(Request $request)
         ], 422);
     }
 
+    // A sanction request is blocked only while a correction/deletion request
+    // for one of this student's confirmed violations of this type is pending.
+    // Once the admin approves or rejects the change request, the existing
+    // sanction-request workflow resumes unchanged.
+    $hasPendingCorrectionOrDeletion = ViolationCorrectionRequest::query()
+        ->where('student_number', $user->student_number)
+        ->where('status', ViolationCorrectionRequest::STATUS_PENDING)
+        ->whereHas('violation', function ($query) use ($user, $violationType) {
+            $query->where('student_number', $user->student_number)
+                ->where('violation_type_id', $violationType->violation_type_id)
+                ->where('status', Violation::STATUS_CONFIRMED);
+        })
+        ->exists();
+
+    if ($hasPendingCorrectionOrDeletion) {
+        return response()->json([
+            'success' => false,
+            'message' => 'A correction or deletion request for this violation type is pending review. You can request a sanction after the Administrator resolves that request.',
+        ], 422);
+    }
+
 $offenseCount = Violation::where('student_number', $user->student_number)
     ->where('violation_type_id', $violationType->violation_type_id)
     ->effective()
@@ -663,6 +684,16 @@ $effectiveCount = Violation::query()
         abort_unless($this->isStudentAccountActive($user), 403, 'Your account is inactive.');
         abort_unless($violation->is_effective, 422, 'Only confirmed violations can be submitted for deletion review.');
 
+        $hasAssignedSanction = StudentSanctionRecord::where(
+            'violation_id', $violation->violation_id
+        )->exists();
+
+        if ($hasAssignedSanction) {
+            return back()->withErrors([
+                'correction_request' => 'Correction and deletion requests are unavailable because a sanction has already been assigned to this violation.',
+            ]);
+        }
+
         $validated = $request->validate([
             'reason' => ['required', 'string', 'min:10', 'max:2000'],
             'evidence_files' => ['nullable', 'array', 'max:5'],
@@ -717,6 +748,26 @@ $effectiveCount = Violation::query()
                 );
             } catch (\Throwable $e) {
                 Log::warning('Unable to send admin notification for deletion request.', ['error' => $e->getMessage()]);
+            }
+
+            // Notify the student too; the notification service sends the email
+            // for the pending deletion-request event without affecting submission.
+            try {
+                app(\App\Services\StudentNotificationService::class)->create(
+                    studentNumber: $user->student_number,
+                    type: 'violation_correction',
+                    title: 'Deletion Request Pending',
+                    message: 'Your violation deletion request has been submitted and is now pending review by the Administrator.',
+                    targetType: 'violation_correction_request',
+                    targetId: (int) $changeRequest->request_id,
+                    userId: (int) $user->user_id,
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Unable to send student notification for deletion request.', [
+                    'request_id' => $changeRequest->request_id,
+                    'student_number' => $user->student_number,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             return redirect()->route('student.record')->with('success', 'Your deletion request and supporting evidence were submitted to the Administrator for review.');
@@ -863,29 +914,10 @@ public function requestCorrection(
     )->exists();
 
     if ($hasAssignedSanction) {
-        $requestedDate = \Carbon\Carbon::parse(
-            $validated['requested_violation_date']
-        );
-
-        $currentDate = $violation->violation_date
-            ? \Carbon\Carbon::parse($violation->violation_date)
-            : null;
-
-        $typeChanged =
-            (string) $validated['requested_violation_type_id']
-            !== (string) $violation->violation_type_id;
-
-        $dateChanged =
-            $currentDate &&
-            $currentDate->format('Y-m-d H:i') !== $requestedDate->format('Y-m-d H:i');
-            
-
-        if ($typeChanged || $dateChanged) {
-            return back()->withErrors([
-                'correction_request' =>
-                    'The violation type and date cannot be changed through a correction request because a sanction has already been assigned. You may request correction of the description or factual remarks.',
-            ])->withInput();
-        }
+        return back()->withErrors([
+            'correction_request' =>
+                'Correction and deletion requests are unavailable because a sanction has already been assigned to this violation.',
+        ])->withInput();
     }
 
     $requestedDescription = trim(
@@ -907,7 +939,7 @@ public function requestCorrection(
     $sameDate =
         $violation->violation_date
         && \Carbon\Carbon::parse($violation->violation_date)
-            ->format('Y-m-d H:i') !== $requestedDate->format('Y-m-d H:i');
+            ->format('Y-m-d H:i') === $requestedDate->format('Y-m-d H:i');
 
     $sameDescription =
         trim((string) ($violation->description ?? ''))
