@@ -3075,25 +3075,25 @@
     );
 
     // Warning-level violations must not be treated as needing a request.
-    $rowSanctionStatus = $isWarningLevelViolation
-        ? 'no-request'
+    
+    // All confirmed violations can enter the sanction-request workflow,
+    // including warning-level violations.
+    $rowSanctionStatus = $hasAssignedSanction
+        ? 'assigned'
         : (
-            $hasAssignedSanction
-                ? 'assigned'
+            $requestStatus === 'pending' && $isActiveRequest
+                ? 'pending'
                 : (
-                    $requestStatus === 'pending' && $isActiveRequest
-                        ? 'pending'
+                    $requestStatus === 'approved' && !$isActiveRequest
+                        ? 'approved'
                         : (
-                            $requestStatus === 'approved' && !$isActiveRequest
-                                ? 'approved'
-                                : (
-                                    $requestStatus === 'declined' && !$isActiveRequest
-                                        ? 'declined'
-                                        : 'needs'
-                                )
+                            $requestStatus === 'declined' && !$isActiveRequest
+                                ? 'declined'
+                                : 'needs'
                         )
                 )
         );
+
 
     $rowDate = \Carbon\Carbon::parse(
         $violation->violation_date

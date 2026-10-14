@@ -629,10 +629,12 @@
      tabindex="-1" aria-labelledby="createSecurityModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content admin-modal-content">
-            <form id="createSecurityAccountForm"
-                  method="POST"
-                  action="{{ route('admin.users.security.store') }}">
-                @csrf
+<form id="createSecurityAccountForm"
+      method="POST"
+      action="{{ route('admin.users.security.store') }}"
+      data-security-url="{{ route('admin.users.security.store') }}"
+      data-admin-url="{{ route('admin.users.admins.store') }}">
+    @csrf
                 <input type="hidden" id="ossStaffRoleId" value="{{ $ossStaffRoleId }}">
                 <input type="hidden" id="securityFormRoleId" name="role_id" value="{{ $ossStaffRoleId }}" disabled>
 
