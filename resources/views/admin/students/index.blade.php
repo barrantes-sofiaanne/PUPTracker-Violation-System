@@ -349,12 +349,7 @@
                             <tbody>
                                 @forelse($admins as $admin)
                                     <tr>
-                                        <td>
-    {{ trim(($admin->adminInfo->firstname ?? '') . ' ' . ($admin->adminInfo->lastname ?? '')) ?: '—' }}
-    @if(trim((string) ($admin->adminInfo->name_suffix ?? '')) !== '')
-        <span class="text-muted">{{ $admin->adminInfo->name_suffix }}</span>
-    @endif
-</td>
+                                        <td>{{ trim(($admin->adminInfo->firstname ?? '') . ' ' . ($admin->adminInfo->lastname ?? '')) ?: '—' }}</td>
                                         <td>{{ $admin->email }}</td>
                                         <td>{{ $adminRoles->firstWhere('roles_id', $admin->adminInfo->role_id ?? 1)->roles_name ?? 'Admin' }}</td>
                                         <td>
@@ -376,7 +371,6 @@
                                                     data-firstname="{{ $admin->adminInfo->firstname ?? '' }}"
                                                     data-middlename="{{ $admin->adminInfo->middlename ?? '' }}"
                                                     data-lastname="{{ $admin->adminInfo->lastname ?? '' }}"
-                                                    data-suffix="{{ $admin->adminInfo->name_suffix ?? '' }}"
                                                     data-status="{{ $admin->adminInfo->status_id ?? 1 }}"
                                                     data-role="{{ $admin->adminInfo->role_id ?? 1 }}">
                                                     <i class="bi bi-pencil-square me-1"></i>Edit
@@ -414,7 +408,7 @@
                                     <span class="input-group-text bg-white">
                                         <i class="bi bi-search"></i>
                                     </span>
-                                    <input type="text" name="security_search" class="form-control" placeholder="Search security by name or email..." value="{{ request('security_search') }}">
+                                    <input type="text" name="security_search" class="form-control" placeholder="Search security or OSS Staff by name or email..." value="{{ request('security_search') }}">
                                 </div>
                                 <button type="submit" class="admin-btn admin-btn-primary">Search</button>
                             </div>
@@ -445,7 +439,7 @@
                                 <tr>
                                     <th>Name</th>
                                     <th>Email</th>
-                                    <th>Account Type</th>
+                                    <th>Position</th>
                                     <th>Status</th>
                                     <th>Action</th>
                                 </tr>
@@ -465,26 +459,10 @@
                                         $securityFullName = trim($securityFirstName . ' ' . $securityMiddleName . ' ' . $securityLastName);
                                     @endphp
                                     <tr>
-                                        <td>
-                                            {{ $securityFullName ?: '—' }}
-                                            @if(trim((string) ($security->securityInfo->name_suffix ?? '')) !== '')
-                                                <span class="text-muted">{{ $security->securityInfo->name_suffix }}</span>
-                                            @endif
-                                        </td>
+                                        <td>{{ $securityFullName ?: '—' }}</td>
                                         <td>{{ $security->email }}</td>
-                                        <td>Security Personnel</td>
-                                        <td>
-                                            @php
-                                                $securityStatusName = strtolower(trim((string) optional($statuses->firstWhere('status_id', $security->securityInfo->status_id ?? null))->status_name));
-                                            @endphp
-                                            @if($securityStatusName === 'active')
-                                                <x-admin.badge status="active" label="Active" />
-                                            @elseif($securityStatusName === 'inactive')
-                                                <x-admin.badge status="inactive" label="Inactive" />
-                                            @else
-                                                <x-admin.badge status="info" :label="$securityStatusName !== '' ? ucfirst($securityStatusName) : 'Unknown'" />
-                                            @endif
-                                        </td>
+                                        <td>{{ optional($security->securityProfile)->position ?? 'Security Personnel' }}</td>
+                                        <td><x-admin.badge status="active" label="Active" /></td>
                                         <td class="text-end user-action-cell">
                                             <div class="user-action-group">
                                                 <button
@@ -494,8 +472,7 @@
                                                     data-firstname="{{ $securityFirstName }}"
                                                     data-middlename="{{ $securityMiddleName }}"
                                                     data-lastname="{{ $securityLastName }}"
-                                                    data-suffix="{{ $security->securityInfo->name_suffix ?? '' }}"
-                                                    data-status="{{ $security->securityInfo->status_id ?? '' }}">
+                                                    data-position="{{ optional($security->securityProfile)->position ?? '' }}">
                                                     <i class="bi bi-pencil-square me-1"></i>Edit
                                                 </button>
                                                 <button class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteSecurityBtn" data-id="{{ $security->id }}" data-name="{{ $security->email }}">
@@ -505,13 +482,56 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <x-admin.empty-state
-                                        :colspan="5"
-                                        icon="bi-person-workspace"
-                                        title="No security accounts found"
-                                        message="No security accounts match your search."
-                                        :clearUrl="route('admin.students', ['tab' => 'security'])" />
+                                    @if($ossStaff->isEmpty())
+                                        <x-admin.empty-state
+                                            :colspan="5"
+                                            icon="bi-person-workspace"
+                                            title="No security or OSS Staff accounts found"
+                                            message="No accounts match your search."
+                                            :clearUrl="route('admin.students', ['tab' => 'security'])" />
+                                    @endif
                                 @endforelse
+
+                                @foreach($ossStaff as $ossUser)
+                                    @php
+                                        $ossFirstName = $ossUser->adminInfo->firstname ?? '';
+                                        $ossMiddleName = $ossUser->adminInfo->middlename ?? '';
+                                        $ossLastName = $ossUser->adminInfo->lastname ?? '';
+                                        $ossFullName = trim($ossFirstName . ' ' . $ossMiddleName . ' ' . $ossLastName);
+                                        $ossStatus = strtolower(trim((string) optional($statuses->firstWhere('status_id', $ossUser->adminInfo->status_id ?? 1))->status_name));
+                                        $ossRoleId = $ossUser->adminInfo->role_id ?? $ossStaffRoleId;
+                                    @endphp
+                                    <tr>
+                                        <td>{{ $ossFullName ?: '—' }}</td>
+                                        <td>{{ $ossUser->email }}</td>
+                                        <td>OSS Staff</td>
+                                        <td>
+                                            @if($ossStatus === 'active')
+                                                <x-admin.badge status="active" label="Active" />
+                                            @else
+                                                <x-admin.badge status="inactive" label="Inactive" />
+                                            @endif
+                                        </td>
+                                        <td class="text-end user-action-cell">
+                                            <div class="user-action-group">
+                                                <button
+                                                    class="admin-btn admin-btn-view admin-btn-sm user-action-btn editAdminBtn"
+                                                    data-id="{{ $ossUser->id }}"
+                                                    data-email="{{ $ossUser->email }}"
+                                                    data-firstname="{{ $ossFirstName }}"
+                                                    data-middlename="{{ $ossMiddleName }}"
+                                                    data-lastname="{{ $ossLastName }}"
+                                                    data-status="{{ $ossUser->adminInfo->status_id ?? 1 }}"
+                                                    data-role="{{ $ossRoleId }}">
+                                                    <i class="bi bi-pencil-square me-1"></i>Edit
+                                                </button>
+                                                <button class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteAdminBtn" data-id="{{ $ossUser->id }}" data-name="{{ $ossUser->email }}">
+                                                    <i class="bi bi-trash me-1"></i>Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
                             </tbody>
                         </table>
                     </div>
@@ -581,7 +601,6 @@
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" class="form-control"></div>
                 <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" class="form-control" required></div>
-                <div class="col-md-4"><label class="form-label">Suffix</label><input name="name_suffix" class="form-control" placeholder="e.g. Jr., Sr., III" maxlength="20"></div>
                 <div class="col-md-6">
                     <label class="form-label">Role <span class="required-asterisk">*</span></label>
                     <select name="role_id" id="create_admin_role_id" class="form-select" required>
@@ -652,22 +671,10 @@
                             <input name="lastname" class="form-control" required>
                         </div>
 
-                        <div class="col-md-4">
-                            <label class="form-label">Suffix</label>
-                            <input name="name_suffix" class="form-control" maxlength="20"
-                                   placeholder="e.g. Jr., Sr., III">
-                        </div>
-
-                        <div class="col-12" id="securityStatusGroup">
-                            <label class="form-label">Status <span class="required-asterisk">*</span></label>
-                            <select name="status_id" id="security_status_id" class="form-select" required>
-                                @foreach($statuses as $status)
-                                    <option value="{{ $status->status_id }}"
-                                        {{ strtolower($status->status_name) === 'active' ? 'selected' : '' }}>
-                                        {{ $status->status_name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                        <div class="col-12" id="securityPositionGroup">
+                            <label class="form-label">Position</label>
+                            <input name="position" id="create_security_position"
+                                   class="form-control" value="Security Personnel" readonly>
                         </div>
 
                         <div class="col-12 d-none" id="ossStaffStatusGroup">
@@ -760,11 +767,10 @@
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="admin_firstname" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" id="admin_middlename" class="form-control"></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" id="admin_lastname" class="form-control" required></div>
-            <div class="col-md-4"><label class="form-label">Suffix</label><input name="name_suffix" id="admin_name_suffix" class="form-control" maxlength="20" placeholder="e.g. Jr., Sr., III"></div>
             <div class="col-md-6">
                 <label for="admin_role_id" class="form-label">Role <span class="required-asterisk">*</span></label>
                 <select name="role_id" id="admin_role_id" class="form-select" required>
-                    @foreach ($adminRoles->whereIn('roles_name', ['Admin', 'IT Administrator']) as $role)
+                    @foreach ($adminRoles->whereIn('roles_name', ['Admin', 'IT Administrator', 'OSS Staff']) as $role)
                         <option value="{{ $role->roles_id }}">{{ $role->roles_name }}</option>
                     @endforeach
                 </select>
@@ -791,15 +797,7 @@
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="security_firstname" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" id="security_middlename" class="form-control"></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" id="security_lastname" class="form-control" required></div>
-            <div class="col-md-4"><label class="form-label">Suffix</label><input name="name_suffix" id="security_name_suffix" class="form-control" maxlength="20" placeholder="e.g. Jr., Sr., III"></div>
-            <div class="col-md-6">
-                <label for="edit_security_status_id" class="form-label">Status <span class="required-asterisk">*</span></label>
-                <select name="status_id" id="edit_security_status_id" class="form-select" required>
-                    @foreach($statuses as $status)
-                        <option value="{{ $status->status_id }}">{{ $status->status_name }}</option>
-                    @endforeach
-                </select>
-            </div>
+            <div class="col-md-6"><label class="form-label">Position</label><input name="position" id="security_position" class="form-control" value="Security Personnel" readonly tabindex="-1"></div>
         </div></div>
         <div class="modal-footer admin-modal-footer"><button type="button" class="admin-btn admin-btn-neutral" data-bs-dismiss="modal">Cancel</button><button class="admin-btn admin-btn-primary">Update Security</button></div>
     </form>
@@ -962,7 +960,6 @@ document.querySelectorAll('.editAdminBtn').forEach(function (button) {
         document.getElementById('admin_firstname').value = this.dataset.firstname;
         document.getElementById('admin_middlename').value = this.dataset.middlename;
         document.getElementById('admin_lastname').value = this.dataset.lastname;
-        document.getElementById('admin_name_suffix').value = this.dataset.suffix || '';
         document.getElementById('admin_status_id').value = this.dataset.status;
         document.getElementById('admin_role_id').value = this.dataset.role;
         document.getElementById('editAdminForm').action = "{{ url('/admin/users/admins') }}/" + this.dataset.id;
@@ -984,8 +981,7 @@ document.querySelectorAll('.editSecurityBtn').forEach(function (button) {
         document.getElementById('security_firstname').value = this.dataset.firstname;
         document.getElementById('security_middlename').value = this.dataset.middlename;
         document.getElementById('security_lastname').value = this.dataset.lastname;
-        document.getElementById('security_name_suffix').value = this.dataset.suffix || '';
-        document.getElementById('edit_security_status_id').value = this.dataset.status || '';
+        document.getElementById('security_position').value = this.dataset.position || '';
         document.getElementById('editSecurityForm').action = "{{ url('/admin/users/security') }}/" + this.dataset.id;
         new bootstrap.Modal(document.getElementById('editSecurityModal')).show();
     });
@@ -1028,8 +1024,8 @@ const importGuides = {
         help: 'Role and status values can use readable names (e.g., Admin, IT Administrator, Active).',
     },
     security_create_activate: {
-        columns: ['email', 'firstname', 'middlename', 'lastname', 'name_suffix', 'position', 'password'],
-        help: 'Firstname and lastname are required. Suffix is optional. Position may be retained for legacy imports.',
+        columns: ['email', 'firstname', 'middlename', 'lastname', 'position', 'password'],
+        help: 'Firstname and lastname are required. Position is optional but recommended for complete profiles.',
     },
 };
 
@@ -1145,33 +1141,28 @@ if (importFileInput && importSelectedFileName) {
 (function () {
     const accountType = document.getElementById('securityAccountType');
     const form = document.getElementById('createSecurityAccountForm');
-    const securityStatusGroup = document.getElementById('securityStatusGroup');
-    const securityStatusSelect = document.getElementById('security_status_id');
-    const ossStatusGroup = document.getElementById('ossStaffStatusGroup');
-    const ossStatusSelect = document.getElementById('oss_staff_status_id');
+    const positionGroup = document.getElementById('securityPositionGroup');
+    const statusGroup = document.getElementById('ossStaffStatusGroup');
+    const statusSelect = document.getElementById('oss_staff_status_id');
     const roleIdInput = document.getElementById('securityFormRoleId');
     const ossStaffRoleId = document.getElementById('ossStaffRoleId');
     const submitButton = document.getElementById('createSecurityAccountSubmit');
 
     if (!accountType || !form) return;
 
-    const securityUrl = "{{ route('admin.users.security.store') }}";
-    const adminUrl = "{{ route('admin.users.admins.store') }}";
+    const securityUrl = '{{ route("admin.users.security.store") }}';
+    const adminUrl = '{{ route("admin.users.admins.store") }}';
 
     function updateAccountType() {
         const isOssStaff = accountType.value === 'oss_staff';
 
         form.action = isOssStaff ? adminUrl : securityUrl;
 
-        securityStatusGroup.classList.toggle('d-none', isOssStaff);
-        ossStatusGroup.classList.toggle('d-none', !isOssStaff);
+        positionGroup.classList.toggle('d-none', isOssStaff);
+        statusGroup.classList.toggle('d-none', !isOssStaff);
 
-        // Submit only the status field for the selected account type.
-        securityStatusSelect.disabled = isOssStaff;
-        securityStatusSelect.required = !isOssStaff;
-
-        ossStatusSelect.disabled = !isOssStaff;
-        ossStatusSelect.required = isOssStaff;
+        statusSelect.disabled = !isOssStaff;
+        statusSelect.required = isOssStaff;
 
         if (roleIdInput) {
             roleIdInput.disabled = !isOssStaff;

@@ -129,19 +129,9 @@ class StudentController extends Controller
                 'students_page'
             )
             ->withQueryString();
-$ossStaffRoleId = Role::query()
-    ->where('roles_name', 'OSS Staff')
-    ->value('roles_id');
-    
+
         $admins = Admin::query()
             ->with('adminInfo')
-            ->where(function ($query) use ($ossStaffRoleId) {
-    if ($ossStaffRoleId) {
-        $query->whereDoesntHave('adminInfo', function ($infoQuery) use ($ossStaffRoleId) {
-            $infoQuery->where('role_id', $ossStaffRoleId);
-        });
-    }
-})
             ->when(
                 $request->filled('admin_search'),
                 function ($query) use ($request) {
@@ -180,36 +170,7 @@ $ossStaffRoleId = Role::query()
                 'admins_page'
             )
             ->withQueryString();
-$ossStaff = Admin::query()
-    ->with('adminInfo')
-    ->whereHas('adminInfo', function ($query) use ($ossStaffRoleId) {
-        if ($ossStaffRoleId) {
-            $query->where('role_id', $ossStaffRoleId);
-        } else {
-            $query->whereRaw('1 = 0');
-        }
-    })
-    ->when(
-        $request->filled('security_search'),
-        function ($query) use ($request) {
-            $search = '%' . trim($request->security_search) . '%';
 
-            $query->where(function ($searchQuery) use ($search) {
-                $searchQuery
-                    ->where('email', 'like', $search)
-                    ->orWhere('username', 'like', $search)
-                    ->orWhereHas('adminInfo', function ($infoQuery) use ($search) {
-                        $infoQuery
-                            ->where('firstname', 'like', $search)
-                            ->orWhere('middlename', 'like', $search)
-                            ->orWhere('lastname', 'like', $search);
-                    });
-            });
-        }
-    )
-    ->orderBy('id')
-    ->paginate(15, ['*'], 'oss_staff_page')
-    ->withQueryString();
         $securities = Security::query()
             ->with('securityInfo')
             ->when(
@@ -272,6 +233,40 @@ $ossStaff = Admin::query()
             )
             ->withQueryString();
 
+        // OSS Staff accounts are stored in the admins table and identified by
+        // their structured role, while Security Personnel use the security table.
+        // Load OSS Staff separately so both account types appear in the same tab.
+        $ossStaffRoleId = Role::query()
+            ->where('roles_name', 'OSS Staff')
+            ->value('roles_id');
+
+        $ossStaff = Admin::query()
+            ->with('adminInfo')
+            ->when($ossStaffRoleId !== null, function ($query) use ($ossStaffRoleId) {
+                $query->whereHas('adminInfo', function ($adminInfoQuery) use ($ossStaffRoleId) {
+                    $adminInfoQuery->where('role_id', $ossStaffRoleId);
+                });
+            }, function ($query) {
+                // Fail closed if the role is not configured.
+                $query->whereRaw('1 = 0');
+            })
+            ->when($request->filled('security_search'), function ($query) use ($request) {
+                $search = '%' . trim($request->input('security_search')) . '%';
+
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery
+                        ->where('email', 'like', $search)
+                        ->orWhereHas('adminInfo', function ($infoQuery) use ($search) {
+                            $infoQuery
+                                ->where('firstname', 'like', $search)
+                                ->orWhere('middlename', 'like', $search)
+                                ->orWhere('lastname', 'like', $search);
+                        });
+                });
+            })
+            ->orderBy('id')
+            ->get();
+
         $programs = Program::orderBy('program_name')->get();
 
         $years = Year::orderBy('year')->get();
@@ -295,20 +290,20 @@ $ossStaff = Admin::query()
             ->get();
 
         return view(
-    'admin.students.index',
-    compact(
-        'students',
-        'admins',
-        'ossStaff',
-        'securities',
-        'programs',
-        'years',
-        'sections',
-        'genders',
-        'statuses',
-        'adminRoles'
-    )
-);
+            'admin.students.index',
+            compact(
+                'students',
+                'admins',
+                'securities',
+                'ossStaff',
+                'programs',
+                'years',
+                'sections',
+                'genders',
+                'statuses',
+                'adminRoles'
+            )
+        );
     }
 
     /*
@@ -488,10 +483,6 @@ $ossStaff = Admin::query()
 
             'role_id' =>
                 'required|exists:roles_tbl,roles_id',
-                
-
-            'name_suffix' =>
-                'nullable|string|max:20',
         ]);
 
         $admin = null;
@@ -529,9 +520,6 @@ $ossStaff = Admin::query()
 
                     'lastname' =>
                         $validated['lastname'],
-
-                    'name_suffix' =>
-                        $this->nullableTrim($validated['name_suffix'] ?? null),
 
                     'status_id' =>
                         $validated['status_id'],
@@ -574,12 +562,6 @@ $ossStaff = Admin::query()
 
             'lastname' =>
                 'required|string|max:50',
-
-            'name_suffix' =>
-                'nullable|string|max:20',
-
-            'status_id' =>
-                'required|exists:status_tbl,status_id',
         ]);
 
         $security = null;
@@ -649,9 +631,6 @@ $ossStaff = Admin::query()
 
             'password' =>
                 'nullable|string|min:8',
-
-            'name_suffix' =>
-                'nullable|string|max:20',
         ]);
 
         $adminEmailBefore = $admin->email;
@@ -666,9 +645,6 @@ $ossStaff = Admin::query()
 
                 'lastname' =>
                     $admin->adminInfo->lastname,
-
-                'name_suffix' =>
-                    $admin->adminInfo->name_suffix,
 
                 'status_id' =>
                     $admin->adminInfo->status_id,
@@ -715,9 +691,6 @@ $ossStaff = Admin::query()
                     'lastname' =>
                         $validated['lastname'],
 
-                    'name_suffix' =>
-                        $this->nullableTrim($validated['name_suffix'] ?? null),
-
                     'status_id' =>
                         $validated['status_id'],
 
@@ -740,19 +713,23 @@ $ossStaff = Admin::query()
             )
         );
 
+        $ossStaffRoleId = Role::query()
+            ->where('roles_name', 'OSS Staff')
+            ->value('roles_id');
+
+        $returnTab = $ossStaffRoleId !== null
+            && (int) $validated['role_id'] === (int) $ossStaffRoleId
+                ? 'security'
+                : 'admins';
+
         return redirect()
-            ->route(
-                'admin.students',
-                ['tab' => 'admins']
-            )
-            ->with(
-                'success',
-                'Admin account updated successfully.'
-            );
+            ->route('admin.students', ['tab' => $returnTab])
+            ->with('success', 'Account updated successfully.');
     }
 
     public function destroyAdmin(Admin $admin)
     {
+        $wasOssStaff = $admin->isOssStaff();
         $adminEmail = $admin->email;
 
         $adminName = trim(
@@ -800,14 +777,8 @@ $ossStaff = Admin::query()
         );
 
         return redirect()
-            ->route(
-                'admin.students',
-                ['tab' => 'admins']
-            )
-            ->with(
-                'success',
-                'Admin account deleted successfully.'
-            );
+            ->route('admin.students', ['tab' => $wasOssStaff ? 'security' : 'admins'])
+            ->with('success', 'Account deleted successfully.');
     }
 
     private function collectAdminChanges(
@@ -845,9 +816,6 @@ $ossStaff = Admin::query()
 
             'lastname' =>
                 'Last Name',
-
-            'name_suffix' =>
-                'Suffix',
 
             'status_id' =>
                 'Status',
@@ -919,12 +887,6 @@ $ossStaff = Admin::query()
 
             'password' =>
                 'nullable|string|min:8',
-
-            'name_suffix' =>
-                'nullable|string|max:20',
-
-            'status_id' =>
-                'required|exists:status_tbl,status_id',
         ]);
 
         $securityEmailBefore =
@@ -939,12 +901,6 @@ $ossStaff = Admin::query()
 
             'lastname' =>
                 $security->securityInfo->lastname ?? '',
-
-            'name_suffix' =>
-                $security->securityInfo->name_suffix ?? '',
-
-            'status_id' =>
-                $security->securityInfo->status_id ?? null,
         ];
 
         DB::transaction(function () use (
@@ -1100,12 +1056,6 @@ $ossStaff = Admin::query()
 
             'lastname' =>
                 'Last Name',
-
-            'name_suffix' =>
-                'Suffix',
-
-            'status_id' =>
-                'Status',
         ];
 
         $fresh =
@@ -1120,12 +1070,6 @@ $ossStaff = Admin::query()
 
             'lastname' =>
                 $fresh?->securityInfo?->lastname ?? '',
-
-            'name_suffix' =>
-                $fresh?->securityInfo?->name_suffix ?? '',
-
-            'status_id' =>
-                $fresh?->securityInfo?->status_id ?? '',
         ];
 
         foreach (
@@ -2677,26 +2621,51 @@ $ossStaff = Admin::query()
         return 1;
     }
 
-   private function buildSecurityInfoData(array $data): array
-{
-    $securityInfoData = [];
+    private function buildSecurityInfoData(
+        array $data
+    ): array {
 
-    $fields = [
-        'firstname' => 'firstname',
-        'middlename' => 'middlename',
-        'lastname' => 'lastname',
-        'name_suffix' => 'name_suffix',
-        'status_id' => 'status_id',
-    ];
+        $securityInfoData = [];
 
-    foreach ($fields as $input => $column) {
-        if (Schema::hasColumn('security_info_tbl', $column)) {
-            $securityInfoData[$column] = $data[$input] ?? null;
+        if (
+            Schema::hasColumn(
+                'security_info_tbl',
+                'firstname'
+            )
+        ) {
+
+            $securityInfoData['firstname'] =
+                $data['firstname']
+                ?? '';
         }
+
+        if (
+            Schema::hasColumn(
+                'security_info_tbl',
+                'middlename'
+            )
+        ) {
+
+            $securityInfoData['middlename'] =
+                $data['middlename']
+                ?? null;
+        }
+
+        if (
+            Schema::hasColumn(
+                'security_info_tbl',
+                'lastname'
+            )
+        ) {
+
+            $securityInfoData['lastname'] =
+                $data['lastname']
+                ?? '';
+        }
+
+        return $securityInfoData;
     }
 
-    return $securityInfoData;
-}
     /*
     |--------------------------------------------------------------------------
     | Student Status Helpers

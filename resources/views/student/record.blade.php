@@ -3153,7 +3153,7 @@
             <button type="button" class="btn btn-outline-secondary btn-sm corrective-action-btn mt-2" disabled aria-disabled="true" title="A sanction has already been assigned.">
                 <i class="bi bi-shield-lock me-1"></i>Correction / Deletion Unavailable
             </button>
-            <small class="d-block text-muted mt-1">A sanction has already been assigned to this violation.</small>
+
         @else
             <button type="button"
                     class="btn btn-outline-danger btn-sm corrective-action-btn mt-2"
@@ -3211,7 +3211,7 @@
             <button type="button" class="btn btn-outline-secondary btn-sm corrective-action-btn mt-2" disabled aria-disabled="true" title="A sanction has already been assigned.">
                 <i class="bi bi-shield-lock me-1"></i>Correction / Deletion Unavailable
             </button>
-            <small class="d-block text-muted mt-1">A sanction has already been assigned to this violation.</small>
+
         @else
             <button type="button"
                     class="btn btn-outline-danger btn-sm corrective-action-btn mt-2"
