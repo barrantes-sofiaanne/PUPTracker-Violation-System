@@ -4317,64 +4317,6 @@ const deletionEvidenceFields =
         errorBox.classList.add('d-none');
     }
 
-function stopCamera() {
-    if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop());
-        cameraStream = null;
-    }
-
-    if (video) {
-        video.srcObject = null;
-        video.classList.add('d-none');
-    }
-
-    if (captureButton) {
-        captureButton.classList.add('d-none');
-        captureButton.disabled = true;
-    }
-
-    if (stopCameraButton) {
-        stopCameraButton.classList.add('d-none');
-        stopCameraButton.disabled = true;
-    }
-
-    if (startCameraButton) {
-        startCameraButton.classList.remove('d-none');
-        startCameraButton.disabled = false;
-    }
-
-    if (cameraStatus) {
-        cameraStatus.textContent = 'Camera is off.';
-    }
-}
-
-function removeCapturedPhoto() {
-    // Clear the captured image used for submission.
-    cameraImageData = null;
-
-    // Clear and hide the photo preview.
-    if (photoPreview) {
-        photoPreview.removeAttribute('src');
-        photoPreview.classList.add('d-none');
-    }
-
-    // Hide the Remove Photo button.
-    if (removePhotoButton) {
-        removePhotoButton.classList.add('d-none');
-    }
-
-    // Clear a temporary image input if one exists.
-    const cameraImageInput = document.getElementById('cameraImageInput');
-
-    if (cameraImageInput) {
-        cameraImageInput.value = '';
-    }
-
-    if (cameraStatus) {
-        cameraStatus.textContent = 'Captured photo removed.';
-    }
-}
-
     function resetForm() {
         actionSelect.value = '';
         correctionFields.classList.add('d-none');
@@ -4385,8 +4327,6 @@ function removeCapturedPhoto() {
         evidenceInput.value = '';
 
         clearError();
-        removeCapturedPhoto();
-        stopCamera();
     }
 
     
@@ -4455,77 +4395,6 @@ document.querySelectorAll('.corrective-action-btn').forEach(button => {
                 violationTypeSelect.value = '';
             }
         });
-    });
-
-    startCameraButton.addEventListener('click', async function () {
-        clearError();
-
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            showError('Camera access is unavailable in this browser or page context. You can upload evidence instead.');
-            return;
-        }
-
-        try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({
-                audio: false,
-                video: { facingMode: 'environment' }
-            });
-
-            video.srcObject = cameraStream;
-video.classList.remove('d-none');
-
-if (captureButton) {
-    captureButton.classList.remove('d-none');
-    captureButton.disabled = false;
-}
-
-if (stopCameraButton) {
-    stopCameraButton.classList.remove('d-none');
-    stopCameraButton.disabled = false;
-}
-
-if (startCameraButton) {
-    startCameraButton.disabled = true;
-}
-
-cameraStatus.textContent =
-    'Camera is on. Capture a photo only when you are ready.';
-        } catch (error) {
-            stopCamera();
-            showError('Camera access was not granted or is unavailable. You can still upload evidence.');
-        }
-    });
-
-    captureButton.addEventListener('click', function () {
-        if (!cameraStream || !video.videoWidth || !video.videoHeight) {
-            showError('Wait for the camera preview to become ready, then try again.');
-            return;
-        }
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        const context = canvas.getContext('2d');
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        cameraImageData = canvas.toDataURL('image/jpeg', 0.85);
-        photoPreview.src = cameraImageData;
-        photoPreview.classList.remove('d-none');
-        removePhotoButton.classList.remove('d-none');
-        cameraStatus.textContent = 'Photo captured. It will only be sent if you submit this request.';
-        clearError();
-        stopCamera();
-    });
-
-    stopCameraButton.addEventListener('click', stopCamera);
-
-    removePhotoButton.addEventListener('click', function () {
-        removeCapturedPhoto();
-        cameraStatus.textContent = 'Captured photo removed.';
-    });
-
-    modalElement.addEventListener('hidden.bs.modal', function () {
-        stopCamera();
     });
 
     submitButton.addEventListener('click', async function () {
@@ -4636,7 +4505,6 @@ formData.append(
                 throw new Error(data.message || 'The request could not be submitted.');
             }
 
-            stopCamera();
             modal.hide();
 
             if (typeof Swal !== 'undefined') {
