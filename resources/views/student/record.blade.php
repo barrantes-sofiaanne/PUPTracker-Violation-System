@@ -3078,23 +3078,21 @@
     
     // All confirmed violations can enter the sanction-request workflow,
     // including warning-level violations.
-// All confirmed violations can request administrator approval,
-// regardless of whether the assigned sanction is a warning.
-$rowSanctionStatus = $hasAssignedSanction
-    ? 'assigned'
-    : (
-        $requestStatus === 'pending' && $isActiveRequest
-            ? 'pending'
-            : (
-                $requestStatus === 'approved' && !$isActiveRequest
-                    ? 'approved'
-                    : (
-                        $requestStatus === 'declined' && !$isActiveRequest
-                            ? 'declined'
-                            : 'needs'
-                    )
-            )
-    );
+    $rowSanctionStatus = $hasAssignedSanction
+        ? 'assigned'
+        : (
+            $requestStatus === 'pending' && $isActiveRequest
+                ? 'pending'
+                : (
+                    $requestStatus === 'approved' && !$isActiveRequest
+                        ? 'approved'
+                        : (
+                            $requestStatus === 'declined' && !$isActiveRequest
+                                ? 'declined'
+                                : 'needs'
+                        )
+                )
+        );
 
 
     $rowDate = \Carbon\Carbon::parse(
@@ -3134,7 +3132,17 @@ $rowSanctionStatus = $hasAssignedSanction
 <td class="individual-actions-col">
     @if($isPendingLog)
         <span class="text-muted small">Available after confirmation</span>
-
+    @elseif($isWarningLevelViolation)
+        <div class="warning-sanction-notice p-3 mb-2 small text-start" role="note">
+            <strong class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                Warning-Level Violation
+            </strong>
+            <p class="mb-0">
+                A sanction request is not required for this warning-level
+                violation. Review the disciplinary details above.
+            </p>
+        </div>
 
         @if($hasPendingCorrection)
             <button type="button" class="btn btn-outline-secondary btn-sm corrective-action-btn mt-2" disabled aria-disabled="true" title="Your request is pending administrator review.">
@@ -3922,7 +3930,9 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
     </div>
 
     <hr>
+</div> {{-- End deletionEvidenceFields; keep the submit button visible for both request types. --}}
 
+            </div> {{-- End modal-body --}}
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary"
@@ -3934,7 +3944,7 @@ data-service-sanction="{{ $record->is_service_sanction ? '1' : '0' }}">
             </div>
         </div>
     </div>
-</div></div>
+</div>
 
 @endsection
 
@@ -4307,14 +4317,19 @@ const deletionEvidenceFields =
         errorBox.classList.add('d-none');
     }
 
-function resetForm() {
-    const form = document.getElementById('correctionDeletionForm');
+    function resetForm() {
+        actionSelect.value = '';
+        correctionFields.classList.add('d-none');
+        deletionFields.classList.add('d-none');
 
-    if (form) {
-        form.reset();
+
+        reasonInput.value = '';
+        evidenceInput.value = '';
+
+        clearError();
     }
-}
-   
+
+    
 document.querySelectorAll('.corrective-action-btn').forEach(button => {
     button.addEventListener('click', function () {
         selectedViolationId = this.dataset.violationId;
@@ -4381,8 +4396,6 @@ document.querySelectorAll('.corrective-action-btn').forEach(button => {
             }
         });
     });
-
-
 
     submitButton.addEventListener('click', async function () {
         clearError();
@@ -4492,7 +4505,6 @@ formData.append(
                 throw new Error(data.message || 'The request could not be submitted.');
             }
 
-            stopCamera();
             modal.hide();
 
             if (typeof Swal !== 'undefined') {
