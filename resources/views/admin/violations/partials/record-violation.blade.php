@@ -364,6 +364,168 @@ background: #800000 !important;
             min-height: 44px;
         }
     }
+
+
+/* Final fix: keep the wizard actions visible and make only the form body scroll. */
+.admin-record-modal.modal {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+}
+.admin-record-modal .modal-dialog,
+.admin-record-modal .modal-dialog.modal-dialog-scrollable {
+    display: flex !important;
+    flex-direction: column !important;
+    width: min(1160px, calc(100% - 2rem)) !important;
+    height: calc(100dvh - 2rem) !important;
+    max-height: calc(100dvh - 2rem) !important;
+    margin: 1rem auto !important;
+}
+.admin-record-modal .modal-content {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+}
+/* The form sits between the header and the modal body/footer, so it must also
+   be a flex column; otherwise its body cannot shrink and the footer gets pushed off-screen. */
+.admin-record-modal .modal-content > form#violationForm {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: hidden !important;
+}
+.admin-record-modal .modal-header {
+    flex: 0 0 auto !important;
+    min-width: 0;
+    position: relative;
+    z-index: 2;
+}
+.admin-record-modal .modal-body {
+    display: block !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+}
+.admin-record-modal .modal-footer {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: .5rem !important;
+    min-height: 0;
+    padding: .65rem .85rem calc(.65rem + env(safe-area-inset-bottom, 0px)) !important;
+    position: relative;
+    z-index: 3;
+    background: #fffdf6;
+}
+.admin-record-modal .modal-footer > #backStep {
+    flex: 0 1 auto !important;
+    min-width: 5.5rem;
+    margin: 0 !important;
+}
+.admin-record-modal .modal-footer > .ms-auto {
+    display: flex !important;
+    flex: 0 1 auto !important;
+    flex-wrap: wrap !important;
+    gap: .5rem !important;
+    min-width: 0;
+    margin-left: auto !important;
+}
+.admin-record-modal .modal-footer .btn,
+.admin-record-modal .modal-header .btn-close {
+    min-height: 44px;
+    touch-action: manipulation;
+}
+.admin-record-modal .modal-footer .btn {
+    max-width: 100%;
+    white-space: normal !important;
+}
+@media (max-width: 767.98px), (max-height: 600px) {
+    .admin-record-modal.modal { padding: 0 !important; }
+    .admin-record-modal .modal-dialog,
+    .admin-record-modal .modal-dialog.modal-dialog-scrollable {
+        width: calc(100% - 1rem) !important;
+        height: calc(100dvh - 1rem) !important;
+        max-height: calc(100dvh - 1rem) !important;
+        margin: .5rem auto !important;
+    }
+    .admin-record-modal .modal-content { border-radius: .85rem !important; }
+    .admin-record-modal .modal-header {
+        padding: .75rem 3.25rem .75rem .85rem !important;
+        align-items: flex-start;
+    }
+    .admin-record-modal .modal-header .modal-title {
+        min-width: 0;
+        font-size: clamp(1rem, 4.2vw, 1.2rem);
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+    }
+    .admin-record-modal .modal-header .btn-close {
+        position: absolute;
+        top: .6rem;
+        right: .6rem;
+    }
+    .admin-record-modal .modal-body { padding: .75rem !important; }
+    .admin-record-modal .modal-body .row { --bs-gutter-x: .75rem; }
+    .admin-record-modal .modal-body .card { min-width: 0; }
+    .admin-record-modal .modal-body input,
+    .admin-record-modal .modal-body select,
+    .admin-record-modal .modal-body textarea,
+    .admin-record-modal .modal-body .form-control,
+    .admin-record-modal .modal-body .form-select { max-width: 100%; min-width: 0; }
+    .admin-record-modal .modal-footer {
+        justify-content: stretch !important;
+        gap: .4rem !important;
+        padding: .55rem .65rem calc(.55rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    .admin-record-modal .modal-footer > #backStep { flex: 1 1 calc(50% - .4rem) !important; }
+    .admin-record-modal .modal-footer > .ms-auto {
+        flex: 1 1 100% !important;
+        width: 100%;
+        margin: 0 !important;
+        justify-content: stretch;
+    }
+    .admin-record-modal .modal-footer > .ms-auto > .btn,
+    .admin-record-modal .modal-footer > .ms-auto > .portal-btn,
+    .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
+        flex: 1 1 calc(50% - .4rem) !important;
+        min-width: 0;
+        margin: 0 !important;
+    }
+    .admin-record-modal .modal-footer #continueStep:not(.d-none),
+    .admin-record-modal .modal-footer #nextStep:not(.d-none),
+    .admin-record-modal .modal-footer #saveViolation:not(.d-none) {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+        min-height: 46px;
+        order: 10;
+    }
+}
+@media (max-width: 359.98px) {
+    .admin-record-modal .modal-footer > #backStep,
+    .admin-record-modal .modal-footer > .ms-auto > .btn,
+    .admin-record-modal .modal-footer > .ms-auto > .portal-btn,
+    .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
+        flex-basis: 100% !important;
+        width: 100% !important;
+    }
+}
+
 </style>
 
 <div class="modal fade admin-record-modal"
@@ -2136,4 +2298,130 @@ background: #ffffff;
         font-size: .92rem !important;
     }
 }
+
+
+/* Final responsive override: Record Violation modal (mobile/tablet safe area).
+   Keep the header and action buttons visible; only the form content scrolls. */
+@supports (height: 100dvh) {
+  .admin-record-modal.modal-content { max-height: calc(100dvh - 1rem); }
+}
+.admin-record-modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.admin-record-modal .modal-header,
+.admin-record-modal .modal-footer {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
+}
+.admin-record-modal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+.admin-record-modal .modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  padding-bottom: calc(.75rem + env(safe-area-inset-bottom, 0px));
+  background: #fffdf6;
+}
+.admin-record-modal .modal-footer .btn,
+.admin-record-modal .modal-header .btn-close {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+.admin-record-modal .modal-footer .btn { white-space: normal; }
+
+@media (max-width: 767.98px), (max-height: 600px) {
+  .admin-record-modal.modal { padding: 0 !important; overflow: hidden; }
+  .admin-record-modal .modal-dialog,
+  .admin-record-modal .modal-dialog.modal-dialog-scrollable {
+    width: calc(100% - 1rem);
+    max-width: none;
+    height: calc(100dvh - 1rem);
+    max-height: calc(100dvh - 1rem);
+    margin: .5rem auto;
+  }
+  .admin-record-modal .modal-content {
+    height: calc(100dvh - 1rem);
+    max-height: calc(100dvh - 1rem);
+    border-radius: .9rem;
+  }
+  .admin-record-modal .modal-header {
+    padding: .8rem 3.5rem .8rem .9rem;
+    align-items: flex-start;
+  }
+  .admin-record-modal .modal-header .modal-title {
+    min-width: 0;
+    font-size: clamp(1rem, 4.2vw, 1.2rem);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  .admin-record-modal .modal-header small { line-height: 1.35; }
+  .admin-record-modal .modal-body { padding: .75rem !important; }
+  .admin-record-modal .modal-body .row { --bs-gutter-x: .75rem; }
+  .admin-record-modal .modal-body .card { min-width: 0; }
+  .admin-record-modal .modal-body input,
+  .admin-record-modal .modal-body select,
+  .admin-record-modal .modal-body textarea,
+  .admin-record-modal .modal-body .form-control,
+  .admin-record-modal .modal-body .form-select { max-width: 100%; min-width: 0; }
+  .admin-record-modal .modal-footer {
+    flex-wrap: wrap !important;
+    justify-content: stretch;
+    gap: .45rem;
+    padding: .6rem .7rem calc(.6rem + env(safe-area-inset-bottom, 0px));
+  }
+  .admin-record-modal .modal-footer > #backStep {
+    flex: 1 1 calc(50% - .45rem);
+    width: auto !important;
+    margin: 0 !important;
+  }
+  .admin-record-modal .modal-footer > .ms-auto {
+    display: flex !important;
+    flex: 1 1 100%;
+    flex-wrap: wrap !important;
+    gap: .45rem;
+    width: 100%;
+    min-width: 0;
+    margin: 0 !important;
+  }
+  .admin-record-modal .modal-footer > .ms-auto > .btn,
+  .admin-record-modal .modal-footer > .ms-auto > .portal-btn,
+  .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
+    flex: 1 1 calc(50% - .45rem);
+    min-width: 0;
+    width: auto !important;
+    margin: 0 !important;
+    justify-content: center;
+  }
+  .admin-record-modal .modal-footer #continueStep:not(.d-none),
+  .admin-record-modal .modal-footer #nextStep:not(.d-none),
+  .admin-record-modal .modal-footer #saveViolation:not(.d-none) {
+    flex: 1 1 100%;
+    width: 100% !important;
+    min-height: 46px;
+    order: 10;
+  }
+}
+
+@media (max-width: 359.98px) {
+  .admin-record-modal .modal-footer > #backStep,
+  .admin-record-modal .modal-footer > .ms-auto > .btn,
+  .admin-record-modal .modal-footer > .ms-auto > .portal-btn,
+  .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
+    flex-basis: 100%;
+    width: 100% !important;
+  }
+}
+
 </style>

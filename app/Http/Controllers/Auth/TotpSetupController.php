@@ -41,6 +41,12 @@ class TotpSetupController extends Controller
             return redirect()->route($this->loginRouteForGuard($guard));
         }
 
+        // These guards must be backed by Eloquent models because this flow
+        // reads and updates MFA attributes on the authenticated account.
+        if (!($user instanceof Model) || !($user instanceof Authenticatable)) {
+            abort(403, 'The authenticated account does not support MFA setup.');
+        }
+
         if ($user->mfa_totp_enabled ?? false) {
             return redirect()->route($this->dashboardRouteForGuard($guard, $user))->with('info', 'TOTP is already enabled on your account');
         }
@@ -85,7 +91,11 @@ class TotpSetupController extends Controller
             return redirect()->route($this->loginRouteForGuard($guard));
         }
 
-        /** @var Model&Authenticatable $user */
+        // These guards must be backed by Eloquent models because this flow
+        // reads and updates MFA attributes on the authenticated account.
+        if (!($user instanceof Model) || !($user instanceof Authenticatable)) {
+            abort(403, 'The authenticated account does not support MFA setup.');
+        }
 
         $request->validate([
             'totp_code' => 'required|string|size:6',
@@ -159,8 +169,10 @@ class TotpSetupController extends Controller
                 ->with('warning', 'TOTP was enabled, but backup codes are unavailable until the MFA backup-code migration is run.');
         }
 
+        session()->put('backup_codes', $backupCodes);
+        session()->put('mfa_backup_codes_pending', true);
+
         return redirect()->route('totp.backup-codes', ['guard' => $guard])
-            ->with('backup_codes', $backupCodes)
             ->with('success', 'TOTP enabled successfully! Save your backup codes now.');
     }
 
@@ -169,12 +181,62 @@ class TotpSetupController extends Controller
      */
     public function showBackupCodes(Request $request): View|RedirectResponse
     {
-        $guard = $request->query('guard', 'admin');
-        $backupCodes = session('backup_codes');
-        $user = auth()->guard($guard)->user();
+        $guard = (string) $request->query('guard', 'admin');
 
-        if (!$backupCodes) {
-            return redirect()->route($this->dashboardRouteForGuard($guard, $user))->with('info', 'No backup codes in session');
+        if (!in_array($guard, ['admin', 'security'], true)) {
+            abort(403);
+        }
+
+        $user = auth()->guard($guard)->user();
+        if (!$user) {
+            return redirect()->route($this->loginRouteForGuard($guard));
+        }
+
+        // These guards must be backed by Eloquent models because this flow
+        // reads and updates MFA attributes on the authenticated account.
+        if (!($user instanceof Model) || !($user instanceof Authenticatable)) {
+            abort(403, 'The authenticated account does not support MFA setup.');
+        }
+
+        $backupCodes = $request->session()->get('backup_codes', []);
+        $pending = (bool) $request->session()->get('mfa_backup_codes_pending', false);
+
+        // If the first-time backup-code redirect survived but the plaintext codes
+        // did not (for example, after a stale session), regenerate a fresh set.
+        // The old hashes are replaced because the original plaintext codes cannot
+        // be recovered. Keep the access gate pending until the user acknowledges.
+        if (empty($backupCodes) && $pending) {
+            if (!MfaSchema::supportsBackupCodes($user)) {
+                $request->session()->forget(['backup_codes', 'mfa_backup_codes_pending']);
+
+                return redirect()->route($this->dashboardRouteForGuard($guard, $user))
+                    ->with('warning', 'Backup-code storage is not available. Please contact the system administrator.');
+            }
+
+            $backupCodes = $this->totpService->generateBackupCodes();
+            $user->mfa_backup_codes = json_encode($this->totpService->hashBackupCodes($backupCodes));
+            $user->mfa_backup_codes_used = json_encode([]);
+
+            try {
+                $user->save();
+            } catch (QueryException $exception) {
+                if (!MfaSchema::isMissingColumnException($exception)) {
+                    throw $exception;
+                }
+
+                MfaSchema::forgetBackupCodeAttributes($user);
+                $request->session()->forget(['backup_codes', 'mfa_backup_codes_pending']);
+
+                return redirect()->route($this->dashboardRouteForGuard($guard, $user))
+                    ->with('warning', 'Backup-code storage is not available. Please contact the system administrator.');
+            }
+
+            $request->session()->put('backup_codes', $backupCodes);
+        }
+
+        if (empty($backupCodes)) {
+            return redirect()->route($this->dashboardRouteForGuard($guard, $user))
+                ->with('info', 'No backup codes are waiting to be displayed.');
         }
 
         return view('auth.totp-backup-codes', [
@@ -189,9 +251,18 @@ class TotpSetupController extends Controller
     public function confirmBackupCodes(Request $request): RedirectResponse
     {
         $guard = $request->input('guard', 'admin');
-        $user = auth()->guard($guard)->user();
+        if (!in_array($guard, ['admin', 'security'], true) || !auth()->guard($guard)->check()) {
+            abort(403);
+        }
 
-        session()->forget('backup_codes');
+        // The acknowledgement endpoint cannot be used to bypass the save-codes screen.
+        if (!(bool) session()->get('mfa_backup_codes_pending', false) || empty(session('backup_codes'))) {
+            return redirect()->route('totp.backup-codes', ['guard' => $guard])
+                ->with('warning', 'Please review and save your backup codes before continuing.');
+        }
+
+        $user = auth()->guard($guard)->user();
+        session()->forget(['backup_codes', 'mfa_backup_codes_pending']);
 
         Log::info('TOTP backup codes acknowledged', [
             'guard' => $guard,
@@ -214,7 +285,11 @@ class TotpSetupController extends Controller
             return redirect()->route($this->loginRouteForGuard($guard));
         }
 
-        /** @var Model&Authenticatable $user */
+        // These guards must be backed by Eloquent models because this flow
+        // reads and updates MFA attributes on the authenticated account.
+        if (!($user instanceof Model) || !($user instanceof Authenticatable)) {
+            abort(403, 'The authenticated account does not support MFA setup.');
+        }
 
         $request->validate([
             'password' => 'required|string',
