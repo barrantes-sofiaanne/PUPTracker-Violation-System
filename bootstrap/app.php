@@ -41,6 +41,9 @@ return Application::configure(basePath: dirname(__DIR__))
         \App\Http\Middleware\SecurityHeadersMiddleware::class,
     ]);
 
+    // Enforce backup-code acknowledgement inside the web stack, after sessions start.
+    $middleware->web(append: [\App\Http\Middleware\RequireBackupCodesAcknowledgement::class]);
+
     $middleware->redirectGuestsTo(function (Request $request) {
         return route('student.login');
     });

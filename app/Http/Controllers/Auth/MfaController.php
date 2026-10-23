@@ -131,9 +131,11 @@ SessionExpiryNotice::clear($request);
 
         $backupCodes = $mfaService->generateInitialBackupCodes($guard, $identifier);
         if (!empty($backupCodes)) {
+            $request->session()->put('backup_codes', $backupCodes);
+            $request->session()->put('mfa_backup_codes_pending', true);
+
             return redirect()
                 ->route('totp.backup-codes', ['guard' => $guard])
-                ->with('backup_codes', $backupCodes)
                 ->with('success', 'Verification successful. Save your one-time backup codes.');
         }
 
