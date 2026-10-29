@@ -1,0 +1,1875 @@
+/*
+ * PUPTracker role dashboard visual system
+ * Shared structure, distinct role accents. Existing Blade data, routes and actions remain unchanged.
+ */
+:root {
+    --pt-ink: #29252a;
+    --pt-muted: #77717a;
+    --pt-paper: #fffdfb;
+    --pt-line: #ece6e4;
+    --pt-radius: 18px;
+    --pt-shadow: 0 8px 24px rgba(44, 23, 32, 0.055);
+    --pt-shadow-hover: 0 16px 34px rgba(44, 23, 32, 0.105);
+}
+.module-student {
+    --pt-accent: #800b2e;
+    --pt-accent-rgb: 128, 11, 46;
+    --pt-accent-soft: #f8e9ee;
+    --pt-accent-deep: #5f0823;
+}
+.module-security {
+    --pt-accent: #2864bd;
+    --pt-accent-rgb: 40, 100, 189;
+    --pt-accent-soft: #eaf2ff;
+    --pt-accent-deep: #194987;
+}
+.module-oss {
+    --pt-accent: #24815c;
+    --pt-accent-rgb: 36, 129, 92;
+    --pt-accent-soft: #e8f6ef;
+    --pt-accent-deep: #176442;
+}
+.module-admin {
+    --pt-accent: #7350a6;
+    --pt-accent-rgb: 115, 80, 166;
+    --pt-accent-soft: #f1eafa;
+    --pt-accent-deep: #53377e;
+}
+
+.module-student .portal-main,
+.module-security .portal-main,
+.module-oss .portal-main,
+.module-admin .main-content {
+    background: #f7f5f4;
+    color: var(--pt-ink);
+}
+.module-student .container-fluid.py-4,
+.module-security .container-fluid.py-4,
+.module-oss .container-fluid.py-4,
+.module-admin .container-fluid.py-4 {
+    padding: clamp(1rem, 2vw, 1.8rem) !important;
+}
+.module-student .portal-hero,
+.module-security .portal-hero,
+.module-oss .portal-hero {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid rgba(var(--pt-accent-rgb), 0.13);
+    border-radius: 22px;
+    padding: clamp(1.35rem, 2.5vw, 2rem);
+    margin-bottom: 1.35rem;
+    background: linear-gradient(
+        112deg,
+        #fff 0%,
+        #fff 62%,
+        var(--pt-accent-soft) 100%
+    );
+    box-shadow: var(--pt-shadow);
+    color: var(--pt-ink);
+}
+.module-student .portal-hero::after,
+.module-security .portal-hero::after,
+.module-oss .portal-hero::after {
+    content: "";
+    position: absolute;
+    width: 180px;
+    height: 180px;
+    right: -65px;
+    top: -95px;
+    border: 28px solid rgba(var(--pt-accent-rgb), 0.055);
+    border-radius: 50%;
+    z-index: -1;
+    pointer-events: none;
+}
+.module-student .portal-hero h1,
+.module-student .portal-hero h2,
+.module-security .portal-hero h1,
+.module-security .portal-hero h2,
+.module-oss .portal-hero h1,
+.module-oss .portal-hero h2 {
+    color: var(--pt-accent-deep);
+    letter-spacing: -0.035em;
+}
+.module-student .dashboard-hero-subtitle,
+.module-security .dashboard-hero-subtitle,
+.module-oss .dashboard-hero-subtitle {
+    color: var(--pt-muted);
+    margin-bottom: 0;
+}
+.module-student .dashboard-time-value,
+.module-security .dashboard-time-value,
+.module-oss .dashboard-time-value {
+    background: #fff;
+    color: var(--pt-accent-deep);
+    border: 1px solid rgba(var(--pt-accent-rgb), 0.16);
+    box-shadow: 0 4px 12px rgba(var(--pt-accent-rgb), 0.06);
+}
+.module-student .card,
+.module-security .card,
+.module-oss .card,
+.module-admin .card {
+    border: 1px solid var(--pt-line) !important;
+    border-radius: var(--pt-radius) !important;
+    box-shadow: var(--pt-shadow);
+    transition:
+        transform 0.22s ease,
+        box-shadow 0.22s ease,
+        border-color 0.22s ease;
+}
+.module-student .card:hover,
+.module-security .card:hover,
+.module-oss .card:hover,
+.module-admin .card:hover {
+    box-shadow: var(--pt-shadow-hover);
+}
+.module-student .portal-stat-card,
+.module-security .portal-stat-card,
+.module-oss .portal-stat-card,
+.module-admin .stat-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 128px;
+    background: #fff;
+}
+.module-student .portal-stat-card::before,
+.module-security .portal-stat-card::before,
+.module-oss .portal-stat-card::before,
+.module-admin .stat-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--pt-accent);
+}
+.module-student .portal-stat-label,
+.module-security .portal-stat-label,
+.module-oss .portal-stat-label,
+.module-admin .stat-label {
+    color: var(--pt-muted) !important;
+    font-size: 0.76rem;
+    font-weight: 750;
+    letter-spacing: 0.075em;
+    text-transform: uppercase;
+}
+.module-student .portal-stat-value,
+.module-security .portal-stat-value,
+.module-oss .portal-stat-value {
+    color: var(--pt-accent-deep);
+    font-size: clamp(1.7rem, 2.4vw, 2.2rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+}
+.module-student .portal-icon-badge,
+.module-security .icon-badge,
+.module-oss .icon-badge,
+.module-admin .icon-badge {
+    border-radius: 14px;
+    width: 48px;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--pt-accent-soft);
+    color: var(--pt-accent);
+}
+.module-security .security-stat-card,
+.module-oss .oss-staff-stat-card {
+    border-radius: var(--pt-radius) !important;
+}
+.module-security .primary-light,
+.module-oss .primary-light,
+.module-admin .bg-primary-light {
+    background: linear-gradient(135deg, #fff, var(--pt-accent-soft)) !important;
+    border-left: 0 !important;
+}
+.module-security .danger-light,
+.module-oss .danger-light,
+.module-admin .bg-danger-light {
+    background: linear-gradient(135deg, #fff, #fff0f1) !important;
+    border-left: 0 !important;
+}
+.module-security .warning-light,
+.module-oss .warning-light,
+.module-admin .bg-warning-light {
+    background: linear-gradient(135deg, #fff, #fff8e8) !important;
+    border-left: 0 !important;
+}
+.module-admin .bg-info-light {
+    background: linear-gradient(135deg, #fff, #eaf7fb) !important;
+}
+.module-student .card-header-custom,
+.module-security .card-header-custom,
+.module-oss .card-header-custom,
+.module-admin .card-header-custom {
+    background: #fff !important;
+    color: var(--pt-ink);
+    border-bottom: 1px solid var(--pt-line) !important;
+    padding: 1rem 1.15rem;
+    border-radius: var(--pt-radius) var(--pt-radius) 0 0 !important;
+}
+.module-student .card-header-custom h5,
+.module-security .card-header-custom h5,
+.module-oss .card-header-custom h5,
+.module-admin .card-header-custom h5 {
+    font-weight: 750;
+    letter-spacing: -0.02em;
+}
+.module-student .portal-table thead th,
+.module-security .portal-table thead th,
+.module-oss .portal-table thead th,
+.module-admin table thead th {
+    background: #faf8f7;
+    color: #766b70;
+    border-bottom: 1px solid var(--pt-line);
+    text-transform: uppercase;
+    letter-spacing: 0.055em;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 0.9rem 1rem;
+    white-space: nowrap;
+}
+.module-student .portal-table tbody td,
+.module-security .portal-table tbody td,
+.module-oss .portal-table tbody td,
+.module-admin table tbody td {
+    padding: 0.9rem 1rem;
+    vertical-align: middle;
+    border-color: #f0ebea;
+    color: #484149;
+}
+.module-student .portal-table tbody tr:hover,
+.module-security .portal-table tbody tr:hover,
+.module-oss .portal-table tbody tr:hover,
+.module-admin table tbody tr:hover {
+    background: #fcf8f9;
+}
+.module-student .portal-btn,
+.module-security .portal-btn,
+.module-oss .portal-btn {
+    background: var(--pt-accent);
+    border-color: var(--pt-accent);
+    color: #fff;
+    border-radius: 10px;
+    font-weight: 700;
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+}
+.module-student .portal-btn:hover,
+.module-security .portal-btn:hover,
+.module-oss .portal-btn:hover {
+    background: var(--pt-accent-deep);
+    border-color: var(--pt-accent-deep);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 7px 16px rgba(var(--pt-accent-rgb), 0.18);
+}
+.module-student .portal-btn-outline,
+.module-security .portal-btn-outline,
+.module-oss .portal-btn-outline {
+    color: var(--pt-accent);
+    border-color: rgba(var(--pt-accent-rgb), 0.35);
+    border-radius: 10px;
+    font-weight: 700;
+}
+.module-student .portal-btn-outline:hover,
+.module-security .portal-btn-outline:hover,
+.module-oss .portal-btn-outline:hover {
+    background: var(--pt-accent-soft);
+    color: var(--pt-accent-deep);
+}
+.module-admin .admin-btn-view {
+    border-radius: 9px;
+}
+.module-student .badge,
+.module-security .badge,
+.module-oss .badge,
+.module-admin .badge {
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+.module-student .table-responsive,
+.module-security .table-responsive,
+.module-oss .table-responsive,
+.module-admin .table-responsive {
+    border-radius: 0 0 var(--pt-radius) var(--pt-radius);
+}
+.module-student .form-control,
+.module-security .form-control,
+.module-oss .form-control,
+.module-admin .form-control,
+.module-student .form-select,
+.module-security .form-select,
+.module-oss .form-select,
+.module-admin .form-select {
+    border-radius: 10px;
+    border-color: #e7dfdf;
+    min-height: 42px;
+}
+.module-student .form-control:focus,
+.module-security .form-control:focus,
+.module-oss .form-control:focus,
+.module-admin .form-control:focus,
+.module-student .form-select:focus,
+.module-security .form-select:focus,
+.module-oss .form-select:focus,
+.module-admin .form-select:focus {
+    border-color: rgba(var(--pt-accent-rgb), 0.5);
+    box-shadow: 0 0 0 0.22rem rgba(var(--pt-accent-rgb), 0.12);
+}
+@media (prefers-reduced-motion: reduce) {
+    .module-student *,
+    .module-security *,
+    .module-oss *,
+    .module-admin * {
+        transition: none !important;
+        animation: none !important;
+        scroll-behavior: auto !important;
+    }
+}
+@media (max-width: 767.98px) {
+    .module-student .portal-hero,
+    .module-security .portal-hero,
+    .module-oss .portal-hero {
+        border-radius: 16px;
+    }
+    .module-student .portal-stat-card,
+    .module-security .portal-stat-card,
+    .module-oss .portal-stat-card,
+    .module-admin .stat-card {
+        min-height: 110px;
+    }
+}
+
+/* =========================================================================
+   STUDENT MODULE — REFERENCE DESIGN
+   Scoped to  body.student-module  (set only in layouts/student.blade.php), so
+   the Administrator, Security and OSS Staff modules are unaffected even though
+   they share this file, portal.css and admin.css. Presentation only.
+   ========================================================================= */
+
+/* ---- 1. Tokens ---------------------------------------------------------- */
+body.student-module {
+    --st-burgundy: #7a0b18;
+    --st-burgundy-deep: #5a0912;
+    --st-burgundy-ink: #6b0a14;
+    --st-burgundy-rgb: 122, 11, 24;
+    --st-gold: #e8b934;
+    --st-gold-soft: #f6d04d;
+    --st-gold-rgb: 232, 185, 52;
+    --st-cream: #fff8ef;
+    --st-cream-2: #fbf1e6;
+    --st-paper: #fffdfa;
+    --st-ink: #2c1a1c;
+    --st-muted: #7d6c6a;
+    --st-line: #efe1d7;
+    --st-line-strong: #e4cfc2;
+    --st-radius: 18px;
+    --st-radius-sm: 12px;
+    --st-shadow: 0 12px 28px -20px rgba(90, 9, 18, 0.45);
+    --st-shadow-hover: 0 22px 40px -20px rgba(90, 9, 18, 0.5);
+    --st-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+    --st-sans:
+        "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --st-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    font-family: var(--st-sans);
+    color: var(--st-ink);
+    background: linear-gradient(
+            180deg,
+            var(--st-cream) 0%,
+            var(--st-cream-2) 100%
+        )
+        fixed;
+}
+
+body.student-module .portal-wrapper.module-student {
+    background: transparent;
+}
+
+body.student-module h1,
+body.student-module h2,
+body.student-module h3,
+body.student-module h4,
+body.student-module h5,
+body.student-module .portal-title,
+body.student-module .modal-title {
+    font-family: var(--st-serif);
+}
+
+/* ---- 2. Sidebar --------------------------------------------------------- */
+body.student-module .portal-sidebar {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-right: 0 !important;
+    background: linear-gradient(
+        180deg,
+        #7a0b18 0%,
+        #6d0a15 45%,
+        #4a0710 100%
+    ) !important;
+    border-right: 0;
+    box-shadow: 10px 0 30px -18px rgba(58, 6, 14, 0.55);
+}
+
+/* campus photo fading in from the lower half */
+body.student-module .portal-sidebar::before {
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 0;
+    height: 58%;
+    pointer-events: none;
+    background:
+        linear-gradient(
+            180deg,
+            #6d0a15 0%,
+            rgba(110, 10, 22, 0.78) 28%,
+            rgba(74, 7, 16, 0.86) 100%
+        ),
+        url("../assets/images/PUP-TAGUIG/PUPT-picture.jpg") 38% 70% / cover
+            no-repeat;
+}
+
+/* the curved, gold-edged boundary */
+body.student-module .portal-sidebar::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: 3;
+    width: 40px;
+    pointer-events: none;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff8ef'/%3E%3Cstop offset='1' stop-color='%23fbf1e6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M30 0C15 18 37 32 25 50C14 66 35 80 23 100L40 100L40 0Z' fill='url(%23g)'/%3E%3Cpath d='M33 0C18 18 40 32 28 50C17 66 38 80 26 100' fill='none' stroke='%23fff3d6' stroke-opacity='.7' stroke-width='1.2' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M30 0C15 18 37 32 25 50C14 66 35 80 23 100' fill='none' stroke='%23e8b934' stroke-width='3' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E")
+        right / 100% 100% no-repeat;
+}
+
+body.student-module .portal-sidebar > * {
+    position: relative;
+    z-index: 2;
+}
+
+body.student-module .portal-logo-wrap {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 0.8rem;
+    align-items: center;
+    margin-bottom: 1.1rem;
+    padding: 0.4rem 1.2rem 0.9rem 0.2rem;
+    text-align: left;
+    border-bottom: 0;
+}
+
+body.student-module .portal-logo-wrap .portal-logo {
+    grid-row: 1 / span 2;
+    width: 48px;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
+}
+
+body.student-module .portal-logo-wrap h5 {
+    margin: 0;
+    font-family: var(--st-serif);
+    font-size: 1.3rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #fff;
+}
+
+body.student-module .portal-logo-wrap small {
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: rgba(255, 244, 234, 0.9);
+}
+
+body.student-module .portal-module-label {
+    grid-column: 1 / -1;
+    margin-top: 1rem;
+    font-size: 0.84rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--st-gold-soft);
+}
+
+body.student-module .portal-nav-list {
+    flex: 0 0 auto;
+    padding-right: 1.4rem;
+}
+
+body.student-module .portal-nav-list a {
+    display: flex;
+    align-items: center;
+    gap: 0.95rem;
+    padding: 0.8rem 1rem;
+    font-family: var(--st-sans);
+    font-size: 0.98rem;
+    font-weight: 500;
+    color: rgba(255, 246, 238, 0.94);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    transition:
+        background 0.22s var(--st-ease),
+        color 0.22s var(--st-ease),
+        transform 0.22s var(--st-ease),
+        box-shadow 0.22s var(--st-ease);
+}
+
+body.student-module .portal-nav-list a > i {
+    font-size: 1.35rem;
+    line-height: 1;
+    color: rgba(255, 246, 238, 0.95);
+}
+
+body.student-module .portal-nav-list a:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.09);
+    transform: translateX(3px);
+}
+
+body.student-module .portal-nav-list a.active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: inset 4px 0 0 var(--st-gold);
+}
+
+body.student-module .portal-nav-list a.active > i {
+    color: var(--st-gold-soft);
+}
+
+body.student-module .portal-nav-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    margin-left: auto;
+    padding: 0 0.4rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #fff;
+    background: #e5252f;
+    border-radius: 7px;
+}
+
+body.student-module .portal-nav-badge[hidden] {
+    display: none;
+}
+
+body.student-module .portal-sidebar-footer {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    margin-top: auto;
+    padding: 0 1.2rem 1.7rem 1.4rem;
+}
+
+body.student-module .portal-sidebar-dash {
+    flex: none;
+    width: 38px;
+    height: 3px;
+    margin-top: 0.7em;
+    background: var(--st-gold-soft);
+    border-radius: 2px;
+}
+
+body.student-module .portal-sidebar-footer p {
+    margin: 0;
+    font-family: var(--st-serif);
+    font-style: italic;
+    font-size: 1.02rem;
+    line-height: 1.4;
+    color: rgba(255, 246, 238, 0.96);
+}
+
+body.student-module .portal-nav-list a:focus-visible,
+body.student-module .sidebar-close:focus-visible {
+    outline: 3px solid var(--st-gold);
+    outline-offset: 2px;
+}
+
+/* ---- 3. University header bar, bell and account chip --------------------- */
+/* the header bar spans the full width of the content area, flush at the top */
+body.student-module .portal-main {
+    padding-top: 0;
+    background: transparent;
+}
+
+body.student-module .portal-topbar {
+    top: 0;
+    margin: 0 -1rem 1.5rem;
+    padding-inline: clamp(1rem, 2vw, 1.8rem);
+    background: linear-gradient(180deg, #fff9f1, #fbf1e6) !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--st-line) !important;
+    border-radius: 0 !important;
+    box-shadow: 0 10px 24px -22px rgba(90, 9, 18, 0.45);
+}
+
+body.student-module .portal-topbar-brand {
+    gap: 0.7rem;
+}
+
+body.student-module .portal-topbar-brand img {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+}
+
+body.student-module .portal-topbar .portal-title {
+    font-family: var(--st-sans);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--st-burgundy);
+}
+
+body.student-module .portal-topbar small {
+    font-size: 0.74rem;
+    color: var(--st-muted);
+}
+
+body.student-module .admin-notif-bell-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    font-size: 1.15rem;
+    color: var(--st-burgundy);
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    transition:
+        background 0.18s var(--st-ease),
+        transform 0.18s var(--st-ease);
+}
+
+body.student-module .admin-notif-bell-btn:hover {
+    color: var(--st-burgundy);
+    background: rgba(var(--st-burgundy-rgb), 0.08);
+}
+
+body.student-module .user-menu {
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--st-line-strong);
+}
+
+body.student-module .user-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.2rem 0.4rem 0.2rem 0.2rem;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    transition: background 0.18s var(--st-ease);
+}
+
+body.student-module .user-menu-toggle:hover {
+    background: rgba(var(--st-burgundy-rgb), 0.06);
+}
+
+body.student-module .user-menu-toggle::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    margin: 0 0.25rem 0.2rem 0.1rem;
+    border-right: 2px solid var(--st-burgundy);
+    border-bottom: 2px solid var(--st-burgundy);
+    transform: rotate(45deg);
+}
+
+body.student-module .user-menu-avatar {
+    width: 38px;
+    height: 38px;
+    font-weight: 700;
+    color: var(--st-gold-soft);
+    background: linear-gradient(135deg, #8d1a26, var(--st-burgundy-deep));
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px var(--st-line-strong);
+}
+
+body.student-module .user-menu-toggle-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--st-ink);
+}
+
+body.student-module .user-menu-toggle-sub {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    body.student-module .user-menu-toggle {
+        display: grid;
+        grid-template-columns: auto auto auto;
+        grid-template-rows: auto auto;
+        column-gap: 0.65rem;
+        row-gap: 0;
+        align-items: center;
+    }
+
+    body.student-module .user-menu-avatar {
+        grid-row: 1 / span 2;
+    }
+
+    body.student-module .user-menu-toggle::after {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+    }
+
+    body.student-module .user-menu-toggle-sub {
+        display: block;
+        grid-column: 2;
+        grid-row: 2;
+        font-size: 0.76rem;
+        color: var(--st-muted);
+    }
+
+    body.student-module .user-menu-toggle-sub::before {
+        content: "Student | ";
+    }
+}
+
+body.student-module .user-menu-dropdown,
+body.student-module .admin-notif-dropdown {
+    border: 1px solid var(--st-line);
+    border-radius: 16px;
+    box-shadow: 0 24px 48px -22px rgba(58, 6, 14, 0.5);
+    overflow: hidden;
+}
+
+body.student-module .user-menu-item:hover,
+body.student-module .admin-notif-item:hover {
+    background: #fff4ea;
+}
+
+body.student-module .admin-notif-item.unread {
+    background: #fff6ec;
+    box-shadow: inset 3px 0 0 var(--st-gold);
+}
+
+body.student-module .admin-notif-title {
+    font-family: var(--st-serif);
+    color: var(--st-burgundy-ink);
+}
+
+/* ---- 4. Page container + staggered entrance ------------------------------- */
+body.student-module .portal-main .container-fluid.student-page > * {
+    animation: st-rise 0.42s var(--st-ease) backwards;
+}
+
+body.student-module
+    .portal-main
+    .container-fluid.student-page
+    > *:nth-child(2) {
+    animation-delay: 0.05s;
+}
+body.student-module
+    .portal-main
+    .container-fluid.student-page
+    > *:nth-child(3) {
+    animation-delay: 0.1s;
+}
+body.student-module
+    .portal-main
+    .container-fluid.student-page
+    > *:nth-child(4) {
+    animation-delay: 0.15s;
+}
+body.student-module
+    .portal-main
+    .container-fluid.student-page
+    > *:nth-child(n + 5) {
+    animation-delay: 0.2s;
+}
+
+@keyframes st-rise {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+}
+
+/* ---- 5. Page headers (every page except the dashboard banner) --------------- */
+body.student-module .portal-hero {
+    position: relative;
+    padding: 0.2rem 0 0.4rem;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+body.student-module .portal-hero::before {
+    content: "";
+    display: block;
+    width: 54px;
+    height: 3px;
+    margin-bottom: 0.7rem;
+    background: linear-gradient(90deg, var(--st-gold), var(--st-gold-soft));
+    border-radius: 2px;
+}
+
+body.student-module .portal-hero::after {
+    display: none;
+}
+
+body.student-module .portal-hero h1,
+body.student-module .portal-hero h2,
+body.student-module .portal-hero h3 {
+    font-family: var(--st-serif);
+    font-size: clamp(1.7rem, 2.6vw, 2.2rem);
+    font-weight: 700;
+    color: var(--st-burgundy-ink) !important;
+}
+
+body.student-module .portal-hero p,
+body.student-module .portal-hero small,
+body.student-module .portal-hero .text-muted {
+    color: var(--st-muted) !important;
+}
+
+/* Dashboard banner: campus photo under burgundy, text on the left */
+body.student-module .portal-hero.dashboard-hero {
+    min-height: 210px;
+    padding: clamp(1.4rem, 3vw, 2.4rem) clamp(1.4rem, 3vw, 2.6rem) 4.4rem;
+    overflow: hidden;
+    isolation: isolate;
+    background:
+        linear-gradient(
+            95deg,
+            rgba(104, 8, 21, 0.96) 0%,
+            rgba(122, 11, 24, 0.84) 42%,
+            rgba(122, 11, 24, 0.28) 100%
+        ),
+        url("../assets/images/PUP-TAGUIG/PUPT-picture.jpg") center 38% / cover
+            no-repeat !important;
+    border-radius: 22px !important;
+    box-shadow: 0 24px 44px -28px rgba(90, 9, 18, 0.8) !important;
+}
+
+body.student-module .portal-hero.dashboard-hero::before {
+    width: 48px;
+    margin-bottom: 0.9rem;
+    background: var(--st-gold-soft);
+}
+
+body.student-module .portal-hero.dashboard-hero h2 {
+    font-size: clamp(1.9rem, 3.4vw, 2.8rem);
+    letter-spacing: -0.01em;
+    color: #fff !important;
+}
+
+body.student-module .portal-hero.dashboard-hero h2 .bi {
+    display: none;
+}
+
+body.student-module .portal-hero.dashboard-hero p,
+body.student-module .portal-hero.dashboard-hero strong {
+    color: rgba(255, 246, 238, 0.95) !important;
+}
+
+body.student-module .dashboard-time-label {
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--st-gold-soft) !important;
+}
+
+body.student-module .dashboard-time-value {
+    color: var(--st-burgundy-ink);
+    background: rgba(255, 253, 250, 0.96);
+    border: 0;
+    border-radius: 999px;
+}
+
+/* stat cards overlap the banner, like the reference */
+body.student-module .portal-hero.dashboard-hero + .row {
+    position: relative;
+    z-index: 2;
+    margin-top: -3.3rem;
+    padding-inline: clamp(0.5rem, 1.5vw, 1.2rem);
+}
+
+/* ---- 6. Cards, stats, lists, badges ----------------------------------------- */
+body.student-module .portal-card,
+body.student-module .card {
+    background: var(--st-paper);
+    border: 1px solid var(--st-line) !important;
+    border-radius: var(--st-radius) !important;
+    box-shadow: var(--st-shadow) !important;
+}
+
+body.student-module .card-header,
+body.student-module .card-header.bg-white {
+    padding: 1.05rem 1.3rem;
+    background: transparent !important;
+    border-bottom: 1px solid var(--st-line);
+    border-radius: var(--st-radius) var(--st-radius) 0 0 !important;
+}
+
+body.student-module .card-header h1,
+body.student-module .card-header h2,
+body.student-module .card-header h3,
+body.student-module .card-header h4,
+body.student-module .card-header h5,
+body.student-module .card-header h6 {
+    font-family: var(--st-serif);
+    font-weight: 700;
+    color: var(--st-burgundy-ink);
+}
+
+body.student-module .card-footer {
+    background: transparent;
+    border-top: 1px solid var(--st-line);
+}
+
+body.student-module .portal-stat-card::before {
+    display: none;
+}
+
+body.student-module .portal-stat-card {
+    background: linear-gradient(135deg, #fff1f0, #fddede) !important;
+    border: 1px solid #f6cccc !important;
+    transition:
+        transform 0.24s var(--st-ease),
+        box-shadow 0.24s var(--st-ease);
+}
+
+body.student-module .portal-stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--st-shadow-hover) !important;
+}
+
+body.student-module .portal-stat-card .card-body {
+    padding: 1.25rem 1.4rem;
+}
+
+body.student-module .portal-stat-card .d-flex {
+    flex-direction: row-reverse;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 1.1rem;
+}
+
+body.student-module .portal-stat-value {
+    font-family: var(--st-serif);
+    font-size: 2.3rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--st-burgundy-ink);
+}
+
+body.student-module .portal-stat-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--st-ink);
+}
+
+body.student-module .portal-icon-badge {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 62px;
+    height: 62px;
+    font-size: 1.55rem;
+    color: var(--st-burgundy);
+    background: #f9c9cb;
+    border-radius: 50%;
+}
+
+body.student-module .portal-list-item {
+    padding: 0.95rem 1.3rem;
+    border-bottom: 1px solid var(--st-line);
+    transition: background 0.18s var(--st-ease);
+}
+
+body.student-module .portal-list-item:last-child {
+    border-bottom: 0;
+}
+
+body.student-module .portal-list-item:hover {
+    background: #fffaf3;
+}
+
+body.student-module .portal-list-item h6 {
+    font-family: var(--st-sans);
+    font-weight: 700;
+    color: var(--st-ink);
+}
+
+body.student-module .portal-muted-box {
+    background: #fff8ef;
+    border: 1px solid var(--st-line);
+    border-radius: var(--st-radius-sm);
+}
+
+body.student-module .portal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.34em 0.85em;
+    font-size: 0.74rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+    border-radius: 8px;
+}
+
+body.student-module .portal-badge.success {
+    color: #166534;
+    background: #dcf3e3;
+    border-color: #bfe6cb;
+}
+
+body.student-module .portal-badge.warning,
+body.student-module .portal-badge.goldenrod,
+body.student-module .portal-badge.gold {
+    color: #7a5200;
+    background: #fff0c7;
+    border-color: #f6dd96;
+}
+
+body.student-module .portal-badge.maroon {
+    color: var(--st-burgundy);
+    background: #fde4e4;
+    border-color: #f5c2c4;
+}
+
+body.student-module .portal-badge.muted {
+    color: #6f5b59;
+    background: #f3ece6;
+    border-color: #e6dad1;
+}
+
+body.student-module .badge {
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 0.42em 0.8em;
+}
+
+body.student-module .text-primary {
+    color: var(--st-burgundy) !important;
+}
+
+body.student-module .card-header a:not(.btn),
+body.student-module .card-header .btn-link,
+body.student-module .link-primary {
+    font-weight: 600;
+    color: var(--st-burgundy) !important;
+}
+
+/* "View All" style buttons inside card headers read as links */
+body.student-module .card-header .btn-outline-primary.btn-sm {
+    color: var(--st-burgundy);
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+body.student-module .card-header .btn-outline-primary.btn-sm:hover {
+    color: var(--st-burgundy-deep);
+    background: rgba(var(--st-burgundy-rgb), 0.07);
+}
+
+/* ---- 7. Buttons ----------------------------------------------------------------- */
+body.student-module .btn,
+body.student-module .portal-btn,
+body.student-module .admin-btn {
+    font-family: var(--st-sans);
+    font-weight: 600;
+    border-radius: var(--st-radius-sm);
+    transition:
+        transform 0.18s var(--st-ease),
+        box-shadow 0.18s var(--st-ease),
+        background 0.18s var(--st-ease),
+        border-color 0.18s var(--st-ease),
+        color 0.18s var(--st-ease);
+}
+
+body.student-module .btn:not(:disabled):not(.disabled):hover {
+    transform: translateY(-1px);
+}
+
+body.student-module .btn:not(:disabled):not(.disabled):active {
+    transform: translateY(0);
+}
+
+body.student-module .btn:focus-visible,
+body.student-module .admin-btn:focus-visible {
+    outline: 3px solid rgba(var(--st-gold-rgb), 0.9);
+    outline-offset: 2px;
+}
+
+body.student-module .btn-primary,
+body.student-module .portal-btn,
+body.student-module .admin-btn-primary {
+    color: #fff;
+    background: linear-gradient(180deg, #8d1a26, var(--st-burgundy)) !important;
+    border: 0 !important;
+    box-shadow: 0 10px 20px -12px rgba(var(--st-burgundy-rgb), 0.75);
+}
+
+body.student-module .btn-primary:hover,
+body.student-module .portal-btn:hover,
+body.student-module .admin-btn-primary:hover {
+    color: #fff;
+    background: linear-gradient(180deg, #9a2431, #86101d) !important;
+    box-shadow: 0 14px 24px -12px rgba(var(--st-burgundy-rgb), 0.8);
+}
+
+body.student-module .btn-outline-primary,
+body.student-module .admin-btn-view {
+    color: var(--st-burgundy);
+    background: #fff;
+    border: 1px solid rgba(var(--st-burgundy-rgb), 0.5);
+}
+
+body.student-module .btn-outline-primary:hover,
+body.student-module .admin-btn-view:hover {
+    color: #fff;
+    background: var(--st-burgundy);
+    border-color: var(--st-burgundy);
+}
+
+body.student-module .btn-outline-secondary,
+body.student-module .admin-btn-neutral {
+    color: var(--st-ink);
+    background: #fbf3ea;
+    border: 1px solid var(--st-line-strong);
+}
+
+body.student-module .btn-outline-secondary:hover,
+body.student-module .admin-btn-neutral:hover {
+    color: var(--st-burgundy);
+    background: #fff4ea;
+    border-color: var(--st-burgundy);
+}
+
+/* ---- 8. Forms --------------------------------------------------------------------- */
+body.student-module .form-label {
+    font-weight: 600;
+    color: var(--st-ink);
+}
+
+body.student-module .form-control,
+body.student-module .form-select {
+    min-height: 44px;
+    color: var(--st-ink);
+    background-color: #fff;
+    border: 1px solid var(--st-line-strong);
+    border-radius: var(--st-radius-sm);
+    transition:
+        border-color 0.18s var(--st-ease),
+        box-shadow 0.18s var(--st-ease);
+}
+
+body.student-module .form-control:focus,
+body.student-module .form-select:focus {
+    border-color: var(--st-burgundy);
+    box-shadow: 0 0 0 4px rgba(var(--st-burgundy-rgb), 0.13);
+}
+
+body.student-module .form-check-input:checked {
+    background-color: var(--st-burgundy);
+    border-color: var(--st-burgundy);
+}
+
+body.student-module .form-check-input:focus {
+    border-color: var(--st-burgundy);
+    box-shadow: 0 0 0 4px rgba(var(--st-burgundy-rgb), 0.16);
+}
+
+/* ---- 9. Tabs (pill style) ------------------------------------------------------------ */
+body.student-module .portal-main .nav-tabs {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    border-bottom: 0 !important;
+}
+
+body.student-module .portal-main .nav-tabs .nav-link {
+    padding: 0.6rem 1.5rem;
+    font-weight: 700;
+    color: var(--st-muted) !important;
+    background: #fbf3ea !important;
+    border: 1px solid var(--st-line-strong) !important;
+    border-radius: 10px !important;
+    transition:
+        color 0.22s var(--st-ease),
+        background 0.22s var(--st-ease),
+        border-color 0.22s var(--st-ease),
+        box-shadow 0.22s var(--st-ease);
+}
+
+body.student-module .portal-main .nav-tabs .nav-link:hover {
+    color: var(--st-burgundy) !important;
+    background: #fff4ea !important;
+}
+
+body.student-module .portal-main .nav-tabs .nav-link.active {
+    color: #fff !important;
+    background: var(--st-burgundy) !important;
+    border-color: var(--st-burgundy) !important;
+    box-shadow: 0 10px 18px -12px rgba(var(--st-burgundy-rgb), 0.8);
+}
+
+body.student-module .tab-content > .tab-pane.fade {
+    transition: opacity 0.28s var(--st-ease);
+}
+
+body.student-module .tab-content > .tab-pane.active > * {
+    animation: st-rise 0.36s var(--st-ease) backwards;
+}
+
+/* ---- 10. Tables + pagination ------------------------------------------------------------- */
+body.student-module .portal-main .table > :not(caption) > * > * {
+    border-bottom-color: var(--st-line);
+}
+
+body.student-module .portal-main .table thead th {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    color: var(--st-ink) !important;
+    background: #f7efe6 !important;
+    border-bottom: 1px solid var(--st-line-strong) !important;
+}
+
+body.student-module .portal-main .table tbody tr {
+    transition: background 0.16s var(--st-ease);
+}
+
+body.student-module .portal-main .table tbody tr:hover > * {
+    background-color: #fffaf3;
+}
+
+body.student-module .pagination {
+    gap: 0.3rem;
+}
+
+body.student-module .pagination .page-link {
+    min-width: 36px;
+    text-align: center;
+    color: var(--st-ink);
+    background: #fff;
+    border: 1px solid var(--st-line-strong);
+    border-radius: 8px !important;
+    transition:
+        background 0.16s var(--st-ease),
+        color 0.16s var(--st-ease);
+}
+
+body.student-module .pagination .page-link:hover {
+    background: #fff4ea;
+}
+
+body.student-module .pagination .page-item.active .page-link {
+    color: #fff;
+    background: var(--st-burgundy);
+    border-color: var(--st-burgundy);
+}
+
+body.student-module .pagination .page-item.disabled .page-link {
+    color: #b9a9a5;
+    background: #fbf6f0;
+}
+
+/* Guide accordion + light table headers */
+body.student-module .accordion-item {
+    border: 1px solid var(--st-line);
+    border-radius: var(--st-radius-sm) !important;
+    overflow: hidden;
+}
+
+body.student-module .accordion-item + .accordion-item {
+    margin-top: 0.6rem;
+}
+
+body.student-module .accordion-button {
+    font-weight: 700;
+    color: var(--st-burgundy-ink);
+    background: #fffaf4;
+    transition:
+        background 0.2s var(--st-ease),
+        color 0.2s var(--st-ease);
+}
+
+body.student-module .accordion-button:not(.collapsed) {
+    color: var(--st-burgundy-ink);
+    background: #fff1e4;
+    box-shadow: inset 0 -1px 0 var(--st-line);
+}
+
+body.student-module .accordion-button:focus {
+    border-color: var(--st-burgundy);
+    box-shadow: 0 0 0 4px rgba(var(--st-burgundy-rgb), 0.14);
+}
+
+body.student-module .table-light,
+body.student-module .table-light > th,
+body.student-module .table-light > td {
+    --bs-table-bg: #f7efe6;
+    --bs-table-color: var(--st-ink);
+}
+
+body.student-module .alert {
+    border-radius: var(--st-radius-sm);
+}
+
+/* ---- 11. Modals — white card, serif title, close in the corner ------------------------------ */
+body.student-module .modal-backdrop {
+    background: #1d1416;
+}
+
+body.student-module .modal-backdrop.show {
+    opacity: 0.52;
+    backdrop-filter: blur(2px);
+}
+
+body.student-module .modal-backdrop.fade {
+    transition: opacity 0.22s ease;
+}
+
+body.student-module .modal.fade .modal-dialog {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+    transition:
+        transform 0.24s var(--st-ease),
+        opacity 0.24s var(--st-ease);
+}
+
+body.student-module .modal.show .modal-dialog {
+    opacity: 1;
+    transform: none;
+}
+
+/* Centred in the viewport; tall content scrolls inside the dialog */
+body.student-module .modal-dialog {
+    margin: 1.25rem auto;
+}
+
+body.student-module .modal-dialog-centered {
+    min-height: calc(100% - 2.5rem);
+}
+
+body.student-module .modal-dialog-scrollable {
+    max-height: calc(100% - 2.5rem);
+}
+
+body.student-module .modal-content,
+body.student-module .admin-modal .modal-content {
+    overflow: hidden;
+    background: var(--st-paper);
+    border: 0;
+    border-radius: 18px;
+    box-shadow: 0 34px 70px -28px rgba(30, 8, 12, 0.6);
+}
+
+body.student-module .modal-header,
+body.student-module .admin-modal-header,
+body.student-module .announcement-modal-header {
+    padding: 1.35rem 1.6rem 0.5rem;
+    color: var(--st-burgundy-ink);
+    background: transparent !important;
+    border-bottom: 0 !important;
+}
+
+body.student-module .modal-title,
+body.student-module .modal-header .modal-title,
+body.student-module .admin-modal-title,
+body.student-module .announcement-modal-title {
+    font-family: var(--st-serif);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--st-burgundy-ink) !important;
+}
+
+body.student-module .admin-modal-subtitle,
+body.student-module .modal-header small,
+body.student-module .modal-header .text-muted {
+    color: var(--st-muted) !important;
+}
+
+body.student-module .modal-header .btn-close,
+body.student-module .admin-modal-close {
+    filter: none;
+    opacity: 0.55;
+    transition:
+        opacity 0.16s ease,
+        transform 0.16s var(--st-ease);
+}
+
+body.student-module .modal-header .btn-close:hover,
+body.student-module .admin-modal-close:hover {
+    opacity: 1;
+    transform: rotate(90deg);
+}
+
+body.student-module .modal-body {
+    padding: 0.6rem 1.6rem 1.1rem;
+    color: var(--st-ink);
+}
+
+body.student-module .modal-footer,
+body.student-module .admin-modal-footer,
+body.student-module .announcement-modal-footer {
+    padding: 0.4rem 1.6rem 1.4rem;
+    background: transparent;
+    border-top: 0;
+}
+
+/* ---- 12. Announcements ------------------------------------------------------------------------ */
+body.student-module .announcement-card {
+    position: relative;
+    overflow: hidden;
+    transition:
+        transform 0.24s var(--st-ease),
+        box-shadow 0.24s var(--st-ease);
+}
+
+body.student-module .announcement-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--st-shadow-hover) !important;
+}
+
+body.student-module .announcement-card-title {
+    font-family: var(--st-serif);
+    font-weight: 700;
+    color: var(--st-burgundy-ink);
+}
+
+body.student-module .announcement-card-icon {
+    color: var(--st-burgundy);
+}
+
+body.student-module .announcement-card-meta,
+body.student-module .announcement-card-date {
+    color: var(--st-muted);
+}
+
+body.student-module .announcement-card-attachment-badge {
+    color: #7a5200;
+    background: #fff0c7 !important;
+    border: 1px solid #f6dd96;
+    border-radius: 8px;
+}
+
+/* File-only announcement: no empty gap where the text would be */
+body.student-module .announcement-card-preview.is-empty,
+body.student-module .announcement-rendered-content[data-empty="true"] {
+    display: none;
+}
+
+body.student-module
+    .announcement-modal-body
+    hr:has(+ .announcement-rendered-content[data-empty="true"]) {
+    display: none;
+}
+
+body.student-module .announcement-modal-section-title {
+    font-family: var(--st-serif);
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--st-burgundy-ink);
+}
+
+body.student-module .announcement-modal-attachment-row {
+    padding: 0.8rem 1rem;
+    background: #fff;
+    border: 1px solid var(--st-line);
+    border-radius: 12px;
+    transition: box-shadow 0.18s var(--st-ease);
+}
+
+body.student-module .announcement-modal-attachment-row:hover {
+    box-shadow: 0 10px 22px -16px rgba(var(--st-burgundy-rgb), 0.5);
+}
+
+body.student-module .announcement-modal-attachment-icon {
+    color: var(--st-burgundy);
+    background: #fbe3e1;
+    border-radius: 10px;
+}
+
+/* ---- 13. Notifications ------------------------------------------------------------------------------ */
+body.student-module .page-header-modern {
+    position: relative;
+    padding: 0.2rem 0 0.4rem;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+body.student-module .page-header-modern::before {
+    content: "";
+    position: absolute;
+    top: -0.5rem;
+    left: 0;
+    width: 54px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--st-gold), var(--st-gold-soft));
+    border-radius: 2px;
+}
+
+body.student-module .page-header-modern h1,
+body.student-module .page-header-modern h2,
+body.student-module .page-header-modern h3 {
+    margin-top: 0.4rem;
+    font-family: var(--st-serif);
+    font-size: clamp(1.7rem, 2.6vw, 2.2rem);
+    font-weight: 700;
+    color: var(--st-burgundy-ink) !important;
+}
+
+body.student-module .page-header-modern p,
+body.student-module .page-header-modern small {
+    color: var(--st-muted) !important;
+}
+
+body.student-module .list-group {
+    border-radius: var(--st-radius);
+}
+
+body.student-module .list-group-item {
+    padding: 1rem 1.2rem;
+    border-color: var(--st-line);
+    transition: background 0.16s var(--st-ease);
+}
+
+body.student-module .list-group-item:hover {
+    background: #fffaf3;
+}
+
+body.student-module .admin-notif-unread-row {
+    background: #fff8f1 !important;
+}
+
+body.student-module .admin-notif-trigger {
+    color: var(--st-ink) !important;
+}
+
+body.student-module .admin-notif-center-msg {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+/* the type icon becomes a soft circle, as in the reference */
+body.student-module .admin-notif-center-msg > i {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    margin: 0 !important;
+    font-size: 1.05rem;
+    background: #f3ece6;
+    border-radius: 50%;
+}
+
+body.student-module .admin-notif-center-msg > i.text-danger {
+    background: #fde0e0;
+}
+body.student-module .admin-notif-center-msg > i.text-warning {
+    background: #fff0c7;
+}
+body.student-module .admin-notif-center-msg > i.text-primary {
+    background: #e1ebfb;
+}
+body.student-module .admin-notif-center-msg > i.text-success {
+    background: #dcf3e3;
+}
+
+body.student-module .admin-notif-center-msg.fw-bold {
+    color: var(--st-burgundy-ink);
+}
+
+/* ---- 14. Profile ------------------------------------------------------------------------------------------ */
+body.student-module .profile-card {
+    border: 1px solid var(--st-line) !important;
+    border-radius: var(--st-radius) !important;
+    box-shadow: var(--st-shadow) !important;
+}
+
+body.student-module .profile-hero {
+    background: linear-gradient(
+        120deg,
+        #6b0a14 0%,
+        #7a0b18 55%,
+        #8d1a26 100%
+    ) !important;
+}
+
+body.student-module .profile-hero-name {
+    font-family: var(--st-serif);
+    color: #fff;
+}
+
+body.student-module .profile-avatar-lg {
+    color: var(--st-burgundy);
+    background: linear-gradient(135deg, var(--st-gold-soft), var(--st-gold));
+    border: 4px solid rgba(255, 255, 255, 0.85);
+}
+
+body.student-module .profile-info-item {
+    background: #fff8ef;
+    border: 1px solid var(--st-line);
+    border-radius: var(--st-radius-sm);
+}
+
+body.student-module .profile-info-label {
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--st-muted);
+}
+
+body.student-module .profile-info-value {
+    font-weight: 600;
+    color: var(--st-ink);
+}
+
+/* ---- 15. SweetAlert (status pop-ups) ---------------------------------------------------------------------------- */
+body.student-module .swal2-popup {
+    width: min(30em, 92vw);
+    padding: 1.9rem 1.8rem 1.6rem;
+    font-family: var(--st-sans);
+    background: var(--st-paper);
+    border-radius: 18px;
+    box-shadow: 0 34px 70px -28px rgba(30, 8, 12, 0.6);
+}
+
+/* soft pastel icon discs, as in the reference pop-ups */
+body.student-module .swal2-icon {
+    width: 5.4em;
+    height: 5.4em;
+    margin: 0.4rem auto 1rem;
+    border: 0;
+    background: #f3ece6;
+}
+
+body.student-module .swal2-icon.swal2-success {
+    color: #1e7a45;
+    background: #dff3e4;
+}
+body.student-module .swal2-icon.swal2-success .swal2-success-ring {
+    border-color: transparent;
+}
+body.student-module .swal2-icon.swal2-success [class^="swal2-success-line"] {
+    background-color: #1e7a45;
+}
+body.student-module .swal2-icon.swal2-success .swal2-success-fix,
+body.student-module
+    .swal2-icon.swal2-success
+    [class^="swal2-success-circular-line"] {
+    display: none !important;
+}
+body.student-module .swal2-icon.swal2-error {
+    color: #d02a2a;
+    background: #fde2e2;
+}
+body.student-module .swal2-icon.swal2-error [class^="swal2-x-mark-line"] {
+    background-color: #d02a2a;
+}
+body.student-module .swal2-icon.swal2-info {
+    color: #2f62d6;
+    background: #e3ecfd;
+}
+body.student-module .swal2-icon.swal2-warning {
+    color: #e08a14;
+    background: #fff0d9;
+}
+body.student-module .swal2-icon.swal2-question {
+    color: #7a0b18;
+    background: #fde4e4;
+}
+
+body.student-module .swal2-html-container {
+    font-size: 0.92rem;
+    color: var(--st-ink);
+}
+
+body.student-module .swal2-close {
+    color: var(--st-muted);
+}
+
+body.student-module .swal2-title {
+    font-family: var(--st-serif);
+    font-weight: 700;
+    color: var(--st-burgundy-ink);
+}
+
+body.student-module .swal2-styled.swal2-confirm {
+    background: var(--st-burgundy) !important;
+    border-radius: var(--st-radius-sm);
+}
+
+body.student-module .swal2-styled.swal2-cancel {
+    color: var(--st-ink);
+    background: #fbf3ea !important;
+    border: 1px solid var(--st-line-strong);
+    border-radius: var(--st-radius-sm);
+}
+
+/* ---- 16. Module-wide page transition (cross-document View Transitions) ---------------------------------------------- */
+/* The sidebar and header bar keep their own names so they stay put while the
+   rest of the page cross-fades. The content wrapper is deliberately NOT named:
+   a named element would become the containing block for the page's fixed-
+   position modals and trap them below the backdrop. */
+body.student-module .portal-sidebar {
+    view-transition-name: st-sidebar;
+}
+body.student-module .portal-topbar {
+    view-transition-name: st-topbar;
+}
+
+::view-transition-group(st-sidebar),
+::view-transition-group(st-topbar) {
+    animation-duration: 0s;
+}
+
+::view-transition-old(root) {
+    animation: st-vt-out 0.16s ease-in both;
+}
+
+::view-transition-new(root) {
+    animation: st-vt-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+}
+
+@keyframes st-vt-out {
+    to {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+}
+
+@keyframes st-vt-in {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+}
+
+/* leave-page fade for browsers without cross-document View Transitions (set by portal.js) */
+body.student-module .portal-main .container-fluid.student-page.is-leaving {
+    opacity: 0;
+    transform: translateY(-6px);
+    transition:
+        opacity 0.16s ease-in,
+        transform 0.16s ease-in;
+}
+
+/* ---- 17. Small screens ------------------------------------------------------------------------------------ */
+@media (max-width: 767.98px) {
+    body.student-module .portal-topbar,
+    body.student-module .portal-topbar .d-flex,
+    body.student-module .portal-topbar > * {
+        flex-wrap: nowrap !important;
+    }
+
+    body.student-module .portal-topbar-brand > div {
+        min-width: 0;
+    }
+
+    body.student-module .portal-topbar .portal-title {
+        max-width: 42vw;
+        overflow: hidden;
+        font-size: 0.64rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    body.student-module .portal-topbar small {
+        display: none;
+    }
+
+    body.student-module .user-menu {
+        padding-left: 0.4rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    body.student-module .dashboard-time-value {
+        max-width: 100%;
+        white-space: normal;
+        font-size: 0.92rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    body.student-module .modal-dialog {
+        margin: 0.75rem auto;
+        max-width: calc(100% - 1.5rem);
+    }
+
+    body.student-module .modal-dialog-centered {
+        min-height: calc(100% - 1.5rem);
+    }
+
+    body.student-module .modal-dialog-scrollable {
+        max-height: calc(100% - 1.5rem);
+    }
+
+    body.student-module .portal-hero.dashboard-hero {
+        border-radius: 18px !important;
+    }
+
+    body.student-module .portal-hero.dashboard-hero + .row {
+        margin-top: -2.8rem;
+    }
+}
+
+/* ---- 18. Reduced motion ------------------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    body.student-module .portal-main .container-fluid.student-page > *,
+    body.student-module .tab-content > .tab-pane.active > * {
+        animation: none;
+    }
+
+    body.student-module .modal.fade .modal-dialog,
+    body.student-module .tab-content > .tab-pane.fade,
+    body.student-module .btn,
+    body.student-module .portal-nav-list a,
+    body.student-module .portal-stat-card,
+    body.student-module .announcement-card {
+        transition: none !important;
+    }
+
+    body.student-module .portal-nav-list a:hover,
+    body.student-module .btn:not(:disabled):hover,
+    body.student-module .portal-stat-card:hover,
+    body.student-module .announcement-card:hover {
+        transform: none !important;
+    }
+
+    body.student-module .modal.fade .modal-dialog {
+        transform: none;
+    }
+
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation: none !important;
+    }
+}

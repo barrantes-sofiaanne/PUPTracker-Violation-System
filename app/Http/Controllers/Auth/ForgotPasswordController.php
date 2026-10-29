@@ -146,11 +146,23 @@ class ForgotPasswordController extends Controller
 
        
 
+        // Presentation only: an OSS Staff account is reset under the ADMIN guard
+        // but signs in through the shared Security / OSS Staff portal, so the page
+        // needs to know which portal's colours and login link to use.
+        $isOssStaff = $guard === 'admin'
+            && $account instanceof Admin
+            && $account->isOssStaff();
+
         return view('auth.reset-password', [
             'guard' => $guard,
             'moduleLabel' => $config['module_label'],
             'token' => $token,
             'email' => (string) $account->email,
+            'portal' => $isOssStaff ? 'oss' : $guard,
+            'loginUrl' => route(
+                $this->loginRouteFor($guard, $account),
+                $isOssStaff ? ['portal' => 'oss'] : []
+            ),
         ]);
     }
 

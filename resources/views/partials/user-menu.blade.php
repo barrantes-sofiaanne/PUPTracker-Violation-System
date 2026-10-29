@@ -29,6 +29,7 @@
         aria-label="Account menu">
         <span class="user-menu-avatar" aria-hidden="true">{{ $menuAvatarText }}</span>
         <span class="user-menu-toggle-label d-none d-md-inline">{{ $menuUserName }}</span>
+        <span class="user-menu-toggle-sub">{{ $menuUserSub }}</span>
     </button>
 
     <ul class="dropdown-menu dropdown-menu-end user-menu-dropdown shadow">

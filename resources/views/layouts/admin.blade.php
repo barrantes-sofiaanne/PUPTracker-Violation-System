@@ -30,6 +30,7 @@
 
 <link rel="stylesheet"
     href="{{ asset('css/portal.css') }}">
+<link rel="stylesheet" href="{{ asset('css/module-dashboard-ui.css') }}">
     @stack('styles')
 
 </head>
@@ -39,7 +40,7 @@
     data-inactivity-warning-seconds="{{ config('auth.inactivity_warning_seconds', 10) }}"
     data-session-activity-url="{{ route('session.activity') }}"
 >
-<div class="admin-wrapper">
+<div class="admin-wrapper module-admin">
 
     @include('admin.partials.sidebar')
 

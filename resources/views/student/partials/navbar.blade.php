@@ -8,10 +8,10 @@
                 <i class="bi bi-list"></i>
             </button>
             <div class="portal-topbar-brand">
-                <img src="{{ asset('assets/images/Tracker-logo.png') }}" alt="Tracker logo">
+                <img src="{{ asset('assets/images/PUP_logo.png') }}" alt="Polytechnic University of the Philippines seal">
                 <div>
-                    <p class="portal-title mb-0">PUPTracker</p>
-                    <small>Student Portal</small>
+                    <p class="portal-title mb-0">Polytechnic University of the Philippines</p>
+                    <small>Taguig Campus</small>
                 </div>
             </div>
         </div>

@@ -1,42 +1,51 @@
 @extends('layouts.auth-portal', ['title' => 'Student Login', 'portal' => 'student'])
 
-@section('auth-content')
+@section('ap-content')
+    <div class="ap-login">
 
-        <p class="module-chip">Student Module</p>
+        <span class="ap-icon" aria-hidden="true">
+            <i class="bi bi-mortarboard-fill"></i>
+        </span>
 
-        <h2>Student Login</h2>
+        <h2 class="ap-heading">Student Portal</h2>
+        <p class="ap-subtitle">Sign in to your account.</p>
 
-        <p class="subtitle">
-            Sign in using your IDP account.
-        </p>
+        {{-- Password-reset confirmation: the server's own message, shown only
+             after a reset completed (it is flashed by the reset action). --}}
+        @if(session('status'))
+            <div class="ap-alert ap-alert--success" role="status">
+                <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                <span>{{ session('status') }}</span>
+            </div>
+        @endif
 
         @if($errors->has('login'))
-            <div class="login-error">
+            <div class="ap-alert" role="alert">
                 <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
                 <span>{{ $errors->first('login') }}</span>
             </div>
         @endif
 
-        <a
-            href="{{ route('student.idp.login') }}"
-            class="btn btn-success w-100 login-btn"
-            role="button">
-
-            <span class="login-btn-label">Continue with PUP IDP</span>
-
+        {{-- Existing student sign-in: PUP IDP. --}}
+        <a href="{{ route('student.idp.login') }}"
+           class="ap-btn"
+           role="button"
+           data-idp-redirect>
+            <span>Sign In with PUP IDP</span>
+            <i class="bi bi-arrow-right" aria-hidden="true"></i>
         </a>
 
-        <p class="security-note">
-            <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
-            You will be securely redirected to the PUP Identity Provider to sign in.
+        <p class="ap-note">
+            You will securely continue to the PUP Identity Provider.
         </p>
 
-        <div class="footer-links">
+        <a href="{{ route('login') }}"
+           class="ap-back"
+           data-soft-nav
+           data-portal-theme="access">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            <span>Back to portal selection</span>
+        </a>
 
-            <a href="{{ route('login') }}">
-                &larr; Back
-            </a>
-
-        </div>
-
+    </div>
 @endsection

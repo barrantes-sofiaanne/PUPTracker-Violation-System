@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin-components.css') }}">
     <link rel="stylesheet" href="{{ asset('css/portal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/module-dashboard-ui.css') }}">
 <link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
 
 <link rel="stylesheet"
@@ -25,7 +26,7 @@
     data-inactivity-warning-seconds="{{ config('auth.inactivity_warning_seconds', 10) }}"
     data-session-activity-url="{{ route('session.activity') }}"
 >
-    <div class="portal-wrapper">
+    <div class="portal-wrapper module-security">
         @include('security.partials.sidebar')
 
         <main class="portal-main">

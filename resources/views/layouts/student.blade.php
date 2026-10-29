@@ -10,9 +10,15 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    {{-- Smooth page-to-page transitions inside the Student module only. --}}
+    <style>@view-transition { navigation: auto; }</style>
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin-components.css') }}">
     <link rel="stylesheet" href="{{ asset('css/portal.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/module-dashboard-ui.css') }}">
 <link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
 
 <link rel="stylesheet"
@@ -22,17 +28,18 @@
     @stack('styles')
 </head>
 <body
+    class="student-module"
     data-inactivity-timeout-minutes="{{ config('auth.inactivity_timeout_minutes', 15) }}"
     data-inactivity-warning-seconds="{{ config('auth.inactivity_warning_seconds', 10) }}"
     data-session-activity-url="{{ route('session.activity') }}"
 >
-    <div class="portal-wrapper">
+    <div class="portal-wrapper module-student">
         @include('student.partials.sidebar')
 
         <main class="portal-main">
             @include('student.partials.navbar')
 
-            <div class="container-fluid py-4">
+            <div class="container-fluid py-4 student-page">
                 @yield('content')
             </div>
         </main>

@@ -23,7 +23,8 @@ body {
             rgba(218, 165, 32, 0) 25%
         ),
         linear-gradient(rgba(19, 10, 11, 0.68), rgba(19, 10, 11, 0.68)),
-        url("../assets/images/PUPT-picture.jpg") center/cover no-repeat;
+        url("../assets/images/PUP-TAGUIG/PUPT-picture.jpg") center/cover
+            no-repeat;
 }
 
 .login-page {
@@ -319,7 +320,7 @@ body {
     overflow: auto;
     background:
         linear-gradient(120deg, rgba(60, 0, 0, 0.9), rgba(128, 0, 0, 0.67)),
-        url("../assets/images/PUPT-picture.jpg") center/cover fixed;
+        url("../assets/images/PUP-TAGUIG/PUPT-picture.jpg") center/cover fixed;
 }
 
 .login-page {
@@ -733,7 +734,7 @@ body {
     color: #fff;
     background:
         linear-gradient(145deg, rgba(95, 0, 0, 0.96), rgba(128, 0, 0, 0.86)),
-        url("../assets/images/PUPT-picture.jpg") center/cover;
+        url("../assets/images/PUP-TAGUIG/PUPT-picture.jpg") center/cover;
 }
 
 .auth-brand-heading {
@@ -1277,7 +1278,7 @@ html.is-navigating .auth-brand-mark::after {
     overflow: hidden;
     background:
         linear-gradient(120deg, rgba(60, 0, 0, 0.82), rgba(128, 0, 0, 0.56)),
-        url("../assets/images/PUPT-picture.jpg") center/cover fixed;
+        url("../assets/images/PUP-TAGUIG/PUPT-picture.jpg") center/cover fixed;
 }
 
 .auth-ambient-layer {

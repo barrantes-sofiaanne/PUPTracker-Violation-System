@@ -133,9 +133,19 @@ class DiagnoseEvidenceStorage extends Command
                 $this->warn('  A write succeeded but the object was not readable back immediately.');
             }
         } catch (\Throwable $e) {
-            $this->two('write test', 'FAILED');
-            $this->error('  ' . class_basename($e) . ': ' . $this->redact($e->getMessage()));
-            $this->warn('  R2 connection unavailable. Uploads will not persist until this is fixed.');
+    $this->two('write test', 'FAILED');
+
+    $current = $e;
+    $level = 0;
+while ($current !== null && $level < 5) {
+        $this->error(
+            '  ' . class_basename($current) . ': '
+            . $this->redact($current->getMessage())
+        );
+
+        $current = $current->getPrevious();
+        $level++;
+    }
         }
     }
 

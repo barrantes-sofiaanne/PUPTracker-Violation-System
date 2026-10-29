@@ -147,3 +147,8 @@
         min-width: 210px;
     }
 }
+
+/* Secondary line in the toggle (only the Student module shows it) */
+.user-menu-toggle-sub {
+    display: none;
+}

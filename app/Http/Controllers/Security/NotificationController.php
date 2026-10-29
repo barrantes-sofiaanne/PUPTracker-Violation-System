@@ -91,10 +91,14 @@ class NotificationController extends Controller
     {
         $securityId = auth('security')->id();
 
-        $isSecurity = (string) ($notification->recipient_type ?? '') === 'security';
-        $isBroadcast = $notification->recipient_id === null;
-        $isOwned = (int) $notification->recipient_id === (int) $securityId;
-
-        abort_unless($isSecurity && ($isBroadcast || $isOwned), 403);
+        // Fail closed: a notification must have an explicit recipient and that
+        // recipient must be the currently authenticated Security account.
+        abort_unless(
+            $securityId !== null
+            && (string) ($notification->recipient_type ?? '') === 'security'
+            && $notification->recipient_id !== null
+            && (int) $notification->recipient_id === (int) $securityId,
+            403
+        );
     }
 }

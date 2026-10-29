@@ -1,255 +1,388 @@
-/**
- * PUPTracker landing page — light, dependency-free interactions.
- *
- * - Staggered entrance reveal (respects prefers-reduced-motion)
- * - Interactive feature preview (hover + keyboard)
- * - Subtle desktop-only ambient drift
- */
-(function () {
+/* =========================================================
+   PUPTRACKER — LANDING PAGE INTERACTIONS
+   Mobile navigation | Sticky header | Replayable reveals
+   Feature previews | Ambient pointer glow | Image slideshows
+   ========================================================= */
+
+(() => {
     "use strict";
 
-    var prefersReducedMotion = window.matchMedia
-        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        : false;
+    function initializeLandingPage() {
+        const page = document.querySelector(".landing-page");
 
-    // Enable reveal animation only when motion is allowed. Adding this class
-    // lets the CSS apply the hidden start state; without it (no-JS / reduced
-    // motion) content stays fully visible. This prevents FOUC.
-    if (!prefersReducedMotion) {
-        document.documentElement.classList.add("js-anim");
-    }
+        if (!page) return;
 
-    function ready(fn) {
-        if (document.readyState !== "loading") {
-            fn();
-        } else {
-            document.addEventListener("DOMContentLoaded", fn);
-        }
-    }
+        page.classList.add("is-ready");
 
-    ready(function () {
-        initReveal();
-        initFeaturePreview();
-        initAmbientDrift();
-        initScrollReveal();
-        initStickyHeader();
-        initPointerGlow();
-    });
+        /* =============================================
+           CAMPUS PHOTO SLIDESHOWS (ABOUT + OUR GOAL)
+           ============================================= */
 
-    /**
-     * Scroll reveal for below-fold sections. Uses IntersectionObserver so it
-     * only triggers once, when the section scrolls into view. With reduced
-     * motion, CSS keeps the sections visible (JS adds the hidden start state
-     * only when motion is allowed).
-     */
-    function initScrollReveal() {
-        var revealables = document.querySelectorAll("[data-scroll-reveal]");
-        if (!revealables.length) {
-            return;
-        }
+        const slideshowReducedMotion = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+        );
 
-        // When reduced motion is on, leave everything visible.
-        if (prefersReducedMotion || !("IntersectionObserver" in window)) {
-            revealables.forEach(function (el) {
-                el.classList.add("is-revealed");
-            });
-            return;
-        }
+        page.querySelectorAll("[data-slideshow]").forEach((slideshow) => {
+            const slides = Array.from(slideshow.querySelectorAll(".lp-slide"));
 
-        var observer = new IntersectionObserver(
-            function (entries, obs) {
-                entries.forEach(function (entry) {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add("is-revealed");
-                        obs.unobserve(entry.target);
+            const dotsContainer = slideshow.querySelector(".lp-slideshow-dots");
+
+            if (slides.length < 2) return;
+
+            let activeIndex = Math.max(
+                0,
+                slides.findIndex((slide) =>
+                    slide.classList.contains("is-active"),
+                ),
+            );
+
+            let intervalId = null;
+
+            const dots = dotsContainer
+                ? slides.map((_, index) => {
+                      const dot = document.createElement("span");
+
+                      if (index === activeIndex) {
+                          dot.classList.add("is-active");
+                      }
+
+                      dot.setAttribute("aria-hidden", "true");
+                      dotsContainer.appendChild(dot);
+
+                      return dot;
+                  })
+                : [];
+
+            function showSlide(nextIndex) {
+                activeIndex = (nextIndex + slides.length) % slides.length;
+
+                slides.forEach((slide, index) => {
+                    const active = index === activeIndex;
+
+                    slide.classList.toggle("is-active", active);
+                    slide.setAttribute("aria-hidden", String(!active));
+
+                    if (dots[index]) {
+                        dots[index].classList.toggle("is-active", active);
                     }
                 });
-            },
-            { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
-        );
-
-        revealables.forEach(function (el) {
-            observer.observe(el);
-        });
-    }
-
-    /**
-     * Sticky frosted-glass header: adds a subtle background + shadow once the
-     * page scrolls, so the nav reads as a premium app bar without shifting
-     * layout. Skipped for reduced motion (visual only).
-     */
-    function initStickyHeader() {
-        var header = document.getElementById("lpHeader");
-        if (!header) {
-            return;
-        }
-
-        var onScroll = function () {
-            var scrolled = window.scrollY > 8;
-            header.classList.toggle("is-scrolled", scrolled);
-        };
-
-        window.addEventListener("scroll", onScroll, { passive: true });
-        onScroll();
-    }
-
-    /**
-     * Subtle pointer-follow ambient glow (desktop, motion allowed only).
-     * One soft radial light that eases toward the cursor. Purely decorative,
-     * never affects readability or pointer events.
-     */
-    function initPointerGlow() {
-        var glow = document.querySelector(".lp-glow");
-        if (!glow) {
-            return;
-        }
-
-        var canHover = window.matchMedia
-            ? window.matchMedia("(hover: hover) and (pointer: fine)").matches
-            : false;
-
-        if (prefersReducedMotion || !canHover) {
-            return;
-        }
-
-        var raf = null;
-        var x = window.innerWidth / 2;
-        var y = 0;
-        var tx = x;
-        var ty = y;
-
-        var loop = function () {
-            x += (tx - x) * 0.08;
-            y += (ty - y) * 0.08;
-            glow.style.transform =
-                "translate3d(" + x + "px, " + y + "px, 0) scale(1)";
-            raf = null;
-        };
-
-        document.addEventListener(
-            "pointermove",
-            function (event) {
-                tx = event.clientX;
-                ty = event.clientY;
-                glow.classList.add("is-visible");
-                if (!raf) {
-                    raf = window.requestAnimationFrame(loop);
-                }
-            },
-            { passive: true },
-        );
-    }
-
-    /**
-     * Staggered entrance reveal. All [data-reveal] elements become visible
-     * once the page is ready. With reduced motion, they're already visible
-     * via CSS (no JS needed to force anything).
-     */
-    function initReveal() {
-        var items = document.querySelectorAll("[data-reveal]");
-        items.forEach(function (item, i) {
-            item.style.setProperty("--reveal-i", String(i));
-        });
-
-        // Slight delay so the paint settles, but fast enough to not block use.
-        window.requestAnimationFrame(function () {
-            window.setTimeout(function () {
-                document
-                    .querySelector(".landing-page")
-                    ?.classList.add("is-ready");
-            }, 60);
-        });
-    }
-
-    /**
-     * Interactive feature preview: switching between feature rows updates the
-     * active panel. Works with hover AND keyboard focus (Enter/Space/arrows).
-     */
-    function initFeaturePreview() {
-        var card = document.querySelector(".lp-visual-card");
-        if (!card) {
-            return;
-        }
-
-        var tabs = Array.prototype.slice.call(
-            card.querySelectorAll(".lp-visual-feature"),
-        );
-        var panels = Array.prototype.slice.call(
-            card.querySelectorAll(".lp-visual-panel"),
-        );
-
-        function activate(feature) {
-            var tab = tabs.find(function (t) {
-                return t.dataset.feature === feature;
-            });
-            if (!tab) {
-                return;
             }
 
-            tabs.forEach(function (t) {
-                var isActive = t === tab;
-                t.classList.toggle("is-active", isActive);
-                t.setAttribute("aria-selected", isActive ? "true" : "false");
+            function stopSlideshow() {
+                if (intervalId !== null) {
+                    window.clearInterval(intervalId);
+                    intervalId = null;
+                }
+            }
+
+            function startSlideshow() {
+                stopSlideshow();
+
+                if (!slideshowReducedMotion.matches && !document.hidden) {
+                    intervalId = window.setInterval(() => {
+                        showSlide(activeIndex + 1);
+                    }, 5000);
+                }
+            }
+
+            showSlide(activeIndex);
+            startSlideshow();
+
+            slideshow.addEventListener("mouseenter", stopSlideshow);
+
+            slideshow.addEventListener("mouseleave", startSlideshow);
+
+            slideshow.addEventListener("focusin", stopSlideshow);
+
+            slideshow.addEventListener("focusout", startSlideshow);
+
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden) {
+                    stopSlideshow();
+                } else {
+                    startSlideshow();
+                }
             });
 
-            panels.forEach(function (panel) {
-                var isActive = panel.id === tab.getAttribute("aria-controls");
-                panel.classList.toggle("is-open", isActive);
-                panel.hidden = !isActive;
-            });
+            const handleSlideshowMotionPreference = () => {
+                if (slideshowReducedMotion.matches) {
+                    stopSlideshow();
+                } else {
+                    startSlideshow();
+                }
+            };
+
+            if (slideshowReducedMotion.addEventListener) {
+                slideshowReducedMotion.addEventListener(
+                    "change",
+                    handleSlideshowMotionPreference,
+                );
+            } else if (slideshowReducedMotion.addListener) {
+                slideshowReducedMotion.addListener(
+                    handleSlideshowMotionPreference,
+                );
+            }
+        });
+
+        /* =============================================
+           HEADER / NAVIGATION
+           ============================================= */
+
+        const header =
+            document.getElementById("lpHeader") ||
+            page.querySelector(".lp-nav");
+
+        const menuToggle = page.querySelector(".lp-menu-toggle");
+        const navigation = page.querySelector(".lp-navigation");
+
+        function updateHeader() {
+            if (!header) return;
+
+            const isScrolled = window.scrollY > 20;
+
+            header.classList.toggle("is-scrolled", isScrolled);
         }
 
-        tabs.forEach(function (tab) {
-            // Mouse interaction
-            tab.addEventListener("mouseenter", function () {
-                activate(tab.dataset.feature);
-            });
-            tab.addEventListener("focus", function () {
-                activate(tab.dataset.feature);
-            });
-            // Touch / click (mobile)
-            tab.addEventListener("click", function () {
-                activate(tab.dataset.feature);
+        updateHeader();
+
+        window.addEventListener("scroll", updateHeader, {
+            passive: true,
+        });
+
+        window.addEventListener("resize", updateHeader, {
+            passive: true,
+        });
+
+        /* =============================================
+           MOBILE MENU
+           ============================================= */
+
+        function closeMobileMenu() {
+            if (!menuToggle || !navigation) return;
+
+            navigation.classList.remove("is-open");
+            menuToggle.setAttribute("aria-expanded", "false");
+        }
+
+        if (menuToggle && navigation) {
+            menuToggle.setAttribute("aria-expanded", "false");
+            menuToggle.setAttribute("aria-controls", "lpNavigation");
+
+            if (!navigation.id) {
+                navigation.id = "lpNavigation";
+            }
+
+            menuToggle.addEventListener("click", () => {
+                const isOpen = navigation.classList.toggle("is-open");
+
+                menuToggle.setAttribute("aria-expanded", String(isOpen));
             });
 
-            // Keyboard interaction
-            tab.addEventListener("keydown", function (event) {
-                if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    activate(tab.dataset.feature);
+            navigation.querySelectorAll("a").forEach((link) => {
+                link.addEventListener("click", closeMobileMenu);
+            });
+
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape") {
+                    closeMobileMenu();
+                }
+            });
+
+            document.addEventListener("click", (event) => {
+                if (
+                    !navigation.classList.contains("is-open") ||
+                    header?.contains(event.target)
+                ) {
                     return;
                 }
 
-                // Arrow key navigation between tabs
-                var index = tabs.indexOf(tab);
-                var nextIndex = null;
-                if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-                    nextIndex = (index + 1) % tabs.length;
-                } else if (
-                    event.key === "ArrowUp" ||
-                    event.key === "ArrowLeft"
-                ) {
-                    nextIndex = (index - 1 + tabs.length) % tabs.length;
+                closeMobileMenu();
+            });
+
+            window.addEventListener("resize", () => {
+                if (window.innerWidth > 760) {
+                    closeMobileMenu();
+                }
+            });
+        }
+
+        /* =============================================
+           REPLAYABLE SCROLL REVEALS
+           ============================================= */
+
+        const revealElements = page.querySelectorAll(
+            "[data-scroll-reveal], [data-reveal]",
+        );
+
+        const reducedMotion = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+        );
+
+        if (reducedMotion.matches) {
+            revealElements.forEach((element) => {
+                element.classList.remove("scroll-reveal");
+                element.classList.add("is-revealed");
+            });
+        } else if ("IntersectionObserver" in window) {
+            revealElements.forEach((element) => {
+                element.classList.add("scroll-reveal");
+            });
+
+            const revealObserver = new IntersectionObserver(
+                (entries) => {
+                    entries.forEach((entry) => {
+                        const element = entry.target;
+
+                        if (entry.isIntersecting) {
+                            element.classList.add("is-revealed");
+                        } else {
+                            element.classList.remove("is-revealed");
+                        }
+                    });
+                },
+                {
+                    threshold: 0.12,
+                    rootMargin: "0px 0px -40px 0px",
+                },
+            );
+
+            revealElements.forEach((element) => {
+                revealObserver.observe(element);
+            });
+
+            const handleMotionPreference = () => {
+                if (!reducedMotion.matches) return;
+
+                revealObserver.disconnect();
+
+                revealElements.forEach((element) => {
+                    element.classList.remove("scroll-reveal");
+                    element.classList.add("is-revealed");
+                });
+            };
+
+            if (reducedMotion.addEventListener) {
+                reducedMotion.addEventListener(
+                    "change",
+                    handleMotionPreference,
+                );
+            } else if (reducedMotion.addListener) {
+                reducedMotion.addListener(handleMotionPreference);
+            }
+        } else {
+            revealElements.forEach((element) => {
+                element.classList.add("is-revealed");
+            });
+        }
+
+        /* =============================================
+           OPTIONAL INTERACTIVE FEATURE PREVIEWS
+           ============================================= */
+
+        const featureTriggers = page.querySelectorAll("[data-feature-target]");
+
+        const featurePreviews = page.querySelectorAll("[data-feature-preview]");
+
+        function activateFeature(featureName) {
+            featureTriggers.forEach((trigger) => {
+                const active = trigger.dataset.featureTarget === featureName;
+
+                trigger.classList.toggle("is-active", active);
+                trigger.setAttribute("aria-pressed", String(active));
+            });
+
+            featurePreviews.forEach((preview) => {
+                const active = preview.dataset.featurePreview === featureName;
+
+                preview.classList.toggle("is-active", active);
+                preview.classList.toggle("is-inactive", !active);
+                preview.setAttribute("aria-hidden", String(!active));
+            });
+        }
+
+        featureTriggers.forEach((trigger) => {
+            trigger.addEventListener("click", () => {
+                activateFeature(trigger.dataset.featureTarget);
+            });
+        });
+
+        if (featureTriggers.length && featurePreviews.length) {
+            const initiallyActive = Array.from(featureTriggers).find(
+                (trigger) => trigger.classList.contains("is-active"),
+            );
+
+            const firstFeature = initiallyActive
+                ? initiallyActive.dataset.featureTarget
+                : featureTriggers[0].dataset.featureTarget;
+
+            activateFeature(firstFeature);
+        }
+
+        /* =============================================
+           POINTER GLOW
+           ============================================= */
+
+        const glowElements = page.querySelectorAll(".lp-glow");
+
+        if (
+            !reducedMotion.matches &&
+            window.matchMedia("(hover: hover) and (pointer: fine)").matches
+        ) {
+            glowElements.forEach((element) => {
+                element.addEventListener("pointermove", (event) => {
+                    const bounds = element.getBoundingClientRect();
+
+                    const x = event.clientX - bounds.left;
+                    const y = event.clientY - bounds.top;
+
+                    element.style.setProperty("--glow-x", `${x}px`);
+
+                    element.style.setProperty("--glow-y", `${y}px`);
+                });
+            });
+        }
+
+        /* =============================================
+           SMOOTH INTERNAL NAVIGATION
+           ============================================= */
+
+        page.querySelectorAll('a[href^="#"]').forEach((link) => {
+            link.addEventListener("click", (event) => {
+                const href = link.getAttribute("href");
+
+                if (!href || href === "#") return;
+
+                let target;
+
+                try {
+                    target = document.querySelector(href);
+                } catch {
+                    return;
                 }
 
-                if (nextIndex !== null) {
-                    event.preventDefault();
-                    var next = tabs[nextIndex];
-                    activate(next.dataset.feature);
-                    next.focus();
+                if (!target) return;
+
+                event.preventDefault();
+
+                target.scrollIntoView({
+                    behavior: reducedMotion.matches ? "auto" : "smooth",
+                    block: "start",
+                });
+
+                if (!target.hasAttribute("tabindex")) {
+                    target.setAttribute("tabindex", "-1");
                 }
+
+                target.focus({ preventScroll: true });
             });
         });
     }
 
-    /**
-     * Subtle ambient drift. Only runs on desktop and when motion is allowed.
-     * The glows are purely decorative (CSS pseudo-elements); we just let the
-     * CSS animation run. Nothing heavy here.
-     */
-    function initAmbientDrift() {
-        if (prefersReducedMotion) {
-            document.documentElement.classList.add("lp-no-motion");
-        }
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initializeLandingPage, {
+            once: true,
+        });
+    } else {
+        initializeLandingPage();
     }
 })();

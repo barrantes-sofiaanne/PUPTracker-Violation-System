@@ -80,8 +80,8 @@ return [
     'url' => env('EVIDENCE_AWS_URL'),
     'endpoint' => env('EVIDENCE_AWS_ENDPOINT'),
     'use_path_style_endpoint' => env('EVIDENCE_AWS_USE_PATH_STYLE_ENDPOINT', false),
-    'throw' => false,
-    'report' => false,
+    'throw' => true,
+    'report' => true,
 ],
 
         'announcements' => [

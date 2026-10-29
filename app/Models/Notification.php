@@ -48,20 +48,22 @@ class Notification extends Model
     }
 
     /**
-     * Scope: notifications visible to a specific recipient of a given type.
-     *
-     * The "recipient_id IS NULL" branch preserves pre-policy / broadcast rows
-     * (mirrors the AdminNotification convention where NULL = all of the role).
-     * Every NEW notification created by the app carries an explicit
-     * recipient_id so it is only visible to its intended recipient.
+     * Scope notifications to one exact recipient account and recipient type.
+     * Rows with a null recipient_id are legacy/unassigned and are deliberately
+     * excluded so new accounts do not inherit another account's notifications.
      */
     public function scopeForRecipient(Builder $query, string $recipientType, ?int $recipientId): Builder
     {
-        return $query->where('recipient_type', $recipientType)
-            ->where(function (Builder $q) use ($recipientId): void {
-                $q->whereNull('recipient_id')
-                    ->orWhere('recipient_id', $recipientId);
-            });
+        // Notifications are private to one account. A null recipient ID must
+        // never act as a role-wide broadcast, because newly created accounts
+        // would inherit historical/unassigned notifications.
+        if ($recipientId === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query
+            ->where('recipient_type', $recipientType)
+            ->where('recipient_id', $recipientId);
     }
 
     /**

@@ -48,7 +48,7 @@
 <div class="container-fluid py-4">
     
     {{-- Welcome Section --}}
-    <div class="portal-hero">
+    <div class="portal-hero dashboard-hero">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
             <div>
                 <h2 class="mb-1 fw-bold">

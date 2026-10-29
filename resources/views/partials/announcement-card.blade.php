@@ -42,6 +42,8 @@
 
     $cardPosted = optional($announcement->created_at)->format('F d, Y h:i A');
     $cardHasLegacy = (bool) $announcement->attachment_path;
+    // Presentation hook: true when the announcement has body text to preview.
+    $cardHasPreview = trim(strip_tags((string) $announcement->content)) !== '';
 
     // Viewer payload. Same shape for both modules; `view` is the authorized
     // inline endpoint, `download` the authorized forced-download endpoint.
@@ -93,7 +95,7 @@
 
         <hr class="border-secondary-subtle">
 
-        <p class="announcement-card-preview mb-0 text-dark">
+        <p class="announcement-card-preview mb-0 text-dark{{ $cardHasPreview ? '' : ' is-empty' }}">
             {{ \Illuminate\Support\Str::limit(strip_tags($announcement->content), 180) }}
         </p>
 
