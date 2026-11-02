@@ -4,7 +4,6 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     unzip \
-    default-mysql-client \
     zip \
     libzip-dev \
     libpng-dev \
@@ -35,7 +34,6 @@ RUN set -eux; \
         --filename=composer; \
     rm -f /tmp/composer-setup.php; \
     composer --version
-
 # Allow Composer plugins to run and configure process timeout
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
     COMPOSER_PROCESS_TIMEOUT=1200
@@ -52,7 +50,10 @@ RUN curl -fsSL https://repo.mysql.com/RPM-GPG-KEY-mysql-2025 \
     && apt-get install -y mysql-community-client \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-
+RUN command -v mysqldump \
+    && command -v mysqlbinlog \
+    && mysqldump --version \
+    && mysqlbinlog --version
 # Copy the entire Laravel application
 COPY . .
 
@@ -69,9 +70,11 @@ RUN set -eux; \
         sleep 5; \
     done
 
+# Verify PHP 8.5 and installed production dependencies
+RUN composer check-platform-reqs --no-dev
 # Build frontend assets
 RUN if [ -f package.json ]; then \
-    npm install && \
+    npm ci && \
     npm run build; \
     fi
 
