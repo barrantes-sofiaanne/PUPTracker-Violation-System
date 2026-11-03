@@ -229,14 +229,10 @@ class StudentIdpLoginController extends Controller
                 $request->session()->put('student.idp.refresh_token', $refreshToken);
             }
 
-Auth::guard('student')->login($user);
-$request->session()->regenerate();
-
-EnforceInactivityTimeout::startFreshActivityWindow($request);
-
-$request->session()->put('show_privacy_consent_modal', true);
-
-            return redirect()->route('student.dashboard');
+// The IDP subject already resolves to this local student record, so this is
+            // an established binding. Use the same completion path as first-time
+            // linking so profile_completed_at is set before dashboard access.
+            return $this->completeRegistrationFor($request, $user);
         } catch (\Throwable $exception) {
             Log::error('Student IDP login failed.', [
                 'error' => $exception->getMessage(),
@@ -620,44 +616,46 @@ $request->session()->put('show_privacy_consent_modal', true);
      * registration (or a lost race) still ends in a signed-in dashboard visit
      * rather than a duplicate account.
      */
-protected function completeRegistrationFor(
-    Request $request,
-    User $student
-): \Illuminate\Http\RedirectResponse {
+    protected function completeRegistrationFor(Request $request, User $student): \Illuminate\Http\RedirectResponse
+    {
+        // Never mark a profile complete unless this existing record has a
+        // confirmed permanent IDP identity binding.
+        if (trim((string) ($student->idp_subject ?? '')) === '') {
+            Log::warning('Student IDP completion blocked: missing permanent IDP binding', [
+                'user_id' => $student->user_id,
+            ]);
 
-    // A successfully linked existing student record is complete
-    // for purposes of the Student Module profile middleware.
-    if (empty($student->profile_completed_at)) {
-        $student->profile_completed_at = now();
-        $student->save();
+            return redirect()->route('student.login')
+                ->withErrors([
+                    'login' => 'Your PUP IDP account is not yet linked to a student record. Please sign in again.',
+                ]);
+        }
+
+        // A successfully linked existing student record is complete for the
+        // Student Module profile gate. Do not change student or enrollment data.
+        if (empty($student->profile_completed_at)) {
+            $student->profile_completed_at = now();
+            $student->save();
+        }
+
+        $request->session()->forget([
+            'student.idp.pending_profile',
+            'student.idp.pending_subject',
+            'student.idp.pending_email',
+            'student.idp.pending_student_number',
+            'student.idp.pending_program_id',
+            'student.idp.pending_year_id',
+        ]);
+
+Auth::guard('student')->login($student);
+$request->session()->regenerate();
+
+EnforceInactivityTimeout::startFreshActivityWindow($request);
+        $request->session()->put('show_privacy_consent_modal', true);
+
+        return redirect()->route('student.dashboard')
+            ->with('success', 'Your existing student record has been linked successfully. You may now access PUPTracker.');
     }
-
-    // Clear temporary IDP registration information.
-    $request->session()->forget([
-        'student.idp.pending_profile',
-        'student.idp.pending_subject',
-        'student.idp.pending_email',
-        'student.idp.pending_student_number',
-        'student.idp.pending_program_id',
-        'student.idp.pending_year_id',
-    ]);
-
-    // Authenticate the student using the student guard.
-    Auth::guard('student')->login($student);
-
-    // Regenerate the session after authentication.
-    $request->session()->regenerate();
-
-    EnforceInactivityTimeout::startFreshActivityWindow($request);
-
-    $request->session()->put('show_privacy_consent_modal', true);
-
-    return redirect()->route('student.dashboard')
-        ->with(
-            'success',
-            'Your existing student record has been linked successfully. You may now access PUPTracker.'
-        );
-}
 
     /**
      * Create the enrollment record for a newly registered student.
@@ -898,31 +896,41 @@ protected function completeRegistrationFor(
     }
 
     /**
-     * Persist the IdP subject binding + authoritative identity on the local user.
+     * Persist only the IDP link fields on the existing PUPTracker student.
      *
-     * idp_subject is the permanent identity link; idp_email and the name fields
-     * (first/middle/last/name_suffix) are refreshed from the IDP profile on
-     * every login because the IDP is the authoritative source for identity.
+     * PUPTracker remains authoritative for the preloaded student name,
+     * student number, enrollment, gender, status, and disciplinary records.
+     * The IDP contributes the permanent subject and the email address only.
+     * Database errors deliberately propagate so linking cannot appear
+     * successful when the binding was not saved.
      */
     protected function persistIdpBinding(User $user, string $idpSubject, string $email, array $profile = []): void
     {
-        try {
-            $wasFirstLink = $user->idp_subject === null || (string) $user->idp_subject === '';
+        $idpSubject = trim($idpSubject);
+        $email = strtolower(trim($email));
 
-            $user->forceFill([
-                'idp_subject' => $idpSubject,
-                'idp_email' => $email !== '' ? $email : $user->idp_email,
-                'idp_connected_at' => $wasFirstLink ? now() : ($user->idp_connected_at ?? now()),
-            ])->save();
-
-            // IDP is authoritative for name identity — refresh the local snapshot
-            // from the authenticated profile (fresh from /me).
-            if ($profile !== []) {
-                $this->syncIdentityFromIdp($user->fresh(), $profile);
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Could not update idp fields', ['error' => $e->getMessage()]);
+        if ($idpSubject === '') {
+            throw new \InvalidArgumentException('The IDP subject cannot be empty.');
         }
+
+        $wasFirstLink = trim((string) ($user->idp_subject ?? '')) === '';
+
+        $changes = [
+            'idp_subject' => $idpSubject,
+            'idp_connected_at' => $wasFirstLink
+                ? now()
+                : ($user->idp_connected_at ?? now()),
+        ];
+
+        if ($email !== '') {
+            // Store the verified IDP email in the account's primary email
+            // field (used by existing PUPTracker features) and retain the
+            // IDP-specific copy for identity/audit purposes.
+            $changes['email'] = $email;
+            $changes['idp_email'] = $email;
+        }
+
+        $user->forceFill($changes)->saveOrFail();
     }
 
     /**
