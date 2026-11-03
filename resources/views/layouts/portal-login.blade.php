@@ -92,7 +92,7 @@
 
             <p class="spl-tagline">
                 <span class="spl-dash" aria-hidden="true"></span>
-                Para sa'yo, Para sa Bayan
+                Mula sa'yo, Para sa Bayan
             </p>
         </aside>
 

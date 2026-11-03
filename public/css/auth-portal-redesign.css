@@ -1406,13 +1406,20 @@
     text-align: left;
 }
 
-.ap-wizard:not(.is-stepper) .ap-steps,
-.ap-wizard:not(.is-stepper) [data-step-panel="4"] {
+.ap-wizard:not(.is-stepper) .ap-steps {
     display: none;
 }
 
-.ap-step-panel + .ap-step-panel {
-    margin-top: 30px;
+/* Keep inactive registration pages hidden even before the wizard JavaScript
+   initializes. Blade marks the server-selected page as .is-active, so the
+   first paint never exposes the contents of later steps. */
+.ap-step-panel {
+    display: none;
+    margin-top: 0;
+}
+
+.ap-step-panel.is-active {
+    display: block;
 }
 
 /* JavaScript on: one panel at a time, with a short directional slide */
