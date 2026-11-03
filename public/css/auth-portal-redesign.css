@@ -2261,3 +2261,23 @@
         transition: none !important;
     }
 }
+/* =========================================
+   STUDENT IDP WIZARD — STEP VISIBILITY
+   ========================================= */
+
+.ap-wizard.is-stepper .ap-wizard-form [data-step-panel] {
+    display: none;
+}
+
+/* Active step */
+.ap-wizard.is-stepper .ap-wizard-form [data-step-panel].is-active {
+    display: block;
+}
+
+/* Keep panels visible while transitioning */
+.ap-wizard.is-stepper .ap-wizard-form [data-step-panel].is-leaving-forward,
+.ap-wizard.is-stepper .ap-wizard-form [data-step-panel].is-leaving-back,
+.ap-wizard.is-stepper .ap-wizard-form [data-step-panel].is-entering-forward,
+.ap-wizard.is-stepper .ap-wizard-form [data-step-panel].is-entering-back {
+    display: block;
+}

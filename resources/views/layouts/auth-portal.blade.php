@@ -119,7 +119,7 @@
 
                 <p class="ap-motto">
                     <span class="ap-dash" aria-hidden="true"></span>
-                    <span>Para sa'yo,<br>Para sa Bayan</span>
+                    <span>Mula sa'yo,<br>Para sa Bayan</span>
                 </p>
 
             </div>
