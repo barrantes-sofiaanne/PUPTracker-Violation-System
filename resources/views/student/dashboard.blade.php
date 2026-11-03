@@ -70,25 +70,7 @@
     </div>
 
     {{-- Statistics Cards --}}
-    <div class="row mb-4 g-3">
 
-        <div class="col-lg-3 col-md-6">
-            <div class="card portal-stat-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="portal-stat-label mb-1">Total Violations</p>
-                            <h2 class="portal-stat-value mb-0">{{ $totalViolations }}</h2>
-                        </div>
-                        <div class="portal-icon-badge">
-                            <i class="bi bi-exclamation-octagon-fill"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>
 
     {{-- Main Content Row --}}
     <div class="row g-3 mb-4">
