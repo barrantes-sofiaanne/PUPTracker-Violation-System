@@ -160,7 +160,7 @@
             <div class="lp-hero-signature">
                 <span></span>
                 <p>
-                    Para sa'yo<br>
+                    Mula sa'yo<br>
                     Para sa Bayan
                 </p>
             </div>
@@ -420,95 +420,59 @@
                 data-scroll-reveal="right"
             >
 
-                <div class="lp-slideshow lp-about-slideshow" data-slideshow aria-label="PUP Taguig campus photos">
+                <div class="lp-slideshow lp-about-slideshow" data-slideshow role="group" aria-label="PUP Taguig campus photos">
                     <img class="lp-slide is-active"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT1.jpg') }}"
                          alt="PUP Taguig students during a campus event"
                          loading="lazy">
                     <img class="lp-slide"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT5.jpg') }}"
-                         alt="PUP Taguig campus grounds"
+                         alt="PUP Taguig campus"
                          loading="lazy">
                     <img class="lp-slide"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT6.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
+                         alt="PUP Taguig campus"
                          loading="lazy">
-                                             <img class="lp-slide"
+                    <img class="lp-slide"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT9.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
-                         loading="lazy"
-                                             <img class="lp-slide"
-                         src="{{ asset('assets/images/PUP-TAGUIG/PUPT6.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
+                         alt="PUP Taguig campus"
                          loading="lazy">
-                                             <img class="lp-slide"
+                    <img class="lp-slide"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT10.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
-                         loading="lazy"
-                                             <img class="lp-slide"
-                         src="{{ asset('assets/images/PUP-TAGUIG/PUPT6.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
+                         alt="PUP Taguig campus"
                          loading="lazy">
-                                             <img class="lp-slide"
+                    <img class="lp-slide"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT11.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
-                         loading="lazy"
-                                             <img class="lp-slide"
-                         src="{{ asset('assets/images/PUP-TAGUIG/PUPT6.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
+                         alt="PUP Taguig campus"
                          loading="lazy">
-                                             <img class="lp-slide"
+                    <img class="lp-slide"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT12.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
-                         loading="lazy"
-                                             <img class="lp-slide"
-                         src="{{ asset('assets/images/PUP-TAGUIG/PUPT6.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
+                         alt="PUP Taguig campus"
                          loading="lazy">
-                                             <img class="lp-slide"
+                    <img class="lp-slide"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT13.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
-                         loading="lazy"
-                                             <img class="lp-slide"
-                         src="{{ asset('assets/images/PUP-TAGUIG/PUPT6.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
+                         alt="PUP Taguig campus"
                          loading="lazy">
-                                             <img class="lp-slide"
+                    <img class="lp-slide"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT14.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
-                         loading="lazy"
-                                             <img class="lp-slide"
-                         src="{{ asset('assets/images/PUP-TAGUIG/PUPT6.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
+                         alt="PUP Taguig campus"
                          loading="lazy">
-                                             <img class="lp-slide"
+                    <img class="lp-slide"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT15.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
-                         loading="lazy"
-                                             <img class="lp-slide"
-                         src="{{ asset('assets/images/PUP-TAGUIG/PUPT6.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
+                         alt="PUP Taguig campus"
                          loading="lazy">
-                                             <img class="lp-slide"
+                    <img class="lp-slide"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT16.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
-                         loading="lazy"
-                                             <img class="lp-slide"
-                         src="{{ asset('assets/images/PUP-TAGUIG/PUPT6.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
+                         alt="PUP Taguig campus"
                          loading="lazy">
-                                             <img class="lp-slide"
-                         src="{{ asset('assets/images/PUP-TAGUIG/PUPT17.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
-                         loading="lazy"
-                                             <img class="lp-slide"
-                         src="{{ asset('assets/images/PUP-TAGUIG/PUPT6.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
-                         loading="lazy">
-                                             <img class="lp-slide"
+                    <img class="lp-slide"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT18.jpg') }}"
-                         alt="Polytechnic University of the Philippines Taguig Campus"
-                         loading="lazy"
+                         alt="PUP Taguig campus"
+                         loading="lazy">
+                    <img class="lp-slide"
+                         src="{{ asset('assets/images/PUP-TAGUIG/PUPT19.jpg') }}"
+                         alt="PUP Taguig campus"
+                         loading="lazy">
                     <div class="lp-slideshow-dots" aria-hidden="true"></div>
                 </div>
 
@@ -570,31 +534,27 @@
                      loading="lazy">
                 <img class="lp-slide"
                      src="{{ asset('assets/images/PUP-TAGUIG/PUPT4.jpg') }}"
-                     alt="Polytechnic University of the Philippines Taguig Campus"
+                     alt="PUP Taguig campus"
                      loading="lazy">
                 <img class="lp-slide"
                      src="{{ asset('assets/images/PUP-TAGUIG/PUPT7.jpg') }}"
-                     alt="PUP Taguig students during a campus event"
+                     alt="PUP Taguig campus"
                      loading="lazy">
-                                     <img class="lp-slide"
+                <img class="lp-slide"
                      src="{{ asset('assets/images/PUP-TAGUIG/PUPT19.jpg') }}"
-                     alt="PUP Taguig students during a campus event"
+                     alt="PUP Taguig campus"
                      loading="lazy">
-                                     <img class="lp-slide"
-                     src="{{ asset('assets/images/PUP-TAGUIG/PUP20.jpg') }}"
-                     alt="PUP Taguig students during a campus event"
+                <img class="lp-slide"
+                     src="{{ asset('assets/images/PUP-TAGUIG/PUPT20.jpg') }}"
+                     alt="PUP Taguig campus"
                      loading="lazy">
-                                     <img class="lp-slide"
+                <img class="lp-slide"
                      src="{{ asset('assets/images/PUP-TAGUIG/PUPT21.jpg') }}"
-                     alt="PUP Taguig students during a campus event"
+                     alt="PUP Taguig campus"
                      loading="lazy">
-                                     <img class="lp-slide"
-                     src="{{ asset('assets/images/PUP-TAGUIG/PUPT22.jpg') }}"
-                     alt="PUP Taguig students during a campus event"
-                     loading="lazy">
-                                     <img class="lp-slide"
+                <img class="lp-slide"
                      src="{{ asset('assets/images/PUP-TAGUIG/PUPT23.jpg') }}"
-                     alt="PUP Taguig students during a campus event"
+                     alt="PUP Taguig campus"
                      loading="lazy">
                 <div class="lp-slideshow-dots" aria-hidden="true"></div>
             </div>
@@ -624,10 +584,9 @@
                     </span>
 
                     <span>
-                        <i class="bi bi-handshake"
-                           aria-hidden="true"></i>
-                        Discipline
-                    </span>
+   <i class="bi-person-check" aria-hidden="true"></i>
+    Discipline
+</span>
 
                     <span>
                         <i class="bi bi-people"
@@ -779,7 +738,7 @@
                     {{-- VIOLATION GUIDELINES --}}
                     <a
                         class="lp-resource-card"
-                        href="https://www.pup.edu.ph/"
+                        href="https://drive.google.com/file/d/1S9eq0I75D3YW7SCw9zd_Ur0WQBfJIHrS/view?usp=sharing"
                         target="_blank"
                         rel="noopener noreferrer"
                         data-scroll-reveal="left"
@@ -1015,7 +974,7 @@
 
                 <span>
                     <i class="bi bi-geo-alt" aria-hidden="true"></i>
-                    Taguig Campus, Taguig City
+                    PUP Taguig Campus, Taguig City
                 </span>
 
             </div>

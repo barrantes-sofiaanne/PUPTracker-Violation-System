@@ -1873,3 +1873,52 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
         animation: none !important;
     }
 }
+
+/* FIX: Keep the user profile avatar fully visible on mobile */
+@media (max-width: 767.98px) {
+    body.student-module .portal-topbar {
+        overflow: visible !important;
+    }
+
+    body.student-module .portal-topbar > .container-fluid {
+        overflow: visible !important;
+        padding-right: 0.65rem !important;
+    }
+
+    body.student-module .portal-topbar > .container-fluid > .d-flex:last-child {
+        flex: 0 0 auto !important;
+        min-width: max-content !important;
+        width: auto !important;
+        overflow: visible !important;
+        margin-left: auto;
+    }
+
+    body.student-module .user-menu {
+        flex: 0 0 auto !important;
+        min-width: 0 !important;
+        overflow: visible !important;
+        padding-left: 0.35rem;
+    }
+
+    body.student-module .user-menu-toggle {
+        display: inline-flex !important;
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 40px !important;
+        max-width: none !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    body.student-module .user-menu-avatar {
+        display: flex !important;
+        flex: 0 0 38px !important;
+        width: 38px !important;
+        min-width: 38px !important;
+        height: 38px !important;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        overflow: hidden;
+    }
+}
