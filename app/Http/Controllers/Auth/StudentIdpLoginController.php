@@ -620,26 +620,41 @@ $request->session()->put('show_privacy_consent_modal', true);
      * registration (or a lost race) still ends in a signed-in dashboard visit
      * rather than a duplicate account.
      */
-    protected function completeRegistrationFor(Request $request, User $student): \Illuminate\Http\RedirectResponse
-    {
-        $request->session()->forget([
-            'student.idp.pending_profile',
-            'student.idp.pending_subject',
-            'student.idp.pending_email',
-            'student.idp.pending_student_number',
-            'student.idp.pending_program_id',
-            'student.idp.pending_year_id',
-        ]);
+protected function completeRegistrationFor(
+    Request $request,
+    User $student
+): \Illuminate\Http\RedirectResponse {
 
-Auth::guard('student')->login($student);
-$request->session()->regenerate();
+    $request->session()->forget([
+        'student.idp.pending_profile',
+        'student.idp.pending_subject',
+        'student.idp.pending_email',
+        'student.idp.pending_student_number',
+        'student.idp.pending_program_id',
+        'student.idp.pending_year_id',
+    ]);
 
-EnforceInactivityTimeout::startFreshActivityWindow($request);
-        $request->session()->put('show_privacy_consent_modal', true);
-
-        return redirect()->route('student.dashboard')
-            ->with('success', 'Your existing student record has been linked successfully. You may now access PUPTracker.');
+    // Mark the existing student profile as completed.
+    if (empty($student->profile_completed_at)) {
+        $student->profile_completed_at = now();
+        $student->save();
     }
+
+    // Authenticate the student.
+    Auth::guard('student')->login($student);
+
+    $request->session()->regenerate();
+
+    EnforceInactivityTimeout::startFreshActivityWindow($request);
+
+    $request->session()->put('show_privacy_consent_modal', true);
+
+    return redirect()->route('student.dashboard')
+        ->with(
+            'success',
+            'Your existing student record has been linked successfully. You may now access PUPTracker.'
+        );
+}
 
     /**
      * Create the enrollment record for a newly registered student.
