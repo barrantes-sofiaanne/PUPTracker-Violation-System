@@ -625,6 +625,14 @@ protected function completeRegistrationFor(
     User $student
 ): \Illuminate\Http\RedirectResponse {
 
+    // A successfully linked existing student record is complete
+    // for purposes of the Student Module profile middleware.
+    if (empty($student->profile_completed_at)) {
+        $student->profile_completed_at = now();
+        $student->save();
+    }
+
+    // Clear temporary IDP registration information.
     $request->session()->forget([
         'student.idp.pending_profile',
         'student.idp.pending_subject',
@@ -634,15 +642,10 @@ protected function completeRegistrationFor(
         'student.idp.pending_year_id',
     ]);
 
-    // Mark the existing student profile as completed.
-    if (empty($student->profile_completed_at)) {
-        $student->profile_completed_at = now();
-        $student->save();
-    }
-
-    // Authenticate the student.
+    // Authenticate the student using the student guard.
     Auth::guard('student')->login($student);
 
+    // Regenerate the session after authentication.
     $request->session()->regenerate();
 
     EnforceInactivityTimeout::startFreshActivityWindow($request);
