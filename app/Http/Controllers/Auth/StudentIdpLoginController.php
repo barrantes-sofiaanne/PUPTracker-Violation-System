@@ -886,26 +886,49 @@ EnforceInactivityTimeout::startFreshActivityWindow($request);
      * (first/middle/last/name_suffix) are refreshed from the IDP profile on
      * every login because the IDP is the authoritative source for identity.
      */
-    protected function persistIdpBinding(User $user, string $idpSubject, string $email, array $profile = []): void
-    {
-        try {
-            $wasFirstLink = $user->idp_subject === null || (string) $user->idp_subject === '';
 
-            $user->forceFill([
-                'idp_subject' => $idpSubject,
-                'idp_email' => $email !== '' ? $email : $user->idp_email,
-                'idp_connected_at' => $wasFirstLink ? now() : ($user->idp_connected_at ?? now()),
-            ])->save();
+/**
+ * Persist the PUP IDP identity binding without modifying
+ * PUPTracker-managed student identity or academic information.
+ *
+ * The IDP subject is the permanent identity link.
+ * Existing names, student number, email, enrollment details,
+ * gender, status, and disciplinary history remain unchanged.
+ */
+protected function persistIdpBinding(
+    User $user,
+    string $idpSubject,
+    string $email,
+    array $profile = []
+): void {
+    $idpSubject = trim($idpSubject);
+    $email = strtolower(trim($email));
 
-            // IDP is authoritative for name identity — refresh the local snapshot
-            // from the authenticated profile (fresh from /me).
-            if ($profile !== []) {
-                $this->syncIdentityFromIdp($user->fresh(), $profile);
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Could not update idp fields', ['error' => $e->getMessage()]);
-        }
+    if ($idpSubject === '') {
+        throw new \InvalidArgumentException(
+            'The IDP subject cannot be empty.'
+        );
     }
+
+    $wasFirstLink = trim((string) $user->idp_subject) === '';
+
+    $changes = [
+        'idp_subject' => $idpSubject,
+        'idp_connected_at' => $wasFirstLink
+            ? now()
+            : ($user->idp_connected_at ?? now()),
+    ];
+
+    if ($email !== '') {
+        $changes['idp_email'] = $email;
+    }
+
+    // Do not synchronize names or academic information from the IDP.
+    // Let database errors propagate so the surrounding transaction
+    // can roll back instead of allowing an incomplete binding.
+    $user->forceFill($changes)->saveOrFail();
+}
+
 
     /**
      * Verify the local user is assigned the student role (exact normalized match).

@@ -20,6 +20,6 @@
 
     <div class="portal-sidebar-footer" aria-hidden="true">
         <span class="portal-sidebar-dash"></span>
-        <p>Para sa'yo,<br>Para sa Bayan</p>
+        <p>Mula sa'yo,<br>Para sa Bayan</p>
     </div>
 </aside>
