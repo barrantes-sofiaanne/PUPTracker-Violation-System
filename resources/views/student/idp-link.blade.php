@@ -109,16 +109,6 @@
 
 
 @section('ap-content')
-    {{-- Keep this wizard self-contained: hide inactive steps before JavaScript runs. --}}
-    <style>
-        .ap-wizard [data-step-panel] {
-            display: none !important;
-        }
-
-        .ap-wizard [data-step-panel].is-active {
-            display: block !important;
-        }
-    </style>
 
     <div class="ap-wizard">
 
@@ -222,7 +212,7 @@
 
                 {{-- ================= STEP 1 — BASIC INFORMATION ================= --}}
 
-                <section class="ap-step-panel{{ $initialStep === 1 ? ' is-active' : '' }}" data-step-panel="1" aria-labelledby="stepTitle1">
+                <section class="ap-step-panel" data-step-panel="1" aria-labelledby="stepTitle1">
 
                     <h3 class="ap-step-title" id="stepTitle1" tabindex="-1">Identity Information</h3>
 
@@ -317,7 +307,7 @@
 
                 {{-- ================= STEP 2 — STUDENT RECORD MATCHING ================= --}}
 
-                <section class="ap-step-panel{{ $initialStep === 2 ? ' is-active' : '' }}" data-step-panel="2" aria-labelledby="stepTitle2">
+                <section class="ap-step-panel" data-step-panel="2" aria-labelledby="stepTitle2">
 
                     <h3 class="ap-step-title" id="stepTitle2" tabindex="-1">Student Record Matching</h3>
 
@@ -527,7 +517,7 @@
 
                 {{-- ================= STEP 3 — ACCOUNT SETUP ================= --}}
 
-                <section class="ap-step-panel{{ $initialStep === 3 ? ' is-active' : '' }}" data-step-panel="3" aria-labelledby="stepTitle3">
+                <section class="ap-step-panel" data-step-panel="3" aria-labelledby="stepTitle3">
 
                     <h3 class="ap-step-title" id="stepTitle3" tabindex="-1">Account Setup</h3>
 
@@ -635,7 +625,7 @@
 
                 {{-- ================= STEP 4 — REVIEW & SUBMIT ================= --}}
 
-                <section class="ap-step-panel{{ $initialStep === 4 ? ' is-active' : '' }}" data-step-panel="4" aria-labelledby="stepTitle4">
+                <section class="ap-step-panel" data-step-panel="4" aria-labelledby="stepTitle4">
 
                     <h3 class="ap-step-title" id="stepTitle4" tabindex="-1">Review &amp; Submit</h3>
 
