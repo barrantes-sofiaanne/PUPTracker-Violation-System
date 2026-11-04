@@ -261,46 +261,51 @@ class StudentIdpLoginController extends Controller
             return redirect()->route('student.idp.login');
         }
 
-        // The IDP is authoritative for identity, so the verified name and
-        // institutional email are DISPLAYED read-only instead of being asked for
-        // again. The raw IDP subject is never passed to the view as a value.
         $verifiedName = $this->displayName($profile);
         $verifiedEmail = trim((string) ($profile['email'] ?? ''));
+        $nameMatches = $this->findStudentsByIdpName($profile);
+        $matchCount = $nameMatches->count();
+        $matchMode = $matchCount === 1 ? 'single' : ($matchCount > 1 ? 'duplicate' : 'new');
+        $matchedStudent = $matchCount === 1
+            ? $nameMatches->first()
+            : null;
 
-        // Academic details are chosen by the student: PUPTracker does not hold a
-        // pre-created student record that could supply them. The dropdowns are
-        // the SAME reference tables the Admin student screens use, so there is
-        // no duplicate program/year/section/gender source.
-        $programs = Program::query()
-            ->orderBy('program_name')
-            ->get(['program_id', 'program_name']);
-
-        $years = Year::query()
-            ->orderBy('year_id')
-            ->get(['year_id', 'year']);
-
+        $programs = Program::query()->orderBy('program_name')->get(['program_id', 'program_name']);
+        $years = Year::query()->orderBy('year_id')->get(['year_id', 'year']);
         $sections = $this->sectionsForRegistration();
         $genders = $this->gendersForRegistration();
-
-        // Which of these programs offer a Ladderized track. Computed here so the
-        // rendered page and the browser both use ONE rule — the same config key
-        // the Admin student screens and the graduating report read.
         $ladderizedProgramIds = $programs
             ->filter(fn ($program): bool => $this->programSupportsLadderized($program->program_name))
-            ->pluck('program_id')
-            ->map(static fn ($id): int => (int) $id)
-            ->values()
-            ->all();
+            ->pluck('program_id')->map(static fn ($id): int => (int) $id)->values()->all();
 
         return view('student.idp-link', compact(
-            'verifiedName',
-            'verifiedEmail',
-            'programs',
-            'years',
-            'sections',
-            'genders',
+            'verifiedName', 'verifiedEmail', 'matchMode', 'matchCount',
+            'matchedStudent', 'programs', 'years', 'sections', 'genders',
             'ladderizedProgramIds'
         ));
+    }
+
+    /** Find preloaded student accounts using the verified IDP first/middle/last name. */
+    protected function findStudentsByIdpName(array $profile)
+    {
+        $first = $this->normalizeNamePart((string) ($profile['first_name'] ?? ''));
+        $middle = $this->normalizeNamePart((string) ($profile['middle_name'] ?? ''));
+        $last = $this->normalizeNamePart((string) ($profile['last_name'] ?? ''));
+
+        if ($first === '' || $last === '') {
+            return collect();
+        }
+
+        return User::query()
+            ->with(['studentInfo.program', 'studentInfo.year', 'studentInfo.section', 'gender'])
+            ->where('roles_id', 2)
+            ->whereRaw("LOWER(TRIM(COALESCE(first_name, ''))) = ?", [$first])
+            ->whereRaw("LOWER(TRIM(COALESCE(middle_name, ''))) = ?", [$middle])
+            ->whereRaw("LOWER(TRIM(COALESCE(last_name, ''))) = ?", [$last])
+            ->where(function ($query) {
+                $query->whereNull('idp_subject')->orWhere('idp_subject', '');
+            })
+            ->get();
     }
 
     /**
@@ -432,179 +437,181 @@ class StudentIdpLoginController extends Controller
     public function linkAccount(Request $request)
     {
         $profile = $this->pendingProfile($request);
-
-        // A first-time link is allowed only after a successful IDP callback.
         if ($profile === null) {
-            return redirect()->route('student.login')
-                ->withErrors([
-                    'login' => 'Your PUP IDP session has expired. Please sign in again.',
-                ]);
+            return redirect()->route('student.login')->withErrors([
+                'login' => 'Your PUP IDP session has expired. Please sign in again.',
+            ]);
         }
 
-        // These values are used to locate an EXISTING preloaded student record.
-        // They are never used to create a new student account.
+        $idpSubject = trim((string) ($profile['subject'] ?? ''));
+        if ($idpSubject === '') {
+            return redirect()->route('student.login')->withErrors([
+                'login' => 'Your IDP profile is missing its identity reference. Please try again.',
+            ]);
+        }
+
+        // Idempotency: an IDP subject already linked to a student always signs in
+        // to that same local account; it must never create or select another one.
+        $alreadyLinked = User::query()->where('idp_subject', $idpSubject)->first();
+        if ($alreadyLinked) {
+            if (! $this->userIsStudent($alreadyLinked) || ! $alreadyLinked->isActiveAccount()) {
+                return redirect()->route('student.login')->withErrors([
+                    'login' => 'This PUPTracker student account is not eligible to sign in.',
+                ]);
+            }
+            return $this->completeRegistrationFor($request, $alreadyLinked);
+        }
+
+        $mode = (string) $request->input('match_mode');
+        $nameMatches = $this->findStudentsByIdpName($profile);
+        $idpEmail = strtolower(trim((string) ($profile['email'] ?? '')));
+
+        if ($mode === 'single') {
+            // Re-check the unique name match on the server; never trust a posted user_id.
+            if ($nameMatches->count() !== 1) {
+                return redirect()->route('student.idp.link')->withErrors([
+                    'registration' => 'The matching student records changed. Please review the updated result.',
+                ]);
+            }
+            $student = $nameMatches->first();
+            $request->validate([
+                'confirm_record' => ['accepted'],
+                'privacy_acknowledged' => ['accepted'],
+            ], [
+                'confirm_record.accepted' => 'Please confirm that the displayed record belongs to you.',
+                'privacy_acknowledged.accepted' => 'Please acknowledge the Information Privacy Notice to continue.',
+            ]);
+            return $this->bindExistingStudent($request, $student, $idpSubject, $idpEmail, $profile);
+        }
+
+        if ($mode === 'duplicate') {
+            if ($nameMatches->count() < 2) {
+                return redirect()->route('student.idp.link')->withErrors([
+                    'registration' => 'The duplicate-name results changed. Please review the updated result.',
+                ]);
+            }
+            $validated = $request->validate([
+                'student_number' => ['required', 'string', 'max:50'],
+                'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
+                'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
+                'confirm_record' => ['accepted'],
+                'privacy_acknowledged' => ['accepted'],
+            ]);
+            $candidates = $nameMatches->filter(function ($candidate) use ($validated) {
+                $info = $candidate->studentInfo;
+                return $info
+                    && trim((string) $candidate->student_number) === trim((string) $validated['student_number'])
+                    && (int) $info->program_id === (int) $validated['program_id']
+                    && (int) $info->section_id === (int) $validated['section_id'];
+            });
+
+            if ($candidates->count() !== 1) {
+                return back()->withInput()->withErrors([
+                    'registration' => $candidates->isEmpty()
+                        ? 'We could not verify a unique record using those details. Please check them or contact an administrator.'
+                        : 'Those details still match more than one record. Please contact an administrator for assistance.',
+                ]);
+            }
+            return $this->bindExistingStudent($request, $candidates->first(), $idpSubject, $idpEmail, $profile);
+        }
+
+        if ($mode !== 'new' || $nameMatches->isNotEmpty()) {
+            return redirect()->route('student.idp.link')->withErrors([
+                'registration' => 'The matching result changed. Please review the page and try again.',
+            ]);
+        }
+
+        // No existing student with this full name: allow first-time registration.
         $validated = $request->validate([
             'student_number' => ['required', 'string', 'max:50'],
             'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
             'year_id' => ['required', 'integer', 'exists:year_tbl,year_id'],
             'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
+            'gender_id' => ['required', 'integer', 'exists:gender_tbl,gender_id'],
             'privacy_acknowledged' => ['accepted'],
-        ], [
-            'student_number.required' => 'Please enter your student number.',
-            'program_id.required' => 'Please select your program/course.',
-            'program_id.exists' => 'Please select a valid program/course.',
-            'year_id.required' => 'Please select your year level.',
-            'year_id.exists' => 'Please select a valid year level.',
-            'section_id.required' => 'Please select your section.',
-            'section_id.exists' => 'Please select a valid section.',
-            'privacy_acknowledged.accepted' => 'Please read and acknowledge the Information Privacy Notice to continue.',
         ]);
 
-        $idpSubject = trim((string) ($profile['subject'] ?? ''));
-
-        if ($idpSubject === '') {
-            return redirect()->route('student.login')
-                ->withErrors([
-                    'login' => 'Your IDP profile is missing its identity reference. Please try again.',
-                ]);
+        if (User::query()->where('student_number', trim($validated['student_number']))->exists()) {
+            return back()->withInput()->withErrors([
+                'student_number' => 'That student number is already registered. Please contact an administrator to link your existing record.',
+            ]);
         }
-
-        // If this IDP identity is already linked, do not attempt another match.
-        $alreadyLinked = User::query()
-            ->where('idp_subject', $idpSubject)
-            ->first();
-
-        if ($alreadyLinked) {
-            if (! $this->userIsStudent($alreadyLinked) || ! $alreadyLinked->isActiveAccount()) {
-                return redirect()->route('student.login')
-                    ->withErrors([
-                        'login' => 'This PUPTracker student account is not eligible to sign in.',
-                    ]);
-            }
-
-            return $this->completeRegistrationFor($request, $alreadyLinked);
-        }
-
-        $firstName = $this->normalizeNamePart((string) ($profile['first_name'] ?? ''));
-        $middleName = $this->normalizeNamePart((string) ($profile['middle_name'] ?? ''));
-        $lastName = $this->normalizeNamePart((string) ($profile['last_name'] ?? ''));
-
-        if ($firstName === '' || $lastName === '') {
-            return back()
-                ->withInput($request->except(['_token']))
-                ->withErrors([
-                    'registration' => 'Your IDP profile does not contain enough name information to match your student record. Please contact the appropriate office.',
-                ]);
-        }
-
-        // Match the IDP-verified name AND all submitted academic identifiers
-        // against the existing student roster. No User or StudentInfo row is created.
-        $matchingStudents = User::query()
-            ->where('roles_id', 2)
-            ->where('student_number', trim((string) $validated['student_number']))
-            ->whereRaw('LOWER(TRIM(COALESCE(first_name, ?))) = ?', ['', $firstName])
-            ->whereRaw('LOWER(TRIM(COALESCE(middle_name, ?))) = ?', ['', $middleName])
-            ->whereRaw('LOWER(TRIM(COALESCE(last_name, ?))) = ?', ['', $lastName])
-            ->whereHas('studentInfo', function ($query) use ($validated) {
-                $query->where('program_id', (int) $validated['program_id'])
-                    ->where('year_id', (int) $validated['year_id'])
-                    ->where('section_id', (int) $validated['section_id']);
-            })
-            ->get();
-
-        if ($matchingStudents->count() !== 1) {
-            $this->logSecurityEvent(
-                $matchingStudents->isEmpty()
-                    ? 'First-time IDP linking rejected: no existing student record matched'
-                    : 'First-time IDP linking rejected: multiple existing student records matched',
-                [
-                    'idp_subject' => $idpSubject,
-                    'student_number' => trim((string) $validated['student_number']),
-                ]
-            );
-
-            return back()
-                ->withInput($request->except(['_token']))
-                ->withErrors([
-                    'registration' => $matchingStudents->isEmpty()
-                        ? 'We could not find an existing student record matching the information provided. Please check your details or contact the appropriate office.'
-                        : 'More than one student record matched your information. Please contact the appropriate office for assistance.',
-                ]);
-        }
-
-        $studentId = $matchingStudents->first()->user_id;
 
         try {
-            $student = DB::transaction(function () use ($studentId, $idpSubject, $profile) {
-                // Re-read and lock the selected record to prevent concurrent linking.
-                $student = User::query()
-                    ->where('user_id', $studentId)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $student || (int) $student->roles_id !== 2) {
-                    throw new \RuntimeException('The matched student record is no longer available.');
-                }
-
-                if (! $student->isActiveAccount()) {
-                    throw new \RuntimeException('The matched student account is inactive.');
-                }
-
-                $currentSubject = trim((string) ($student->idp_subject ?? ''));
-
-                if ($currentSubject !== '' && $currentSubject !== $idpSubject) {
-                    throw new \RuntimeException('The matched student record is already linked to another IDP identity.');
-                }
-
-                $subjectInUse = User::query()
-                    ->where('idp_subject', $idpSubject)
-                    ->where('user_id', '!=', $student->user_id)
-                    ->exists();
-
-                if ($subjectInUse) {
-                    throw new \RuntimeException('This IDP identity is already linked to another student record.');
-                }
-
-                // Preserve the existing student number, enrollment, gender,
-                // status, violations, and all other PUPTracker-owned data.
-                $this->persistIdpBinding(
+            $student = DB::transaction(function () use ($validated, $profile, $idpSubject, $idpEmail) {
+                $student = User::create([
+                    'idp_subject' => $idpSubject,
+                    'idp_email' => $idpEmail ?: null,
+                    'email' => $idpEmail ?: null,
+                    'idp_connected_at' => now(),
+                    'student_number' => trim($validated['student_number']),
+                    'gender_id' => (int) $validated['gender_id'],
+                    'status_id' => $this->defaultStudentStatusId(),
+                    'roles_id' => 2,
+                    'password_hash' => '',
+                    'first_name' => trim((string) ($profile['first_name'] ?? '')) ?: null,
+                    'middle_name' => trim((string) ($profile['middle_name'] ?? '')) ?: null,
+                    'last_name' => trim((string) ($profile['last_name'] ?? '')) ?: null,
+                    'name_suffix' => trim((string) ($profile['suffix'] ?? '')) ?: null,
+                    'profile_completed_at' => now(),
+                ]);
+                $this->createStudentInfo(
                     $student,
-                    $idpSubject,
-                    (string) ($profile['email'] ?? ''),
-                    $profile
+                    (int) $validated['program_id'],
+                    (int) $validated['year_id'],
+                    (int) $validated['section_id'],
+                    0
                 );
-
-                // persistIdpBinding logs its own database errors; verify that the
-                // permanent link was actually saved before allowing the login.
-                $student->refresh();
-
-                if ((string) $student->idp_subject !== $idpSubject) {
-                    throw new \RuntimeException('The IDP account binding could not be saved.');
-                }
-
-                $this->touchLastLogin($student);
-
                 return $student;
             });
         } catch (\Throwable $e) {
-            $this->logSecurityEvent('First-time IDP linking failed', [
+            $this->logSecurityEvent('New student IDP registration failed', [
                 'idp_subject' => $idpSubject,
-                'user_id' => $studentId,
                 'error' => $e->getMessage(),
             ]);
-
-            return back()
-                ->withInput($request->except(['_token']))
-                ->withErrors([
-                    'registration' => 'We could not link your IDP account to that student record. Please verify your details or contact the appropriate office.',
-                ]);
+            return back()->withInput()->withErrors([
+                'registration' => 'We could not complete your registration. Please verify your information or contact an administrator.',
+            ]);
         }
 
-        $this->logSecurityEvent('Existing student record linked to IDP identity', [
-            'idp_subject' => $idpSubject,
-            'user_id' => $student->user_id,
-        ]);
+        return $this->completeRegistrationFor($request, $student);
+    }
 
+    /** Bind the verified IDP identity to one existing, unlinked student record. */
+    protected function bindExistingStudent(Request $request, User $candidate, string $idpSubject, string $email, array $profile): RedirectResponse
+    {
+        try {
+            $student = DB::transaction(function () use ($candidate, $idpSubject, $email, $profile) {
+                $student = User::query()->whereKey($candidate->user_id)->lockForUpdate()->firstOrFail();
+                if (! $this->userIsStudent($student) || ! $student->isActiveAccount()) {
+                    throw new \RuntimeException('The selected student account is not eligible for linking.');
+                }
+                if (trim((string) ($student->idp_subject ?? '')) !== '') {
+                    throw new \RuntimeException('This student record is already linked to an IDP identity.');
+                }
+                if (User::query()->where('idp_subject', $idpSubject)->where('user_id', '!=', $student->user_id)->exists()) {
+                    throw new \RuntimeException('This IDP identity is already linked to another student record.');
+                }
+                $this->persistIdpBinding($student, $idpSubject, $email, $profile);
+                $student->refresh();
+                if ((string) $student->idp_subject !== $idpSubject) {
+                    throw new \RuntimeException('The IDP identity could not be saved.');
+                }
+                $student->profile_completed_at = $student->profile_completed_at ?? now();
+                $student->saveOrFail();
+                $this->touchLastLogin($student);
+                return $student;
+            });
+        } catch (\Throwable $e) {
+            $this->logSecurityEvent('Existing student IDP linking failed', [
+                'idp_subject' => $idpSubject,
+                'user_id' => $candidate->user_id,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->withInput()->withErrors([
+                'registration' => 'We could not link this student record. Please verify the information or contact an administrator.',
+            ]);
+        }
         return $this->completeRegistrationFor($request, $student);
     }
 
