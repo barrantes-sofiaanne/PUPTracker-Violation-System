@@ -1,4 +1,3 @@
-
 @php
     $menuAvatarText = $menuAvatar ?? mb_strtoupper(
         collect(explode(' ', (string) $menuUserName))
@@ -6,12 +5,13 @@
             ->take(2)
             ->map(fn ($word) => mb_substr($word, 0, 1))
             ->implode('')
-    ) ?: 'U';
+    );
+
+    $menuAvatarText = $menuAvatarText ?: 'U';
 @endphp
 
 <div class="user-menu dropdown">
 
-    {{-- Account menu toggle --}}
     <button
         class="user-menu-toggle"
         type="button"
@@ -33,7 +33,6 @@
         </span>
     </button>
 
-    {{-- Account dropdown menu --}}
     <ul class="dropdown-menu dropdown-menu-end user-menu-dropdown shadow">
 
         <li>
@@ -58,9 +57,7 @@
                     class="dropdown-item user-menu-item"
                     href="{{ $item['url'] }}">
 
-                    <i class="bi {{ $item['icon'] }}"
-                       aria-hidden="true"></i>
-
+                    <i class="bi {{ $item['icon'] }}" aria-hidden="true"></i>
                     <span>{{ $item['label'] }}</span>
                 </a>
             </li>
@@ -83,14 +80,11 @@
                     type="submit"
                     class="dropdown-item user-menu-item user-menu-logout">
 
-                    <i class="bi bi-box-arrow-right"
-                       aria-hidden="true"></i>
-
+                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
                     <span>Logout</span>
                 </button>
             </form>
         </li>
 
     </ul>
-
 </div>

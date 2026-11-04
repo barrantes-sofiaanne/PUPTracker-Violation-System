@@ -195,12 +195,7 @@
                     lastActivitySentAt = Date.now();
                 }
             } catch (error) {
-                /*
-                 * Do not interrupt the user.
-                 *
-                 * The server-side middleware remains
-                 * authoritative.
-                 */
+                console.error("[PUPTracker] Activity request failed:", error);
             } finally {
                 activityRequestInProgress = false;
             }
