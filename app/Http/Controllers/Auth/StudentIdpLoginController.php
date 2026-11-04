@@ -475,11 +475,9 @@ class StudentIdpLoginController extends Controller
             }
             $student = $nameMatches->first();
             $request->validate([
-                'confirm_record' => ['accepted'],
                 'privacy_acknowledged' => ['accepted'],
             ], [
-                'confirm_record.accepted' => 'Please confirm that the displayed record belongs to you.',
-                'privacy_acknowledged.accepted' => 'Please acknowledge the Information Privacy Notice to continue.',
+                'privacy_acknowledged.accepted' => 'Please acknowledge the PUPTracker Privacy Statement to continue.',
             ]);
             return $this->bindExistingStudent($request, $student, $idpSubject, $idpEmail, $profile);
         }
