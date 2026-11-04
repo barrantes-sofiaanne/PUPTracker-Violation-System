@@ -36,13 +36,6 @@
         <p class="ap-field-help" style="margin:.65rem 0 0;">These identity details come directly from PUP IDP and cannot be edited in this form.</p>
     </div>
 
-    <div class="ap-alert ap-alert--info" role="note" style="margin:0 0 1rem;">
-        <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
-        <div>
-            <strong>PUPTracker Privacy Statement</strong>
-            <p style="margin:.35rem 0 0;">By proceeding, you acknowledge and agree that the personal information you provide and the information retrieved from your verified PUP IDP account may be collected, recorded, stored, verified, and processed by PUPTracker for legitimate university and student-discipline system purposes. These purposes include verifying your identity, linking or creating your student account, maintaining your student profile, managing and displaying records of violations and disciplinary actions, sending relevant system notifications, protecting account security, maintaining audit trails, and operating and improving the system. Access to this information is limited to authorized personnel who need it to perform their assigned functions. Your information should be handled in accordance with applicable university privacy policies and the Data Privacy Act of 2012. If your existing student information is inaccurate, contact the appropriate administrator and provide valid proof of identity; do not submit another account to correct an existing record.</p>
-        </div>
-    </div>
 
     @if ($matchMode === 'single' && $matchedStudent)
         <div class="ap-alert ap-alert--info" role="note" style="margin-bottom:1rem;">
@@ -65,7 +58,7 @@
                 <div class="ap-field-group" style="margin-bottom:1rem;">
                 <label style="display:flex;align-items:flex-start;gap:.65rem;">
                     <input type="checkbox" name="privacy_acknowledged" value="1" required style="margin-top:.25rem;">
-                    <span>I have read and understood this Privacy Statement, and acknowledge and consent to the processing of my personal information for the purposes stated above.</span>
+                    <span>I acknowledge that PUPTracker may collect, use, store, and process my personal information and verified PUP IDP details to verify my identity, manage my student account and disciplinary records, send system notifications, and protect system security, in accordance with university privacy policies and the Data Privacy Act of 2012.</span>
                 </label>
             </div>
             <button type="submit" class="ap-btn ap-btn--compact"><span>Confirm and Link My Account</span><i class="bi bi-link-45deg" aria-hidden="true"></i></button>
@@ -85,7 +78,7 @@
                 <div class="ap-field-group"><label class="ap-label" for="section_id">Section <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="section_id" name="section_id" required><option value="">Select section</option>@foreach($sections as $section)<option value="{{ $section->section_id }}" @selected((string)old('section_id') === (string)$section->section_id)>{{ $section->section_name }}</option>@endforeach</select></div></div>
             </div>
             <div class="ap-field-group"><label style="display:flex;gap:.65rem;align-items:flex-start;"><input type="checkbox" name="confirm_record" value="1" required style="margin-top:.25rem;"><span>I confirm that the student number, program, and section I entered identify my own student record.</span></label></div>
-            <div class="ap-field-group"><label style="display:flex;gap:.65rem;align-items:flex-start;"><input type="checkbox" name="privacy_acknowledged" value="1" required style="margin-top:.25rem;"><span>I have read and understood the PUPTracker Privacy Statement above, and acknowledge and consent to the processing of my personal information for the stated purposes.</span></label></div>
+            <div class="ap-field-group"><label style="display:flex;gap:.65rem;align-items:flex-start;"><input type="checkbox" name="privacy_acknowledged" value="1" required style="margin-top:.25rem;"><span>I acknowledge that PUPTracker may collect, use, store, and process my personal information and verified PUP IDP details to verify my identity, manage my student account and disciplinary records, send system notifications, and protect system security, in accordance with university privacy policies and the Data Privacy Act of 2012.</span></label></div>
             <button type="submit" class="ap-btn ap-btn--compact"><span>Verify and Link Existing Record</span><i class="bi bi-link-45deg" aria-hidden="true"></i></button>
         </form>
 
@@ -104,7 +97,7 @@
                 <div class="ap-field-group"><label class="ap-label" for="year_id">Year level <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="year_id" name="year_id" required><option value="">Select year</option>@foreach($years as $year)<option value="{{ $year->year_id }}" @selected((string)old('year_id') === (string)$year->year_id)>{{ $year->year }}</option>@endforeach</select></div></div>
                 <div class="ap-field-group"><label class="ap-label" for="section_id">Section <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="section_id" name="section_id" required><option value="">Select section</option>@foreach($sections as $section)<option value="{{ $section->section_id }}" @selected((string)old('section_id') === (string)$section->section_id)>{{ $section->section_name }}</option>@endforeach</select></div></div>
             </div>
-            <div class="ap-field-group"><label style="display:flex;gap:.65rem;align-items:flex-start;"><input type="checkbox" name="privacy_acknowledged" value="1" required style="margin-top:.25rem;"><span>I have read and understood the PUPTracker Privacy Statement above, and acknowledge and consent to the processing of my personal information for the stated purposes.</span></label></div>
+            <div class="ap-field-group"><label style="display:flex;gap:.65rem;align-items:flex-start;"><input type="checkbox" name="privacy_acknowledged" value="1" required style="margin-top:.25rem;"><span>I acknowledge that PUPTracker may collect, use, store, and process my personal information and verified PUP IDP details to verify my identity, manage my student account and disciplinary records, send system notifications, and protect system security, in accordance with university privacy policies and the Data Privacy Act of 2012.</span></label></div>
             <button type="submit" class="ap-btn ap-btn--compact"><span>Create Student Account and Continue</span><i class="bi bi-check2-circle" aria-hidden="true"></i></button>
         </form>
     @endif
