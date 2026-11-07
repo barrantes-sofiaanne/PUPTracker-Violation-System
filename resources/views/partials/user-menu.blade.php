@@ -1,3 +1,16 @@
+
+{{--
+    Shared account user-menu.
+
+    Expected variables:
+      $menuUserName    : display name
+      $menuUserSub     : secondary line (email / student number / module label)
+      $menuItems       : array of ['label' => ..., 'url' => ..., 'icon' => ...]
+      $menuLogoutUrl   : POST URL for logout
+      $menuAvatar      : optional initials override
+      $menuAvatarOnly  : optional avatar-only display mode
+--}}
+
 @php
     $menuAvatarText = $menuAvatar ?? mb_strtoupper(
         collect(explode(' ', (string) $menuUserName))
@@ -5,15 +18,13 @@
             ->take(2)
             ->map(fn ($word) => mb_substr($word, 0, 1))
             ->implode('')
-    );
-
-    $menuAvatarText = $menuAvatarText ?: 'U';
+    ) ?: 'U';
 @endphp
 
 <div class="user-menu dropdown">
 
     <button
-        class="user-menu-toggle"
+        class="user-menu-toggle {{ !empty($menuAvatarOnly) ? 'user-menu-toggle-avatar-only' : '' }}"
         type="button"
         data-bs-toggle="dropdown"
         data-bs-auto-close="true"
@@ -28,15 +39,18 @@
             {{ $menuUserName }}
         </span>
 
-        <span class="user-menu-toggle-sub d-none d-lg-inline">
+        <span class="user-menu-toggle-sub">
             {{ $menuUserSub }}
         </span>
+
     </button>
 
+    {{-- Account Dropdown --}}
     <ul class="dropdown-menu dropdown-menu-end user-menu-dropdown shadow">
 
         <li>
             <div class="user-menu-head">
+
                 <span class="user-menu-head-name">
                     {{ $menuUserName }}
                 </span>
@@ -44,6 +58,7 @@
                 <span class="user-menu-head-sub">
                     {{ $menuUserSub }}
                 </span>
+
             </div>
         </li>
 
@@ -51,23 +66,35 @@
             <hr class="dropdown-divider">
         </li>
 
+        {{-- Menu Items --}}
         @foreach ($menuItems as $item)
+
             <li>
                 <a
                     class="dropdown-item user-menu-item"
                     href="{{ $item['url'] }}">
 
-                    <i class="bi {{ $item['icon'] }}" aria-hidden="true"></i>
-                    <span>{{ $item['label'] }}</span>
+                    <i
+                        class="bi {{ $item['icon'] }}"
+                        aria-hidden="true">
+                    </i>
+
+                    <span>
+                        {{ $item['label'] }}
+                    </span>
+
                 </a>
             </li>
+
         @endforeach
 
         <li>
             <hr class="dropdown-divider">
         </li>
 
+        {{-- Logout --}}
         <li>
+
             <form
                 action="{{ $menuLogoutUrl }}"
                 method="POST"
@@ -80,10 +107,17 @@
                     type="submit"
                     class="dropdown-item user-menu-item user-menu-logout">
 
-                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                    <i
+                        class="bi bi-box-arrow-right"
+                        aria-hidden="true">
+                    </i>
+
                     <span>Logout</span>
+
                 </button>
+
             </form>
+
         </li>
 
     </ul>

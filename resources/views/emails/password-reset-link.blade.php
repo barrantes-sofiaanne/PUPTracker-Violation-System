@@ -34,8 +34,8 @@
                                     <td width="76" valign="middle"
                                         style="width:76px;padding-right:14px;">
                                         <img
-                                            src='{{ rtrim(config('app.url'), '/') }}assets/images/SystemLogo_w/name.png'
-                                            width="66"
+src="{{ asset('assets/images/SystemLogo_w/name.png') }}"                                           
+ width="66"
                                             height="66"
                                             alt="PUPTracker Violation System Logo"
                                             style="display:block;width:66px;height:66px;border:0;">
@@ -47,11 +47,11 @@
                                         </div>
 
                                         <div style="font-size:11px;line-height:1.5;letter-spacing:1px;color:#f7e8b5;">
-                                            VIOLATION MANAGEMENT SYSTEM
+                                            VIOLATION SYSTEM
                                         </div>
 
                                         <div style="font-size:12px;line-height:1.5;color:#ffffff;margin-top:5px;">
-                                            Polytechnic University of the Philippines
+                                            Polytechnic University of the Philippines - Taguig Campus
                                         </div>
                                     </td>
                                 </tr>
@@ -114,7 +114,7 @@
                                     <td width="190" valign="middle"
                                         style="width:190px;background-color:#f4eee6;">
                                         <img
-                                            src='{{ rtrim(config('app.url'), '/') }}assets/images/PUP-TAGUIG/PUPT-picture.jpg'
+                                            src="{{ asset('assets/images/PUP-TAGUIG/PUPT-picture.jpg') }}"
                                             width="190"
                                             alt="PUP campus"
                                             style="display:block;width:190px;max-width:100%;height:auto;border:0;">
@@ -171,11 +171,11 @@
                             </div>
 
                             <div style="font-size:12px;line-height:1.6;color:#f7e8b5;">
-                                Violation Management System
+                                Violation System
                             </div>
 
                             <div style="font-size:12px;line-height:1.7;color:#ffffff;margin-top:8px;">
-                                Polytechnic University of the Philippines
+                                Polytechnic University of the Philippines - Taguig Campus
                             </div>
 
                             <div style="font-size:12px;line-height:1.7;color:#ffffff;">
