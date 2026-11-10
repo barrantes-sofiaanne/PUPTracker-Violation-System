@@ -220,7 +220,7 @@
 
                         <div class="lp-module-preview">
                             <img
-                                src="{{ asset('assets/images/student-dashboard-preview.png') }}"
+                                src="{{ asset('assets/images/dashboard/student_module.png') }}"
                                 alt="Student module dashboard preview"
                                 loading="lazy"
                             >
@@ -261,7 +261,7 @@
 
                         <div class="lp-module-preview">
                             <img
-                                src="{{ asset('assets/images/security-dashboard-preview.png') }}"
+                                src="{{ asset('assets/images/dashboard/security_module.png') }}"
                                 alt="Security module dashboard preview"
                                 loading="lazy"
                             >
@@ -302,7 +302,7 @@
 
                         <div class="lp-module-preview">
                             <img
-                                src="{{ asset('assets/images/oss-dashboard-preview.png') }}"
+                                src="{{ asset('assets/images/dashboard/OSS_module.png') }}"
                                 alt="OSS staff module dashboard preview"
                                 loading="lazy"
                             >
@@ -343,7 +343,7 @@
 
                         <div class="lp-module-preview">
                             <img
-                                src="{{ asset('assets/images/admin-dashboard-preview.png') }}"
+                                src="{{ asset('assets/images/dashboard/admin_module.png') }}"
                                 alt="Administrator module dashboard preview"
                                 loading="lazy"
                             >
