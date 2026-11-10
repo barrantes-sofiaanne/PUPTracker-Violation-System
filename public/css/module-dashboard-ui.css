@@ -1874,69 +1874,53 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
     }
 }
 
-/* ========================================================================
-   SECURITY MODULE — CONSISTENT MAROON PAGE HEADERS
-   Apply the Security dashboard's maroon-to-brown banner treatment to every
-   page-level hero/header in the Security module. Scoped to Security only.
-   ======================================================================== */
-.module-security .portal-hero,
-.module-security .page-header-modern,
-.module-security .student-header,
-.module-security .profile-hero {
+/* ==========================================================================
+   OSS STAFF MODULE — MATCH SECURITY MODULE HEADER + RESPONSIVE IMPROVEMENTS
+   Scoped to .module-oss. Does not change Student, Security, or Admin modules.
+   ========================================================================== */
+
+/* Consistent maroon-to-brown page headers across OSS Staff pages. */
+.module-oss .portal-hero,
+.module-oss .page-header-modern {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    color: #fff !important;
     background: linear-gradient(
         112deg,
-        #8f0b0b 0%,
+        #970d0d 0%,
         #741010 58%,
         #873d19 100%
     ) !important;
-    color: #fff !important;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 22px;
     box-shadow: 0 14px 30px rgba(80, 12, 12, 0.14);
 }
 
-.module-security .portal-hero h1,
-.module-security .portal-hero h2,
-.module-security .portal-hero h3,
-.module-security .portal-hero h4,
-.module-security .page-header-modern h1,
-.module-security .page-header-modern h2,
-.module-security .page-header-modern h3,
-.module-security .page-header-modern h4,
-.module-security .student-header h1,
-.module-security .student-header h2,
-.module-security .student-header h3,
-.module-security .profile-hero h1,
-.module-security .profile-hero h2,
-.module-security .profile-hero h3,
-.module-security .portal-hero p,
-.module-security .page-header-modern p,
-.module-security .student-header p,
-.module-security .profile-hero p,
-.module-security .portal-hero .text-muted,
-.module-security .page-header-modern .text-muted {
+.module-oss .portal-hero h1,
+.module-oss .portal-hero h2,
+.module-oss .portal-hero h3,
+.module-oss .page-header-modern h1,
+.module-oss .page-header-modern h2,
+.module-oss .page-header-modern h3,
+.module-oss .page-header-modern h4,
+.module-oss .page-header-modern h5,
+.module-oss .portal-hero p,
+.module-oss .page-header-modern p,
+.module-oss .page-header-modern .text-muted,
+.module-oss .portal-hero .text-muted,
+.module-oss .dashboard-hero-subtitle {
     color: #fff !important;
 }
 
-.module-security .portal-hero::after {
-    border-color: rgba(255, 255, 255, 0.07);
+.module-oss .portal-hero::after,
+.module-oss .page-header-modern::after {
+    border-color: rgba(255, 255, 255, 0.075);
 }
 
-.module-security .dashboard-time-value {
-    background: rgba(255, 255, 255, 0.14);
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.28);
-}
-.module-security .dashboard-time-label {
-    color: rgba(255, 255, 255, 0.88);
-}
-
-/* ==========================================================================
-   SECURITY DASHBOARD — KEEP THE PHILIPPINE TIME BESIDE THE PAGE TITLE
-   Desktop: title/subtitle on the left, live time on the right.
-   Mobile: stack cleanly when there is not enough horizontal space.
-   ========================================================================== */
+/* Dashboard: title/subtitle left, Philippine time right on desktop. */
 @media (min-width: 768px) {
-    .module-security .dashboard-hero-grid {
+    .module-oss .dashboard-hero-grid {
         display: grid !important;
         grid-template-columns: minmax(0, 1fr) max-content;
         align-items: center;
@@ -1945,355 +1929,472 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
         flex-wrap: nowrap !important;
     }
 
-    .module-security .dashboard-hero-grid > div:first-child {
+    .module-oss .dashboard-hero-grid > div:first-child {
         min-width: 0;
     }
 
-    .module-security .dashboard-hero-title {
-        font-size: clamp(2.15rem, 4vw, 3.25rem);
+    .module-oss .dashboard-hero-title {
+        font-size: clamp(2.1rem, 4vw, 3.2rem);
         line-height: 1.08;
         overflow-wrap: anywhere;
     }
 
-    .module-security .dashboard-time-wrap {
-        min-width: 0 !important;
+    .module-oss .dashboard-time-wrap {
         width: max-content;
         max-width: 100%;
-        text-align: right;
-        justify-self: end;
-        flex-shrink: 0;
-    }
-
-    .module-security .dashboard-time-value {
-        font-size: clamp(0.9rem, 1.35vw, 1.1rem);
-        padding: 0.45rem 0.75rem;
-    }
-}
-
-@media (max-width: 767.98px) {
-    .module-security .dashboard-hero-grid {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-
-    .module-security .dashboard-time-wrap {
         min-width: 0 !important;
-        width: 100%;
-        text-align: left;
+        justify-self: end;
+        text-align: right;
     }
 
-    .module-security .dashboard-time-value {
-        white-space: normal;
-        max-width: 100%;
-        font-size: 0.95rem;
+    .module-oss .dashboard-time-label {
+        color: rgba(255, 255, 255, 0.86);
+    }
+
+    .module-oss .dashboard-time-value {
+        color: #fff !important;
+        background: rgba(255, 255, 255, 0.14) !important;
+        border-color: rgba(255, 255, 255, 0.28) !important;
+        box-shadow: none !important;
+        font-size: clamp(0.9rem, 1.35vw, 1.1rem);
     }
 }
 
-/* ==========================================================================
-   SECURITY MODULE — RESPONSIVE LAYOUT HARDENING
-   Scoped to .module-security so Student/Admin/OSS layouts are not changed.
-   ========================================================================== */
-
-/* Prevent wide content from forcing the whole viewport to scroll. */
-.module-security,
-.module-security .portal-main,
-.module-security .portal-main > .container-fluid {
-    min-width: 0;
-    max-width: 100%;
-}
-
-.module-security .portal-main {
-    overflow-x: clip;
-}
-
-.module-security img,
-.module-security video,
-.module-security canvas,
-.module-security iframe {
-    max-width: 100%;
-}
-
-/* Long labels, headings, and values should wrap instead of overflowing. */
-.module-security h1,
-.module-security h2,
-.module-security h3,
-.module-security h4,
-.module-security h5,
-.module-security p,
-.module-security .card-title,
-.module-security .portal-info-value,
-.module-security .profile-hero-name,
-.module-security .student-header-content {
-    overflow-wrap: anywhere;
-}
-
-/* Tables remain readable and scroll within their own container. */
-.module-security .table-responsive,
-.module-security .portal-table-wrap,
-.module-security .portal-main .table-responsive {
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.module-security .table-responsive > .table,
-.module-security .portal-table-wrap > .table {
-    min-width: 640px;
-}
-
-/* Filter/search groups and action bars may wrap instead of compressing. */
-.module-security .filter-grid,
-.module-security .search-container,
-.module-security .search-bar-container,
-.module-security .page-header,
-.module-security .portal-main .d-flex.justify-content-between {
-    min-width: 0;
-}
-
-.module-security .filter-grid > *,
-.module-security .search-container > *,
-.module-security .page-header > * {
-    min-width: 0;
-    max-width: 100%;
-}
-
-.module-security .portal-main .btn,
-.module-security .portal-main .portal-btn,
-.module-security .portal-main .portal-btn-outline {
-    max-width: 100%;
-    white-space: normal;
-}
-
-/* Profile/student detail grids should collapse naturally. */
-.module-security .profile-info-grid,
-.module-security .student-info-grid,
-.module-security .student-stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-@media (max-width: 991.98px) {
-    .module-security .portal-main > .container-fluid {
-        padding-left: 0.75rem;
-        padding-right: 0.75rem;
+/* Keep OSS navbar controls in one row on mobile. */
+@media (max-width: 767.98px) {
+    .module-oss .portal-topbar > .container-fluid {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.45rem;
+        min-width: 0;
+        padding-left: 0.7rem !important;
+        padding-right: 0.7rem !important;
     }
 
-    .module-security .portal-hero,
-    .module-security .page-header-modern,
-    .module-security .profile-hero,
-    .module-security .student-header {
-        padding: clamp(1rem, 3vw, 1.5rem);
+    .module-oss .portal-topbar > .container-fluid > .d-flex {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center;
+        min-width: 0;
+        gap: 0.4rem !important;
     }
 
-    /* On tablet widths, preserve a clean hierarchy rather than squeezing
-       the dashboard title and timestamp into a narrow row. */
-    .module-security .dashboard-hero-grid {
+    .module-oss .portal-topbar > .container-fluid > .d-flex:first-child {
+        flex: 1 1 auto;
+    }
+
+    .module-oss .portal-topbar > .container-fluid > .d-flex:last-child {
+        flex: 0 0 auto;
+        margin-left: auto;
+    }
+
+    .module-oss .portal-topbar #portalSidebarToggle {
+        flex: 0 0 42px;
+        width: 42px;
+        height: 42px;
+        padding: 0;
+    }
+
+    .module-oss .portal-topbar-brand {
+        flex: 0 1 auto;
+        min-width: 0;
+        gap: 0.4rem;
+    }
+
+    .module-oss .portal-topbar-brand img {
+        flex: 0 0 36px;
+        width: 36px;
+        height: 36px;
+    }
+
+    .module-oss .portal-topbar-brand > div {
+        min-width: 0;
+    }
+
+    .module-oss .portal-topbar .portal-title {
+        font-size: clamp(0.76rem, 3.2vw, 0.9rem);
+        line-height: 1.1;
+        white-space: nowrap;
+    }
+
+    .module-oss .portal-topbar small {
+        display: none !important;
+    }
+
+    .module-oss .portal-topbar .admin-notif-bell,
+    .module-oss .portal-topbar .admin-notif-bell-btn,
+    .module-oss .portal-topbar .dropdown {
+        flex: 0 0 auto;
+    }
+
+    .module-oss .portal-topbar .admin-notif-bell-btn {
+        width: 40px;
+        height: 42px;
+        padding: 0;
+    }
+
+    .module-oss .portal-topbar .admin-notif-dropdown {
+        position: absolute;
+        right: 0;
+        left: auto;
+        width: min(90vw, 360px);
+        max-width: calc(100vw - 1rem);
+    }
+
+    /* Tablet/mobile: stack the time below the title when the row is too narrow. */
+    .module-oss .dashboard-hero-grid {
         display: flex !important;
         flex-direction: column;
         align-items: flex-start;
         gap: 1rem;
     }
 
-    .module-security .dashboard-time-wrap {
+    .module-oss .dashboard-time-wrap {
         width: 100%;
         min-width: 0 !important;
         text-align: left;
     }
+
+    .module-oss .dashboard-time-value {
+        display: inline-flex;
+        flex-wrap: wrap;
+        max-width: 100%;
+        white-space: normal;
+        color: #fff !important;
+        background: rgba(255, 255, 255, 0.14) !important;
+        border-color: rgba(255, 255, 255, 0.28) !important;
+        font-size: clamp(0.82rem, 3.5vw, 1rem);
+    }
+}
+
+/* Responsive student violation cards: count + student details + violation
+   metadata are laid out as a grid so text never gets squeezed off-screen. */
+@media (max-width: 767.98px) {
+    .module-oss #managementTableContainer {
+        width: 100%;
+        min-width: 0;
+        overflow: visible;
+    }
+
+    .module-oss #managementTableContainer .student-card {
+        display: grid !important;
+        grid-template-columns: 40px minmax(0, 1fr);
+        align-items: start;
+        column-gap: 0.7rem;
+        row-gap: 0.55rem;
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        padding: 0.95rem 0.85rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .module-oss #managementTableContainer .student-card > .violation-badge {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+        flex: none;
+        align-self: start;
+        font-size: 1.05rem;
+    }
+
+    .module-oss #managementTableContainer .student-card > .student-info {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .module-oss #managementTableContainer .student-card .student-name {
+        min-width: 0;
+        font-size: 1rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    .module-oss #managementTableContainer .student-card .student-meta {
+        min-width: 0;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    .module-oss #managementTableContainer .student-card > .text-end {
+        grid-column: 2;
+        grid-row: 2;
+        min-width: 0;
+        width: 100%;
+        text-align: left !important;
+        justify-self: stretch;
+    }
+
+    .module-oss
+        #managementTableContainer
+        .student-card
+        > .text-end
+        .portal-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-align: left;
+        padding: 0.35rem 0.65rem;
+    }
+
+    .module-oss #managementTableContainer .student-card > .text-end > div {
+        font-size: 0.78rem !important;
+        line-height: 1.4;
+        margin-top: 0.35rem !important;
+        overflow-wrap: anywhere;
+    }
+}
+
+/* Tables scroll within their own container, never across the full page. */
+.module-oss .portal-main .table-responsive {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+}
+
+.module-oss .portal-main .table-responsive > table {
+    min-width: 680px;
+    width: 100%;
+}
+
+.module-oss .portal-main .table-responsive th,
+.module-oss .portal-main .table-responsive td {
+    white-space: nowrap;
+}
+
+/* General mobile layout hardening for filters, cards, modals and page widths. */
+.module-oss,
+.module-oss .portal-main,
+.module-oss .portal-main > .container-fluid {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.module-oss .portal-main {
+    overflow-x: clip;
+}
+
+.module-oss img,
+.module-oss video,
+.module-oss canvas,
+.module-oss iframe {
+    max-width: 100%;
+}
+
+.module-oss h1,
+.module-oss h2,
+.module-oss h3,
+.module-oss h4,
+.module-oss p,
+.module-oss .card-title {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 991.98px) {
+    .module-oss .portal-hero,
+    .module-oss .page-header-modern {
+        padding: clamp(1rem, 3vw, 1.5rem);
+    }
 }
 
 @media (max-width: 767.98px) {
-    .module-security .portal-main > .container-fluid {
-        padding-top: 1rem !important;
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
+    .module-oss .portal-main > .container-fluid {
+        padding: 0.65rem !important;
     }
 
-    .module-security .portal-topbar > .container-fluid {
-        padding-left: 0.65rem !important;
-        padding-right: 0.65rem !important;
+    .module-oss .portal-main .container-fluid.py-4 {
+        padding: 0.5rem !important;
     }
 
-    .module-security .portal-topbar .container-fluid > .d-flex {
-        min-width: 0;
-    }
-
-    .module-security .portal-topbar-brand img {
-        width: 32px;
-        height: 32px;
-    }
-
-    .module-security .portal-topbar .portal-title {
-        font-size: 0.85rem;
-    }
-
-    .module-security .portal-hero h1,
-    .module-security .page-header-modern h1,
-    .module-security .dashboard-hero-title {
+    .module-oss .portal-hero h1,
+    .module-oss .page-header-modern h1,
+    .module-oss .page-header-modern h2,
+    .module-oss .dashboard-hero-title {
         font-size: clamp(1.55rem, 6vw, 2.15rem);
         line-height: 1.15;
     }
 
-    .module-security .portal-hero p,
-    .module-security .page-header-modern p,
-    .module-security .dashboard-hero-subtitle {
+    .module-oss .portal-hero p,
+    .module-oss .page-header-modern p,
+    .module-oss .dashboard-hero-subtitle {
         font-size: 0.95rem;
         line-height: 1.5;
     }
 
-    .module-security .dashboard-time-wrap {
-        text-align: left;
-        width: 100%;
-    }
-
-    .module-security .dashboard-time-value {
-        display: inline-flex;
-        flex-wrap: wrap;
-        white-space: normal;
-        max-width: 100%;
-        font-size: clamp(0.82rem, 3.5vw, 1rem);
-        line-height: 1.35;
-        padding: 0.45rem 0.7rem;
-    }
-
-    .module-security .row {
+    .module-oss .row {
         --bs-gutter-x: 0.75rem;
         row-gap: 0.25rem;
     }
 
-    .module-security .card {
-        max-width: 100%;
-    }
-
-    .module-security .card-body,
-    .module-security .card-header,
-    .module-security .card-footer {
+    .module-oss .card-body,
+    .module-oss .card-header,
+    .module-oss .card-footer {
         padding-left: 0.85rem;
         padding-right: 0.85rem;
     }
 
-    .module-security .stat-value,
-    .module-security .portal-stat-value {
-        font-size: clamp(1.45rem, 6vw, 2rem);
-    }
-
-    .module-security .filter-grid {
+    .module-oss .filter-grid,
+    .module-oss .search-container {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
         gap: 0.75rem;
     }
 
-    .module-security .filter-grid > *,
-    .module-security .search-container > *,
-    .module-security .search-bar-container > * {
+    .module-oss .filter-grid > *,
+    .module-oss .search-container > * {
         width: 100%;
+        min-width: 0;
         max-width: 100%;
     }
 
-    .module-security .profile-info-grid,
-    .module-security .student-info-grid,
-    .module-security .student-stats-grid {
-        grid-template-columns: minmax(0, 1fr);
+    .module-oss .violations-header-row {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.9rem;
     }
 
-    .module-security .profile-hero-badges {
+    .module-oss .violations-header-actions {
         display: flex;
         flex-wrap: wrap;
+        width: 100%;
         gap: 0.5rem;
     }
 
-    .module-security .modal-dialog {
+    .module-oss .violations-header-actions .btn {
+        flex: 1 1 100%;
+    }
+
+    .module-oss .modal-dialog {
         width: auto;
         max-width: calc(100% - 1rem);
         margin: 0.5rem auto;
     }
 
-    .module-security .modal-dialog.modal-xl,
-    .module-security .modal-dialog.modal-lg {
-        max-width: calc(100% - 1rem);
-    }
-
-    .module-security .modal-content {
+    .module-oss .modal-content {
         max-height: calc(100dvh - 1rem);
         overflow: hidden;
     }
 
-    .module-security .modal-body {
+    .module-oss .modal-body {
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
     }
 
-    .module-security .modal-footer {
+    .module-oss .modal-footer {
+        display: flex;
         flex-wrap: wrap;
         gap: 0.5rem;
-    }
-
-    .module-security .modal-footer > * {
-        margin: 0;
     }
 }
 
 @media (max-width: 575.98px) {
-    .module-security .portal-hero,
-    .module-security .page-header-modern,
-    .module-security .profile-hero,
-    .module-security .student-header {
+    .module-oss .portal-hero,
+    .module-oss .page-header-modern {
         border-radius: 1rem;
         padding: 1rem;
     }
 
-    .module-security .dashboard-hero-title,
-    .module-security .portal-hero h1,
-    .module-security .page-header-modern h1 {
+    .module-oss .dashboard-hero-title,
+    .module-oss .portal-hero h1,
+    .module-oss .page-header-modern h1,
+    .module-oss .page-header-modern h2 {
         font-size: 1.55rem;
     }
 
-    .module-security .dashboard-time-label {
+    .module-oss .dashboard-time-label {
         font-size: 0.68rem;
     }
 
-    .module-security .dashboard-time-value {
+    .module-oss .dashboard-time-value {
         font-size: 0.82rem;
         gap: 0.35rem;
     }
 
-    .module-security .portal-main .btn,
-    .module-security .portal-main .portal-btn,
-    .module-security .portal-main .portal-btn-outline,
-    .module-security .portal-main .admin-btn {
-        min-height: 42px;
-    }
-
-    .module-security .portal-main .d-flex.justify-content-between {
-        align-items: stretch;
-    }
-
-    .module-security .portal-main .d-flex.justify-content-between > .btn,
-    .module-security .portal-main .d-flex.justify-content-between > a.btn,
-    .module-security .portal-main .d-flex.justify-content-between > form {
-        width: 100%;
-    }
-
-    .module-security .portal-main .table th,
-    .module-security .portal-main .table td {
+    .module-oss .portal-main .table th,
+    .module-oss .portal-main .table td {
         font-size: 0.8rem;
         padding: 0.65rem 0.55rem;
     }
 
-    .module-security .dropdown-menu {
+    .module-oss .portal-main .btn,
+    .module-oss .portal-main .admin-btn {
+        max-width: 100%;
+        white-space: normal;
+    }
+
+    .module-oss .list-group-item {
+        flex-wrap: wrap;
+    }
+
+    .module-oss .list-group-item > .d-flex {
+        flex-wrap: wrap;
+    }
+
+    .module-oss .dropdown-menu {
         max-width: calc(100vw - 1rem);
     }
 
-    .module-security .admin-notif-dropdown {
+    .module-oss .admin-notif-dropdown {
         width: min(92vw, 360px);
     }
 }
 
-/* Honor reduced-motion preferences on touch devices as well. */
+@media (max-width: 380px) {
+    .module-oss .portal-topbar > .container-fluid {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+        gap: 0.25rem;
+    }
+
+    .module-oss .portal-topbar-brand img {
+        flex-basis: 32px;
+        width: 32px;
+        height: 32px;
+    }
+
+    .module-oss .portal-topbar #portalSidebarToggle {
+        flex-basis: 38px;
+        width: 38px;
+        height: 40px;
+    }
+
+    .module-oss .portal-topbar .portal-title {
+        font-size: 0.74rem;
+    }
+
+    .module-oss #managementTableContainer .student-card {
+        grid-template-columns: 36px minmax(0, 1fr);
+        column-gap: 0.55rem;
+        padding: 0.85rem 0.7rem;
+    }
+
+    .module-oss #managementTableContainer .student-card > .violation-badge {
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+        font-size: 0.95rem;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .module-security *,
-    .module-security *::before,
-    .module-security *::after {
+    .module-oss *,
+    .module-oss *::before,
+    .module-oss *::after {
         scroll-behavior: auto !important;
         transition-duration: 0.01ms !important;
         animation-duration: 0.01ms !important;
