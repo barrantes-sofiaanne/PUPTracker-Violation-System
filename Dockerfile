@@ -35,8 +35,10 @@ RUN set -eux; \
     rm -f /tmp/composer-setup.php; \
     composer --version
 # Allow Composer plugins to run and configure process timeout
+# Limit parallel HTTP downloads to avoid GitHub rate-limiting (HTTP 429).
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
-    COMPOSER_PROCESS_TIMEOUT=1200
+    COMPOSER_PROCESS_TIMEOUT=1200 \
+    COMPOSER_MAX_PARALLEL_HTTP=2
 
 # Install Node.js 22
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
@@ -57,17 +59,20 @@ RUN command -v mysqldump \
 # Copy the entire Laravel application
 COPY . .
 
-# Install PHP dependencies with retries
+# Install PHP dependencies with progressively longer retries to survive
+# transient GitHub HTTP 429 rate limiting.
 RUN set -eux; \
+    delays="15 30 60 120"; \
     attempts=0; \
     until composer install --no-dev --optimize-autoloader --no-interaction; do \
         attempts=$((attempts + 1)); \
-        if [ "$attempts" -ge 5 ]; then \
+        delay=$(echo "$delays" | cut -d' ' -f"$attempts"); \
+        if [ -z "$delay" ]; then \
             echo "Composer install failed after $attempts attempts" >&2; \
             exit 1; \
         fi; \
-        echo "Composer install attempt $attempts failed; retrying in 5 seconds..." >&2; \
-        sleep 5; \
+        echo "Composer install attempt $attempts failed; retrying in $delay seconds..." >&2; \
+        sleep "$delay"; \
     done
 
 # Verify PHP 8.5 and installed production dependencies
