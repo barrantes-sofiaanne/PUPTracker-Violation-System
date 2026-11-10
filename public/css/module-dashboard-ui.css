@@ -1874,51 +1874,58 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
     }
 }
 
-/* FIX: Keep the user profile avatar fully visible on mobile */
-@media (max-width: 767.98px) {
-    body.student-module .portal-topbar {
-        overflow: visible !important;
-    }
+/* ========================================================================
+   SECURITY MODULE — CONSISTENT MAROON PAGE HEADERS
+   Apply the Security dashboard's maroon-to-brown banner treatment to every
+   page-level hero/header in the Security module. Scoped to Security only.
+   ======================================================================== */
+.module-security .portal-hero,
+.module-security .page-header-modern,
+.module-security .student-header,
+.module-security .profile-hero {
+    background: linear-gradient(
+        112deg,
+        #8f0b0b 0%,
+        #741010 58%,
+        #873d19 100%
+    ) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 14px 30px rgba(80, 12, 12, 0.14);
+}
 
-    body.student-module .portal-topbar > .container-fluid {
-        overflow: visible !important;
-        padding-right: 0.65rem !important;
-    }
+.module-security .portal-hero h1,
+.module-security .portal-hero h2,
+.module-security .portal-hero h3,
+.module-security .portal-hero h4,
+.module-security .page-header-modern h1,
+.module-security .page-header-modern h2,
+.module-security .page-header-modern h3,
+.module-security .page-header-modern h4,
+.module-security .student-header h1,
+.module-security .student-header h2,
+.module-security .student-header h3,
+.module-security .profile-hero h1,
+.module-security .profile-hero h2,
+.module-security .profile-hero h3,
+.module-security .portal-hero p,
+.module-security .page-header-modern p,
+.module-security .student-header p,
+.module-security .profile-hero p,
+.module-security .portal-hero .text-muted,
+.module-security .page-header-modern .text-muted {
+    color: #fff !important;
+}
 
-    body.student-module .portal-topbar > .container-fluid > .d-flex:last-child {
-        flex: 0 0 auto !important;
-        min-width: max-content !important;
-        width: auto !important;
-        overflow: visible !important;
-        margin-left: auto;
-    }
+.module-security .portal-hero::after {
+    border-color: rgba(255, 255, 255, 0.07);
+}
 
-    body.student-module .user-menu {
-        flex: 0 0 auto !important;
-        min-width: 0 !important;
-        overflow: visible !important;
-        padding-left: 0.35rem;
-    }
-
-    body.student-module .user-menu-toggle {
-        display: inline-flex !important;
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: 40px !important;
-        max-width: none !important;
-        padding: 0 !important;
-        overflow: visible !important;
-    }
-
-    body.student-module .user-menu-avatar {
-        display: flex !important;
-        flex: 0 0 38px !important;
-        width: 38px !important;
-        min-width: 38px !important;
-        height: 38px !important;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        overflow: hidden;
-    }
+.module-security .dashboard-time-value {
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.28);
+}
+.module-security .dashboard-time-label {
+    color: rgba(255, 255, 255, 0.88);
 }
