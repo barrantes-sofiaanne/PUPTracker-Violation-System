@@ -1,662 +1,484 @@
 import { FaceDetector, FilesetResolver } from "@mediapipe/tasks-vision";
 
-// MediaPipe WASM + model sources.
-const WASM_BASE_URL =
+const WASM_URL =
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
-const MODEL_ASSET_PATH =
-    "/vendor/mediapipe/models/blaze_face_short_range.tflite";
-
-// ---------------------------------------------------------------------------
-// Diagnostic logging (TEMPORARY — remove or gate off before production).
-// Logs metadata only; never image bytes, captured photographs, or PII.
-// ---------------------------------------------------------------------------
-const DEBUG_PREFIX = "[PUPTracker Camera Debug]";
-const CAMERA_DEBUG_ENABLED = true;
-
-/**
- * Emit a structured diagnostic log line with a consistent prefix.
- * @param {string} message
- * @param {*} [data]
- */
-export function logCameraDebug(message, data) {
-    if (!CAMERA_DEBUG_ENABLED) {
-        return;
-    }
-    try {
-        console.info(DEBUG_PREFIX, message, data === undefined ? "" : data);
-    } catch (e) {
-        // Logging must never break the capture flow.
-    }
-}
-
-/**
- * Log browser/OS capability metadata once per page load.
- */
-export function logCameraEnvironment() {
-    if (!CAMERA_DEBUG_ENABLED) {
-        return;
-    }
-    try {
-        logCameraDebug("environment", {
-            userAgent: navigator.userAgent || "",
-            platform: navigator.platform || "",
-            hasGetUserMedia: !!(
-                navigator.mediaDevices && navigator.mediaDevices.getUserMedia
-            ),
-            hasRequestVideoFrameCallback:
-                typeof HTMLVideoElement !== "undefined" &&
-                typeof HTMLVideoElement.prototype
-                    .requestVideoFrameCallback === "function",
-            viewport: [window.innerWidth, window.innerHeight],
-            devicePixelRatio: window.devicePixelRatio || 1,
-        });
-    } catch (e) {
-        // Ignore.
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Detector lifecycle
-// ---------------------------------------------------------------------------
-// A single detector instance is shared across every capture. Initialization is
-// guarded by one in-flight promise so concurrent captures / camera switches can
-// never spin up multiple detectors or overwrite the shared instance with a
-// half-initialized one.
-let faceDetector = null;
-let faceDetectorInitPromise = null;
-// Once a GPU detect() failure is observed (common on mobile where oversized
-// frames exceed the WebGL texture limit), stick with CPU for subsequent runs.
-let forceCpu = false;
-
-/**
- * Create a detector with the requested delegate ("GPU" or "CPU").
- */
-async function createDetector(delegate) {
-    const vision = await FilesetResolver.forVisionTasks(WASM_BASE_URL);
-
-    return FaceDetector.createFromOptions(vision, {
-        baseOptions: {
-            modelAssetPath: MODEL_ASSET_PATH,
-            delegate,
-        },
-        runningMode: "IMAGE",
-        minDetectionConfidence: 0.35,
-    });
-}
-
-/**
- * Initialize (or return) the shared MediaPipe face detector.
- *
- * - Concurrent callers share one initialization promise (no duplicate init).
- * - GPU is preferred; if GPU initialization fails (or a prior detect() failed),
- *   the detector transparently falls back to CPU so detection still works on
- *   devices without a usable WebGL context.
- */
-export async function initializeFaceDetector() {
-    if (faceDetector) {
-        return faceDetector;
-    }
-
-    if (faceDetectorInitPromise) {
-        return faceDetectorInitPromise;
-    }
-
-    faceDetectorInitPromise = (async () => {
-        if (!forceCpu) {
-            try {
-                faceDetector = await createDetector("GPU");
-                logCameraDebug("detector initialized", { delegate: "GPU" });
-            } catch (gpuError) {
-                forceCpu = true;
-                logCameraDebug("GPU init failed — falling back to CPU", {
-                    error: gpuError && gpuError.message,
-                });
-            }
-        }
-
-        if (!faceDetector) {
-            faceDetector = await createDetector("CPU");
-            logCameraDebug("detector initialized", { delegate: "CPU" });
-        }
-
-        return faceDetector;
-    })();
-
-    return faceDetectorInitPromise;
-}
-
-/**
- * Dispose and forget the current detector so the next initialize call rebuilds
- * it. Used to recover from a degraded GPU / detection state between retries.
- */
-export async function resetFaceDetector() {
-    const detector = faceDetector;
-    faceDetector = null;
-    faceDetectorInitPromise = null;
-
-    if (detector && typeof detector.close === "function") {
-        try {
-            detector.close();
-        } catch (e) {
-            // Ignore close failures; the shared reference is already dropped.
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Face detection
-// ---------------------------------------------------------------------------
-// Mobile rear cameras commonly resolve to 3840×2160 or 4032×3024. The previous
-// fixed 2× upscale produced detection canvases 7680–8064px wide, which exceed
-// the WebGL max-texture size on most phones and made `detector.detect()` fail
-// or return no faces — while desktop webcams (1280×720) stayed within limits.
-//
-// We now bound the detection input so its long edge never exceeds
-// MAX_DETECTION_DIMENSION, but still allow up to MAX_UPSCALE (2×) for small
-// regions so tiny faces remain detectable. Blur is still applied at full
-// resolution because detection coordinates are mapped back to source space.
+const MODEL_URL = "/vendor/mediapipe/models/blaze_face_short_range.tflite";
 const MAX_DETECTION_DIMENSION = 1280;
 const MAX_UPSCALE = 2;
-const HORIZONTAL_TILES = 3;
-const VERTICAL_TILES = 2;
-
-function detectFaces(detector, sourceCanvas) {
-    const detections = [];
-
-    const detectRegion = (regionX, regionY, regionWidth, regionHeight) => {
-        const regionMaxDim = Math.max(regionWidth, regionHeight);
-
-        if (regionMaxDim <= 0) {
-            return;
-        }
-
-        // Scale the region so the detection input stays within the mobile-safe
-        // texture bound, but still upscale small regions (small/partial faces).
-        const scale = Math.max(
-            0.05,
-            Math.min(MAX_UPSCALE, MAX_DETECTION_DIMENSION / regionMaxDim),
-        );
-
-        const detectionCanvas = document.createElement("canvas");
-
-        detectionCanvas.width = Math.max(
-            1,
-            Math.round(regionWidth * scale),
-        );
-        detectionCanvas.height = Math.max(
-            1,
-            Math.round(regionHeight * scale),
-        );
-
-        const detectionCtx = detectionCanvas.getContext("2d");
-
-        if (!detectionCtx) {
-            return;
-        }
-
-        detectionCtx.drawImage(
-            sourceCanvas,
-            regionX,
-            regionY,
-            regionWidth,
-            regionHeight,
-            0,
-            0,
-            detectionCanvas.width,
-            detectionCanvas.height,
-        );
-
-        const result = detector.detect(detectionCanvas);
-
-        for (const detection of result.detections ?? []) {
-            const box = detection.boundingBox;
-
-            if (!box) {
-                continue;
-            }
-
-            const originalX = regionX + box.originX / scale;
-            const originalY = regionY + box.originY / scale;
-            const originalWidth = box.width / scale;
-            const originalHeight = box.height / scale;
-
-            if (originalWidth <= 0 || originalHeight <= 0) {
-                continue;
-            }
-
-            const left = Math.max(0, originalX);
-            const top = Math.max(0, originalY);
-            const right = Math.min(
-                sourceCanvas.width,
-                originalX + originalWidth,
-            );
-            const bottom = Math.min(
-                sourceCanvas.height,
-                originalY + originalHeight,
-            );
-
-            const width = right - left;
-            const height = bottom - top;
-
-            if (width <= 0 || height <= 0) {
-                continue;
-            }
-
-            detections.push({
-                boundingBox: {
-                    originX: left,
-                    originY: top,
-                    width,
-                    height,
-                },
-            });
-        }
-
-        detectionCanvas.width = 1;
-        detectionCanvas.height = 1;
-    };
-
-    // Pass 1 — full image.
-    detectRegion(0, 0, sourceCanvas.width, sourceCanvas.height);
-
-    // Pass 2 — overlapping regions for small / edge / partial faces.
-    const tileWidth = sourceCanvas.width / 2;
-    const tileHeight = sourceCanvas.height / 1.5;
-
-    const horizontalStep =
-        (sourceCanvas.width - tileWidth) / (HORIZONTAL_TILES - 1);
-    const verticalStep =
-        (sourceCanvas.height - tileHeight) / (VERTICAL_TILES - 1);
-
-    for (let row = 0; row < VERTICAL_TILES; row++) {
-        for (let column = 0; column < HORIZONTAL_TILES; column++) {
-            const x = Math.max(0, Math.round(column * horizontalStep));
-            const y = Math.max(0, Math.round(row * verticalStep));
-            const width = Math.min(tileWidth, sourceCanvas.width - x);
-            const height = Math.min(tileHeight, sourceCanvas.height - y);
-
-            if (width <= 0 || height <= 0) {
-                continue;
-            }
-
-            detectRegion(x, y, width, height);
-        }
-    }
-
-    // Remove duplicate detections from overlapping regions.
-    const uniqueDetections = [];
-
-    const intersectionOverUnion = (a, b) => {
-        const ax1 = a.originX;
-        const ay1 = a.originY;
-        const ax2 = a.originX + a.width;
-        const ay2 = a.originY + a.height;
-
-        const bx1 = b.originX;
-        const by1 = b.originY;
-        const bx2 = b.originX + b.width;
-        const by2 = b.originY + b.height;
-
-        const intersectionLeft = Math.max(ax1, bx1);
-        const intersectionTop = Math.max(ay1, by1);
-        const intersectionRight = Math.min(ax2, bx2);
-        const intersectionBottom = Math.min(ay2, by2);
-
-        const intersectionWidth = Math.max(
-            0,
-            intersectionRight - intersectionLeft,
-        );
-        const intersectionHeight = Math.max(
-            0,
-            intersectionBottom - intersectionTop,
-        );
-
-        const intersectionArea = intersectionWidth * intersectionHeight;
-        const areaA = a.width * a.height;
-        const areaB = b.width * b.height;
-        const unionArea = areaA + areaB - intersectionArea;
-
-        if (unionArea <= 0) {
-            return 0;
-        }
-
-        return intersectionArea / unionArea;
-    };
-
-    for (const detection of detections) {
-        const box = detection.boundingBox;
-
-        const duplicate = uniqueDetections.some(
-            (existing) =>
-                intersectionOverUnion(existing.boundingBox, box) > 0.45,
-        );
-
-        if (!duplicate) {
-            uniqueDetections.push(detection);
-        }
-    }
-
-    return uniqueDetections;
-}
-
-// ---------------------------------------------------------------------------
-// Face blur (privacy) rendering
-// ---------------------------------------------------------------------------
+const IOU_THRESHOLD = 0.45;
 const FACE_HORIZONTAL_PADDING = 0.08;
 const FACE_VERTICAL_PADDING = 0.2;
 const BLUR_STRENGTH = 32;
 const BLUR_PADDING = 45;
 const FEATHER_START = 0.68;
-const FEATHER_END = 1.0;
+const CAMERA_DEBUG_ENABLED = false;
 
-function applyBlur(sourceCanvas, ctx, uniqueDetections) {
-    for (const detection of uniqueDetections) {
-        const box = detection.boundingBox;
+let faceDetector = null;
+let faceDetectorInitPromise = null;
+let forceCpu = false;
+let currentDelegate = null;
 
-        if (!box) {
-            continue;
+function logCameraDebug(message, details = {}) {
+    if (!CAMERA_DEBUG_ENABLED) return;
+    // Deliberately log metadata only; never log image, canvas, or student data.
+    console.debug(`[PUPTracker camera] ${message}`, details);
+}
+
+export function logCameraEnvironment() {
+    if (!CAMERA_DEBUG_ENABLED) return;
+    logCameraDebug("environment", {
+        userAgent: navigator.userAgent,
+        deviceMemory: navigator.deviceMemory ?? null,
+        hardwareConcurrency: navigator.hardwareConcurrency ?? null,
+        secureContext: window.isSecureContext,
+    });
+}
+
+async function createDetector(delegate) {
+    const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+    return FaceDetector.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate },
+        runningMode: "IMAGE",
+        minDetectionConfidence: 0.35,
+    });
+}
+
+/** Initialize the detector, preferring GPU and falling back to CPU. */
+export async function initializeFaceDetector() {
+    if (faceDetector) return faceDetector;
+    if (faceDetectorInitPromise) return faceDetectorInitPromise;
+
+    faceDetectorInitPromise = (async () => {
+        if (!forceCpu) {
+            try {
+                faceDetector = await createDetector("GPU");
+                currentDelegate = "GPU";
+                logCameraDebug("detector initialized", {
+                    delegate: currentDelegate,
+                });
+                return faceDetector;
+            } catch (gpuError) {
+                forceCpu = true;
+                logCameraDebug("GPU initialization failed; using CPU", {
+                    message: String(gpuError?.message || gpuError),
+                });
+            }
         }
 
-        const faceWidth = box.width * (1 + FACE_HORIZONTAL_PADDING * 2);
-        const faceHeight = box.height * (1 + FACE_VERTICAL_PADDING * 2);
-        const faceCenterX = box.originX + box.width / 2;
-        const faceCenterY = box.originY + box.height / 2;
+        faceDetector = await createDetector("CPU");
+        currentDelegate = "CPU";
+        logCameraDebug("detector initialized", { delegate: currentDelegate });
+        return faceDetector;
+    })();
 
-        const ellipseLeft = Math.max(
-            0,
-            Math.floor(faceCenterX - faceWidth / 2),
-        );
-        const ellipseTop = Math.max(
-            0,
-            Math.floor(faceCenterY - faceHeight / 2),
-        );
+    try {
+        return await faceDetectorInitPromise;
+    } catch (error) {
+        faceDetector = null;
+        currentDelegate = null;
+        throw error;
+    } finally {
+        faceDetectorInitPromise = null;
+    }
+}
+
+/** Reset detector state after a runtime GPU failure. */
+export async function resetFaceDetector() {
+    const previous = faceDetector;
+    faceDetector = null;
+    faceDetectorInitPromise = null;
+    currentDelegate = null;
+    forceCpu = true;
+
+    if (previous && typeof previous.close === "function") {
+        try {
+            previous.close();
+        } catch (error) {
+            logCameraDebug("detector close failed", {
+                message: String(error),
+            });
+        }
+    }
+}
+
+function intersectionOverUnion(a, b) {
+    const left = Math.max(a.originX, b.originX);
+    const top = Math.max(a.originY, b.originY);
+    const right = Math.min(a.originX + a.width, b.originX + b.width);
+    const bottom = Math.min(a.originY + a.height, b.originY + b.height);
+
+    const intersection = Math.max(0, right - left) * Math.max(0, bottom - top);
+
+    const union = a.width * a.height + b.width * b.height - intersection;
+
+    return union > 0 ? intersection / union : 0;
+}
+
+function detectFacesInCanvas(detector, sourceCanvas) {
+    const sourceWidth = sourceCanvas.width;
+    const sourceHeight = sourceCanvas.height;
+
+    if (!sourceWidth || !sourceHeight) {
+        throw new Error("The camera frame is empty.");
+    }
+
+    const scale = Math.min(
+        MAX_UPSCALE,
+        MAX_DETECTION_DIMENSION / Math.max(sourceWidth, sourceHeight),
+    );
+
+    const detections = [];
+
+    const detectRegion = (x, y, width, height) => {
+        const detectionCanvas = document.createElement("canvas");
+
+        detectionCanvas.width = Math.max(1, Math.round(width * scale));
+        detectionCanvas.height = Math.max(1, Math.round(height * scale));
+
+        const detectionContext = detectionCanvas.getContext("2d", {
+            willReadFrequently: true,
+        });
+
+        if (!detectionContext) {
+            throw new Error("Unable to prepare the face-detection canvas.");
+        }
+
+        try {
+            detectionContext.drawImage(
+                sourceCanvas,
+                x,
+                y,
+                width,
+                height,
+                0,
+                0,
+                detectionCanvas.width,
+                detectionCanvas.height,
+            );
+
+            const result = detector.detect(detectionCanvas);
+
+            for (const item of result.detections ?? []) {
+                const box = item.boundingBox;
+                if (!box) continue;
+
+                const left = Math.max(0, x + box.originX / scale);
+                const top = Math.max(0, y + box.originY / scale);
+                const right = Math.min(
+                    sourceWidth,
+                    x + (box.originX + box.width) / scale,
+                );
+                const bottom = Math.min(
+                    sourceHeight,
+                    y + (box.originY + box.height) / scale,
+                );
+
+                if (right > left && bottom > top) {
+                    detections.push({
+                        originX: left,
+                        originY: top,
+                        width: right - left,
+                        height: bottom - top,
+                    });
+                }
+            }
+        } finally {
+            detectionCanvas.width = 1;
+            detectionCanvas.height = 1;
+        }
+    };
+
+    detectRegion(0, 0, sourceWidth, sourceHeight);
+
+    // Six overlapping regions improve coverage for small and edge-positioned faces.
+    const tileWidth = sourceWidth / 2;
+    const tileHeight = sourceHeight / 1.5;
+    const horizontalStep = (sourceWidth - tileWidth) / 2;
+    const verticalStep = sourceHeight - tileHeight;
+
+    for (let row = 0; row < 2; row++) {
+        for (let column = 0; column < 3; column++) {
+            const x = Math.round(column * horizontalStep);
+            const y = Math.round(row * verticalStep);
+
+            detectRegion(
+                x,
+                y,
+                Math.min(tileWidth, sourceWidth - x),
+                Math.min(tileHeight, sourceHeight - y),
+            );
+        }
+    }
+
+    const unique = [];
+
+    for (const box of detections) {
+        if (
+            !unique.some(
+                (existing) =>
+                    intersectionOverUnion(existing, box) > IOU_THRESHOLD,
+            )
+        ) {
+            unique.push(box);
+        }
+    }
+
+    return unique;
+}
+
+function blurDetectedFaces(sourceCanvas, boxes) {
+    const context = sourceCanvas.getContext("2d");
+
+    if (!context) {
+        throw new Error("Unable to access the evidence canvas.");
+    }
+
+    for (const box of boxes) {
+        const faceWidth = box.width * (1 + FACE_HORIZONTAL_PADDING * 2);
+
+        const faceHeight = box.height * (1 + FACE_VERTICAL_PADDING * 2);
+
+        const centerX = box.originX + box.width / 2;
+        const centerY = box.originY + box.height / 2;
+
+        const ellipseLeft = Math.max(0, Math.floor(centerX - faceWidth / 2));
+
+        const ellipseTop = Math.max(0, Math.floor(centerY - faceHeight / 2));
+
         const ellipseRight = Math.min(
             sourceCanvas.width,
-            Math.ceil(faceCenterX + faceWidth / 2),
+            Math.ceil(centerX + faceWidth / 2),
         );
+
         const ellipseBottom = Math.min(
             sourceCanvas.height,
-            Math.ceil(faceCenterY + faceHeight / 2),
+            Math.ceil(centerY + faceHeight / 2),
         );
 
         const ellipseWidth = ellipseRight - ellipseLeft;
         const ellipseHeight = ellipseBottom - ellipseTop;
 
-        if (ellipseWidth <= 0 || ellipseHeight <= 0) {
-            continue;
-        }
+        if (ellipseWidth <= 0 || ellipseHeight <= 0) continue;
 
         const sourceLeft = Math.max(0, ellipseLeft - BLUR_PADDING);
         const sourceTop = Math.max(0, ellipseTop - BLUR_PADDING);
+
         const sourceRight = Math.min(
             sourceCanvas.width,
             ellipseRight + BLUR_PADDING,
         );
+
         const sourceBottom = Math.min(
             sourceCanvas.height,
             ellipseBottom + BLUR_PADDING,
         );
 
-        const sourceWidth = sourceRight - sourceLeft;
-        const sourceHeight = sourceBottom - sourceTop;
+        const width = sourceRight - sourceLeft;
+        const height = sourceBottom - sourceTop;
 
-        if (sourceWidth <= 0 || sourceHeight <= 0) {
-            continue;
+        const original = document.createElement("canvas");
+        const blurred = document.createElement("canvas");
+        const mask = document.createElement("canvas");
+        const output = document.createElement("canvas");
+
+        for (const canvas of [original, blurred, mask, output]) {
+            canvas.width = width;
+            canvas.height = height;
         }
 
-        // 1. Copy the original region.
-        const originalCanvas = document.createElement("canvas");
-        originalCanvas.width = sourceWidth;
-        originalCanvas.height = sourceHeight;
+        const originalContext = original.getContext("2d");
+        const blurredContext = blurred.getContext("2d");
+        const maskContext = mask.getContext("2d");
+        const outputContext = output.getContext("2d");
 
-        const originalCtx = originalCanvas.getContext("2d");
-        if (!originalCtx) {
-            continue;
+        if (
+            !originalContext ||
+            !blurredContext ||
+            !maskContext ||
+            !outputContext
+        ) {
+            throw new Error("Unable to prepare the privacy-blur canvas.");
         }
 
-        originalCtx.drawImage(
-            sourceCanvas,
-            sourceLeft,
-            sourceTop,
-            sourceWidth,
-            sourceHeight,
-            0,
-            0,
-            sourceWidth,
-            sourceHeight,
-        );
+        try {
+            originalContext.drawImage(
+                sourceCanvas,
+                sourceLeft,
+                sourceTop,
+                width,
+                height,
+                0,
+                0,
+                width,
+                height,
+            );
 
-        // 2. Create the blurred version.
-        const blurredCanvas = document.createElement("canvas");
-        blurredCanvas.width = sourceWidth;
-        blurredCanvas.height = sourceHeight;
+            blurredContext.filter = `blur(${BLUR_STRENGTH}px)`;
 
-        const blurredCtx = blurredCanvas.getContext("2d");
-        if (!blurredCtx) {
-            continue;
-        }
+            blurredContext.drawImage(
+                original,
+                -BLUR_PADDING / 2,
+                -BLUR_PADDING / 2,
+                width + BLUR_PADDING,
+                height + BLUR_PADDING,
+            );
 
-        blurredCtx.save();
-        blurredCtx.filter = `blur(${BLUR_STRENGTH}px)`;
-        blurredCtx.drawImage(
-            originalCanvas,
-            -BLUR_PADDING / 2,
-            -BLUR_PADDING / 2,
-            sourceWidth + BLUR_PADDING,
-            sourceHeight + BLUR_PADDING,
-        );
-        blurredCtx.restore();
+            const localX = centerX - sourceLeft;
+            const localY = centerY - sourceTop;
 
-        // 3. Create the feathered oval mask.
-        const maskCanvas = document.createElement("canvas");
-        maskCanvas.width = sourceWidth;
-        maskCanvas.height = sourceHeight;
+            maskContext.save();
+            maskContext.translate(localX, localY);
+            maskContext.scale(ellipseWidth / 2, ellipseHeight / 2);
 
-        const maskCtx = maskCanvas.getContext("2d");
-        if (!maskCtx) {
-            continue;
-        }
+            const gradient = maskContext.createRadialGradient(0, 0, 0, 0, 0, 1);
 
-        const localCenterX = faceCenterX - sourceLeft;
-        const localCenterY = faceCenterY - sourceTop;
+            gradient.addColorStop(0, "rgba(255,255,255,1)");
+            gradient.addColorStop(FEATHER_START, "rgba(255,255,255,1)");
+            gradient.addColorStop(0.86, "rgba(255,255,255,0.75)");
+            gradient.addColorStop(0.94, "rgba(255,255,255,0.35)");
+            gradient.addColorStop(1, "rgba(255,255,255,0)");
 
-        const radiusX = ellipseWidth / 2;
-        const radiusY = ellipseHeight / 2;
+            maskContext.fillStyle = gradient;
+            maskContext.beginPath();
+            maskContext.arc(0, 0, 1, 0, Math.PI * 2);
+            maskContext.fill();
+            maskContext.restore();
 
-        maskCtx.save();
-        maskCtx.translate(localCenterX, localCenterY);
-        maskCtx.scale(radiusX, radiusY);
+            outputContext.drawImage(blurred, 0, 0);
+            outputContext.globalCompositeOperation = "destination-in";
+            outputContext.drawImage(mask, 0, 0);
+            outputContext.globalCompositeOperation = "source-over";
 
-        const gradient = maskCtx.createRadialGradient(0, 0, 0, 0, 0, 1);
-
-        gradient.addColorStop(0, "rgba(255,255,255,1)");
-        gradient.addColorStop(FEATHER_START, "rgba(255,255,255,1)");
-        gradient.addColorStop(0.86, "rgba(255,255,255,0.75)");
-        gradient.addColorStop(0.94, "rgba(255,255,255,0.35)");
-        gradient.addColorStop(FEATHER_END, "rgba(255,255,255,0)");
-
-        maskCtx.fillStyle = gradient;
-        maskCtx.beginPath();
-        maskCtx.arc(0, 0, 1, 0, Math.PI * 2);
-        maskCtx.fill();
-        maskCtx.restore();
-
-        // 4. Apply the mask to the blurred image.
-        const maskedBlurCanvas = document.createElement("canvas");
-        maskedBlurCanvas.width = sourceWidth;
-        maskedBlurCanvas.height = sourceHeight;
-
-        const maskedBlurCtx = maskedBlurCanvas.getContext("2d");
-        if (!maskedBlurCtx) {
-            continue;
-        }
-
-        maskedBlurCtx.drawImage(blurredCanvas, 0, 0);
-
-        maskedBlurCtx.globalCompositeOperation = "destination-in";
-        maskedBlurCtx.drawImage(maskCanvas, 0, 0);
-        maskedBlurCtx.globalCompositeOperation = "source-over";
-
-        // 5. Composite the feathered blur over the original.
-        ctx.drawImage(
-            maskedBlurCanvas,
-            0,
-            0,
-            sourceWidth,
-            sourceHeight,
-            sourceLeft,
-            sourceTop,
-            sourceWidth,
-            sourceHeight,
-        );
-
-        // Release temporary canvas memory.
-        originalCanvas.width = 1;
-        originalCanvas.height = 1;
-        blurredCanvas.width = 1;
-        blurredCanvas.height = 1;
-        maskCanvas.width = 1;
-        maskCanvas.height = 1;
-        maskedBlurCanvas.width = 1;
-        maskedBlurCanvas.height = 1;
-    }
-}
-
-/**
- * Detect whether a source canvas actually contains drawn image data (as opposed
- * to a blank/transparent canvas produced by drawing a not-yet-ready video
- * element). A downsample probe is cheap and only reads the alpha channel:
- * camera frames are opaque, so any opaque pixel means real frame data exists.
- */
-function canvasHasImageData(sourceCanvas) {
-    if (!sourceCanvas.width || !sourceCanvas.height) {
-        return false;
-    }
-
-    try {
-        const probe = document.createElement("canvas");
-        probe.width = 4;
-        probe.height = 4;
-        const probeCtx = probe.getContext("2d", { willReadFrequently: true });
-        if (!probeCtx) {
-            return true;
-        }
-        probeCtx.drawImage(sourceCanvas, 0, 0, 4, 4);
-        const data = probeCtx.getImageData(0, 0, 4, 4).data;
-        for (let i = 3; i < data.length; i += 4) {
-            if (data[i] > 0) {
-                return true;
+            context.drawImage(
+                output,
+                0,
+                0,
+                width,
+                height,
+                sourceLeft,
+                sourceTop,
+                width,
+                height,
+            );
+        } finally {
+            for (const canvas of [original, blurred, mask, output]) {
+                canvas.width = 1;
+                canvas.height = 1;
             }
         }
+    }
+}
+
+function canvasHasImageData(canvas) {
+    const context = canvas.getContext("2d", {
+        willReadFrequently: true,
+    });
+
+    if (!context || !canvas.width || !canvas.height) {
         return false;
-    } catch (e) {
-        // Cannot probe (e.g. tainted canvas) — do not block on the probe itself;
-        // the downstream fail-safe still prevents unblurred submission.
-        return true;
+    }
+
+    const sample = document.createElement("canvas");
+    sample.width = 4;
+    sample.height = 4;
+
+    const sampleContext = sample.getContext("2d", {
+        willReadFrequently: true,
+    });
+
+    if (!sampleContext) return false;
+
+    try {
+        sampleContext.drawImage(canvas, 0, 0, 4, 4);
+
+        const pixels = sampleContext.getImageData(0, 0, 4, 4).data;
+
+        for (let i = 3; i < pixels.length; i += 4) {
+            if (pixels[i] !== 0) return true;
+        }
+
+        return false;
+    } catch (error) {
+        throw new Error(
+            `Unable to inspect the camera frame: ${error.message || error}`,
+        );
+    } finally {
+        sample.width = 1;
+        sample.height = 1;
     }
 }
 
 /**
- * Detect faces and blur them on a canvas.
- *
- * PRIVACY FAIL-SAFE: this function never returns an unblurred canvas. If no
- * face is detected it retries with a freshly sampled frame (when a
- * `sampleFrame` callback is supplied) and, if detection still fails, throws so
- * the caller must block evidence capture. The detector is only rebuilt when
- * there is NO live-frame sampler (i.e. the non-camera path), because a working
- * detector must not be disposed after a single unsuccessful detection.
+ * Detect and blur faces. Fails closed: if detection cannot be completed, no
+ * evidence image should be accepted by the caller.
  *
  * @param {HTMLCanvasElement} sourceCanvas
- * @param {Function} [sampleFrame] Optional () => void that redraws the latest
- *     camera frame into `sourceCanvas`.
+ * @param {(() => void)|null} sampleFrame
+ * Optional callback to redraw a fresh video frame before retries.
  * @returns {Promise<HTMLCanvasElement>}
  */
 export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
-    const ctx = sourceCanvas.getContext("2d");
+    if (!(sourceCanvas instanceof HTMLCanvasElement)) {
+        throw new TypeError("A valid evidence canvas is required.");
+    }
 
-    if (!ctx) {
+    if (!canvasHasImageData(sourceCanvas)) {
+        throw new Error("The camera frame is blank. Please retake the photo.");
+    }
+
+    let detector = await initializeFaceDetector();
+    let boxes = [];
+    let gpuFailure = false;
+
+    if (currentDelegate === "GPU") {
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                if (attempt > 0 && typeof sampleFrame === "function") {
+                    sampleFrame();
+                }
+
+                boxes = detectFacesInCanvas(detector, sourceCanvas);
+
+                if (boxes.length > 0) break;
+            } catch (error) {
+                gpuFailure = true;
+
+                logCameraDebug("GPU detection failed", {
+                    attempt: attempt + 1,
+                    message: String(error?.message || error),
+                });
+
+                break;
+            }
+        }
+
+        // A zero-face GPU result is treated as inconclusive and checked on CPU.
+        if (gpuFailure || boxes.length === 0) {
+            await resetFaceDetector();
+            detector = await initializeFaceDetector();
+
+            if (typeof sampleFrame === "function") {
+                sampleFrame();
+            }
+
+            boxes = detectFacesInCanvas(detector, sourceCanvas);
+        }
+    } else {
+        boxes = detectFacesInCanvas(detector, sourceCanvas);
+    }
+
+    if (boxes.length === 0) {
         throw new Error(
-            "Privacy protection could not access the canvas. The photo was not saved.",
+            "Face detection did not confirm the frame. For privacy, this photo cannot be captured. Please reposition the camera and try again.",
         );
     }
 
-    const hasSampler = typeof sampleFrame === "function";
-    const maxAttempts = hasSampler ? 3 : 2;
+    blurDetectedFaces(sourceCanvas, boxes);
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        // Always sample the latest frame before detection when a live sampler is
-        // available, so we never repeatedly detect a stale/empty canvas.
-        if (hasSampler) {
-            sampleFrame();
-        }
+    logCameraDebug("face blur applied", {
+        count: boxes.length,
+        delegate: currentDelegate,
+    });
 
-        const hasData = canvasHasImageData(sourceCanvas);
-        logCameraDebug("blur attempt", {
-            attempt,
-            canvasWidth: sourceCanvas.width,
-            canvasHeight: sourceCanvas.height,
-            hasImageData: hasData,
-        });
-
-        // A blank canvas has no faces to detect and would only waste a detection
-        // pass. Retry the sampler (the video may not have decoded yet).
-        if (!hasData) {
-            if (hasSampler) {
-                continue;
-            }
-            throw new Error(
-                "Privacy protection could not read a valid image. The photo was not saved.",
-            );
-        }
-
-        const detector = await initializeFaceDetector();
-
-        let uniqueDetections;
-        const startedAt = performance.now();
-
-        try {
-            uniqueDetections = detectFaces(detector, sourceCanvas);
-        } catch (detectError) {
-            // A GPU detect() failure is the classic mobile symptom: the frame
-            // exceeded the WebGL texture limit. Fall back to CPU and retry with
-            // a freshly sampled frame.
-            logCameraDebug("detection threw — forcing CPU fallback", {
-                attempt,
-                error: detectError && detectError.message,
-            });
-            forceCpu = true;
-            await resetFaceDetector();
-            if (hasSampler) {
-                sampleFrame();
-            }
-            continue;
-        }
-
-        logCameraDebug("detection complete", {
-            attempt,
-            faceCount: uniqueDetections.length,
-            durationMs: Math.round(performance.now() - startedAt),
-        });
-
-        if (uniqueDetections.length > 0) {
-            applyBlur(sourceCanvas, ctx, uniqueDetections);
-            logCameraDebug("blur applied", {
-                faceCount: uniqueDetections.length,
-                canvasWidth: sourceCanvas.width,
-                canvasHeight: sourceCanvas.height,
-            });
-            return sourceCanvas;
-        }
-
-        // No faces on this pass. Only the non-live path rebuilds the detector
-        // (where there is evidence the detector itself may be degraded); the
-        // live path simply re-samples a newer frame on the next iteration.
-        if (!hasSampler) {
-            await resetFaceDetector();
-        }
-    }
-
-    throw new Error(
-        "Privacy protection could not identify any faces. The photo was not saved because an unblurred image must never be submitted.",
-    );
+    return sourceCanvas;
 }
