@@ -7,6 +7,55 @@ const MODEL_ASSET_PATH =
     "/vendor/mediapipe/models/blaze_face_short_range.tflite";
 
 // ---------------------------------------------------------------------------
+// Diagnostic logging (TEMPORARY — remove or gate off before production).
+// Logs metadata only; never image bytes, captured photographs, or PII.
+// ---------------------------------------------------------------------------
+const DEBUG_PREFIX = "[PUPTracker Camera Debug]";
+const CAMERA_DEBUG_ENABLED = true;
+
+/**
+ * Emit a structured diagnostic log line with a consistent prefix.
+ * @param {string} message
+ * @param {*} [data]
+ */
+export function logCameraDebug(message, data) {
+    if (!CAMERA_DEBUG_ENABLED) {
+        return;
+    }
+    try {
+        console.info(DEBUG_PREFIX, message, data === undefined ? "" : data);
+    } catch (e) {
+        // Logging must never break the capture flow.
+    }
+}
+
+/**
+ * Log browser/OS capability metadata once per page load.
+ */
+export function logCameraEnvironment() {
+    if (!CAMERA_DEBUG_ENABLED) {
+        return;
+    }
+    try {
+        logCameraDebug("environment", {
+            userAgent: navigator.userAgent || "",
+            platform: navigator.platform || "",
+            hasGetUserMedia: !!(
+                navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+            ),
+            hasRequestVideoFrameCallback:
+                typeof HTMLVideoElement !== "undefined" &&
+                typeof HTMLVideoElement.prototype
+                    .requestVideoFrameCallback === "function",
+            viewport: [window.innerWidth, window.innerHeight],
+            devicePixelRatio: window.devicePixelRatio || 1,
+        });
+    } catch (e) {
+        // Ignore.
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Detector lifecycle
 // ---------------------------------------------------------------------------
 // A single detector instance is shared across every capture. Initialization is
@@ -15,6 +64,9 @@ const MODEL_ASSET_PATH =
 // half-initialized one.
 let faceDetector = null;
 let faceDetectorInitPromise = null;
+// Once a GPU detect() failure is observed (common on mobile where oversized
+// frames exceed the WebGL texture limit), stick with CPU for subsequent runs.
+let forceCpu = false;
 
 /**
  * Create a detector with the requested delegate ("GPU" or "CPU").
@@ -36,8 +88,9 @@ async function createDetector(delegate) {
  * Initialize (or return) the shared MediaPipe face detector.
  *
  * - Concurrent callers share one initialization promise (no duplicate init).
- * - GPU is preferred; if GPU initialization fails, the detector transparently
- *   falls back to CPU so detection still works on devices without WebGL.
+ * - GPU is preferred; if GPU initialization fails (or a prior detect() failed),
+ *   the detector transparently falls back to CPU so detection still works on
+ *   devices without a usable WebGL context.
  */
 export async function initializeFaceDetector() {
     if (faceDetector) {
@@ -49,11 +102,23 @@ export async function initializeFaceDetector() {
     }
 
     faceDetectorInitPromise = (async () => {
-        try {
-            faceDetector = await createDetector("GPU");
-        } catch (gpuError) {
-            faceDetector = await createDetector("CPU");
+        if (!forceCpu) {
+            try {
+                faceDetector = await createDetector("GPU");
+                logCameraDebug("detector initialized", { delegate: "GPU" });
+            } catch (gpuError) {
+                forceCpu = true;
+                logCameraDebug("GPU init failed — falling back to CPU", {
+                    error: gpuError && gpuError.message,
+                });
+            }
         }
+
+        if (!faceDetector) {
+            faceDetector = await createDetector("CPU");
+            logCameraDebug("detector initialized", { delegate: "CPU" });
+        }
+
         return faceDetector;
     })();
 
@@ -81,7 +146,17 @@ export async function resetFaceDetector() {
 // ---------------------------------------------------------------------------
 // Face detection
 // ---------------------------------------------------------------------------
-const DETECTION_SCALE = 2;
+// Mobile rear cameras commonly resolve to 3840×2160 or 4032×3024. The previous
+// fixed 2× upscale produced detection canvases 7680–8064px wide, which exceed
+// the WebGL max-texture size on most phones and made `detector.detect()` fail
+// or return no faces — while desktop webcams (1280×720) stayed within limits.
+//
+// We now bound the detection input so its long edge never exceeds
+// MAX_DETECTION_DIMENSION, but still allow up to MAX_UPSCALE (2×) for small
+// regions so tiny faces remain detectable. Blur is still applied at full
+// resolution because detection coordinates are mapped back to source space.
+const MAX_DETECTION_DIMENSION = 1280;
+const MAX_UPSCALE = 2;
 const HORIZONTAL_TILES = 3;
 const VERTICAL_TILES = 2;
 
@@ -89,15 +164,28 @@ function detectFaces(detector, sourceCanvas) {
     const detections = [];
 
     const detectRegion = (regionX, regionY, regionWidth, regionHeight) => {
+        const regionMaxDim = Math.max(regionWidth, regionHeight);
+
+        if (regionMaxDim <= 0) {
+            return;
+        }
+
+        // Scale the region so the detection input stays within the mobile-safe
+        // texture bound, but still upscale small regions (small/partial faces).
+        const scale = Math.max(
+            0.05,
+            Math.min(MAX_UPSCALE, MAX_DETECTION_DIMENSION / regionMaxDim),
+        );
+
         const detectionCanvas = document.createElement("canvas");
 
         detectionCanvas.width = Math.max(
             1,
-            Math.round(regionWidth * DETECTION_SCALE),
+            Math.round(regionWidth * scale),
         );
         detectionCanvas.height = Math.max(
             1,
-            Math.round(regionHeight * DETECTION_SCALE),
+            Math.round(regionHeight * scale),
         );
 
         const detectionCtx = detectionCanvas.getContext("2d");
@@ -127,10 +215,10 @@ function detectFaces(detector, sourceCanvas) {
                 continue;
             }
 
-            const originalX = regionX + box.originX / DETECTION_SCALE;
-            const originalY = regionY + box.originY / DETECTION_SCALE;
-            const originalWidth = box.width / DETECTION_SCALE;
-            const originalHeight = box.height / DETECTION_SCALE;
+            const originalX = regionX + box.originX / scale;
+            const originalY = regionY + box.originY / scale;
+            const originalWidth = box.width / scale;
+            const originalHeight = box.height / scale;
 
             if (originalWidth <= 0 || originalHeight <= 0) {
                 continue;
@@ -502,9 +590,17 @@ export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
             sampleFrame();
         }
 
+        const hasData = canvasHasImageData(sourceCanvas);
+        logCameraDebug("blur attempt", {
+            attempt,
+            canvasWidth: sourceCanvas.width,
+            canvasHeight: sourceCanvas.height,
+            hasImageData: hasData,
+        });
+
         // A blank canvas has no faces to detect and would only waste a detection
         // pass. Retry the sampler (the video may not have decoded yet).
-        if (!canvasHasImageData(sourceCanvas)) {
+        if (!hasData) {
             if (hasSampler) {
                 continue;
             }
@@ -514,10 +610,41 @@ export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
         }
 
         const detector = await initializeFaceDetector();
-        const uniqueDetections = detectFaces(detector, sourceCanvas);
+
+        let uniqueDetections;
+        const startedAt = performance.now();
+
+        try {
+            uniqueDetections = detectFaces(detector, sourceCanvas);
+        } catch (detectError) {
+            // A GPU detect() failure is the classic mobile symptom: the frame
+            // exceeded the WebGL texture limit. Fall back to CPU and retry with
+            // a freshly sampled frame.
+            logCameraDebug("detection threw — forcing CPU fallback", {
+                attempt,
+                error: detectError && detectError.message,
+            });
+            forceCpu = true;
+            await resetFaceDetector();
+            if (hasSampler) {
+                sampleFrame();
+            }
+            continue;
+        }
+
+        logCameraDebug("detection complete", {
+            attempt,
+            faceCount: uniqueDetections.length,
+            durationMs: Math.round(performance.now() - startedAt),
+        });
 
         if (uniqueDetections.length > 0) {
             applyBlur(sourceCanvas, ctx, uniqueDetections);
+            logCameraDebug("blur applied", {
+                faceCount: uniqueDetections.length,
+                canvasWidth: sourceCanvas.width,
+                canvasHeight: sourceCanvas.height,
+            });
             return sourceCanvas;
         }
 

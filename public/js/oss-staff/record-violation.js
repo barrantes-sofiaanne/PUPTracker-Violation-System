@@ -238,6 +238,18 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---------------------------------------------------------------
     const getFaceBlur = () => window.PUPTrackerFaceBlur || null;
 
+    // Forward camera/video diagnostics to the shared logger (same prefix).
+    const cameraDebug = (message, data) => {
+        try {
+            const faceBlur = getFaceBlur();
+            if (faceBlur && typeof faceBlur.logCameraDebug === "function") {
+                faceBlur.logCameraDebug(message, data);
+            }
+        } catch (e) {
+            // Diagnostic logging must never break capture.
+        }
+    };
+
     const initializePrivacyFaceBlur = async () => {
         const faceBlur = getFaceBlur();
 
@@ -424,6 +436,15 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
                 if (isReady()) {
+                    cameraDebug("video ready", {
+                        readyState: video.readyState,
+                        videoWidth: video.videoWidth,
+                        videoHeight: video.videoHeight,
+                        paused: video.paused,
+                        currentTime: video.currentTime,
+                        hasRequestVideoFrameCallback:
+                            typeof video.requestVideoFrameCallback === "function",
+                    });
                     cleanup();
                     resolve();
                 }
@@ -443,6 +464,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 } else if (isReady()) {
                     resolve();
                 } else {
+                    cameraDebug("video not ready (timeout)", {
+                        readyState: video.readyState,
+                        videoWidth: video.videoWidth,
+                        videoHeight: video.videoHeight,
+                        paused: video.paused,
+                    });
                     reject(new Error("Camera video frame timeout"));
                 }
             }, 10000);
@@ -518,6 +545,29 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (cameraPreview) {
                     cameraPreview.srcObject = stream;
                 }
+
+                cameraDebug("stream acquired", {
+                    facingMode: cameraFacingMode,
+                    deviceIdRequested: !!deviceId,
+                    settings: (() => {
+                        try {
+                            const t = stream.getVideoTracks()[0];
+                            if (!t || typeof t.getSettings !== "function") {
+                                return null;
+                            }
+                            const s = t.getSettings();
+                            return {
+                                facingMode: s.facingMode || null,
+                                width: s.width || null,
+                                height: s.height || null,
+                                frameRate: s.frameRate || null,
+                                aspectRatio: s.aspectRatio || null,
+                            };
+                        } catch (e) {
+                            return null;
+                        }
+                    })(),
+                });
 
                 // ---------------------------------------------------------------
                 // 1. Video readiness: wait for a decoded, current frame from the
@@ -1214,6 +1264,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
             captureInProgress = true;
+            cameraDebug("capture requested", {
+                readyState: cameraPreview.readyState,
+                videoWidth: cameraPreview.videoWidth,
+                videoHeight: cameraPreview.videoHeight,
+                paused: cameraPreview.paused,
+            });
             if (capturePhotoBtn) {
                 capturePhotoBtn.disabled = true;
             }
@@ -1290,6 +1346,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 capturedImageObjectUrl = null;
             }
             capturedImageBlob = null;
+            cameraDebug("retake requested");
             reportSecurityEvent(
                 "CAPTURE_ABANDONED",
                 { stage: "retake" },
