@@ -206,6 +206,14 @@ document.addEventListener("DOMContentLoaded", function () {
     // Guards against overlapping camera switches and stale stream application.
     let cameraSwitchInProgress = false;
     let cameraRequestToken = 0;
+    // Guards against overlapping capture processing (one capture at a time).
+    let captureInProgress = false;
+
+    // readyState threshold for "the video has decoded current frame data".
+    const HAVE_CURRENT_DATA =
+        (typeof HTMLMediaElement !== "undefined" &&
+            HTMLMediaElement.HAVE_CURRENT_DATA) ||
+        2;
 
     const phNow = () => {
         return new Date(
@@ -392,6 +400,85 @@ document.addEventListener("DOMContentLoaded", function () {
     openCameraBtn &&
         openCameraBtn.addEventListener("click", openSecurityNotice);
 
+    // Wait until the attached MediaStream has actually produced a decoded,
+    // current video frame. This is the real readiness signal — the capture
+    // button must not be enabled merely because getUserMedia() resolved or the
+    // detector initialized. `requestVideoFrameCallback` (when available) gives
+    // an authoritative "a frame was presented" signal; `loadeddata` /
+    // `loadedmetadata` + `readyState` + non-zero dimensions are the fallback.
+    const waitForVideoReady = (video, token) => {
+        return new Promise((resolve, reject) => {
+            const isReady = () =>
+                video.readyState >= HAVE_CURRENT_DATA &&
+                video.videoWidth > 0 &&
+                video.videoHeight > 0;
+
+            const superseded = () => {
+                cleanup();
+                reject(new Error("camera request superseded"));
+            };
+
+            const finish = () => {
+                if (token !== cameraRequestToken) {
+                    superseded();
+                    return;
+                }
+                if (isReady()) {
+                    cleanup();
+                    resolve();
+                }
+            };
+
+            const onLoadedData = () => finish();
+            const onLoadedMetadata = () => finish();
+            const onFrame = () => finish();
+
+            let frameCallbackId = null;
+
+            // A final safety net — never the primary readiness mechanism.
+            const timeoutId = setTimeout(() => {
+                cleanup();
+                if (token !== cameraRequestToken) {
+                    reject(new Error("camera request superseded"));
+                } else if (isReady()) {
+                    resolve();
+                } else {
+                    reject(new Error("Camera video frame timeout"));
+                }
+            }, 10000);
+
+            const cleanup = () => {
+                clearTimeout(timeoutId);
+                if (
+                    frameCallbackId !== null &&
+                    typeof video.cancelVideoFrameCallback === "function"
+                ) {
+                    video.cancelVideoFrameCallback(frameCallbackId);
+                }
+                video.removeEventListener("loadeddata", onLoadedData);
+                video.removeEventListener("loadedmetadata", onLoadedMetadata);
+            };
+
+            // Prefer the frame-presented callback to wait for a REAL decoded
+            // frame from the newly attached stream.
+            if (typeof video.requestVideoFrameCallback === "function") {
+                frameCallbackId = video.requestVideoFrameCallback(onFrame);
+            }
+
+            video.addEventListener("loadeddata", onLoadedData);
+            video.addEventListener("loadedmetadata", onLoadedMetadata);
+
+            // Kick playback; muted autoplay should already be running.
+            const playPromise = video.play ? video.play() : null;
+            if (playPromise && typeof playPromise.then === "function") {
+                playPromise.then(finish).catch(finish);
+            }
+
+            // Fast path: already ready (e.g. stream reused without re-attach).
+            finish();
+        });
+    };
+
     // Core camera start. `deviceId` (when provided) pins an exact camera;
     // otherwise `facingMode` ('user' | 'environment') is requested as ideal.
     const startStream = (facingMode, deviceId) => {
@@ -431,9 +518,44 @@ document.addEventListener("DOMContentLoaded", function () {
                     cameraPreview.srcObject = stream;
                 }
 
-                // Privacy protection MUST initialize before capture is enabled.
-                // If face detection cannot initialize, the system will not allow
-                // an evidence photograph to be captured.
+                // ---------------------------------------------------------------
+                // 1. Video readiness: wait for a decoded, current frame from the
+                //    newly attached stream BEFORE enabling capture.
+                // ---------------------------------------------------------------
+                try {
+                    await waitForVideoReady(cameraPreview, token);
+                } catch (error) {
+                    if (token !== cameraRequestToken) {
+                        stream.getTracks().forEach(function (track) {
+                            track.stop();
+                        });
+                        return;
+                    }
+                    stream.getTracks().forEach(function (track) {
+                        track.stop();
+                    });
+                    cameraStream = null;
+                    cameraActive = false;
+                    if (cameraPreview) {
+                        cameraPreview.srcObject = null;
+                    }
+                    showCameraIdle();
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        { reason: "video frame not ready" },
+                        "warning",
+                    );
+                    showAlert(
+                        "error",
+                        "Camera not ready",
+                        "The camera video frame could not be loaded. Please try again.",
+                    );
+                    return;
+                }
+
+                // ---------------------------------------------------------------
+                // 2. Privacy protection MUST initialize before capture is enabled.
+                // ---------------------------------------------------------------
                 try {
                     await initializePrivacyFaceBlur();
                 } catch (error) {
@@ -459,7 +581,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                // Capture is enabled only after the stream AND privacy ready.
+                // Capture is enabled only after the video frame AND privacy ready.
                 if (capturePhotoBtn) {
                     capturePhotoBtn.disabled = false;
                 }
@@ -878,8 +1000,18 @@ document.addEventListener("DOMContentLoaded", function () {
     // Canvas watermark — the watermark is BAKED into the captured image.
     // ------------------------------------------------------------------
     const drawWatermarkedCanvas = async (video) => {
-        const width = video.videoWidth || 1280;
-        const height = video.videoHeight || 720;
+        // Never fall back to stale/default dimensions: a fresh, decoded frame
+        // is required before any pixels are drawn.
+        if (
+            video.readyState < HAVE_CURRENT_DATA ||
+            !video.videoWidth ||
+            !video.videoHeight
+        ) {
+            throw new Error("Camera frame not ready.");
+        }
+
+        const width = video.videoWidth;
+        const height = video.videoHeight;
 
         const canvas = document.createElement("canvas");
 
@@ -903,9 +1035,16 @@ document.addEventListener("DOMContentLoaded", function () {
         const faceBlur = await initializePrivacyFaceBlur();
 
         // The blur function may re-sample the live video when detection needs a
-        // fresh frame, so it always processes the LATEST camera frame.
+        // fresh frame, so it always processes the LATEST camera frame. Dimensions
+        // are re-read on each sample so a resolution change is honored.
         const sampleLatestFrame = () => {
-            ctx.drawImage(video, 0, 0, width, height);
+            const w = video.videoWidth || width;
+            const h = video.videoHeight || height;
+            if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+            }
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         };
 
         await faceBlur.blurFacesOnCanvas(canvas, sampleLatestFrame);
@@ -1053,12 +1192,24 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!cameraPreview) {
                 return;
             }
+            // Prevent overlapping captures (double-click / rapid taps).
+            if (captureInProgress) {
+                return;
+            }
+            captureInProgress = true;
+            if (capturePhotoBtn) {
+                capturePhotoBtn.disabled = true;
+            }
 
             let canvas;
             try {
                 // Face blur must succeed before the image can become evidence.
                 canvas = await drawWatermarkedCanvas(cameraPreview);
             } catch (error) {
+                captureInProgress = false;
+                if (capturePhotoBtn && cameraActive) {
+                    capturePhotoBtn.disabled = false;
+                }
                 reportSecurityEvent(
                     "CAMERA_ERROR",
                     { reason: "face blur processing failed" },
@@ -1071,6 +1222,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 );
                 return;
             }
+
+            captureInProgress = false;
 
             // Stop live camera while reviewing the captured photo.
             stopCamera();

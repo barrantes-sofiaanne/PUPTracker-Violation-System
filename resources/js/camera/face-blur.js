@@ -435,12 +435,48 @@ function applyBlur(sourceCanvas, ctx, uniqueDetections) {
 }
 
 /**
+ * Detect whether a source canvas actually contains drawn image data (as opposed
+ * to a blank/transparent canvas produced by drawing a not-yet-ready video
+ * element). A downsample probe is cheap and only reads the alpha channel:
+ * camera frames are opaque, so any opaque pixel means real frame data exists.
+ */
+function canvasHasImageData(sourceCanvas) {
+    if (!sourceCanvas.width || !sourceCanvas.height) {
+        return false;
+    }
+
+    try {
+        const probe = document.createElement("canvas");
+        probe.width = 4;
+        probe.height = 4;
+        const probeCtx = probe.getContext("2d", { willReadFrequently: true });
+        if (!probeCtx) {
+            return true;
+        }
+        probeCtx.drawImage(sourceCanvas, 0, 0, 4, 4);
+        const data = probeCtx.getImageData(0, 0, 4, 4).data;
+        for (let i = 3; i < data.length; i += 4) {
+            if (data[i] > 0) {
+                return true;
+            }
+        }
+        return false;
+    } catch (e) {
+        // Cannot probe (e.g. tainted canvas) — do not block on the probe itself;
+        // the downstream fail-safe still prevents unblurred submission.
+        return true;
+    }
+}
+
+/**
  * Detect faces and blur them on a canvas.
  *
  * PRIVACY FAIL-SAFE: this function never returns an unblurred canvas. If no
- * face is detected it retries (re-sampling the latest camera frame when a
- * `sampleFrame` callback is supplied, otherwise rebuilding the detector) and,
- * if detection still fails, throws so the caller must block evidence capture.
+ * face is detected it retries with a freshly sampled frame (when a
+ * `sampleFrame` callback is supplied) and, if detection still fails, throws so
+ * the caller must block evidence capture. The detector is only rebuilt when
+ * there is NO live-frame sampler (i.e. the non-camera path), because a working
+ * detector must not be disposed after a single unsuccessful detection.
  *
  * @param {HTMLCanvasElement} sourceCanvas
  * @param {Function} [sampleFrame] Optional () => void that redraws the latest
@@ -456,9 +492,27 @@ export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
         );
     }
 
-    const maxAttempts = typeof sampleFrame === "function" ? 3 : 2;
+    const hasSampler = typeof sampleFrame === "function";
+    const maxAttempts = hasSampler ? 3 : 2;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        // Always sample the latest frame before detection when a live sampler is
+        // available, so we never repeatedly detect a stale/empty canvas.
+        if (hasSampler) {
+            sampleFrame();
+        }
+
+        // A blank canvas has no faces to detect and would only waste a detection
+        // pass. Retry the sampler (the video may not have decoded yet).
+        if (!canvasHasImageData(sourceCanvas)) {
+            if (hasSampler) {
+                continue;
+            }
+            throw new Error(
+                "Privacy protection could not read a valid image. The photo was not saved.",
+            );
+        }
+
         const detector = await initializeFaceDetector();
         const uniqueDetections = detectFaces(detector, sourceCanvas);
 
@@ -467,12 +521,10 @@ export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
             return sourceCanvas;
         }
 
-        // No faces found on this attempt. Re-sample the latest camera frame so
-        // the detector sees fresh pixels, or rebuild a possibly degraded
-        // detector, then retry.
-        if (typeof sampleFrame === "function") {
-            sampleFrame();
-        } else {
+        // No faces on this pass. Only the non-live path rebuilds the detector
+        // (where there is evidence the detector itself may be degraded); the
+        // live path simply re-samples a newer frame on the next iteration.
+        if (!hasSampler) {
             await resetFaceDetector();
         }
     }
