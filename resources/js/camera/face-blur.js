@@ -11,26 +11,56 @@ const FACE_VERTICAL_PADDING = 0.2;
 const BLUR_STRENGTH = 32;
 const BLUR_PADDING = 45;
 const FEATHER_START = 0.68;
-const CAMERA_DEBUG_ENABLED = false;
+// Diagnostics are OFF in normal use. Enable them on a device for
+// troubleshooting without a code change by loading the page with
+// `?cameraDebug=1`. Logging is metadata-only: image bytes, canvas
+// pixels, and student data are never logged.
+const CAMERA_DEBUG_ENABLED =
+    typeof location !== "undefined" &&
+    typeof URLSearchParams !== "undefined" &&
+    new URLSearchParams(location.search).has("cameraDebug");
+
+const CAMERA_DEBUG_PREFIX = "[PUPTracker Camera Debug]";
 
 let faceDetector = null;
 let faceDetectorInitPromise = null;
 let forceCpu = false;
 let currentDelegate = null;
 
-function logCameraDebug(message, details = {}) {
+export function logCameraDebug(message, details = {}) {
     if (!CAMERA_DEBUG_ENABLED) return;
     // Deliberately log metadata only; never log image, canvas, or student data.
-    console.debug(`[PUPTracker camera] ${message}`, details);
+    console.debug(`${CAMERA_DEBUG_PREFIX} ${message}`, details);
+}
+
+function classifyEnvironment() {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile|Mobi/i.test(ua);
+
+    let browser = "unknown";
+    if (/Edg\//.test(ua)) browser = "Edge";
+    else if (/Chrome\//.test(ua)) browser = "Chrome";
+    else if (/Safari\//.test(ua)) browser = "Safari";
+    else if (/Firefox\//.test(ua)) browser = "Firefox";
+
+    let os = "unknown";
+    if (/Windows/.test(ua)) os = "Windows";
+    else if (/Android/.test(ua)) os = "Android";
+    else if (/iPhone|iPad|iPod/.test(ua)) os = "iOS";
+    else if (/Mac OS X/.test(ua)) os = "macOS";
+    else if (/Linux/.test(ua)) os = "Linux";
+
+    return { userAgent: ua, browser, os, isMobile };
 }
 
 export function logCameraEnvironment() {
     if (!CAMERA_DEBUG_ENABLED) return;
     logCameraDebug("environment", {
-        userAgent: navigator.userAgent,
+        ...classifyEnvironment(),
         deviceMemory: navigator.deviceMemory ?? null,
         hardwareConcurrency: navigator.hardwareConcurrency ?? null,
         secureContext: window.isSecureContext,
+        maxTouchPoints: navigator.maxTouchPoints ?? null,
     });
 }
 
@@ -126,6 +156,15 @@ function detectFacesInCanvas(detector, sourceCanvas) {
         MAX_UPSCALE,
         MAX_DETECTION_DIMENSION / Math.max(sourceWidth, sourceHeight),
     );
+
+    logCameraDebug("detection resolution", {
+        sourceWidth,
+        sourceHeight,
+        scale,
+        detectionWidth: Math.max(1, Math.round(sourceWidth * scale)),
+        detectionHeight: Math.max(1, Math.round(sourceHeight * scale)),
+        delegate: currentDelegate,
+    });
 
     const detections = [];
 
@@ -429,6 +468,8 @@ export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
     let detector = await initializeFaceDetector();
     let boxes = [];
     let gpuFailure = false;
+    let usedCpuFallback = false;
+    const detectionStartedAt = performance.now();
 
     if (currentDelegate === "GPU") {
         for (let attempt = 0; attempt < 3; attempt++) {
@@ -454,6 +495,14 @@ export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
 
         // A zero-face GPU result is treated as inconclusive and checked on CPU.
         if (gpuFailure || boxes.length === 0) {
+            if (!gpuFailure) {
+                logCameraDebug(
+                    "GPU detection returned zero faces; switching to CPU delegate",
+                    { attempts: 3 },
+                );
+            }
+
+            usedCpuFallback = true;
             await resetFaceDetector();
             detector = await initializeFaceDetector();
 
@@ -461,13 +510,32 @@ export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
                 sampleFrame();
             }
 
-            boxes = detectFacesInCanvas(detector, sourceCanvas);
+            try {
+                boxes = detectFacesInCanvas(detector, sourceCanvas);
+            } catch (cpuError) {
+                logCameraDebug("CPU detection failed", {
+                    message: String(cpuError?.message || cpuError),
+                });
+                boxes = [];
+            }
         }
     } else {
         boxes = detectFacesInCanvas(detector, sourceCanvas);
     }
 
+    logCameraDebug("detection complete", {
+        delegate: currentDelegate,
+        faces: boxes.length,
+        durationMs: Math.round(performance.now() - detectionStartedAt),
+        cpuFallback: usedCpuFallback,
+    });
+
     if (boxes.length === 0) {
+        logCameraDebug("face detection did not confirm the frame", {
+            delegate: currentDelegate,
+            gpuFallback: gpuFailure,
+        });
+
         throw new Error(
             "Face detection did not confirm the frame. For privacy, this photo cannot be captured. Please reposition the camera and try again.",
         );
@@ -478,6 +546,9 @@ export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
     logCameraDebug("face blur applied", {
         count: boxes.length,
         delegate: currentDelegate,
+        canvasWidth: sourceCanvas.width,
+        canvasHeight: sourceCanvas.height,
+        cpuFallback: usedCpuFallback,
     });
 
     return sourceCanvas;

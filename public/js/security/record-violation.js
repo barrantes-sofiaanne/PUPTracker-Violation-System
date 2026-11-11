@@ -215,6 +215,13 @@ document.addEventListener("DOMContentLoaded", function () {
             HTMLMediaElement.HAVE_CURRENT_DATA) ||
         2;
 
+    // Classify mobile devices (Android/iOS phones/tablets) so the camera can
+    // request a moderate capture resolution instead of the native maximum.
+    const isMobileDevice = () =>
+        /Android|iPhone|iPad|iPod|Mobile|Mobi/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 1 &&
+            window.matchMedia("(max-width: 768px)").matches);
+
     const phNow = () => {
         return new Date(
             new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }),
@@ -524,9 +531,23 @@ document.addEventListener("DOMContentLoaded", function () {
             ? { deviceId: { exact: deviceId } }
             : { facingMode: { ideal: cameraFacingMode } };
 
+        // Mobile devices often select their native maximum camera resolution
+        // (4K on many rear sensors). Detecting and feather-blurring faces on a
+        // full-resolution frame can exhaust mobile WebGL/CPU/memory. Request a
+        // soft "ideal" cap on mobile so the browser picks the closest supported
+        // mode without ever forcing an unsupported one; desktop keeps its
+        // existing native-resolution behavior.
+        const mobileCap = isMobileDevice()
+            ? {
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 },
+                  frameRate: { ideal: 24, max: 30 },
+              }
+            : {};
+
         return navigator.mediaDevices
             .getUserMedia({
-                video: videoConstraint,
+                video: { ...videoConstraint, ...mobileCap },
                 audio: false,
             })
             .then(async function (stream) {
@@ -548,6 +569,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 cameraDebug("stream acquired", {
                     facingMode: cameraFacingMode,
                     deviceIdRequested: !!deviceId,
+                    mobile: isMobileDevice(),
+                    requestedConstraints: mobileCap,
                     settings: (() => {
                         try {
                             const t = stream.getVideoTracks()[0];
@@ -561,6 +584,9 @@ document.addEventListener("DOMContentLoaded", function () {
                                 height: s.height || null,
                                 frameRate: s.frameRate || null,
                                 aspectRatio: s.aspectRatio || null,
+                                label: t.label || null,
+                                readyState: t.readyState || null,
+                                enabled: t.enabled,
                             };
                         } catch (e) {
                             return null;
@@ -1261,6 +1287,10 @@ document.addEventListener("DOMContentLoaded", function () {
             try {
                 // Face blur must succeed before the image can become evidence.
                 canvas = await drawWatermarkedCanvas(cameraPreview);
+                cameraDebug("final evidence generated", {
+                    width: canvas.width,
+                    height: canvas.height,
+                });
             } catch (error) {
                 captureInProgress = false;
                 if (capturePhotoBtn && cameraActive) {
