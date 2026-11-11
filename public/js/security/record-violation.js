@@ -203,6 +203,9 @@ document.addEventListener("DOMContentLoaded", function () {
     // Optional explicit deviceId (when the browser exposes multiple cameras
     // that are not cleanly split into front/back via facingMode).
     let cameraDeviceId = null;
+    // Guards against overlapping camera switches and stale stream application.
+    let cameraSwitchInProgress = false;
+    let cameraRequestToken = 0;
 
     const phNow = () => {
         return new Date(
@@ -220,6 +223,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const currentStudentNumber = () =>
         document.getElementById("selectedStudentNumber").value || "";
+
+    // ---------------------------------------------------------------
+    // Privacy face-blur protection
+    // Uses the same MediaPipe face-blur module as Admin and OSS Staff.
+    // ---------------------------------------------------------------
+    const getFaceBlur = () => window.PUPTrackerFaceBlur || null;
+
+    const initializePrivacyFaceBlur = async () => {
+        const faceBlur = getFaceBlur();
+
+        if (!faceBlur) {
+            throw new Error(
+                "The privacy face-blur module is not available. Capture is disabled.",
+            );
+        }
+
+        await faceBlur.initializeFaceDetector();
+
+        return faceBlur;
+    };
 
     const updateLiveWatermark = () => {
         if (liveWatermarkStudent) {
@@ -375,6 +398,9 @@ document.addEventListener("DOMContentLoaded", function () {
         if (facingMode) {
             cameraFacingMode = facingMode;
         }
+        // A monotonically increasing token invalidates any in-flight stream
+        // request that resolves after a newer camera selection.
+        const token = ++cameraRequestToken;
         showCameraLive();
         if (capturePhotoBtn) {
             capturePhotoBtn.disabled = true; // enabled only after stream is live
@@ -384,12 +410,19 @@ document.addEventListener("DOMContentLoaded", function () {
             ? { deviceId: { exact: deviceId } }
             : { facingMode: { ideal: cameraFacingMode } };
 
-        navigator.mediaDevices
+        return navigator.mediaDevices
             .getUserMedia({
                 video: videoConstraint,
                 audio: false,
             })
-            .then(function (stream) {
+            .then(async function (stream) {
+                // A newer request superseded this one — discard the stale stream.
+                if (token !== cameraRequestToken) {
+                    stream.getTracks().forEach(function (track) {
+                        track.stop();
+                    });
+                    return;
+                }
                 cameraStream = stream;
                 cameraActive = true;
                 cameraPausedByInterruption = false;
@@ -397,7 +430,36 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (cameraPreview) {
                     cameraPreview.srcObject = stream;
                 }
-                // Capture is enabled only after the stream initializes.
+
+                // Privacy protection MUST initialize before capture is enabled.
+                // If face detection cannot initialize, the system will not allow
+                // an evidence photograph to be captured.
+                try {
+                    await initializePrivacyFaceBlur();
+                } catch (error) {
+                    stream.getTracks().forEach(function (track) {
+                        track.stop();
+                    });
+                    cameraStream = null;
+                    cameraActive = false;
+                    if (cameraPreview) {
+                        cameraPreview.srcObject = null;
+                    }
+                    showCameraIdle();
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        { reason: "face blur initialization failed" },
+                        "warning",
+                    );
+                    showAlert(
+                        "error",
+                        "Privacy protection unavailable",
+                        "The face-blur protection could not be initialized. The photo was not captured. Please try again.",
+                    );
+                    return;
+                }
+
+                // Capture is enabled only after the stream AND privacy ready.
                 if (capturePhotoBtn) {
                     capturePhotoBtn.disabled = false;
                 }
@@ -406,6 +468,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 reportSecurityEvent("CAMERA_INITIALIZED", null, "info");
             })
             .catch(function (error) {
+                if (token !== cameraRequestToken) {
+                    return;
+                }
                 cameraActive = false;
                 if (error && error.name === "OverconstrainedError") {
                     // The requested facingMode / device is not available here.
@@ -549,8 +614,9 @@ document.addEventListener("DOMContentLoaded", function () {
             });
     };
 
-    const stopCamera = () => {
-        stopLiveClock();
+    // Stop the active video tracks without tearing down the UI panels. Used by
+    // camera switching so the live preview can be re-used for the new camera.
+    const stopCameraTracks = () => {
         if (cameraStream) {
             cameraStream.getTracks().forEach(function (track) {
                 track.stop();
@@ -562,6 +628,14 @@ document.addEventListener("DOMContentLoaded", function () {
         if (cameraPreview) {
             cameraPreview.srcObject = null;
         }
+    };
+
+    const stopCamera = () => {
+        stopLiveClock();
+        // Invalidate any in-flight stream request so a stale resolution can
+        // never overwrite a newer camera selection.
+        cameraRequestToken += 1;
+        stopCameraTracks();
         if (capturePhotoBtn) {
             capturePhotoBtn.disabled = true;
         }
@@ -578,84 +652,47 @@ document.addEventListener("DOMContentLoaded", function () {
             stopCamera();
         });
 
-    // Flip between the front and back camera. The most reliable approach is to
-    // enumerate the physical video inputs and start the NEXT one (rotating).
-    // Most phones expose a front and a back camera, so each tap swaps them.
-    // On a single-camera desktop the enumeration yields one device and the tap
-    // simply restarts that same camera (no visible effect, which is expected).
+    // Flip between the front and back camera. `facingMode` is the authority on
+    // mobile (some browsers expose incomplete device labels/ids), so we toggle
+    // 'user' <-> 'environment' directly and only fall back to device
+    // enumeration if the requested facing mode is not available
+    // (OverconstrainedError). A single tap switches immediately.
     flipCameraBtn &&
         flipCameraBtn.addEventListener("click", function () {
             // Cannot flip while paused for a possible screen-capture /
-            // interruption — the user must return to the window first.
-            if (!cameraActive || cameraPausedByInterruption) {
-                return;
-            }
+            // interruption, or while a previous switch is still in flight.
             if (
-                !navigator.mediaDevices ||
-                !navigator.mediaDevices.enumerateDevices
+                !cameraActive ||
+                cameraPausedByInterruption ||
+                cameraSwitchInProgress
             ) {
                 return;
             }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                return;
+            }
+
+            const nextMode =
+                cameraFacingMode === "environment" ? "user" : "environment";
+
+            cameraSwitchInProgress = true;
+
             reportSecurityEvent(
                 "CAMERA_FLIP",
-                { from: cameraDeviceId || cameraFacingMode },
+                { from: cameraFacingMode, to: nextMode },
                 "info",
             );
-            navigator.mediaDevices
-                .enumerateDevices()
-                .then(function (devices) {
-                    const videoInputs = devices.filter(function (device) {
-                        return device.kind === "videoinput";
-                    });
-                    if (videoInputs.length === 0) {
-                        return;
-                    }
 
-                    // Determine the current index. When a concrete device was
-                    // active use it; otherwise derive from facingMode label.
-                    let currentIndex = -1;
-                    if (cameraDeviceId) {
-                        currentIndex = videoInputs.findIndex(function (device) {
-                            return device.deviceId === cameraDeviceId;
-                        });
-                    }
-                    if (currentIndex === -1) {
-                        currentIndex = videoInputs.findIndex(function (device) {
-                            return (
-                                device.label &&
-                                (cameraFacingMode === "environment"
-                                    ? /back|rear|environment/i.test(
-                                          device.label,
-                                      )
-                                    : /front|user/i.test(device.label))
-                            );
-                        });
-                    }
-                    // Rotate to the next camera in the list.
-                    const nextIndex = (currentIndex + 1) % videoInputs.length;
-                    const nextDevice = videoInputs[nextIndex];
-                    if (!nextDevice || !nextDevice.deviceId) {
-                        return;
-                    }
+            // Stop the previous camera before acquiring the new one, but keep
+            // the live panel visible while the switch completes.
+            stopCameraTracks();
 
-                    stopCamera();
-                    // Flip the facing-mode bookkeeping too so the watermark /
-                    // labels stay consistent with the likely camera.
-                    cameraFacingMode =
-                        cameraFacingMode === "environment"
-                            ? "user"
-                            : "environment";
-                    startStream(cameraFacingMode, nextDevice.deviceId);
-                })
-                .catch(function () {
-                    // If enumeration fails, fall back to a facingMode toggle.
-                    stopCamera();
-                    const nextMode =
-                        cameraFacingMode === "environment"
-                            ? "user"
-                            : "environment";
-                    startStream(nextMode, null);
-                });
+            // facingMode is the primary selection mechanism.
+            cameraDeviceId = null;
+
+            startStream(nextMode, null).finally(function () {
+                cameraSwitchInProgress = false;
+            });
         });
 
     // Interruption handling — pause capture, blur/hide the preview, log event.
@@ -768,6 +805,76 @@ document.addEventListener("DOMContentLoaded", function () {
     document.addEventListener("keydown", onKeyDown);
 
     // ------------------------------------------------------------------
+    // Active camera identification (used in the baked-in evidence watermark).
+    // Reads the live MediaStreamTrack settings/capabilities instead of a
+    // hardcoded "Web Camera" label.
+    // ------------------------------------------------------------------
+    const describeActiveCamera = () => {
+        const track =
+            cameraStream && cameraStream.getVideoTracks
+                ? cameraStream.getVideoTracks()[0]
+                : null;
+
+        let facingMode = null;
+        let label = "";
+
+        if (track) {
+            try {
+                const settings = track.getSettings ? track.getSettings() : null;
+                if (settings && settings.facingMode) {
+                    facingMode = settings.facingMode;
+                }
+            } catch (e) {
+                // Ignore; getSettings may be unavailable on some browsers.
+            }
+
+            if (!facingMode) {
+                try {
+                    const capabilities = track.getCapabilities
+                        ? track.getCapabilities()
+                        : null;
+                    if (
+                        capabilities &&
+                        capabilities.facingMode &&
+                        Array.isArray(capabilities.facingMode) &&
+                        capabilities.facingMode.length === 1
+                    ) {
+                        facingMode = capabilities.facingMode[0];
+                    }
+                } catch (e) {
+                    // Ignore; getCapabilities may be unavailable.
+                }
+            }
+
+            label = (track.label || "").trim();
+        }
+
+        const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(
+            navigator.userAgent || "",
+        );
+
+        if (facingMode === "environment") {
+            return "Phone Camera (Rear)";
+        }
+        if (facingMode === "user") {
+            return isMobile ? "Phone Camera (Front)" : "Built-in Camera";
+        }
+
+        const lower = label.toLowerCase();
+        if (lower) {
+            if (/webcam|web camera|built-?in|integrated|facetime/.test(lower)) {
+                return "Built-in Camera";
+            }
+            if (/usb|external|hd pro|stream|capture card/.test(lower)) {
+                return "External Camera";
+            }
+            return label;
+        }
+
+        return "Camera (Device information unavailable)";
+    };
+
+    // ------------------------------------------------------------------
     // Canvas watermark — the watermark is BAKED into the captured image.
     // ------------------------------------------------------------------
     const drawWatermarkedCanvas = async (video) => {
@@ -791,12 +898,17 @@ document.addEventListener("DOMContentLoaded", function () {
         // 2. Face detection + privacy blur
         // ------------------------------------------------------------
 
-        if (
-            window.PUPTrackerFaceBlur &&
-            typeof window.PUPTrackerFaceBlur.blurFacesOnCanvas === "function"
-        ) {
-            await window.PUPTrackerFaceBlur.blurFacesOnCanvas(canvas);
-        }
+        // Strict privacy gate: the face-blur module must be present and able to
+        // detect faces, otherwise capture is blocked (never silently skipped).
+        const faceBlur = await initializePrivacyFaceBlur();
+
+        // The blur function may re-sample the live video when detection needs a
+        // fresh frame, so it always processes the LATEST camera frame.
+        const sampleLatestFrame = () => {
+            ctx.drawImage(video, 0, 0, width, height);
+        };
+
+        await faceBlur.blurFacesOnCanvas(canvas, sampleLatestFrame);
 
         // ------------------------------------------------------------
         // 3. Professional PUPTracker watermark
@@ -883,7 +995,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         ctx.fillText(`Captured: ${timestamp}`, infoX, Math.round(25 * scale));
 
-        ctx.fillText("Device: Web Camera", infoX, Math.round(49 * scale));
+        ctx.fillText(
+            `Device: ${describeActiveCamera()}`,
+            infoX,
+            Math.round(49 * scale),
+        );
 
         ctx.fillText("For Official Use Only", infoX, Math.round(73 * scale));
 
@@ -938,7 +1054,24 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            const canvas = await drawWatermarkedCanvas(cameraPreview);
+            let canvas;
+            try {
+                // Face blur must succeed before the image can become evidence.
+                canvas = await drawWatermarkedCanvas(cameraPreview);
+            } catch (error) {
+                reportSecurityEvent(
+                    "CAMERA_ERROR",
+                    { reason: "face blur processing failed" },
+                    "warning",
+                );
+                showAlert(
+                    "error",
+                    "Privacy protection unavailable",
+                    "The face-blur protection could not process this image. The photo was not captured. Please try again.",
+                );
+                return;
+            }
+
             // Stop live camera while reviewing the captured photo.
             stopCamera();
 
