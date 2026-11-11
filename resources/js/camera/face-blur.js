@@ -448,8 +448,15 @@ function canvasHasImageData(canvas) {
 }
 
 /**
- * Detect and blur faces. Fails closed: if detection cannot be completed, no
- * evidence image should be accepted by the caller.
+ * Detect and blur faces.
+ *
+ * Outcome contract (conditional blur):
+ *  - One or more faces detected -> blur every detected face.
+ *  - Zero faces detected successfully -> preserve the original frame. This is
+ *    NOT a failure; the caller accepts the unblurred photograph.
+ *  - Technical failure (detector init fails, or detect() throws on every
+ *    available delegate) -> throw so the caller blocks submission. A technical
+ *    failure is never mistaken for a legitimate zero-face result.
  *
  * @param {HTMLCanvasElement} sourceCanvas
  * @param {(() => void)|null} sampleFrame
@@ -469,6 +476,7 @@ export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
     let boxes = [];
     let gpuFailure = false;
     let usedCpuFallback = false;
+    let detectionError = null;
     const detectionStartedAt = performance.now();
 
     if (currentDelegate === "GPU") {
@@ -513,6 +521,7 @@ export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
             try {
                 boxes = detectFacesInCanvas(detector, sourceCanvas);
             } catch (cpuError) {
+                detectionError = cpuError;
                 logCameraDebug("CPU detection failed", {
                     message: String(cpuError?.message || cpuError),
                 });
@@ -520,7 +529,15 @@ export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
             }
         }
     } else {
-        boxes = detectFacesInCanvas(detector, sourceCanvas);
+        try {
+            boxes = detectFacesInCanvas(detector, sourceCanvas);
+        } catch (cpuError) {
+            detectionError = cpuError;
+            logCameraDebug("CPU detection failed", {
+                message: String(cpuError?.message || cpuError),
+            });
+            boxes = [];
+        }
     }
 
     logCameraDebug("detection complete", {
@@ -530,26 +547,34 @@ export async function blurFacesOnCanvas(sourceCanvas, sampleFrame = null) {
         cpuFallback: usedCpuFallback,
     });
 
-    if (boxes.length === 0) {
-        logCameraDebug("face detection did not confirm the frame", {
+    // A technical failure is not a zero-face result: block submission.
+    if (detectionError) {
+        logCameraDebug("face detection technical failure", {
             delegate: currentDelegate,
-            gpuFallback: gpuFailure,
+            message: String(detectionError?.message || detectionError),
         });
 
         throw new Error(
-            "Face detection did not confirm the frame. For privacy, this photo cannot be captured. Please reposition the camera and try again.",
+            "Face detection could not be completed. For privacy, this photo cannot be captured. Please try again.",
         );
     }
 
-    blurDetectedFaces(sourceCanvas, boxes);
+    if (boxes.length > 0) {
+        blurDetectedFaces(sourceCanvas, boxes);
 
-    logCameraDebug("face blur applied", {
-        count: boxes.length,
-        delegate: currentDelegate,
-        canvasWidth: sourceCanvas.width,
-        canvasHeight: sourceCanvas.height,
-        cpuFallback: usedCpuFallback,
-    });
+        logCameraDebug("face blur applied", {
+            count: boxes.length,
+            delegate: currentDelegate,
+            canvasWidth: sourceCanvas.width,
+            canvasHeight: sourceCanvas.height,
+            cpuFallback: usedCpuFallback,
+        });
+    } else {
+        logCameraDebug("no faces detected; preserving original frame", {
+            delegate: currentDelegate,
+            cpuFallback: usedCpuFallback,
+        });
+    }
 
     return sourceCanvas;
 }

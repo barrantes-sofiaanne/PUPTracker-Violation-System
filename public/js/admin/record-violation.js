@@ -851,6 +851,9 @@ document.addEventListener("DOMContentLoaded", function () {
         // Invalidate any in-flight stream request so a stale resolution can
         // never overwrite a newer camera selection.
         cameraRequestToken += 1;
+        // Release the capture lock so a subsequent recording session always
+        // starts clean, even if the modal was closed mid-capture.
+        captureInProgress = false;
         stopCameraTracks();
         if (capturePhotoBtn) {
             capturePhotoBtn.disabled = true;
@@ -1291,6 +1294,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
             captureInProgress = true;
+            // Snapshot the request token so a camera switch or modal close that
+            // happens while processing invalidates this stale capture.
+            const captureToken = cameraRequestToken;
             cameraDebug("capture requested", {
                 readyState: cameraPreview.readyState,
                 videoWidth: cameraPreview.videoWidth,
@@ -1310,29 +1316,36 @@ document.addEventListener("DOMContentLoaded", function () {
                     width: canvas.width,
                     height: canvas.height,
                 });
-            } catch (error) {
-                captureInProgress = false;
-                if (capturePhotoBtn && cameraActive) {
-                    capturePhotoBtn.disabled = false;
-                }
-                reportSecurityEvent(
-                    "CAMERA_ERROR",
-                    {
-                        reason: "face blur processing failed",
-                    },
-                    "warning",
-                );
 
-                showAlert(
-                    "error",
-                    "Privacy protection unavailable",
-                    "The face-blur protection could not process this image. The photo was not captured. Please try again.",
-                );
+                // A camera switch or modal close invalidates this capture;
+                // never review/submit a stale frame from a previous session.
+                if (captureToken !== cameraRequestToken) {
+                    return;
+                }
+            } catch (error) {
+                if (captureToken === cameraRequestToken) {
+                    if (capturePhotoBtn && cameraActive) {
+                        capturePhotoBtn.disabled = false;
+                    }
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        {
+                            reason: "face blur processing failed",
+                        },
+                        "warning",
+                    );
+
+                    showAlert(
+                        "error",
+                        "Privacy protection unavailable",
+                        "The face-blur protection could not process this image. The photo was not captured. Please try again.",
+                    );
+                }
 
                 return;
+            } finally {
+                captureInProgress = false;
             }
-
-            captureInProgress = false;
 
             // Stop live camera while reviewing the captured photo.
             stopCamera();
