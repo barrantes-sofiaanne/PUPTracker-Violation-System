@@ -1267,3 +1267,331 @@ body {
         justify-content: center;
     }
 }
+/* =========================================================
+   STUDENT TOPBAR - MOBILE RESPONSIVENESS
+   ========================================================= */
+
+.portal-topbar {
+    width: 100%;
+    max-width: 100%;
+}
+
+.portal-topbar > .container-fluid {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 8px;
+    min-width: 0;
+}
+
+/* LEFT SIDE */
+
+.portal-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.portal-sidebar-toggle {
+    flex: 0 0 auto;
+}
+
+.portal-topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.portal-topbar-brand img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    flex: 0 0 48px;
+}
+
+.portal-topbar-brand-text {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+}
+
+.portal-topbar-brand .portal-title {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.portal-topbar-brand small {
+    display: block;
+}
+
+/* RIGHT SIDE */
+
+.portal-topbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex: 0 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
+}
+
+.portal-topbar-actions > * {
+    flex: 0 0 auto;
+}
+
+/* Notification button */
+
+.portal-topbar-actions .admin-notif-bell {
+    flex: 0 0 auto;
+}
+
+.portal-topbar-actions .admin-notif-bell-btn {
+    flex: 0 0 auto;
+}
+
+/* User menu must not shrink or get pushed outside the navbar */
+
+.portal-topbar-actions .dropdown {
+    flex-shrink: 0;
+}
+
+/* MOBILE */
+
+@media (max-width: 576px) {
+    .portal-topbar > .container-fluid {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+        gap: 6px;
+    }
+
+    .portal-topbar-left {
+        gap: 8px;
+    }
+
+    .portal-sidebar-toggle {
+        flex: 0 0 40px;
+        width: 40px;
+        height: 40px;
+        padding: 0;
+    }
+
+    .portal-topbar-brand {
+        gap: 7px;
+    }
+
+    .portal-topbar-brand img {
+        width: 38px;
+        height: 38px;
+        flex-basis: 38px;
+    }
+
+    .portal-topbar-brand .portal-title {
+        font-size: 11px;
+        line-height: 1.3;
+    }
+
+    .portal-topbar-brand small {
+        font-size: 10px;
+    }
+
+    .portal-topbar-actions {
+        gap: 6px;
+    }
+
+    .portal-topbar-actions .admin-notif-bell-btn {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* VERY SMALL MOBILE SCREENS */
+
+@media (max-width: 380px) {
+    .portal-topbar-brand small {
+        display: none;
+    }
+
+    .portal-topbar-brand .portal-title {
+        font-size: 10px;
+    }
+
+    .portal-topbar-brand img {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+    }
+
+    .portal-topbar-actions {
+        gap: 4px;
+    }
+}
+/* =========================================
+   MOBILE RESPONSIVE USER MENU
+========================================= */
+
+.portal-topbar {
+    width: 100%;
+    overflow: visible !important;
+}
+
+.portal-topbar .container-fluid {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    gap: 8px;
+}
+
+/* Left side: menu button and university branding */
+.portal-topbar .container-fluid > .d-flex:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.portal-topbar-brand {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.portal-topbar-brand > div {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.portal-topbar-brand .portal-title {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* Right side: notification and account menu */
+.portal-topbar .container-fluid > .d-flex:last-child {
+    flex: 0 0 auto;
+    min-width: 0;
+    gap: 8px !important;
+}
+
+/* User menu must never shrink */
+.user-menu {
+    position: relative;
+    flex: 0 0 auto !important;
+    min-width: max-content;
+    overflow: visible !important;
+}
+
+.user-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/* Fixed avatar dimensions */
+.user-menu-avatar {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+    flex: 0 0 42px !important;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* Dropdown positioning */
+.user-menu-dropdown {
+    position: absolute;
+    right: 0 !important;
+    left: auto !important;
+    z-index: 1080;
+    min-width: 220px;
+    max-width: calc(100vw - 24px);
+}
+
+/* Mobile adjustments */
+@media (max-width: 576px) {
+    .portal-topbar .container-fluid {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        gap: 6px;
+    }
+
+    .portal-topbar .container-fluid > .d-flex:first-child {
+        gap: 6px !important;
+    }
+
+    .portal-topbar-brand img {
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+    }
+
+    .portal-topbar-brand small {
+        display: none !important;
+    }
+
+    .portal-topbar-brand .portal-title {
+        font-size: 11px;
+    }
+
+    .portal-topbar .container-fluid > .d-flex:last-child {
+        gap: 5px !important;
+    }
+
+    .user-menu {
+        flex-shrink: 0 !important;
+        margin-left: 0;
+    }
+
+    .user-menu-toggle {
+        padding: 3px !important;
+        min-width: 44px;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+    }
+
+    .user-menu-avatar {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        min-height: 38px !important;
+        flex: 0 0 38px !important;
+        font-size: 13px;
+    }
+
+    .user-menu-toggle-label,
+    .user-menu-toggle-sub {
+        display: none !important;
+    }
+
+    .user-menu-dropdown {
+        right: 0 !important;
+        left: auto !important;
+    }
+}

@@ -19,7 +19,7 @@ function injectLoginEnhancementStyles() {
         body {
             background:
                 linear-gradient(rgba(60, 0, 0, 0.74), rgba(60, 0, 0, 0.74)),
-                url("/assets/images/PUPT-picture.jpg") center/cover fixed;
+                url("../assets/images/PUP-TAGUIG/PUPT-picture.jpg") center/cover fixed;
         }
 
         .auth-content-card .form-control::placeholder {

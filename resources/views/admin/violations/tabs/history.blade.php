@@ -254,18 +254,7 @@
         View
     </button>
 
-    @if(strtolower((string) $history->status) !== 'denied')
-
-        <a
-            href="{{ route('admin.violations.edit', $history) }}"
-            class="admin-btn admin-btn-sm admin-btn-primary"
-            aria-label="Correct violation #{{ $history->violation_id }}"
-        >
-            <i class="bi bi-pencil-square me-1"></i>
-            Edit
-        </a>
-
-    @endif
+    {{-- Violation History is read-only: editing is intentionally unavailable here. --}}
 
 </div>
 

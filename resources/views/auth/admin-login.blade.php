@@ -1,26 +1,35 @@
 @extends('layouts.auth-portal', ['title' => 'Admin Login', 'portal' => 'admin'])
 
-@section('auth-content')
+@section('ap-content')
+    <div class="ap-login">
 
-        <p class="module-chip">Administrator Module</p>
+        <span class="ap-icon" aria-hidden="true">
+            <i class="bi bi-gear-fill"></i>
+        </span>
 
-        <h2>Administrator Login</h2>
+        <h2 class="ap-heading">Administrator Portal</h2>
+        <p class="ap-subtitle">Sign in to your account.</p>
 
-        <p class="subtitle">
-            Sign in using your Email, or continue with your PUP IDP account.
-        </p>
+        {{-- Password-reset confirmation: the server's own message, shown only
+             after a reset completed (it is flashed by the reset action). --}}
+        @if(session('status'))
+            <div class="ap-alert ap-alert--success" role="status">
+                <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                <span>{{ session('status') }}</span>
+            </div>
+        @endif
 
-        <form
-            action="{{ route('admin.login.post') }}"
-            method="POST"
-            autocomplete="off"
-            class="auth-login-form">
+        <form action="{{ route('admin.login.post') }}"
+              method="POST"
+              autocomplete="off"
+              class="ap-form">
 
             @csrf
 
             @if($errors->has('login'))
-                <div class="login-error">
-                    {{ $errors->first('login') }}
+                <div class="ap-alert" role="alert">
+                    <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+                    <span>{{ $errors->first('login') }}</span>
                 </div>
             @endif
 
@@ -33,73 +42,55 @@
                  who simply opened the login page, sees nothing here. --}}
             @php($expiredReason = \App\Support\Auth\SessionExpiryNotice::pullFromCurrentRequest())
             @if($expiredReason)
-                <div class="login-error" role="alert">
+                <div class="ap-alert" role="alert">
                     <i class="bi bi-clock-history" aria-hidden="true"></i>
                     <span>{{ $expiredReason }}</span>
                 </div>
             @endif
 
-            <div class="mb-3">
+            <div class="ap-field-group">
+                <label class="ap-sr" for="email">Email</label>
 
-                <label class="form-label" for="email">
-                    Email
-                </label>
-
-                <div class="input-group login-input-group">
-                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                    <input
-                        id="email"
-                        type="email"
-                        name="email"
-                        class="form-control @error('email') is-invalid @enderror"
-                        value="{{ old('email') }}"
-                        autocomplete="email"
-                        required>
+                <div class="ap-field @error('email') has-error @enderror">
+                    <i class="bi bi-envelope ap-field-icon" aria-hidden="true"></i>
+                    <input id="email"
+                           type="email"
+                           name="email"
+                           placeholder="Email address"
+                           value="{{ old('email') }}"
+                           autocomplete="email"
+                           required>
                 </div>
 
                 @error('email')
-                    <div class="invalid-feedback">
-                        {{ $message }}
-                    </div>
+                    <p class="ap-field-error">{{ $message }}</p>
                 @enderror
-
             </div>
 
-            <div class="mb-4">
+            <div class="ap-field-group">
+                <label class="ap-sr" for="password">Password</label>
 
-                <label class="form-label" for="password">
-                    Password
-                </label>
+                <div class="ap-field ap-field--password @error('password') has-error @enderror">
+                    <i class="bi bi-lock ap-field-icon" aria-hidden="true"></i>
+                    <input id="password"
+                           type="password"
+                           name="password"
+                           placeholder="Password"
+                           autocomplete="current-password"
+                           required>
 
-                <div class="password-wrapper">
-
-                    <span class="password-input-icon"><i class="bi bi-key"></i></span>
-                    <input
-                        id="password"
-                        type="password"
-                        name="password"
-                        class="form-control @error('password') is-invalid @enderror"
-                        autocomplete="current-password"
-                        required>
-
-                    <button
-                        type="button"
-                        class="toggle-password"
-                        id="togglePassword"
-                        aria-label="Show password">
-
-                        <i class="bi bi-eye"></i>
-
+                    <button type="button"
+                            class="ap-toggle"
+                            data-toggle-password
+                            aria-controls="password"
+                            aria-label="Show password">
+                        <i class="bi bi-eye" aria-hidden="true"></i>
                     </button>
-
                 </div>
 
                 @error('password')
-                    <div class="invalid-feedback d-block">
-                        {{ $message }}
-                    </div>
+                    <p class="ap-field-error">{{ $message }}</p>
                 @enderror
-
             </div>
 
             {{--
@@ -109,109 +100,50 @@
                 before MFA has been satisfied.
             --}}
 
-            <button
-                type="submit"
-                class="btn btn-success w-100 login-btn">
+            <div class="ap-row">
+                <a href="{{ route('password.request', ['guard' => 'admin']) }}" class="ap-link">
+                    Forgot password?
+                </a>
+            </div>
 
-                Login
-
+            <button type="submit" class="ap-btn">
+                <span>Sign In</span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
             </button>
-
         </form>
 
         {{-- Second administrator login process: PUP IDP (SSO). --}}
-        <div class="auth-divider" role="separator" aria-label="or">
-            <span>or</span>
-        </div>
+        <div class="ap-or" role="separator" aria-label="or"><span>or</span></div>
 
-        <a
-            href="{{ route('admin.idp.login') }}"
-            class="btn w-100 login-btn btn-outline-idp"
-            id="adminIdpLoginButton">
-
-            <i class="bi bi-shield-lock-fill me-2" aria-hidden="true"></i>
-            Login through PUP IDP
-
+        <a href="{{ route('admin.idp.login') }}"
+           class="ap-btn ap-btn--ghost"
+           id="adminIdpLoginButton"
+           data-idp-redirect>
+            <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
+            <span>Continue with PUP IDP</span>
         </a>
 
-        <p class="auth-hint">
-            Use your PUP IDP account to sign in with your institutional credentials.
-        </p>
+        <a href="{{ route('login') }}"
+           class="ap-back"
+           data-soft-nav
+           data-portal-theme="access">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            <span>Back to portal selection</span>
+        </a>
 
-        <div class="footer-links">
-
-            <a href="{{ route('login') }}">
-                &larr; Back
-            </a>
-
-            <a href="{{ route('password.request', ['guard' => 'admin']) }}">
-                Forgot Password?
-            </a>
-
-        </div>
+    </div>
 
     {{-- Redirecting-to-IDP state. The browser leaves this page for the IDP, so
          a full-screen overlay blocks any further interaction (double submits,
          another password attempt) while the navigation is in flight. --}}
-    <div id="adminIdpOverlay" class="auth-redirect-overlay" hidden aria-live="polite">
-        <div class="auth-redirect-card">
-            <div class="auth-redirect-spinner" aria-hidden="true"></div>
+    <div id="apIdpOverlay" class="ap-overlay" hidden aria-live="polite">
+        <div class="ap-overlay-card">
+            <div class="ap-overlay-spinner" aria-hidden="true"></div>
             <h3>Redirecting to PUP IDP</h3>
             <p>Please wait while we redirect you to the PUP Identity Provider.</p>
-            <div class="auth-redirect-skeleton" aria-hidden="true">
-                <span></span><span></span><span></span>
-            </div>
-            <p class="auth-redirect-note">
+            <p style="margin-top: 14px;">
                 If nothing happens, <a href="{{ route('admin.idp.login') }}">click here to continue</a>.
             </p>
         </div>
     </div>
-
-    @push('scripts')
-    <script>
-    (function () {
-        /* The auth layout swaps `.auth-content-card` in place (portal-transitions
-           .js) without re-running pushed scripts, so the handler is delegated on
-           `document` and looks its elements up at click time. Without this the
-           redirect state would silently stop working after any card swap. */
-        const beginRedirect = function () {
-            const overlay = document.getElementById('adminIdpOverlay');
-            const button = document.getElementById('adminIdpLoginButton');
-            const form = document.querySelector('.auth-login-form');
-
-            if (overlay) {
-                overlay.hidden = false;
-            }
-
-            // The page is about to unload, so make it inert: no second submit
-            // from a stray Enter key while the browser leaves for the IDP. The
-            // IDP anchor itself stays clickable as the manual fallback.
-            if (form) {
-                form.querySelectorAll('input, button').forEach(function (element) {
-                    element.disabled = true;
-                });
-            }
-
-            if (button) {
-                button.classList.add('is-busy');
-                button.setAttribute('aria-busy', 'true');
-            }
-        };
-
-        document.addEventListener('click', function (event) {
-            if (event.defaultPrevented || event.button !== 0) {
-                return;
-            }
-
-            const trigger = event.target.closest('#adminIdpLoginButton');
-
-            if (trigger) {
-                beginRedirect();
-            }
-        });
-    })();
-    </script>
-    @endpush
-
 @endsection
-

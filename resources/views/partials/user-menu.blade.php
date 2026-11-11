@@ -1,14 +1,16 @@
+
 {{--
-    Shared account user-menu (avatar icon in the topbar opens a dropdown
-    containing Profile/Settings links and a Logout button).
+    Shared account user-menu.
 
     Expected variables:
-      $menuUserName    : display name (string)
-      $menuUserSub     : secondary line — email / student number / module label
+      $menuUserName    : display name
+      $menuUserSub     : secondary line (email / student number / module label)
       $menuItems       : array of ['label' => ..., 'url' => ..., 'icon' => ...]
-      $menuLogoutUrl   : POST url for the logout form
-      $menuAvatar      : optional initials override (defaults to first letters of the name)
+      $menuLogoutUrl   : POST URL for logout
+      $menuAvatar      : optional initials override
+      $menuAvatarOnly  : optional avatar-only display mode
 --}}
+
 @php
     $menuAvatarText = $menuAvatar ?? mb_strtoupper(
         collect(explode(' ', (string) $menuUserName))
@@ -20,55 +22,103 @@
 @endphp
 
 <div class="user-menu dropdown">
+
     <button
-        class="user-menu-toggle"
+        class="user-menu-toggle {{ !empty($menuAvatarOnly) ? 'user-menu-toggle-avatar-only' : '' }}"
         type="button"
         data-bs-toggle="dropdown"
         data-bs-auto-close="true"
         aria-expanded="false"
         aria-label="Account menu">
-        <span class="user-menu-avatar" aria-hidden="true">{{ $menuAvatarText }}</span>
-        <span class="user-menu-toggle-label d-none d-md-inline">{{ $menuUserName }}</span>
+
+        <span class="user-menu-avatar" aria-hidden="true">
+            {{ $menuAvatarText }}
+        </span>
+
+        <span class="user-menu-toggle-label d-none d-md-inline">
+            {{ $menuUserName }}
+        </span>
+
+        <span class="user-menu-toggle-sub">
+            {{ $menuUserSub }}
+        </span>
+
     </button>
 
+    {{-- Account Dropdown --}}
     <ul class="dropdown-menu dropdown-menu-end user-menu-dropdown shadow">
+
         <li>
             <div class="user-menu-head">
-                <span class="user-menu-head-name">{{ $menuUserName }}</span>
-                <span class="user-menu-head-sub">{{ $menuUserSub }}</span>
+
+                <span class="user-menu-head-name">
+                    {{ $menuUserName }}
+                </span>
+
+                <span class="user-menu-head-sub">
+                    {{ $menuUserSub }}
+                </span>
+
             </div>
         </li>
 
-        <li><hr class="dropdown-divider"></li>
+        <li>
+            <hr class="dropdown-divider">
+        </li>
 
+        {{-- Menu Items --}}
         @foreach ($menuItems as $item)
+
             <li>
-                <a class="dropdown-item user-menu-item" href="{{ $item['url'] }}">
-                    <i class="bi {{ $item['icon'] }}" aria-hidden="true"></i>
-                    <span>{{ $item['label'] }}</span>
+                <a
+                    class="dropdown-item user-menu-item"
+                    href="{{ $item['url'] }}">
+
+                    <i
+                        class="bi {{ $item['icon'] }}"
+                        aria-hidden="true">
+                    </i>
+
+                    <span>
+                        {{ $item['label'] }}
+                    </span>
+
                 </a>
             </li>
+
         @endforeach
 
-        <li><hr class="dropdown-divider"></li>
-
         <li>
-<form
-    action="{{ $menuLogoutUrl }}"
-    method="POST"
-    class="mb-0"
-    data-puptracker-logout-form
->
-    @csrf
-
-    <button
-        type="submit"
-        class="dropdown-item user-menu-item user-menu-logout"
-    >
-        <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
-        <span>Logout</span>
-    </button>
-</form>
+            <hr class="dropdown-divider">
         </li>
+
+        {{-- Logout --}}
+        <li>
+
+            <form
+                action="{{ $menuLogoutUrl }}"
+                method="POST"
+                class="mb-0"
+                data-puptracker-logout-form>
+
+                @csrf
+
+                <button
+                    type="submit"
+                    class="dropdown-item user-menu-item user-menu-logout">
+
+                    <i
+                        class="bi bi-box-arrow-right"
+                        aria-hidden="true">
+                    </i>
+
+                    <span>Logout</span>
+
+                </button>
+
+            </form>
+
+        </li>
+
     </ul>
 </div>

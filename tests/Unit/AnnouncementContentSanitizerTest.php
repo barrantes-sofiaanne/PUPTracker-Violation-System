@@ -97,4 +97,19 @@ class AnnouncementContentSanitizerTest extends TestCase
         $out = $this->sanitizer->sanitize('Just plain text with <b>escaped</b> looks');
         $this->assertStringNotContainsString('<b>', $out);
     }
+public function test_encoded_html_cannot_become_executable_after_sanitization(): void
+{
+    $payload = '<p>&lt;img src=x onerror=alert(1)&gt;</p>';
+
+    $out = $this->sanitizer->sanitize($payload);
+
+    // The encoded HTML must not become an actual image element.
+    $this->assertStringNotContainsString('<img', $out);
+
+    // The encoded markup must remain encoded.
+    $this->assertStringContainsString('&lt;img', $out);
+
+    // The original text should remain intact.
+    $this->assertStringContainsString('onerror', $out);
+}
 }

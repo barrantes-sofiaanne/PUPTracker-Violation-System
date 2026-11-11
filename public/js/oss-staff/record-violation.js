@@ -203,6 +203,24 @@ document.addEventListener("DOMContentLoaded", function () {
     // Optional explicit deviceId (when the browser exposes multiple cameras
     // that are not cleanly split into front/back via facingMode).
     let cameraDeviceId = null;
+    // Guards against overlapping camera switches and stale stream application.
+    let cameraSwitchInProgress = false;
+    let cameraRequestToken = 0;
+    // Guards against overlapping capture processing (one capture at a time).
+    let captureInProgress = false;
+
+    // readyState threshold for "the video has decoded current frame data".
+    const HAVE_CURRENT_DATA =
+        (typeof HTMLMediaElement !== "undefined" &&
+            HTMLMediaElement.HAVE_CURRENT_DATA) ||
+        2;
+
+    // Classify mobile devices (Android/iOS phones/tablets) so the camera can
+    // request a moderate capture resolution instead of the native maximum.
+    const isMobileDevice = () =>
+        /Android|iPhone|iPad|iPod|Mobile|Mobi/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 1 &&
+            window.matchMedia("(max-width: 768px)").matches);
 
     const phNow = () => {
         return new Date(
@@ -226,6 +244,18 @@ document.addEventListener("DOMContentLoaded", function () {
     // Uses the same MediaPipe face-blur module as Security.
     // ---------------------------------------------------------------
     const getFaceBlur = () => window.PUPTrackerFaceBlur || null;
+
+    // Forward camera/video diagnostics to the shared logger (same prefix).
+    const cameraDebug = (message, data) => {
+        try {
+            const faceBlur = getFaceBlur();
+            if (faceBlur && typeof faceBlur.logCameraDebug === "function") {
+                faceBlur.logCameraDebug(message, data);
+            }
+        } catch (e) {
+            // Diagnostic logging must never break capture.
+        }
+    };
 
     const initializePrivacyFaceBlur = async () => {
         const faceBlur = getFaceBlur();
@@ -389,12 +419,109 @@ document.addEventListener("DOMContentLoaded", function () {
     openCameraBtn &&
         openCameraBtn.addEventListener("click", openSecurityNotice);
 
+    // Wait until the attached MediaStream has actually produced a decoded,
+    // current video frame. This is the real readiness signal — the capture
+    // button must not be enabled merely because getUserMedia() resolved or the
+    // detector initialized. `requestVideoFrameCallback` (when available) gives
+    // an authoritative "a frame was presented" signal; `loadeddata` /
+    // `loadedmetadata` + `readyState` + non-zero dimensions are the fallback.
+    const waitForVideoReady = (video, token) => {
+        return new Promise((resolve, reject) => {
+            const isReady = () =>
+                video.readyState >= HAVE_CURRENT_DATA &&
+                video.videoWidth > 0 &&
+                video.videoHeight > 0;
+
+            const superseded = () => {
+                cleanup();
+                reject(new Error("camera request superseded"));
+            };
+
+            const finish = () => {
+                if (token !== cameraRequestToken) {
+                    superseded();
+                    return;
+                }
+                if (isReady()) {
+                    cameraDebug("video ready", {
+                        readyState: video.readyState,
+                        videoWidth: video.videoWidth,
+                        videoHeight: video.videoHeight,
+                        paused: video.paused,
+                        currentTime: video.currentTime,
+                        hasRequestVideoFrameCallback:
+                            typeof video.requestVideoFrameCallback === "function",
+                    });
+                    cleanup();
+                    resolve();
+                }
+            };
+
+            const onLoadedData = () => finish();
+            const onLoadedMetadata = () => finish();
+            const onFrame = () => finish();
+
+            let frameCallbackId = null;
+
+            // A final safety net — never the primary readiness mechanism.
+            const timeoutId = setTimeout(() => {
+                cleanup();
+                if (token !== cameraRequestToken) {
+                    reject(new Error("camera request superseded"));
+                } else if (isReady()) {
+                    resolve();
+                } else {
+                    cameraDebug("video not ready (timeout)", {
+                        readyState: video.readyState,
+                        videoWidth: video.videoWidth,
+                        videoHeight: video.videoHeight,
+                        paused: video.paused,
+                    });
+                    reject(new Error("Camera video frame timeout"));
+                }
+            }, 10000);
+
+            const cleanup = () => {
+                clearTimeout(timeoutId);
+                if (
+                    frameCallbackId !== null &&
+                    typeof video.cancelVideoFrameCallback === "function"
+                ) {
+                    video.cancelVideoFrameCallback(frameCallbackId);
+                }
+                video.removeEventListener("loadeddata", onLoadedData);
+                video.removeEventListener("loadedmetadata", onLoadedMetadata);
+            };
+
+            // Prefer the frame-presented callback to wait for a REAL decoded
+            // frame from the newly attached stream.
+            if (typeof video.requestVideoFrameCallback === "function") {
+                frameCallbackId = video.requestVideoFrameCallback(onFrame);
+            }
+
+            video.addEventListener("loadeddata", onLoadedData);
+            video.addEventListener("loadedmetadata", onLoadedMetadata);
+
+            // Kick playback; muted autoplay should already be running.
+            const playPromise = video.play ? video.play() : null;
+            if (playPromise && typeof playPromise.then === "function") {
+                playPromise.then(finish).catch(finish);
+            }
+
+            // Fast path: already ready (e.g. stream reused without re-attach).
+            finish();
+        });
+    };
+
     // Core camera start. `deviceId` (when provided) pins an exact camera;
     // otherwise `facingMode` ('user' | 'environment') is requested as ideal.
     const startStream = (facingMode, deviceId) => {
         if (facingMode) {
             cameraFacingMode = facingMode;
         }
+        // A monotonically increasing token invalidates any in-flight stream
+        // request that resolves after a newer camera selection.
+        const token = ++cameraRequestToken;
         showCameraLive();
         if (capturePhotoBtn) {
             capturePhotoBtn.disabled = true; // enabled only after stream is live
@@ -404,12 +531,33 @@ document.addEventListener("DOMContentLoaded", function () {
             ? { deviceId: { exact: deviceId } }
             : { facingMode: { ideal: cameraFacingMode } };
 
-        navigator.mediaDevices
+        // Mobile devices often select their native maximum camera resolution
+        // (4K on many rear sensors). Detecting and feather-blurring faces on a
+        // full-resolution frame can exhaust mobile WebGL/CPU/memory. Request a
+        // soft "ideal" cap on mobile so the browser picks the closest supported
+        // mode without ever forcing an unsupported one; desktop keeps its
+        // existing native-resolution behavior.
+        const mobileCap = isMobileDevice()
+            ? {
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 },
+                  frameRate: { ideal: 24, max: 30 },
+              }
+            : {};
+
+        return navigator.mediaDevices
             .getUserMedia({
-                video: videoConstraint,
+                video: { ...videoConstraint, ...mobileCap },
                 audio: false,
             })
             .then(async function (stream) {
+                // A newer request superseded this one — discard the stale stream.
+                if (token !== cameraRequestToken) {
+                    stream.getTracks().forEach(function (track) {
+                        track.stop();
+                    });
+                    return;
+                }
                 cameraStream = stream;
                 cameraActive = true;
                 cameraPausedByInterruption = false;
@@ -419,10 +567,77 @@ document.addEventListener("DOMContentLoaded", function () {
                     cameraPreview.srcObject = stream;
                 }
 
+                cameraDebug("stream acquired", {
+                    facingMode: cameraFacingMode,
+                    deviceIdRequested: !!deviceId,
+                    mobile: isMobileDevice(),
+                    requestedConstraints: mobileCap,
+                    settings: (() => {
+                        try {
+                            const t = stream.getVideoTracks()[0];
+                            if (!t || typeof t.getSettings !== "function") {
+                                return null;
+                            }
+                            const s = t.getSettings();
+                            return {
+                                facingMode: s.facingMode || null,
+                                width: s.width || null,
+                                height: s.height || null,
+                                frameRate: s.frameRate || null,
+                                aspectRatio: s.aspectRatio || null,
+                                label: t.label || null,
+                                readyState: t.readyState || null,
+                                enabled: t.enabled,
+                            };
+                        } catch (e) {
+                            return null;
+                        }
+                    })(),
+                });
+
                 // ---------------------------------------------------------------
-                // Privacy protection MUST initialize before capture is enabled.
-                // If face detection cannot initialize, the system will not allow
-                // an evidence photograph to be captured.
+                // 1. Video readiness: wait for a decoded, current frame from the
+                //    newly attached stream BEFORE enabling capture.
+                // ---------------------------------------------------------------
+                try {
+                    await waitForVideoReady(cameraPreview, token);
+                } catch (error) {
+                    if (token !== cameraRequestToken) {
+                        stream.getTracks().forEach(function (track) {
+                            track.stop();
+                        });
+                        return;
+                    }
+                    stream.getTracks().forEach(function (track) {
+                        track.stop();
+                    });
+
+                    cameraStream = null;
+                    cameraActive = false;
+
+                    if (cameraPreview) {
+                        cameraPreview.srcObject = null;
+                    }
+
+                    showCameraIdle();
+
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        { reason: "video frame not ready" },
+                        "warning",
+                    );
+
+                    showAlert(
+                        "error",
+                        "Camera not ready",
+                        "The camera video frame could not be loaded. Please try again.",
+                    );
+
+                    return;
+                }
+
+                // ---------------------------------------------------------------
+                // 2. Privacy protection MUST initialize before capture is enabled.
                 // ---------------------------------------------------------------
                 try {
                     await initializePrivacyFaceBlur();
@@ -457,8 +672,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                // Capture is enabled ONLY after both the camera and privacy
-                // protection are ready.
+                // Capture is enabled ONLY after the video frame AND privacy ready.
                 if (capturePhotoBtn) {
                     capturePhotoBtn.disabled = false;
                 }
@@ -469,6 +683,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 reportSecurityEvent("CAMERA_INITIALIZED", null, "info");
             })
             .catch(function (error) {
+                if (token !== cameraRequestToken) {
+                    return;
+                }
                 cameraActive = false;
                 if (error && error.name === "OverconstrainedError") {
                     // The requested facingMode / device is not available here.
@@ -612,8 +829,9 @@ document.addEventListener("DOMContentLoaded", function () {
             });
     };
 
-    const stopCamera = () => {
-        stopLiveClock();
+    // Stop the active video tracks without tearing down the UI panels. Used by
+    // camera switching so the live preview can be re-used for the new camera.
+    const stopCameraTracks = () => {
         if (cameraStream) {
             cameraStream.getTracks().forEach(function (track) {
                 track.stop();
@@ -625,6 +843,17 @@ document.addEventListener("DOMContentLoaded", function () {
         if (cameraPreview) {
             cameraPreview.srcObject = null;
         }
+    };
+
+    const stopCamera = () => {
+        stopLiveClock();
+        // Invalidate any in-flight stream request so a stale resolution can
+        // never overwrite a newer camera selection.
+        cameraRequestToken += 1;
+        // Release the capture lock so a subsequent recording session always
+        // starts clean, even if the modal was closed mid-capture.
+        captureInProgress = false;
+        stopCameraTracks();
         if (capturePhotoBtn) {
             capturePhotoBtn.disabled = true;
         }
@@ -641,84 +870,47 @@ document.addEventListener("DOMContentLoaded", function () {
             stopCamera();
         });
 
-    // Flip between the front and back camera. The most reliable approach is to
-    // enumerate the physical video inputs and start the NEXT one (rotating).
-    // Most phones expose a front and a back camera, so each tap swaps them.
-    // On a single-camera desktop the enumeration yields one device and the tap
-    // simply restarts that same camera (no visible effect, which is expected).
+    // Flip between the front and back camera. `facingMode` is the authority on
+    // mobile (some browsers expose incomplete device labels/ids), so we toggle
+    // 'user' <-> 'environment' directly and only fall back to device
+    // enumeration if the requested facing mode is not available
+    // (OverconstrainedError). A single tap switches immediately.
     flipCameraBtn &&
         flipCameraBtn.addEventListener("click", function () {
             // Cannot flip while paused for a possible screen-capture /
-            // interruption — the user must return to the window first.
-            if (!cameraActive || cameraPausedByInterruption) {
-                return;
-            }
+            // interruption, or while a previous switch is still in flight.
             if (
-                !navigator.mediaDevices ||
-                !navigator.mediaDevices.enumerateDevices
+                !cameraActive ||
+                cameraPausedByInterruption ||
+                cameraSwitchInProgress
             ) {
                 return;
             }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                return;
+            }
+
+            const nextMode =
+                cameraFacingMode === "environment" ? "user" : "environment";
+
+            cameraSwitchInProgress = true;
+
             reportSecurityEvent(
                 "CAMERA_FLIP",
-                { from: cameraDeviceId || cameraFacingMode },
+                { from: cameraFacingMode, to: nextMode },
                 "info",
             );
-            navigator.mediaDevices
-                .enumerateDevices()
-                .then(function (devices) {
-                    const videoInputs = devices.filter(function (device) {
-                        return device.kind === "videoinput";
-                    });
-                    if (videoInputs.length === 0) {
-                        return;
-                    }
 
-                    // Determine the current index. When a concrete device was
-                    // active use it; otherwise derive from facingMode label.
-                    let currentIndex = -1;
-                    if (cameraDeviceId) {
-                        currentIndex = videoInputs.findIndex(function (device) {
-                            return device.deviceId === cameraDeviceId;
-                        });
-                    }
-                    if (currentIndex === -1) {
-                        currentIndex = videoInputs.findIndex(function (device) {
-                            return (
-                                device.label &&
-                                (cameraFacingMode === "environment"
-                                    ? /back|rear|environment/i.test(
-                                          device.label,
-                                      )
-                                    : /front|user/i.test(device.label))
-                            );
-                        });
-                    }
-                    // Rotate to the next camera in the list.
-                    const nextIndex = (currentIndex + 1) % videoInputs.length;
-                    const nextDevice = videoInputs[nextIndex];
-                    if (!nextDevice || !nextDevice.deviceId) {
-                        return;
-                    }
+            // Stop the previous camera before acquiring the new one, but keep
+            // the live panel visible while the switch completes.
+            stopCameraTracks();
 
-                    stopCamera();
-                    // Flip the facing-mode bookkeeping too so the watermark /
-                    // labels stay consistent with the likely camera.
-                    cameraFacingMode =
-                        cameraFacingMode === "environment"
-                            ? "user"
-                            : "environment";
-                    startStream(cameraFacingMode, nextDevice.deviceId);
-                })
-                .catch(function () {
-                    // If enumeration fails, fall back to a facingMode toggle.
-                    stopCamera();
-                    const nextMode =
-                        cameraFacingMode === "environment"
-                            ? "user"
-                            : "environment";
-                    startStream(nextMode, null);
-                });
+            // facingMode is the primary selection mechanism.
+            cameraDeviceId = null;
+
+            startStream(nextMode, null).finally(function () {
+                cameraSwitchInProgress = false;
+            });
         });
 
     // Interruption handling — pause capture, blur/hide the preview, log event.
@@ -831,11 +1023,91 @@ document.addEventListener("DOMContentLoaded", function () {
     document.addEventListener("keydown", onKeyDown);
 
     // ------------------------------------------------------------------
+    // Active camera identification (used in the baked-in evidence watermark).
+    // Reads the live MediaStreamTrack settings/capabilities instead of a
+    // hardcoded "Web Camera" label.
+    // ------------------------------------------------------------------
+    const describeActiveCamera = () => {
+        const track =
+            cameraStream && cameraStream.getVideoTracks
+                ? cameraStream.getVideoTracks()[0]
+                : null;
+
+        let facingMode = null;
+        let label = "";
+
+        if (track) {
+            try {
+                const settings = track.getSettings ? track.getSettings() : null;
+                if (settings && settings.facingMode) {
+                    facingMode = settings.facingMode;
+                }
+            } catch (e) {
+                // Ignore; getSettings may be unavailable on some browsers.
+            }
+
+            if (!facingMode) {
+                try {
+                    const capabilities = track.getCapabilities
+                        ? track.getCapabilities()
+                        : null;
+                    if (
+                        capabilities &&
+                        capabilities.facingMode &&
+                        Array.isArray(capabilities.facingMode) &&
+                        capabilities.facingMode.length === 1
+                    ) {
+                        facingMode = capabilities.facingMode[0];
+                    }
+                } catch (e) {
+                    // Ignore; getCapabilities may be unavailable.
+                }
+            }
+
+            label = (track.label || "").trim();
+        }
+
+        const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(
+            navigator.userAgent || "",
+        );
+
+        if (facingMode === "environment") {
+            return "Phone Camera (Rear)";
+        }
+        if (facingMode === "user") {
+            return isMobile ? "Phone Camera (Front)" : "Built-in Camera";
+        }
+
+        const lower = label.toLowerCase();
+        if (lower) {
+            if (/webcam|web camera|built-?in|integrated|facetime/.test(lower)) {
+                return "Built-in Camera";
+            }
+            if (/usb|external|hd pro|stream|capture card/.test(lower)) {
+                return "External Camera";
+            }
+            return label;
+        }
+
+        return "Camera (Device information unavailable)";
+    };
+
+    // ------------------------------------------------------------------
     // Canvas watermark — the watermark is BAKED into the captured image.
     // ------------------------------------------------------------------
     const drawWatermarkedCanvas = async (video) => {
-        const width = video.videoWidth || 1280;
-        const height = video.videoHeight || 720;
+        // Never fall back to stale/default dimensions: a fresh, decoded frame
+        // is required before any pixels are drawn.
+        if (
+            video.readyState < HAVE_CURRENT_DATA ||
+            !video.videoWidth ||
+            !video.videoHeight
+        ) {
+            throw new Error("Camera frame not ready.");
+        }
+
+        const width = video.videoWidth;
+        const height = video.videoHeight;
 
         const canvas = document.createElement("canvas");
 
@@ -857,7 +1129,21 @@ document.addEventListener("DOMContentLoaded", function () {
         // Preserve this module's required privacy gate: do not capture evidence
         // unless face-blur initialization succeeds. Blur happens before watermark.
         const faceBlur = await initializePrivacyFaceBlur();
-        await faceBlur.blurFacesOnCanvas(canvas);
+
+        // The blur function may re-sample the live video when detection needs a
+        // fresh frame, so it always processes the LATEST camera frame. Dimensions
+        // are re-read on each sample so a resolution change is honored.
+        const sampleLatestFrame = () => {
+            const w = video.videoWidth || width;
+            const h = video.videoHeight || height;
+            if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+            }
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        };
+
+        await faceBlur.blurFacesOnCanvas(canvas, sampleLatestFrame);
 
         // ------------------------------------------------------------
         // 3. Professional PUPTracker watermark
@@ -944,7 +1230,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         ctx.fillText(`Captured: ${timestamp}`, infoX, Math.round(25 * scale));
 
-        ctx.fillText("Device: Web Camera", infoX, Math.round(49 * scale));
+        ctx.fillText(
+            `Device: ${describeActiveCamera()}`,
+            infoX,
+            Math.round(49 * scale),
+        );
 
         ctx.fillText("For Official Use Only", infoX, Math.round(73 * scale));
 
@@ -998,28 +1288,62 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!cameraPreview) {
                 return;
             }
+            // Prevent overlapping captures (double-click / rapid taps).
+            if (captureInProgress) {
+                return;
+            }
+            captureInProgress = true;
+            // Snapshot the request token so a camera switch or modal close that
+            // happens while processing invalidates this stale capture.
+            const captureToken = cameraRequestToken;
+            cameraDebug("capture requested", {
+                readyState: cameraPreview.readyState,
+                videoWidth: cameraPreview.videoWidth,
+                videoHeight: cameraPreview.videoHeight,
+                paused: cameraPreview.paused,
+            });
+            if (capturePhotoBtn) {
+                capturePhotoBtn.disabled = true;
+            }
 
             let canvas;
 
             try {
                 // Face blur must succeed before the image can become evidence.
                 canvas = await drawWatermarkedCanvas(cameraPreview);
-            } catch (error) {
-                reportSecurityEvent(
-                    "CAMERA_ERROR",
-                    {
-                        reason: "face blur processing failed",
-                    },
-                    "warning",
-                );
+                cameraDebug("final evidence generated", {
+                    width: canvas.width,
+                    height: canvas.height,
+                });
 
-                showAlert(
-                    "error",
-                    "Privacy protection unavailable",
-                    "The face-blur protection could not process this image. The photo was not captured. Please try again.",
-                );
+                // A camera switch or modal close invalidates this capture;
+                // never review/submit a stale frame from a previous session.
+                if (captureToken !== cameraRequestToken) {
+                    return;
+                }
+            } catch (error) {
+                if (captureToken === cameraRequestToken) {
+                    if (capturePhotoBtn && cameraActive) {
+                        capturePhotoBtn.disabled = false;
+                    }
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        {
+                            reason: "face blur processing failed",
+                        },
+                        "warning",
+                    );
+
+                    showAlert(
+                        "error",
+                        "Privacy protection unavailable",
+                        "The face-blur protection could not process this image. The photo was not captured. Please try again.",
+                    );
+                }
 
                 return;
+            } finally {
+                captureInProgress = false;
             }
 
             // Stop live camera while reviewing the captured photo.
@@ -1065,6 +1389,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 capturedImageObjectUrl = null;
             }
             capturedImageBlob = null;
+            cameraDebug("retake requested");
             reportSecurityEvent(
                 "CAPTURE_ABANDONED",
                 { stage: "retake" },

@@ -264,6 +264,16 @@
             contentEl.textContent = data.content || '';
         }
 
+        // Presentation hook only (no behavior change): flags a file-only
+        // announcement so the Student theme can collapse the empty body area.
+        contentEl.setAttribute(
+            'data-empty',
+            (contentEl.textContent || '').trim() === ''
+                && !contentEl.querySelector('img, video, iframe')
+                ? 'true'
+                : 'false'
+        );
+
         var items = data.attachments || [];
         var photos = items.filter(function (f) { return !!f.is_image && !!f.view; });
         var others = items.filter(function (f) { return !f.is_image; });

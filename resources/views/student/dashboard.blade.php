@@ -4,6 +4,18 @@
 
 @push('styles')
 <style>
+    /* Keep dashboard content below the welcome banner; do not overlap it. */
+    body.student-module .portal-hero.dashboard-hero + .row {
+        margin-top: 1.5rem !important;
+        padding-inline: 0 !important;
+        position: relative;
+        z-index: 1;
+    }
+
+    body.student-module .portal-hero.dashboard-hero {
+        margin-bottom: 1.5rem;
+    }
+
     .dashboard-time-wrap {
         text-align: right;
         min-width: 240px;
@@ -31,6 +43,10 @@
     }
 
     @media (max-width: 767.98px) {
+        body.student-module .portal-hero.dashboard-hero + .row {
+            margin-top: 1.25rem !important;
+        }
+
         .dashboard-time-wrap {
             text-align: left;
             min-width: unset;
@@ -40,6 +56,75 @@
             font-size: 1rem;
         }
     }
+    .dashboard-hero > .d-flex {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.dashboard-hero > .d-flex > div:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.dashboard-hero h2 {
+    font-size: clamp(1.35rem, 2.2vw, 2rem);
+    line-height: 1.2;
+    overflow-wrap: normal;
+    word-break: normal;
+    margin-bottom: 8px;
+}
+
+.dashboard-time-wrap {
+    flex: 0 0 auto;
+    min-width: 0;
+    text-align: right;
+}
+
+.dashboard-time-label {
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.8;
+    margin-bottom: 0.2rem;
+}
+
+.dashboard-time-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    font-size: clamp(0.85rem, 1.2vw, 1.18rem);
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    padding: 0.45rem 0.85rem;
+}
+
+@media (max-width: 767.98px) {
+    .dashboard-hero > .d-flex {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .dashboard-hero h2 {
+        font-size: 1.5rem;
+    }
+
+    .dashboard-time-wrap {
+        width: 100%;
+        text-align: left;
+    }
+
+    .dashboard-time-value {
+        font-size: 0.9rem;
+        max-width: 100%;
+    }
+}
 </style>
 @endpush
 
@@ -48,7 +133,7 @@
 <div class="container-fluid py-4">
     
     {{-- Welcome Section --}}
-    <div class="portal-hero">
+    <div class="portal-hero dashboard-hero">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
             <div>
                 <h2 class="mb-1 fw-bold">

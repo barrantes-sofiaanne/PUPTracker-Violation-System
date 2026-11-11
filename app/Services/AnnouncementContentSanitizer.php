@@ -90,15 +90,14 @@ class AnnouncementContentSanitizer
 
         $this->sanitizeNode($root);
 
-        $out = '';
-        foreach ($root->childNodes as $child) {
-            $out .= $dom->saveHTML($child);
-        }
+       $out = '';
+foreach ($root->childNodes as $child) {
+    $out .= $dom->saveHTML($child);
+}
 
-        // Decode entities that DOMDocument double-encodes (e.g. &amp;).
-        $out = html_entity_decode($out, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-        return trim($out);
+// Keep HTML entities encoded to prevent escaped markup
+// from becoming executable HTML after sanitization.
+return trim($out);
     }
 
     /**

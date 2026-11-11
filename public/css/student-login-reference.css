@@ -1,0 +1,474 @@
+/* ============================================
+   STUDENT PORTAL — REFERENCE DESIGN
+   ============================================ */
+
+.portal-student .auth-portal-shell {
+    position: relative;
+    display: grid;
+    grid-template-columns: 52% 48%;
+    width: 100%;
+    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
+    background: #fff8f4;
+}
+
+/* LEFT CAMPUS PANEL */
+
+.portal-student .auth-portal-brand {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    padding: 28px clamp(24px, 3vw, 52px);
+    background-position: center;
+    background-size: cover;
+}
+
+.portal-student .auth-brand-heading {
+    gap: 12px;
+    align-items: center;
+}
+
+.portal-student .auth-brand-mark {
+    width: 54px;
+    height: 54px;
+    flex: 0 0 54px;
+    padding: 5px;
+    border-radius: 15px;
+}
+
+.portal-student .auth-brand-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.portal-student .auth-brand-wordmark strong {
+    font-size: 1.35rem;
+    line-height: 1.1;
+}
+
+.portal-student .auth-brand-wordmark small {
+    font-size: 0.8rem;
+}
+
+.portal-student .auth-brand-message {
+    max-width: 360px;
+}
+
+.portal-student .auth-brand-campus {
+    font-size: 0.62rem;
+    font-weight: 800;
+    line-height: 1.45;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 26px;
+}
+
+.portal-student .auth-brand-message h1 {
+    margin-bottom: 18px;
+    font-size: clamp(2.1rem, 3vw, 3.1rem);
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+}
+
+.portal-student .auth-brand-message h1 span {
+    color: #ffd75e;
+}
+
+.portal-student .auth-brand-description {
+    max-width: 310px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* Reference motto */
+.portal-student .student-reference-motto {
+    margin: 0;
+    color: #fff7e9;
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.portal-student .student-reference-motto span {
+    color: #f4d45e;
+}
+
+/* Hide generic brand badges and footer */
+.portal-student .auth-brand-highlights,
+.portal-student .auth-brand-footer {
+    display: none !important;
+}
+
+/* CENTER DIVIDER
+   Keep the existing SVG as the only curved divider.
+   Do not add another border or pseudo-element. */
+
+.portal-student .auth-waterfall-divider {
+    display: block !important;
+    position: absolute;
+    z-index: 5;
+    top: 0;
+    bottom: 0;
+    left: calc(52% - 90px);
+    width: 180px;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.portal-student .auth-waterfall-divider svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.portal-student .auth-center-curve {
+    display: none !important;
+}
+
+/* RIGHT PANEL */
+
+.portal-student .auth-portal-content {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    min-height: 100vh;
+    padding: 32px clamp(28px, 4vw, 65px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    background:
+        radial-gradient(
+            ellipse at 80% 12%,
+            rgba(246, 222, 194, 0.3),
+            transparent 35%
+        ),
+        linear-gradient(135deg, #fffaf7 0%, #fff1ed 100%);
+}
+
+.portal-student .auth-content-inner {
+    width: 100%;
+    max-width: 400px;
+    min-width: 0;
+    margin-inline: auto;
+}
+
+/* Remove the generic login card and its decorative red line */
+.portal-student .auth-content-card {
+    width: 100%;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.portal-student .auth-content-card::before,
+.portal-student .auth-content-card::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* LOGIN CONTENT */
+
+.portal-student .student-reference-login {
+    width: 100%;
+    color: #6e0a12;
+}
+
+.portal-student .student-reference-icon {
+    width: 58px;
+    height: 58px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #f8dedd;
+    color: #80000b;
+    font-size: 1.5rem;
+}
+
+/* No decorative line beside or above the icon */
+.portal-student .student-reference-login::before,
+.portal-student .student-reference-login::after {
+    display: none !important;
+    content: none !important;
+}
+
+.portal-student .student-reference-login h2 {
+    margin: 0 0 8px;
+    text-align: center;
+    color: #6f0b14;
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 700;
+    font-size: clamp(1.55rem, 2vw, 1.9rem);
+    line-height: 1.2;
+}
+
+.portal-student .student-reference-login .subtitle {
+    margin: 0 0 28px;
+    text-align: center;
+    color: #8e6c70;
+    font-size: 0.9rem;
+}
+
+/* One sign-in button only */
+.portal-student .student-reference-signin {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid #85000a;
+    border-radius: 8px;
+    background: linear-gradient(110deg, #970b15, #790008);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 7px 18px rgba(117, 0, 10, 0.14);
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.portal-student .student-reference-signin:hover {
+    color: #fff;
+    background: #6f0008;
+    box-shadow: 0 9px 22px rgba(117, 0, 10, 0.2);
+    transform: translateY(-1px);
+}
+
+.portal-student .student-reference-signin:focus-visible {
+    outline: 3px solid rgba(151, 11, 21, 0.25);
+    outline-offset: 3px;
+}
+
+/* Minimal IDP note */
+.portal-student .student-reference-idp-note {
+    margin: 14px 0 0;
+    color: #8e7779;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+/* Single back link */
+.portal-student .student-reference-back {
+    margin-top: 28px;
+    text-align: center;
+    font-size: 0.82rem;
+}
+
+.portal-student .student-reference-back a {
+    color: #85000b;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.portal-student .student-reference-back a:hover {
+    text-decoration: underline;
+}
+
+/* Remove redundant layout-level links and notes */
+.portal-student .auth-back-home,
+.portal-student .auth-content-caption {
+    display: none !important;
+}
+
+/* Validation errors */
+.portal-student .student-login-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0 0 16px;
+    padding: 11px 12px;
+    border: 1px solid #efc9c8;
+    border-radius: 7px;
+    background: #fff0ef;
+    color: #8c1018;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+/* MOBILE */
+
+@media (max-width: 760px) {
+    .portal-student .auth-portal-shell {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
+
+    .portal-student .auth-portal-brand {
+        min-height: 340px;
+        padding: 22px 24px 32px;
+        background-position: center;
+    }
+
+    .portal-student .auth-brand-message {
+        margin-top: 28px;
+    }
+
+    .portal-student .auth-brand-message h1 {
+        font-size: 2.2rem;
+    }
+
+    .portal-student .auth-brand-description {
+        max-width: 320px;
+    }
+
+    .portal-student .auth-waterfall-divider {
+        display: none !important;
+    }
+
+    .portal-student .auth-portal-content {
+        min-height: auto;
+        padding: 38px 24px 42px;
+    }
+
+    .portal-student .auth-content-inner {
+        max-width: 420px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .portal-student .student-reference-signin {
+        transition: none;
+    }
+}
+/* ============================================
+   FINAL STUDENT REFERENCE ADJUSTMENTS
+   ============================================ */
+
+/* Slim, single gold curve */
+.portal-student .auth-waterfall-divider {
+    display: block !important;
+    left: calc(52% - 50px);
+    width: 100px;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.portal-student .auth-waterfall-divider svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Bottom maroon diagonal panel inspired by the reference */
+.portal-student .auth-portal-brand {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+}
+
+/* Decorative shape sits behind the brand text */
+.portal-student .auth-portal-brand::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 36%;
+    pointer-events: none;
+    background: linear-gradient(
+        135deg,
+        rgba(115, 0, 14, 0.94),
+        rgba(87, 0, 13, 0.98)
+    );
+    clip-path: polygon(0 0, 100% 68%, 100% 100%, 0 100%);
+}
+
+/* Keep branding and text above the decorative shape */
+.portal-student .auth-brand-heading,
+.portal-student .auth-brand-message,
+.portal-student .auth-brand-bottom {
+    position: relative;
+    z-index: 3;
+}
+
+/* Motto near the bottom-left, like the reference */
+.portal-student .student-reference-motto {
+    display: block;
+    margin: 0 0 10px;
+    padding-left: 34px;
+    position: relative;
+    color: #fff8ed;
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.portal-student .student-reference-motto::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 24px;
+    height: 3px;
+    background: #f2d44e;
+}
+
+.portal-student .student-reference-motto span {
+    color: #fff8ed;
+}
+
+/* Keep the right-side sign-in content compact */
+.portal-student .auth-content-inner {
+    max-width: 370px;
+}
+
+.portal-student .student-reference-icon {
+    width: 42px;
+    height: 42px;
+    margin-bottom: 12px;
+    font-size: 1.15rem;
+}
+
+.portal-student .student-reference-login h2 {
+    font-size: 1.4rem;
+}
+
+.portal-student .student-reference-login .subtitle {
+    margin-bottom: 22px;
+}
+
+.portal-student .student-reference-signin {
+    min-height: 42px;
+    justify-content: center;
+    gap: 12px;
+    font-size: 0.8rem;
+}
+
+.portal-student .student-reference-idp-note {
+    font-size: 0.72rem;
+    margin-top: 11px;
+}
+
+.portal-student .student-reference-back {
+    margin-top: 20px;
+}
+
+/* On narrow screens, use a straight panel transition */
+@media (max-width: 760px) {
+    .portal-student .auth-portal-brand::after {
+        height: 30%;
+    }
+
+    .portal-student .auth-waterfall-divider {
+        display: none !important;
+    }
+}

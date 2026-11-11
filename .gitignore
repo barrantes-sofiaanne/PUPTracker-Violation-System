@@ -22,3 +22,16 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+.env.*
+!.env.example
+
+# Local test output and database backups
+phpunit-php85-512m.txt
+puptracker-local-before-reconciliation.sql
+# Local dependency backups
+package.json.before-php85
+package-lock.json.before-php85
+
+# PHP 8.5 test output
+php85-test-results.txt
+php85-test-results-512M.txt

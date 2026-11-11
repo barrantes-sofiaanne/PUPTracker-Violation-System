@@ -1,11 +1,9 @@
-FROM public.ecr.aws/docker/library/php:8.2-cli
-
+FROM public.ecr.aws/docker/library/php:8.5-cli
 # Install system packages and PHP extensions
 RUN apt-get update && apt-get install -y \
     git \
     curl \
     unzip \
-    default-mysql-client \
     zip \
     libzip-dev \
     libpng-dev \
@@ -36,10 +34,11 @@ RUN set -eux; \
         --filename=composer; \
     rm -f /tmp/composer-setup.php; \
     composer --version
-
 # Allow Composer plugins to run and configure process timeout
+# Limit parallel HTTP downloads to avoid GitHub rate-limiting (HTTP 429).
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
-    COMPOSER_PROCESS_TIMEOUT=1200
+    COMPOSER_PROCESS_TIMEOUT=1200 \
+    COMPOSER_MAX_PARALLEL_HTTP=2
 
 # Install Node.js 22
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
@@ -53,26 +52,34 @@ RUN curl -fsSL https://repo.mysql.com/RPM-GPG-KEY-mysql-2025 \
     && apt-get install -y mysql-community-client \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-
+RUN command -v mysqldump \
+    && command -v mysqlbinlog \
+    && mysqldump --version \
+    && mysqlbinlog --version
 # Copy the entire Laravel application
 COPY . .
 
-# Install PHP dependencies with retries
+# Install PHP dependencies with progressively longer retries to survive
+# transient GitHub HTTP 429 rate limiting.
 RUN set -eux; \
+    delays="15 30 60 120"; \
     attempts=0; \
     until composer install --no-dev --optimize-autoloader --no-interaction; do \
         attempts=$((attempts + 1)); \
-        if [ "$attempts" -ge 5 ]; then \
+        delay=$(echo "$delays" | cut -d' ' -f"$attempts"); \
+        if [ -z "$delay" ]; then \
             echo "Composer install failed after $attempts attempts" >&2; \
             exit 1; \
         fi; \
-        echo "Composer install attempt $attempts failed; retrying in 5 seconds..." >&2; \
-        sleep 5; \
+        echo "Composer install attempt $attempts failed; retrying in $delay seconds..." >&2; \
+        sleep "$delay"; \
     done
 
+# Verify PHP 8.5 and installed production dependencies
+RUN composer check-platform-reqs --no-dev
 # Build frontend assets
 RUN if [ -f package.json ]; then \
-    npm install && \
+    npm ci && \
     npm run build; \
     fi
 

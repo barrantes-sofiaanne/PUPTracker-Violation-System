@@ -1,411 +1,109 @@
-@extends('layouts.auth-portal', ['title' => 'Complete Your PUPTracker Registration', 'portal' => 'student'])
+@extends('layouts.auth-portal', [
+    'title' => 'PUPTracker Student Account Setup',
+    'portal' => 'student',
+    'brandKey' => 'signup',
+    'wide' => true,
+])
 
-@section('auth-content')
-
-        <p class="module-chip">Student Module</p>
-
-        <h2>Complete Your PUPTracker Registration</h2>
-
-        <p class="subtitle">
-            Welcome to PUPTracker! Your university account has been successfully authenticated.
-            To complete your PUPTracker registration, please provide the required student information below.
+@section('ap-content')
+<div class="ap-wizard" style="max-width: 820px; margin: 0 auto;">
+    <div style="margin-bottom: 1.5rem;">
+        <h2 class="ap-heading ap-heading--left">PUPTracker Student Account Setup</h2>
+        <p class="ap-subtitle ap-subtitle--left">
+            Your PUP IDP identity has been verified. We will check whether a student record already exists before creating a new account.
         </p>
+    </div>
 
-        @if (session('info'))
-            <div class="alert alert-info">{{ session('info') }}</div>
-        @endif
+    @if (session('info'))
+        <div class="ap-alert ap-alert--info" role="status"><i class="bi bi-info-circle-fill" aria-hidden="true"></i> {{ session('info') }}</div>
+    @endif
+    @if ($errors->any())
+        <div class="ap-alert" role="alert">
+            <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+            <div><strong>Please review the information below.</strong><ul style="margin:.35rem 0 0;padding-left:1.25rem;">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
+        </div>
+    @endif
 
-        @if($errors->has('login'))
-            <div class="login-error">
-                <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
-                <span>{{ $errors->first('login') }}</span>
+    <div class="ap-card" style="padding:1.25rem; margin-bottom:1.25rem; border:1px solid rgba(128,0,0,.16); border-radius:16px;">
+        <div style="display:flex;align-items:center;gap:.65rem;margin-bottom:.8rem;">
+            <i class="bi bi-patch-check-fill" style="font-size:1.25rem;color:#198754;" aria-hidden="true"></i>
+            <strong>Verified PUP IDP identity</strong>
+        </div>
+        <div class="ap-grid-2">
+            <div><span class="ap-field-help">Full name</span><div class="ap-field ap-field--locked"><input type="text" value="{{ $verifiedName ?: 'Not provided' }}" readonly disabled></div></div>
+            <div><span class="ap-field-help">University email</span><div class="ap-field ap-field--locked"><input type="text" value="{{ $verifiedEmail ?: 'Not provided' }}" readonly disabled></div></div>
+        </div>
+        <p class="ap-field-help" style="margin:.65rem 0 0;">These identity details come directly from PUP IDP and cannot be edited in this form.</p>
+    </div>
+
+
+    @if ($matchMode === 'single' && $matchedStudent)
+        <div class="ap-alert ap-alert--info" role="note" style="margin-bottom:1rem;">
+            <i class="bi bi-lock-fill" aria-hidden="true"></i>
+            <span><strong>Existing student record found.</strong> The information below is read-only. Only an authorized PUPTracker administrator can edit account and academic information. To request a correction, email the appropriate PUPTracker administrator and attach valid proof of identity.</span>
+        </div>
+        <div class="ap-card" style="padding:1.25rem;border:1px solid rgba(128,0,0,.16);border-radius:16px;margin-bottom:1.25rem;">
+            <h3 class="ap-step-title">Your matched student record</h3>
+            <div class="ap-grid-2">
+                <div class="ap-field-group"><label class="ap-label">Student number</label><div class="ap-field ap-field--locked"><input value="{{ $matchedStudent->student_number ?: '—' }}" readonly disabled></div></div>
+                <div class="ap-field-group"><label class="ap-label">Program/Course</label><div class="ap-field ap-field--locked"><input value="{{ optional(optional($matchedStudent->studentInfo)->program)->program_name ?: '—' }}" readonly disabled></div></div>
+                <div class="ap-field-group"><label class="ap-label">Year level</label><div class="ap-field ap-field--locked"><input value="{{ optional(optional($matchedStudent->studentInfo)->year)->year ?: '—' }}" readonly disabled></div></div>
+                <div class="ap-field-group"><label class="ap-label">Section</label><div class="ap-field ap-field--locked"><input value="{{ optional(optional($matchedStudent->studentInfo)->section)->section_name ?: '—' }}" readonly disabled></div></div>
             </div>
-        @endif
-
-        @if($errors->has('registration'))
-            <div class="login-error">
-                <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
-                <span>{{ $errors->first('registration') }}</span>
-            </div>
-        @endif
-
-        <form method="POST" action="{{ route('student.idp.link.post') }}" autocomplete="off"
-              class="auth-login-form" id="registrationForm">
+            <p class="ap-field-help">If any displayed information is incorrect, do not proceed. Contact an administrator and provide proof of identity so the record can be reviewed.</p>
+        </div>
+        <form method="POST" action="{{ route('student.idp.link.post') }}" class="ap-form">
             @csrf
-
-            {{--
-                SECTION A — IDENTITY FROM THE UNIVERSITY ACCOUNT.
-
-                These values are rendered for DISPLAY ONLY. The server never reads
-                them back: name and email are taken from the verified IDP session
-                when the account is created. `disabled` inputs are not submitted by
-                the browser at all, which makes casual tampering a non-issue; the
-                controller additionally ignores any such keys.
-            --}}
-            <section class="registration-section" aria-labelledby="idpSectionHeading">
-                <h3 class="registration-section-title" id="idpSectionHeading">
-                    <i class="bi bi-buildings-fill" aria-hidden="true"></i>
-                    Information from your university account
-                </h3>
-
-                <p class="registration-section-help" id="idpSectionHelp">
-                    These details were provided by your university account and cannot be edited in PUPTracker.
-                </p>
-
-                <div class="mb-3">
-                    <label class="form-label" for="verified_name">Full Name</label>
-                    <div class="input-group login-input-group">
-                        <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-                        <input
-                            id="verified_name"
-                            type="text"
-                            class="form-control locked-field"
-                            value="{{ $verifiedName ?: '—' }}"
-                            aria-describedby="idpSectionHelp"
-                            disabled
-                            readonly>
-                        <span class="input-group-text locked-field-icon" title="Provided by PUP IDP" aria-hidden="true">
-                            <i class="bi bi-lock-fill"></i>
-                        </span>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label" for="verified_email">Email Address</label>
-                    <div class="input-group login-input-group">
-                        <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
-                        <input
-                            id="verified_email"
-                            type="text"
-                            class="form-control locked-field"
-                            value="{{ $verifiedEmail ?: '—' }}"
-                            aria-describedby="idpSectionHelp"
-                            disabled
-                            readonly>
-                        <span class="input-group-text locked-field-icon" title="Provided by PUP IDP" aria-hidden="true">
-                            <i class="bi bi-lock-fill"></i>
-                        </span>
-                    </div>
-                </div>
-
-                <p class="verified-identity-badge">
-                    <i class="bi bi-patch-check-fill" aria-hidden="true"></i>
-                    Verified by PUP Identity Provider
-                </p>
-            </section>
-
-            {{--
-                SECTION B — INFORMATION THE STUDENT SUPPLIES.
-
-                PUPTracker has no pre-existing student-number roster, so the student
-                number is COLLECTED here (not looked up). Program and Year come from
-                the real dropdown tables.
-            --}}
-            <section class="registration-section" aria-labelledby="pupSectionHeading">
-                <h3 class="registration-section-title" id="pupSectionHeading">
-                    <i class="bi bi-clipboard-data-fill" aria-hidden="true"></i>
-                    PUPTracker information
-                </h3>
-
-                <div class="mb-3">
-                    <label class="form-label" for="student_number">
-                        Student Number <span class="required-asterisk" aria-hidden="true">*</span>
-                    </label>
-                    <div class="input-group login-input-group">
-                        <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
-                        <input
-                            id="student_number"
-                            type="text"
-                            name="student_number"
-                            class="form-control @error('student_number') is-invalid @enderror"
-                            value="{{ old('student_number') }}"
-                            placeholder="e.g. 2026-00001"
-                            autocomplete="off"
-                            aria-describedby="studentNumberHelp"
-                            required>
-                    </div>
-                    <small class="form-text text-muted" id="studentNumberHelp">
-                        Enter your official student number. It is recorded on your new PUPTracker account.
-                    </small>
-                    @error('student_number')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label" for="program_id">
-                        Program/Course <span class="required-asterisk" aria-hidden="true">*</span>
-                    </label>
-                    @php
-                        // The Ladderized question is offered ONLY for the programs that
-                        // actually run a ladderized curriculum (BSIT / BSOA). The list is
-                        // computed server-side from config so this page and the Admin
-                        // student screens can never disagree. Program ids travel with the
-                        // select, so the script depends on no hard-coded ids.
-                        $ladderizedProgramIds = (array) ($ladderizedProgramIds ?? []);
-                        $selectedProgramId = (string) old('program_id');
-                        $ladderizedOffered = $selectedProgramId !== ''
-                            && in_array((int) $selectedProgramId, array_map('intval', $ladderizedProgramIds), true);
-                    @endphp
-                  <select
-    id="program_id"
-    name="program_id"
-    class="form-select @error('program_id') is-invalid @enderror"
-    data-ladderized-programs='@json(array_values($ladderizedProgramIds))'
-    required>
-                        <option value="">Select Program/Course</option>
-                        @foreach ($programs as $program)
-                            <option value="{{ $program->program_id }}"
-                                @selected((string) old('program_id') === (string) $program->program_id)>
-                                {{ $program->program_name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('program_id')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                {{--
-                    LADDERIZED — shown only when the selected Program/Course is BSIT
-                    or BSOA (strictly those two). The script reveals and hides it on
-                    program change; it starts revealed after a validation error so a
-                    repopulated form does not silently lose the student's answer.
-                    The server independently re-checks the program, so hiding this
-                    field can never set the flag on a non-ladderized program.
-                --}}
-                <div class="mb-3 {{ $ladderizedOffered ? '' : 'd-none' }}" id="ladderizedWrap">
-                    <label class="form-label d-block">
-                        Ladderized
-                    </label>
-                    <div class="form-check form-check-inline">
-<input
-    class="form-check-input @error('ladderized') is-invalid @enderror"
-    type="radio"
-    name="ladderized"
-    id="ladderizedYes"
-    value="1"
-    @checked((string) old('ladderized') === '1')>
-<label class="form-check-label" for="ladderizedYes">Yes</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-<input
-    class="form-check-input @error('ladderized') is-invalid @enderror"
-    type="radio"
-    name="ladderized"
-    id="ladderizedNo"
-    value="0"
-    @checked((string) old('ladderized') === '0')>
-<label class="form-check-label" for="ladderizedNo">No</label>
-                    </div>
-                    <small class="form-text text-muted d-block">
-                        Choose <strong>Yes</strong> if you are enrolled under the ladderized
-                        curriculum of this program.
-                    </small>
-                    @error('ladderized')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label" for="year_id">
-                        Year Level <span class="required-asterisk" aria-hidden="true">*</span>
-                    </label>
-                    <select
-                        id="year_id"
-                        name="year_id"
-                        class="form-select @error('year_id') is-invalid @enderror"
-                        required>
-                        <option value="">Select Year Level</option>
-                        @foreach ($years as $year)
-                            <option value="{{ $year->year_id }}"
-                                @selected((string) old('year_id') === (string) $year->year_id)>
-                                {{ $year->year }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('year_id')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label" for="section_id">
-                        Section <span class="required-asterisk" aria-hidden="true">*</span>
-                    </label>
-                    <select
-                        id="section_id"
-                        name="section_id"
-                        class="form-select @error('section_id') is-invalid @enderror"
-                        required>
-                        <option value="">Select Section</option>
-                        @foreach ($sections as $section)
-                            <option value="{{ $section->section_id }}"
-                                @selected((string) old('section_id') === (string) $section->section_id)>
-                                {{ $section->section_name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('section_id')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label" for="gender_id">
-                        Gender <span class="required-asterisk" aria-hidden="true">*</span>
-                    </label>
-                    <select
-                        id="gender_id"
-                        name="gender_id"
-                        class="form-select @error('gender_id') is-invalid @enderror"
-                        required>
-                        <option value="">Select Gender</option>
-                        @foreach ($genders as $gender)
-                            <option value="{{ $gender->gender_id }}"
-                                @selected((string) old('gender_id') === (string) $gender->gender_id)>
-                                {{ $gender->gender_name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('gender_id')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
-                </div>
-            </section>
-
-            {{--
-                INFORMATION PRIVACY NOTICE.
-
-                Displayed BEFORE submission so the student reads it before any data
-                is sent. The acknowledgement is worded as a notice acknowledgement
-                ("I have read and understood"), not as affirmative consent.
-            --}}
-            <div class="privacy-notice" role="note" aria-labelledby="privacyNoticeHeading">
-                <h3 class="privacy-notice-title" id="privacyNoticeHeading">
-                    <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
-                    Information Privacy Notice
-                </h3>
-
-                <p>
-                    The information you provide will be collected and processed solely for purposes related to
-                    the operation of the PUPTracker system, including student identification, violation and
-                    sanction management, record keeping, and other authorized student-related processes.
-                </p>
-
-                <p class="mb-0">
-                    Only information necessary for these purposes will be collected. Your information will be
-                    handled in accordance with applicable institutional policies and data privacy requirements.
-                    By proceeding with registration, you acknowledge that you have read and understood this notice.
-                </p>
-            </div>
-
-            <div class="form-check registration-acknowledgement">
-                <input
-                    class="form-check-input @error('privacy_acknowledged') is-invalid @enderror"
-                    type="checkbox"
-                    id="privacy_acknowledged"
-                    name="privacy_acknowledged"
-                    value="1"
-                    @checked(old('privacy_acknowledged'))
-                    required>
-                <label class="form-check-label" for="privacy_acknowledged">
-                    I have read and understood the Information Privacy Notice.
-                    <span class="required-asterisk" aria-hidden="true">*</span>
+            <input type="hidden" name="match_mode" value="single">
+                <div class="ap-field-group" style="margin-bottom:1rem;">
+                <label style="display:flex;align-items:flex-start;gap:.65rem;">
+                    <input type="checkbox" name="privacy_acknowledged" value="1" required style="margin-top:.25rem;">
+                    <span>I acknowledge that PUPTracker may collect, use, store, and process my personal information and verified PUP IDP details to verify my identity, manage my student account and disciplinary records, send system notifications, and protect system security, in accordance with university privacy policies and the Data Privacy Act of 2012.</span>
                 </label>
-                @error('privacy_acknowledged')
-                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                @enderror
             </div>
-
-            <button type="submit" class="btn btn-success w-100 login-btn" id="completeRegistrationBtn">
-                <span class="btn-label">Complete Registration</span>
-                <span class="btn-spinner spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
-            </button>
+            <button type="submit" class="ap-btn ap-btn--compact"><span>Confirm and Link My Account</span><i class="bi bi-link-45deg" aria-hidden="true"></i></button>
         </form>
 
-        <div class="footer-links">
-            <a href="{{ route('student.login') }}">&larr; Back to Login</a>
+    @elseif ($matchMode === 'duplicate')
+        <div class="ap-alert ap-alert--info" role="status" style="margin-bottom:1rem;">
+            <i class="bi bi-people-fill" aria-hidden="true"></i>
+            <span>We found {{ $matchCount }} student records with the same first, middle, and last name. To identify your record, provide your student number, program, and section. Your selected information will be checked against the existing records.</span>
         </div>
+        <form method="POST" action="{{ route('student.idp.link.post') }}" class="ap-form">
+            @csrf
+            <input type="hidden" name="match_mode" value="duplicate">
+            <div class="ap-grid-2">
+                <div class="ap-field-group"><label class="ap-label" for="student_number">Student number <span class="ap-req">*</span></label><div class="ap-field"><input id="student_number" name="student_number" value="{{ old('student_number') }}" required maxlength="50" autocomplete="off"></div></div>
+                <div class="ap-field-group"><label class="ap-label" for="program_id">Program/Course <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="program_id" name="program_id" required><option value="">Select program</option>@foreach($programs as $program)<option value="{{ $program->program_id }}" @selected((string)old('program_id') === (string)$program->program_id)>{{ $program->program_name }}</option>@endforeach</select></div></div>
+                <div class="ap-field-group"><label class="ap-label" for="section_id">Section <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="section_id" name="section_id" required><option value="">Select section</option>@foreach($sections as $section)<option value="{{ $section->section_id }}" @selected((string)old('section_id') === (string)$section->section_id)>{{ $section->section_name }}</option>@endforeach</select></div></div>
+            </div>
+            <div class="ap-field-group"><label style="display:flex;gap:.65rem;align-items:flex-start;"><input type="checkbox" name="confirm_record" value="1" required style="margin-top:.25rem;"><span>I confirm that the student number, program, and section I entered identify my own student record.</span></label></div>
+            <div class="ap-field-group"><label style="display:flex;gap:.65rem;align-items:flex-start;"><input type="checkbox" name="privacy_acknowledged" value="1" required style="margin-top:.25rem;"><span>I acknowledge that PUPTracker may collect, use, store, and process my personal information and verified PUP IDP details to verify my identity, manage my student account and disciplinary records, send system notifications, and protect system security, in accordance with university privacy policies and the Data Privacy Act of 2012.</span></label></div>
+            <button type="submit" class="ap-btn ap-btn--compact"><span>Verify and Link Existing Record</span><i class="bi bi-link-45deg" aria-hidden="true"></i></button>
+        </form>
 
+    @else
+        <div class="ap-alert ap-alert--info" role="status" style="margin-bottom:1rem;">
+            <i class="bi bi-person-plus-fill" aria-hidden="true"></i>
+            <span>No existing student record matched your verified full name. Complete the registration details below. Your name and email will be taken from PUP IDP.</span>
+        </div>
+        <form method="POST" action="{{ route('student.idp.link.post') }}" class="ap-form">
+            @csrf
+            <input type="hidden" name="match_mode" value="new">
+            <div class="ap-grid-2">
+                <div class="ap-field-group"><label class="ap-label" for="student_number">Student number <span class="ap-req">*</span></label><div class="ap-field"><input id="student_number" name="student_number" value="{{ old('student_number') }}" required maxlength="50" autocomplete="off"></div></div>
+                <div class="ap-field-group"><label class="ap-label" for="gender_id">Gender <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="gender_id" name="gender_id" required><option value="">Select gender</option>@foreach($genders as $gender)<option value="{{ $gender->gender_id }}" @selected((string)old('gender_id') === (string)$gender->gender_id)>{{ $gender->gender_name }}</option>@endforeach</select></div></div>
+                <div class="ap-field-group"><label class="ap-label" for="program_id">Program/Course <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="program_id" name="program_id" required><option value="">Select program</option>@foreach($programs as $program)<option value="{{ $program->program_id }}" @selected((string)old('program_id') === (string)$program->program_id)>{{ $program->program_name }}</option>@endforeach</select></div></div>
+                <div class="ap-field-group"><label class="ap-label" for="year_id">Year level <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="year_id" name="year_id" required><option value="">Select year</option>@foreach($years as $year)<option value="{{ $year->year_id }}" @selected((string)old('year_id') === (string)$year->year_id)>{{ $year->year }}</option>@endforeach</select></div></div>
+                <div class="ap-field-group"><label class="ap-label" for="section_id">Section <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="section_id" name="section_id" required><option value="">Select section</option>@foreach($sections as $section)<option value="{{ $section->section_id }}" @selected((string)old('section_id') === (string)$section->section_id)>{{ $section->section_name }}</option>@endforeach</select></div></div>
+            </div>
+            <div class="ap-field-group"><label style="display:flex;gap:.65rem;align-items:flex-start;"><input type="checkbox" name="privacy_acknowledged" value="1" required style="margin-top:.25rem;"><span>I acknowledge that PUPTracker may collect, use, store, and process my personal information and verified PUP IDP details to verify my identity, manage my student account and disciplinary records, send system notifications, and protect system security, in accordance with university privacy policies and the Data Privacy Act of 2012.</span></label></div>
+            <button type="submit" class="ap-btn ap-btn--compact"><span>Create Student Account and Continue</span><i class="bi bi-check2-circle" aria-hidden="true"></i></button>
+        </form>
+    @endif
+
+    <a href="{{ route('student.login') }}" class="ap-back" style="display:inline-flex;margin-top:1.25rem;">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i><span>Back to Student Login</span>
+    </a>
+</div>
 @endsection
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('registrationForm');
-    const btn = document.getElementById('completeRegistrationBtn');
-    if (!form || !btn) {
-        return;
-    }
-
-    // Loading state while the registration submits. The form posts normally
-    // (no AJAX), so the button is disabled + a spinner shown to prevent a
-    // double-submit; the server also re-checks for duplicates.
-    form.addEventListener('submit', function () {
-        const label = btn.querySelector('.btn-label');
-        const spinner = btn.querySelector('.btn-spinner');
-
-        btn.disabled = true;
-        if (label) { label.textContent = 'Submitting…'; }
-        if (spinner) { spinner.classList.remove('d-none'); }
-    });
-});
-
-// LADDERIZED visibility — the question appears ONLY for BSIT / BSOA.
-//
-// The ladderizable program ids are rendered onto the select by the server, so
-// this never hard-codes an id and automatically follows any change to
-// GRADUATION_REVIEW_LADDERIZED_PROGRAMS. The server re-checks the program
-// before storing the flag, so this is presentation only.
-
-document.addEventListener('DOMContentLoaded', function () {
-    const programSelect = document.getElementById('program_id');
-    const wrap = document.getElementById('ladderizedWrap');
-
-    if (!programSelect || !wrap) {
-        return;
-    }
-
-    let ladderizedIds = [];
-
-    try {
-        ladderizedIds = JSON.parse(
-            programSelect.dataset.ladderizedPrograms || '[]'
-        ).map(Number);
-    } catch (e) {
-        ladderizedIds = [];
-    }
-
-    function syncLadderizedVisibility() {
-        const offered = ladderizedIds.includes(
-            Number(programSelect.value)
-        );
-
-        wrap.classList.toggle('d-none', !offered);
-
-        const yes = document.getElementById('ladderizedYes');
-        const no = document.getElementById('ladderizedNo');
-
-        [yes, no].forEach(function (radio) {
-            if (!radio) return;
-
-            if (offered) {
-                radio.setAttribute('required', 'required');
-            } else {
-                radio.removeAttribute('required');
-                radio.checked = false;
-            }
-        });
-    }
-
-    programSelect.addEventListener(
-        'change',
-        syncLadderizedVisibility
-    );
-
-    syncLadderizedVisibility();
-});
-
-</script>
-@endpush
