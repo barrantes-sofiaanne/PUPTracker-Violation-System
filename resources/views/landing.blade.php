@@ -421,10 +421,7 @@
             >
 
                 <div class="lp-slideshow lp-about-slideshow" data-slideshow role="group" aria-label="PUP Taguig campus photos">
-                    <img class="lp-slide is-active"
-                         src="{{ asset('assets/images/PUP-TAGUIG/PUPT1.jpg') }}"
-                         alt="PUP Taguig students during a campus event"
-                         loading="lazy">
+
                     <img class="lp-slide"
                          src="{{ asset('assets/images/PUP-TAGUIG/PUPT5.jpg') }}"
                          alt="PUP Taguig campus"

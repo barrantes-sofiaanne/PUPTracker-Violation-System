@@ -252,29 +252,21 @@ return $notification;
  * Resolve a student violation correction request to the
  * administrator correction-request queue.
  */
-private function violationCorrectionRequestUrl(
-    int $targetId
-): ?string {
+private function violationCorrectionRequestUrl(int $targetId): ?string
+{
+    $routeName = 'violation-correction-requests';
 
-    if (
-        ! Route::has(
-            'admin.violations.correction-requests'
-        )
-    ) {
+    if (! Route::has($routeName)) {
         return null;
     }
 
-    $correctionRequest =
-        ViolationCorrectionRequest::query()
-            ->find($targetId);
+    $correctionRequest = ViolationCorrectionRequest::query()->find($targetId);
 
     if (! $correctionRequest) {
         return null;
     }
 
-    return route(
-        'admin.violations.correction-requests'
-    );
+    return route($routeName);
 }
 
     /**
