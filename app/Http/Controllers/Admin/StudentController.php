@@ -1433,7 +1433,6 @@ class StudentController extends Controller
                 => [
                     [
                         'student_number',
-                        'email',
                         'first_name',
                         'middle_name',
                         'last_name',
@@ -1446,7 +1445,6 @@ class StudentController extends Controller
                     ],
                     [
                         '2024-00001-TG-0',
-                        'juan.delacruz@example.com',
                         'Juan',
                         'Dela',
                         'Cruz',
@@ -1581,11 +1579,11 @@ class StudentController extends Controller
             && $importAction !== 'deactivate_students'
         ) {
             $dropdowns = [
-                'G' => ['ProgramOptions', $programOptions],
-                'H' => ['YearOptions', $yearOptions],
-                'I' => ['SectionOptions', $sectionOptions],
-                'J' => ['GenderOptions', $genderOptions],
-                'K' => ['LadderizedOptions', ['Yes', 'No']],
+                'F' => ['ProgramOptions', $programOptions],
+                'G' => ['YearOptions', $yearOptions],
+                'H' => ['SectionOptions', $sectionOptions],
+                'I' => ['GenderOptions', $genderOptions],
+                'J' => ['LadderizedOptions', ['Yes', 'No']],
             ];
         } elseif ($validated['account_type'] === 'admin') {
             $dropdowns = [
@@ -1603,6 +1601,8 @@ class StudentController extends Controller
             $validation->setType(DataValidation::TYPE_LIST);
             $validation->setErrorStyle(DataValidation::STYLE_STOP);
             $validation->setAllowBlank(true);
+            // PhpSpreadsheet writes this flag inversely to Excel's showDropDown attribute.
+            // true keeps the in-cell dropdown arrow visible in Excel.
             $validation->setShowDropDown(true);
             $validation->setShowInputMessage(true);
             $validation->setShowErrorMessage(true);
@@ -2502,18 +2502,15 @@ class StudentController extends Controller
     ): int {
 
         // TEMPORARY IMPORT RULE: student number may be blank.
+        // Treat common spreadsheet placeholders as blank as well.
         $studentNumber = trim((string) ($row['student_number'] ?? ''));
-        $studentNumber = $studentNumber !== '' ? $studentNumber : null;
-
-        $email = trim((string) ($row['email'] ?? ''));
-
-        // Email is required by users_tbl and must be unique.
-        if (
-            $email === ''
-            || User::where('email', $email)->exists()
-        ) {
-            return 0;
+        if (in_array(strtoupper($studentNumber), ['', 'N/A', 'NA', 'NONE', 'NULL', '-'], true)) {
+            $studentNumber = null;
         }
+
+        // Email is intentionally omitted from student imports. The verified
+        // PUP IDP email is written to users_tbl.email when the student links
+        // their university identity for the first time.
 
         // Only run duplicate checks when a student number was supplied.
         if (
@@ -2630,14 +2627,15 @@ class StudentController extends Controller
             }
         }
 
-        $identity['email'] = $email;
-
         $student =
             User::create(
                 array_merge(
                     [
                         'student_number' =>
                             $studentNumber,
+
+                        'email' =>
+                            null,
 
                         'gender_id' =>
                             $genderId,
