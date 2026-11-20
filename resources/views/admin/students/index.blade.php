@@ -1029,8 +1029,8 @@ const importTemplateBaseUrl = "{{ route('admin.users.import.template') }}";
 const importAccountsModal = document.getElementById('importAccountsModal');
 const importGuides = {
     student_create_activate: {
-        columns: ['student_number', 'first_name', 'middle_name', 'last_name', 'name_suffix', 'program', 'year', 'section', 'gender', 'ladderized'],
-        help: 'Program, year, section, and gender can use names (e.g., BSIT, 1, 1A, Male). Ladderized accepts Yes/No or 1/0.',
+        columns: ['student_number', 'email', 'first_name', 'middle_name', 'last_name', 'name_suffix', 'program', 'year', 'section', 'gender', 'ladderized'],
+        help: 'Use the downloaded Excel template dropdowns for program, year, section, gender, and ladderized. Student number, section, and gender may be left blank temporarily. Email, first name, last name, program, and year are required.',
     },
     student_deactivate_students: {
         columns: ['student_number'],
@@ -1038,11 +1038,11 @@ const importGuides = {
     },
     admin_create_activate: {
         columns: ['email', 'firstname', 'middlename', 'lastname', 'position', 'role', 'status', 'password'],
-        help: 'Role and status values can use readable names (e.g., Admin, IT Administrator, Active).',
+        help: 'Use the downloaded Excel template dropdowns for role and status. Enter names, email, position, and password manually.',
     },
     security_create_activate: {
         columns: ['email', 'firstname', 'middlename', 'lastname', 'position', 'password'],
-        help: 'Firstname and lastname are required. Position is optional but recommended for complete profiles.',
+        help: 'Firstname and lastname are required. Position is optional and entered manually because it is not a fixed reference-list value.',
     },
 };
 

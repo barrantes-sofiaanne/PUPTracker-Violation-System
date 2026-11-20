@@ -25,6 +25,9 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
+use PhpOffice\PhpSpreadsheet\NamedRange;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -1375,30 +1378,62 @@ class StudentController extends Controller
             ]);
         }
 
+        // Pull dropdown options from the same reference tables used by the forms.
+        // This keeps the Excel values identical to the values accepted by imports.
+        $programOptions = Program::orderBy('program_name')
+            ->pluck('program_name')
+            ->filter(fn ($value) => trim((string) $value) !== '')
+            ->values()
+            ->all();
+
+        $yearOptions = Year::orderBy('year')
+            ->pluck('year')
+            ->filter(fn ($value) => trim((string) $value) !== '')
+            ->values()
+            ->all();
+
+        $sectionOptions = Section::orderBy('section_name')
+            ->pluck('section_name')
+            ->filter(fn ($value) => trim((string) $value) !== '')
+            ->values()
+            ->all();
+
+        $genderOptions = Gender::orderBy('gender_name')
+            ->pluck('gender_name')
+            ->filter(fn ($value) => trim((string) $value) !== '')
+            ->values()
+            ->all();
+
+        // Match the roles exposed by the Admin account form.
+        $adminRoleOptions = Role::query()
+            ->whereIn('roles_name', ['Admin', 'IT Administrator', 'OSS Staff'])
+            ->orderBy('roles_name')
+            ->pluck('roles_name')
+            ->all();
+
+        $accountStatusOptions = Status::orderBy('status_name')
+            ->pluck('status_name')
+            ->filter(fn ($value) => trim((string) $value) !== '')
+            ->values()
+            ->all();
+
         [
             $headers,
             $sampleRow
         ] = match (true) {
 
-            $validated['account_type']
-                === 'student'
-            &&
-            $importAction
-                === 'deactivate_students'
+            $validated['account_type'] === 'student'
+            && $importAction === 'deactivate_students'
                 => [
-                    [
-                        'student_number'
-                    ],
-                    [
-                        '2024-00001-TG-0'
-                    ]
+                    ['student_number'],
+                    ['2024-00001-TG-0'],
                 ],
 
-            $validated['account_type']
-                === 'student'
+            $validated['account_type'] === 'student'
                 => [
                     [
                         'student_number',
+                        'email',
                         'first_name',
                         'middle_name',
                         'last_name',
@@ -1411,20 +1446,20 @@ class StudentController extends Controller
                     ],
                     [
                         '2024-00001-TG-0',
+                        'juan.delacruz@example.com',
                         'Juan',
                         'Dela',
                         'Cruz',
                         '',
-                        'BSIT',
-                        '1',
-                        '1A',
-                        'Male',
+                        $programOptions[0] ?? '',
+                        $yearOptions[0] ?? '',
+                        $sectionOptions[0] ?? '',
+                        $genderOptions[0] ?? '',
                         'No',
-                    ]
+                    ],
                 ],
 
-            $validated['account_type']
-                === 'admin'
+            $validated['account_type'] === 'admin'
                 => [
                     [
                         'email',
@@ -1442,10 +1477,10 @@ class StudentController extends Controller
                         'Santos',
                         'Reyes',
                         'Admin',
-                        'Admin',
-                        'Active',
+                        $adminRoleOptions[0] ?? 'Admin',
+                        $accountStatusOptions[0] ?? 'Active',
                         'Temp1234!',
-                    ]
+                    ],
                 ],
 
             default
@@ -1469,56 +1504,124 @@ class StudentController extends Controller
                         '09171234567',
                         'PUP Main Campus',
                         'Temp1234!',
-                    ]
+                    ],
                 ],
         };
 
-        $fileName =
-            $validated['account_type']
-            . '-import-template.xlsx';
+        $fileName = $validated['account_type'] . '-import-template.xlsx';
 
         if (
-            $validated['account_type']
-            === 'student'
-            &&
-            $importAction
-            === 'deactivate_students'
+            $validated['account_type'] === 'student'
+            && $importAction === 'deactivate_students'
         ) {
-
-            $fileName =
-                'student-deactivation-template.xlsx';
+            $fileName = 'student-deactivation-template.xlsx';
         }
 
-        $spreadsheet =
-            new Spreadsheet();
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Import Template');
 
-        $sheet =
-            $spreadsheet->getActiveSheet();
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->fromArray($sampleRow, null, 'A2');
 
-        $sheet->fromArray(
-            $headers,
-            null,
-            'A1'
-        );
+        $sheet->getStyle('A1:' . Coordinate::stringFromColumnIndex(count($headers)) . '1')
+            ->getFont()
+            ->setBold(true);
+        $sheet->freezePane('A2');
+        $sheet->setAutoFilter('A1:' . Coordinate::stringFromColumnIndex(count($headers)) . '1');
 
-        $sheet->fromArray(
-            $sampleRow,
-            null,
-            'A2'
-        );
+        foreach (range(1, count($headers)) as $columnIndex) {
+            $column = Coordinate::stringFromColumnIndex($columnIndex);
+            $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
 
-        $tempFile =
-            tempnam(
-                sys_get_temp_dir(),
-                'import_tpl_'
-            );
+        // Put dropdown values on a separate hidden worksheet and reference them
+        // through workbook-level named ranges (Excel requires this for cross-sheet lists).
+        $listSheet = $spreadsheet->createSheet();
+        $listSheet->setTitle('_dropdowns');
+        $listSheet->setSheetState(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_HIDDEN);
 
-        $writer =
-            new Xlsx($spreadsheet);
+        $listColumnIndex = 1;
+        $addNamedList = function (string $rangeName, array $values) use (
+            $spreadsheet,
+            $listSheet,
+            &$listColumnIndex
+        ): bool {
+            $values = array_values(array_unique(array_filter(
+                $values,
+                fn ($value) => trim((string) $value) !== ''
+            )));
 
-        $writer->save(
-            $tempFile
-        );
+            if ($values === []) {
+                return false;
+            }
+
+            $column = Coordinate::stringFromColumnIndex($listColumnIndex++);
+            $listSheet->setCellValue($column . '1', $rangeName);
+
+            foreach ($values as $index => $value) {
+                $listSheet->setCellValue($column . ($index + 2), (string) $value);
+            }
+
+            $startRow = 2;
+            $endRow = count($values) + 1;
+            $spreadsheet->addNamedRange(new NamedRange(
+                $rangeName,
+                $listSheet,
+                '$' . $column . '$' . $startRow . ':$' . $column . '$' . $endRow
+            ));
+
+            return true;
+        };
+
+        $dropdowns = [];
+
+        if (
+            $validated['account_type'] === 'student'
+            && $importAction !== 'deactivate_students'
+        ) {
+            $dropdowns = [
+                'G' => ['ProgramOptions', $programOptions],
+                'H' => ['YearOptions', $yearOptions],
+                'I' => ['SectionOptions', $sectionOptions],
+                'J' => ['GenderOptions', $genderOptions],
+                'K' => ['LadderizedOptions', ['Yes', 'No']],
+            ];
+        } elseif ($validated['account_type'] === 'admin') {
+            $dropdowns = [
+                'F' => ['AdminRoleOptions', $adminRoleOptions],
+                'G' => ['AccountStatusOptions', $accountStatusOptions],
+            ];
+        }
+
+        foreach ($dropdowns as $column => [$rangeName, $values]) {
+            if (!$addNamedList($rangeName, $values)) {
+                continue;
+            }
+
+            $validation = clone $sheet->getCell($column . '2')->getDataValidation();
+            $validation->setType(DataValidation::TYPE_LIST);
+            $validation->setErrorStyle(DataValidation::STYLE_STOP);
+            $validation->setAllowBlank(true);
+            $validation->setShowDropDown(false);
+            $validation->setShowInputMessage(true);
+            $validation->setShowErrorMessage(true);
+            $validation->setErrorTitle('Invalid selection');
+            $validation->setError('Please select a value from the dropdown list.');
+            $validation->setPromptTitle('Select a value');
+            $validation->setPrompt('Choose a value from the dropdown list.');
+            $validation->setFormula1('=' . $rangeName);
+
+            // Provide dropdowns for up to 500 student/account rows.
+            for ($rowNumber = 2; $rowNumber <= 501; $rowNumber++) {
+                $sheet->getCell($column . $rowNumber)
+                    ->setDataValidation(clone $validation);
+            }
+        }
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'import_tpl_');
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($tempFile);
 
         return response()
             ->download(
@@ -1526,7 +1629,7 @@ class StudentController extends Controller
                 $fileName,
                 [
                     'Content-Type' =>
-                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 ]
             )
             ->deleteFileAfterSend(true);
@@ -2398,25 +2501,24 @@ class StudentController extends Controller
         array $row
     ): int {
 
-        $studentNumber =
-            $row['student_number']
-            ?? null;
+        // TEMPORARY IMPORT RULE: student number may be blank.
+        $studentNumber = trim((string) ($row['student_number'] ?? ''));
+        $studentNumber = $studentNumber !== '' ? $studentNumber : null;
 
-        $email =
-            $row['email']
-            ?? null;
+        $email = trim((string) ($row['email'] ?? ''));
 
+        // Email is required by users_tbl and must be unique.
         if (
-            empty($studentNumber)
+            $email === ''
+            || User::where('email', $email)->exists()
         ) {
             return 0;
         }
 
+        // Only run duplicate checks when a student number was supplied.
         if (
-            User::where(
-                'student_number',
-                $studentNumber
-            )->exists()
+            $studentNumber !== null
+            && User::where('student_number', $studentNumber)->exists()
         ) {
             return 0;
         }
@@ -2433,17 +2535,17 @@ class StudentController extends Controller
                 $row['year'] ?? ''
             )->value('year_id');
 
-        $sectionId =
-            Section::where(
-                'section_name',
-                $row['section'] ?? ''
-            )->value('section_id');
+        // TEMPORARY IMPORT RULE: blank section and gender are accepted.
+        // Nonblank values must still match an existing reference record.
+        $sectionName = trim((string) ($row['section'] ?? ''));
+        $sectionId = $sectionName !== ''
+            ? Section::where('section_name', $sectionName)->value('section_id')
+            : null;
 
-        $genderId =
-            Gender::where(
-                'gender_name',
-                $row['gender'] ?? ''
-            )->value('gender_id');
+        $genderName = trim((string) ($row['gender'] ?? ''));
+        $genderId = $genderName !== ''
+            ? Gender::where('gender_name', $genderName)->value('gender_id')
+            : null;
 
         $statusName =
             trim(
@@ -2484,14 +2586,10 @@ class StudentController extends Controller
 
         if (
             !$programId
-            ||
-            !$yearId
-            ||
-            !$sectionId
-            ||
-            !$genderId
-            ||
-            !$studentStatusId
+            || !$yearId
+            || ($sectionName !== '' && !$sectionId)
+            || ($genderName !== '' && !$genderId)
+            || !$studentStatusId
         ) {
             return 0;
         }
@@ -2532,17 +2630,7 @@ class StudentController extends Controller
             }
         }
 
-        if (
-            $email !== null
-            &&
-            trim((string) $email) !== ''
-        ) {
-
-            $identity['email'] =
-                trim(
-                    (string) $email
-                );
-        }
+        $identity['email'] = $email;
 
         $student =
             User::create(
