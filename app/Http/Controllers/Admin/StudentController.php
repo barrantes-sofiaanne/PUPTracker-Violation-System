@@ -1603,7 +1603,7 @@ class StudentController extends Controller
             $validation->setType(DataValidation::TYPE_LIST);
             $validation->setErrorStyle(DataValidation::STYLE_STOP);
             $validation->setAllowBlank(true);
-            $validation->setShowDropDown(false);
+            $validation->setShowDropDown(true);
             $validation->setShowInputMessage(true);
             $validation->setShowErrorMessage(true);
             $validation->setErrorTitle('Invalid selection');
