@@ -1727,7 +1727,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const populateReview = () => {
         document.getElementById("reviewStudentNumber").textContent =
-            document.getElementById("selectedStudentNumber").value || "-";
+            currentStudentNumber() || "-";
         document.getElementById("reviewStudentName").textContent =
             document.getElementById("studentName").value || "-";
         document.getElementById("reviewStudentProgram").textContent =
@@ -1827,12 +1827,45 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        selectedUserIdInput.value = String(student.user_id).trim();
+        const userId = String(student.user_id ?? "").trim();
+        const studentNumber = String(student.student_number ?? "").trim();
 
-        selectedStudentNumberInput.value = String(
-            student.student_number || "",
-        ).trim();
-        document.getElementById("studentNumber").value = student.student_number;
+        console.log("Selected student response:", student);
+        console.log("Resolved user ID:", userId);
+        console.log("Resolved student number:", studentNumber);
+
+        if (!selectedUserIdInput || !selectedStudentNumberInput) {
+            console.error(
+                "Student hidden inputs are missing from violationForm.",
+            );
+
+            showAlert(
+                "error",
+                "Form configuration error",
+                "The student identification fields are missing. Please refresh the page.",
+            );
+            return;
+        }
+
+        if (!userId || !studentNumber) {
+            console.error(
+                "Student identification data is incomplete:",
+                student,
+            );
+
+            showAlert(
+                "error",
+                "Student information incomplete",
+                "The selected student is missing an account ID or student number. Please try again.",
+            );
+            return;
+        }
+
+        selectedUserIdInput.value = userId;
+        selectedStudentNumberInput.value = studentNumber;
+
+        document.getElementById("studentNumber").value = studentNumber;
+
         document.getElementById("studentName").value =
             `${student.last_name}, ${student.first_name}`;
         document.getElementById("studentProgram").value =
