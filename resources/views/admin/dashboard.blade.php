@@ -128,11 +128,20 @@
                                         </small>
                                     </td>
                                     <td>
-                                        <a href="{{ route('admin.violations.show', ['student_number' => $violation->user_id, 'source' => 'dashboard']) }}" 
-                                           class="admin-btn admin-btn-view admin-btn-sm">
-                                            <i class="bi bi-eye me-1"></i>
-                                            View Record
-                                        </a>
+                                        @if(filled($violation->student_number))
+    <a href="{{ route('admin.violations.show', [
+        'student_number' => $violation->student_number,
+        'source' => 'dashboard'
+    ]) }}"
+       class="admin-btn admin-btn-view admin-btn-sm">
+        <i class="bi bi-eye me-1"></i>
+        View Record
+    </a>
+@else
+    <span class="text-muted small">
+        Student number not yet provided
+    </span>
+@endif
                                     </td>
                                 </tr>
                                 @empty
@@ -158,10 +167,20 @@
                 </div>
                 <div class="card-body">
                     @forelse($topOffenders as $offender)
-                    <a href="{{ route('admin.violations.show', ['student_number' => $offender->student_number, 'source' => 'dashboard']) }}" class="d-flex justify-content-between align-items-center py-2 border-bottom text-decoration-none">
-                        <span class="fw-500 text-maroon">{{ $offender->student_number }}</span>
-                        <span class="badge bg-danger">{{ $offender->violation_count }} violations</span>
-                    </a>
+                   <a href="{{ route('admin.violations.show', [
+    'student_number' => $offender->student_number,
+    'source' => 'dashboard'
+]) }}"
+   class="d-flex justify-content-between align-items-center py-2 border-bottom text-decoration-none">
+
+    <span class="fw-500 text-maroon">
+        {{ $offender->student_number }}
+    </span>
+
+    <span class="badge bg-danger">
+        {{ $offender->violation_count }} violations
+    </span>
+</a>
                     @empty
                     <p class="text-muted text-center py-3">No violation records</p>
                     @endforelse
