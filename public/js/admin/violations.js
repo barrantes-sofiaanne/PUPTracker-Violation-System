@@ -49,12 +49,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
         e.preventDefault();
 
-        const studentNumber = button.dataset.student;
+        // The View Record buttons now identify students by user_id.
+        // Student numbers are optional and may legitimately be NULL.
+        const userId = button.dataset.userId;
+
+        if (!userId) {
+            console.error(
+                "View Record button is missing data-user-id:",
+                button,
+            );
+
+            content.innerHTML = `
+                <div class="alert alert-danger">
+                    Unable to identify this student's account. Please refresh the page and try again.
+                </div>
+            `;
+
+            modal.show();
+            return;
+        }
 
         modal.show();
 
         loadStudentHistory(
-            window.ViolationRoutes.studentHistory + studentNumber,
+            window.ViolationRoutes.studentHistory + encodeURIComponent(userId),
         );
     });
 
@@ -108,8 +126,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 evidenceList.innerHTML = items
                     .map(function (item) {
                         const label = item.name || item.code || "Evidence file";
-                        const code = item.code ? ` <span class="text-muted">(${item.code})</span>` : "";
-                        const method = item.method === "camera" ? "Camera" : "Upload";
+                        const code = item.code
+                            ? ` <span class="text-muted">(${item.code})</span>`
+                            : "";
+                        const method =
+                            item.method === "camera" ? "Camera" : "Upload";
 
                         return `
                             <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2"

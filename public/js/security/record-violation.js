@@ -1551,7 +1551,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (phTimeInterval) {
             clearInterval(phTimeInterval);
         }
-        phTimeInterval = setInterval(setCurrentPhTime, 1000);
     });
 
     modalElement.addEventListener("hidden.bs.modal", function () {
