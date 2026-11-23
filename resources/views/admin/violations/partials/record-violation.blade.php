@@ -952,7 +952,6 @@ background: #800000 !important;
                     id="violationDate"
                     name="violation_date"
                     class="form-control"
-                    value="{{ now()->format('Y-m-d\TH:i') }}"
                     required>
 
             </div>

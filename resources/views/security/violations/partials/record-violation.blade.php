@@ -663,7 +663,7 @@ background: #ffffff;
 
                                     <div class="col-md-4">
                                         <label class="form-label fw-semibold">Violation Date <span class="text-danger">*</span></label>
-                                        <input id="violationDate" type="datetime-local" class="form-control" value="{{ now()->format('Y-m-d\TH:i') }}">
+                                        <input id="violationDate" type="datetime-local" class="form-control">
                                     </div>
 
                                     <div class="col-12">
