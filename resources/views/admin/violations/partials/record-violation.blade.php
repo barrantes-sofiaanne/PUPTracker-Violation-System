@@ -573,14 +573,20 @@ background: #800000 !important;
 
             </div>
 
-            <form id="violationForm">
+<form id="violationForm">
 
-                @csrf
+    @csrf
 
-                <input
-                    type="hidden"
-                    id="selectedStudentNumber"
-                    name="student_number">
+    <input
+        type="hidden"
+        id="selectedUserId"
+        name="user_id">
+
+    <input
+        type="hidden"
+        id="selectedStudentNumber"
+        name="student_number">
+
 
                 <div class="modal-body">
 

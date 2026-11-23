@@ -1,5 +1,14 @@
 document.addEventListener("DOMContentLoaded", function () {
     const modalElement = document.getElementById("addViolationModal");
+    const violationForm = document.getElementById("violationForm");
+
+    const selectedUserIdInput = violationForm?.querySelector(
+        'input[name="user_id"]',
+    );
+
+    const selectedStudentNumberInput = violationForm?.querySelector(
+        'input[name="student_number"]',
+    );
     const studentStep = document.getElementById("studentStep");
     const violationStep = document.getElementById("violationStep");
     const evidenceStep = document.getElementById("evidenceStep");
@@ -240,10 +249,9 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     const currentStudentNumber = () =>
-        document.getElementById("selectedStudentNumber").value || "";
+        selectedStudentNumberInput?.value?.trim() || "";
 
-    const currentUserId = () =>
-        document.getElementById("selectedUserId")?.value || "";
+    const currentUserId = () => selectedUserIdInput?.value?.trim() || "";
     // ---------------------------------------------------------------
     // Privacy face-blur protection
     // Uses the same MediaPipe face-blur module as Security.
@@ -1540,8 +1548,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const resetModal = () => {
         stopCamera();
         document.getElementById("violationForm").reset();
-        document.getElementById("selectedStudentNumber").value = "";
-        document.getElementById("selectedUserId").value = "";
+        if (selectedUserIdInput) {
+            selectedUserIdInput.value = "";
+        }
+
+        if (selectedStudentNumberInput) {
+            selectedStudentNumberInput.value = "";
+        }
         document.getElementById("previewCategory").textContent = "-";
         document.getElementById("previewViolationType").textContent = "-";
         document.getElementById("previewOffenseLevelDisplay").textContent = "-";
@@ -1813,12 +1826,11 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        document.getElementById("selectedUserId").value = String(
-            student.user_id,
-        );
+        selectedUserIdInput.value = String(student.user_id).trim();
 
-        document.getElementById("selectedStudentNumber").value =
-            student.student_number || "";
+        selectedStudentNumberInput.value = String(
+            student.student_number || "",
+        ).trim();
         document.getElementById("studentNumber").value = student.student_number;
         document.getElementById("studentName").value =
             `${student.last_name}, ${student.first_name}`;
@@ -2036,8 +2048,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const formData = new FormData();
 
-        const userId = document.getElementById("selectedUserId").value;
-
+        const userId = currentUserId();
         if (!userId) {
             showAlert(
                 "warning",
