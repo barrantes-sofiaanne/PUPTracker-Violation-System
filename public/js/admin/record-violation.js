@@ -1594,13 +1594,22 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     // Set the violation date/time input to the current Philippine time (PHT).
+
     const setCurrentPhTime = () => {
         const violationDateInput = document.getElementById("violationDate");
+
         if (!violationDateInput) {
             return;
         }
 
+        // Only assign the current Philippine time when the field is empty.
+        // Never overwrite a date/time manually selected by the administrator.
+        if (violationDateInput.value) {
+            return;
+        }
+
         const now = new Date();
+
         const parts = new Intl.DateTimeFormat("en-CA", {
             timeZone: "Asia/Manila",
             year: "numeric",
@@ -1614,14 +1623,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const get = (type) =>
             (parts.find((p) => p.type === type) || {}).value || "00";
 
-        // en-CA gives YYYY-MM-DD style; build a datetime-local value.
-        const value = `${get("year")}-${get("month")}-${get("day")}T${get(
-            "hour",
-        )}:${get("minute")}`;
-
-        if (violationDateInput.value !== value) {
-            violationDateInput.value = value;
-        }
+        violationDateInput.value = `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
     };
 
     let phTimeInterval = null;
@@ -1636,7 +1638,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (phTimeInterval) {
             clearInterval(phTimeInterval);
         }
-        phTimeInterval = setInterval(setCurrentPhTime, 1000);
     });
 
     modalElement.addEventListener("hidden.bs.modal", function () {
