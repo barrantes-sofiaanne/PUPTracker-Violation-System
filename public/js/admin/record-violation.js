@@ -241,6 +241,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const currentStudentNumber = () =>
         document.getElementById("selectedStudentNumber").value || "";
+
+    const currentUserId = () =>
+        document.getElementById("selectedUserId")?.value || "";
     // ---------------------------------------------------------------
     // Privacy face-blur protection
     // Uses the same MediaPipe face-blur module as Security.
@@ -451,7 +454,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         paused: video.paused,
                         currentTime: video.currentTime,
                         hasRequestVideoFrameCallback:
-                            typeof video.requestVideoFrameCallback === "function",
+                            typeof video.requestVideoFrameCallback ===
+                            "function",
                     });
                     cleanup();
                     resolve();
@@ -887,7 +891,10 @@ document.addEventListener("DOMContentLoaded", function () {
             ) {
                 return;
             }
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            if (
+                !navigator.mediaDevices ||
+                !navigator.mediaDevices.getUserMedia
+            ) {
                 return;
             }
 
@@ -1534,6 +1541,7 @@ document.addEventListener("DOMContentLoaded", function () {
         stopCamera();
         document.getElementById("violationForm").reset();
         document.getElementById("selectedStudentNumber").value = "";
+        document.getElementById("selectedUserId").value = "";
         document.getElementById("previewCategory").textContent = "-";
         document.getElementById("previewViolationType").textContent = "-";
         document.getElementById("previewOffenseLevelDisplay").textContent = "-";
@@ -1628,7 +1636,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const validateStep = (stepNumber) => {
         if (stepNumber === 1) {
-            if (!document.getElementById("selectedStudentNumber").value) {
+            if (!currentUserId()) {
                 showAlert(
                     "warning",
                     "Select a student",
@@ -1794,8 +1802,23 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        // Save the selected student's account ID.
+        // This is required by the Next button validation.
+        if (!student.user_id) {
+            showAlert(
+                "error",
+                "Unable to select student",
+                "The selected student account is missing its account identifier. Please refresh the page and try again.",
+            );
+            return;
+        }
+
+        document.getElementById("selectedUserId").value = String(
+            student.user_id,
+        );
+
         document.getElementById("selectedStudentNumber").value =
-            student.student_number;
+            student.student_number || "";
         document.getElementById("studentNumber").value = student.student_number;
         document.getElementById("studentName").value =
             `${student.last_name}, ${student.first_name}`;
@@ -2012,6 +2035,19 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const formData = new FormData();
+
+        const userId = document.getElementById("selectedUserId").value;
+
+        if (!userId) {
+            showAlert(
+                "warning",
+                "Student not selected",
+                "Please select a student again before submitting.",
+            );
+            return;
+        }
+
+        formData.append("user_id", userId);
         formData.append("student_number", studentNumber);
         formData.append("violation_type_id", violationTypeId);
         formData.append("violation_date", violationDate);

@@ -402,6 +402,7 @@ $violationHistory = Violation::with([
                     title: 'Violation Confirmed',
 message: 'Your recorded violation (' . $violationLabel . ') has been confirmed and added to your Student Record. Please check your PUPTracker account regularly for any disciplinary sanction related to this violation. If the system requires a disciplinary sanction request, you may submit the request through your account for proper review.',                    targetType: 'violation',
                     targetId: (int) $violation->violation_id,
+                    userId: (int) $student->user_id,
                 );
             } catch (\Throwable $e) {
                 // Notification must never break the confirmation.
@@ -724,6 +725,7 @@ public function searchStudents(Request $request)
 
     return response()->json($students->map(function (User $student) {
         return [
+            'user_id' => $student->user_id,
             'student_number' => $student->student_number,
             'first_name' => $student->first_name,
             'last_name' => $student->last_name,
@@ -781,10 +783,18 @@ public function searchStudents(Request $request)
 
     public function previewViolation(Request $request): JsonResponse
     {
-        $request->validate([
-    'student_number' => ['required', 'string'],
-    'violation_type_id' => ['required', 'integer'],
-]);
+        $validated = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users_tbl,user_id'],
+            'violation_type_id' => ['required', 'integer', 'exists:violation_type_tbl,violation_type_id'],
+        ]);
+
+        $student = User::query()
+            ->whereHas('role', fn ($query) => $query->where('roles_name', 'Student'))
+            ->findOrFail($validated['user_id']);
+
+        if (! $student->isActiveAccount()) {
+            return response()->json(['message' => 'Violation cannot be recorded because this student account is inactive.'], 422);
+        }
 
 $violationType = ViolationType::with('violationCategory')
     ->find($request->violation_type_id);
@@ -802,14 +812,18 @@ $violationType = ViolationType::with('violationCategory')
         |--------------------------------------------------------------------------
         */
 
-$previousCount = Violation::where(
-    'student_number',
-    $request->student_number
-)
-    ->where(
-        'violation_type_id',
-        $violationType->violation_type_id
-    )
+$previousCount = Violation::query()
+    ->where('violation_type_id', $violationType->violation_type_id)
+    ->where(function ($query) use ($student) {
+        $query->where('user_id', $student->user_id);
+        if (! empty($student->student_number)) {
+            // Include legacy records that have not yet been backfilled.
+            $query->orWhere(function ($legacy) use ($student) {
+                $legacy->whereNull('user_id')
+                    ->where('student_number', $student->student_number);
+            });
+        }
+    })
     ->effective()
     ->count();
 
@@ -931,6 +945,18 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
         ], 422);
     }
 
+    $student = User::query()
+        ->whereHas('role', fn ($query) => $query->where('roles_name', 'Student'))
+        ->findOrFail((int) $validated['user_id']);
+
+    if (! $student->isActiveAccount()) {
+        return response()->json([
+            'message' => 'Violation cannot be recorded because this student account is inactive.',
+        ], 422);
+    }
+
+    $studentNumber = $student->student_number ?: null;
+
     $violationType = ViolationType::findOrFail(
         $validated['violation_type_id']
     );
@@ -945,11 +971,15 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
             |--------------------------------------------------------------------------
             */
 
-$exists = Violation::where(
-        'student_number',
-        $validated['student_number']
-    )
-    ->where('violation_type_id', $violationType->violation_type_id)
+$exists = Violation::where('violation_type_id', $violationType->violation_type_id)
+    ->where(function ($query) use ($student, $studentNumber) {
+        $query->where('user_id', $student->user_id);
+        if ($studentNumber !== null) {
+            $query->orWhere(function ($legacy) use ($studentNumber) {
+                $legacy->whereNull('user_id')->where('student_number', $studentNumber);
+            });
+        }
+    })
                 ->whereDate(
                     'violation_date',
                     date(
@@ -990,7 +1020,8 @@ $exists = Violation::where(
 
             $violation = Violation::create([
 
-                'student_number' => $validated['student_number'],
+                'user_id' => $student->user_id,
+                'student_number' => $studentNumber,
 
                 'violation_type_id' => $violationType->violation_type_id,
 
@@ -1026,7 +1057,7 @@ $exists = Violation::where(
             // Notify the student about the recorded violation (target-aware).
             try {
                 app(\App\Services\StudentNotificationService::class)->create(
-                    studentNumber: $validated['student_number'],
+                    studentNumber: $studentNumber ?? '',
                     type: 'violation',
                     title: 'Violation Notice',
                     message: 'A violation has been recorded against your record: ' . $violationType->violation_type . '. Please review your Student Record.',
@@ -1046,6 +1077,7 @@ $exists = Violation::where(
         } catch (\Throwable $exception) {
     Log::error('Admin violation store failed', [
         'student_number' => $request->input('student_number'),
+        'user_id' => $request->input('user_id'),
         'error' => $exception->getMessage(),
         'file' => $exception->getFile(),
         'line' => $exception->getLine(),
