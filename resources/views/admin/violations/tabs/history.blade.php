@@ -246,7 +246,7 @@
     <button
         type="button"
         class="admin-btn admin-btn-view admin-btn-sm viewStudent"
-        data-student="{{ $history->student_number }}"
+        data-user-id="{{ $history->user_id ?? $history->student?->user_id }}"
         aria-label="View {{ $history->student?->last_name ?? 'student' }}'s violation record"
     >
         <i class="bi bi-eye me-1"></i>

@@ -82,6 +82,19 @@ class SanctionRequestDecisionService
                     ->orderBy('disciplinary_sanction_id')
                     ->first();
 
+                // Warning-level violations do not require a formal sanction.
+                // Refuse to move one into a StudentSanctionRecord. Throwing
+                // inside the transaction rolls back the is_active update, so a
+                // rejected approval leaves no partial record or notification
+                // and keeps the request pending for a decline decision.
+                if ($decision === self::DECISION_APPROVED
+                    && $assignedSanction
+                    && str_contains(strtolower((string) $assignedSanction->disciplinary_sanction), 'warning')) {
+                    throw ValidationException::withMessages([
+                        'sanction_request' => 'This request cannot be approved because the violation is a warning-level violation and does not require a formal sanction.',
+                    ]);
+                }
+
                 // Only Community Service / Campus Service sanctions should
                 // arrive through the student Request Sanction workflow because
                 // those sanctions require administration scheduling. OSS

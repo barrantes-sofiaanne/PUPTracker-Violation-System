@@ -335,13 +335,13 @@ class StudentController extends Controller
                 'nullable|string|max:20',
 
             'program_id' =>
-                'required|exists:program_tbl,program_id',
+                'nullable|exists:program_tbl,program_id',
 
             'section_id' =>
                 'required|exists:section_tbl,section_id',
 
             'year_id' =>
-                'required|exists:year_tbl,year_id',
+                'nullable|exists:year_tbl,year_id',
 
             'gender_id' =>
                 'required|exists:gender_tbl,gender_id',
@@ -1799,13 +1799,13 @@ class StudentController extends Controller
 
         $request->validate([
             'program_id' =>
-                'required|exists:program_tbl,program_id',
+                'nullable|exists:program_tbl,program_id',
 
             'section_id' =>
                 'required|exists:section_tbl,section_id',
 
             'year_id' =>
-                'required|exists:year_tbl,year_id',
+                'nullable|exists:year_tbl,year_id',
 
             'gender_id' =>
                 'required|exists:gender_tbl,gender_id',
@@ -2499,125 +2499,115 @@ class StudentController extends Controller
 
 
 private function importStudentRow(array $row): int
-{
-    // Optional student number
-    $studentNumber = trim((string) ($row['student_number'] ?? ''));
-    $studentNumber = $studentNumber !== '' ? $studentNumber : null;
+    {
+        // Student number is optional. Only check duplicates when supplied.
+        $studentNumber = $this->nullableTrim($row['student_number'] ?? null);
 
-    // Optional email
-    $email = trim((string) ($row['email'] ?? ''));
-    $email = $email !== '' ? $email : null;
+        if (
+            $studentNumber !== null &&
+            User::where('student_number', $studentNumber)->exists()
+        ) {
+            return 0;
+        }
 
-    // Prevent duplicate student numbers when supplied
-    if (
-        $studentNumber !== null &&
-        User::where('student_number', $studentNumber)->exists()
-    ) {
-        return 0;
-    }
+        // Email is optional and stored as NULL when blank.
+        $email = $this->nullableTrim($row['email'] ?? null);
 
-    // Required program
-    $programName = trim((string) ($row['program'] ?? ''));
+        if (
+            $email !== null &&
+            User::where('email', $email)->exists()
+        ) {
+            return 0;
+        }
 
-    $programId = Program::where(
-        'program_name',
-        $programName
-    )->value('program_id');
+        // Program is optional. If provided, it must exist in program_tbl.
+        $programName = $this->nullableTrim($row['program'] ?? null);
+        $programId = $programName !== null
+            ? Program::where('program_name', $programName)->value('program_id')
+            : null;
 
-    // Required year
-    $yearValue = trim((string) ($row['year'] ?? ''));
+        if ($programName !== null && $programId === null) {
+            return 0;
+        }
 
-    $yearId = Year::where(
-        'year',
-        $yearValue
-    )->value('year_id');
+        // Year is optional. If provided, it must exist in year_tbl.
+        $yearValue = $this->nullableTrim($row['year'] ?? null);
+        $yearId = $yearValue !== null
+            ? Year::where('year', $yearValue)->value('year_id')
+            : null;
 
-    // Optional section
-    $sectionName = trim((string) ($row['section'] ?? ''));
+        if ($yearValue !== null && $yearId === null) {
+            return 0;
+        }
 
-    $sectionId = $sectionName !== ''
-        ? Section::where('section_name', $sectionName)
-            ->value('section_id')
-        : null;
+        // Section and gender remain optional.
+        $sectionName = $this->nullableTrim($row['section'] ?? null);
+        $sectionId = $sectionName !== null
+            ? Section::where('section_name', $sectionName)->value('section_id')
+            : null;
 
-    // Optional gender
-    $genderName = trim((string) ($row['gender'] ?? ''));
+        if ($sectionName !== null && $sectionId === null) {
+            return 0;
+        }
 
-    $genderId = $genderName !== ''
-        ? Gender::where('gender_name', $genderName)
-            ->value('gender_id')
-        : null;
+        $genderName = $this->nullableTrim($row['gender'] ?? null);
+        $genderId = $genderName !== null
+            ? Gender::where('gender_name', $genderName)->value('gender_id')
+            : null;
 
-    // Student status
-    $statusName = trim((string) ($row['status'] ?? ''));
+        if ($genderName !== null && $genderId === null) {
+            return 0;
+        }
 
-    $statusId = Status::whereRaw(
-        'LOWER(status_name) = ?',
-        [strtolower($statusName)]
-    )->value('status_id') ?? 1;
+        // Resolve account/student status using the existing system defaults.
+        $statusName = trim((string) ($row['status'] ?? 'Active'));
+        $statusId = Status::whereRaw(
+            'LOWER(status_name) = ?',
+            [strtolower($statusName)]
+        )->value('status_id') ?? 1;
 
-    $studentStatusId = $this->resolveStudentStatusIdByName(
-        $statusName
-    );
+        $studentStatusId = $this->resolveStudentStatusIdByName($statusName);
 
-    $ladderized = $this->normalizeLadderizedFlag(
-        $row['ladderized'] ?? null
-    );
-
-    if (!$studentStatusId) {
-        $studentStatusId =
-            $this->resolveStudentStatusIdFromUserStatusId(
+        if (!$studentStatusId) {
+            $studentStatusId = $this->resolveStudentStatusIdFromUserStatusId(
                 (int) $statusId
             );
-    }
-
-    // Required fields must be valid
-    if (!$programId || !$yearId || !$studentStatusId) {
-        return 0;
-    }
-
-    // Collect available student information
-    $identity = [];
-
-    foreach ([
-        'first_name',
-        'middle_name',
-        'last_name',
-        'name_suffix',
-    ] as $field) {
-        $value = trim((string) ($row[$field] ?? ''));
-
-        if ($value !== '') {
-            $identity[$field] = $value;
         }
+
+        if (!$studentStatusId) {
+            return 0;
+        }
+
+        $ladderized = $this->normalizeLadderizedFlag($row['ladderized'] ?? null);
+
+        $identity = [];
+        foreach (['first_name', 'middle_name', 'last_name', 'name_suffix'] as $field) {
+            $value = $this->nullableTrim($row[$field] ?? null);
+            if ($value !== null) {
+                $identity[$field] = $value;
+            }
+        }
+
+        // Create the student account. Blank optional fields are persisted as NULL.
+        $student = User::create(array_merge([
+            'student_number' => $studentNumber,
+            'email'          => $email,
+            'gender_id'      => $genderId,
+            'status_id'      => $statusId,
+            'roles_id'       => 2,
+            'password_hash'  => '',
+        ], $identity));
+
+        $student->studentInfo()->create([
+            'program_id'        => $programId,
+            'year_id'           => $yearId,
+            'section_id'        => $sectionId,
+            'student_status_id' => $studentStatusId,
+            'ladderized'        => $ladderized,
+        ]);
+
+        return 1;
     }
-
-    // Email is only saved when provided
-    if ($email !== null) {
-        $identity['email'] = $email;
-    }
-
-    // Create student account
-    $student = User::create(array_merge([
-        'student_number' => $studentNumber,
-        'email'          => $email,
-        'gender_id'      => $genderId,
-        'status_id'      => $statusId,
-        'roles_id'       => 2,
-        'password_hash'  => '',
-    ], $identity));
-
-    // Create student information
-    $student->studentInfo()->create([
-        'program_id'        => $programId,
-        'year_id'           => $yearId,
-        'section_id'        => $sectionId,
-        'student_status_id' => $studentStatusId,
-        'ladderized'        => $ladderized,
-    ]);
-
-    return 1;
-}
 
 
     private function importAdminRow(

@@ -376,6 +376,7 @@ background: #800000;
             <form id="violationForm">
                 @csrf
 
+                <input type="hidden" id="selectedStudentId" name="user_id">
                 <input type="hidden" id="selectedStudentNumber" name="student_number">
 
                 <div class="modal-body">
@@ -481,7 +482,7 @@ background: #800000;
 
                                     <div class="col-md-4">
                                         <label class="form-label fw-semibold">Violation Date <span class="text-danger">*</span></label>
-                                        <input id="violationDate" type="datetime-local" class="form-control" value="{{ now()->format('Y-m-d\TH:i') }}">
+                                        <input id="violationDate" type="datetime-local" class="form-control" >
                                     </div>
 
                                     <div class="col-12">

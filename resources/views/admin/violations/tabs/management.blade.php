@@ -297,7 +297,7 @@
                         <button
                             type="button"
                             class="admin-btn admin-btn-view admin-btn-sm viewStudent"
-                            data-student="{{ $student->student_number }}"
+                            data-user-id="{{ $student->user_id }}"
                             aria-label="View {{ $student->last_name }}, {{ $student->first_name }}'s violation record">
                             <i class="bi bi-eye me-1"></i>
                             View Record

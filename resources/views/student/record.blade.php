@@ -3045,7 +3045,6 @@
         $resolvedType?->violation_category_id ?? ''
     );
 
-    // Resolve the request for this violation type.
     $sanctionRequest = $typeId !== ''
         ? (
             data_get($sanctionRequestsByType, $typeId)
@@ -3065,43 +3064,44 @@
         $assignedSanctionViolationIds[$violation->violation_id]
     );
 
-    // A pending correction/deletion request blocks both corrective actions
-    // and sanction requests until the administrator approves or rejects it.
-    $hasPendingCorrection = $pendingCorrectionRequests->has($violation->violation_id);
+    $hasPendingCorrection = $pendingCorrectionRequests->has(
+        $violation->violation_id
+    );
+    
 
-    // Preserve the existing warning-level detection.
-    $isWarningLevelViolation = isset(
-        $warningLevelViolationIds[(int) $violation->violation_id]
+$isWarningLevelViolation = isset(
+    $warningLevelViolationIds[(int) $violation->violation_id]
+);
+
+$rowSanctionStatus = $hasAssignedSanction
+    ? 'assigned'
+    : (
+        $requestStatus === 'pending' && $isActiveRequest
+            ? 'pending'
+            : (
+                $requestStatus === 'approved' && !$isActiveRequest
+                    ? 'approved'
+                    : (
+                        $requestStatus === 'declined' && !$isActiveRequest
+                            ? 'declined'
+                            : 'needs'
+                    )
+            )
     );
 
-    // Warning-level violations must not be treated as needing a request.
-    
-    // All confirmed violations can enter the sanction-request workflow,
-    // including warning-level violations.
-    $rowSanctionStatus = $hasAssignedSanction
-        ? 'assigned'
-        : (
-            $requestStatus === 'pending' && $isActiveRequest
-                ? 'pending'
-                : (
-                    $requestStatus === 'approved' && !$isActiveRequest
-                        ? 'approved'
-                        : (
-                            $requestStatus === 'declined' && !$isActiveRequest
-                                ? 'declined'
-                                : 'needs'
-                        )
-                )
-        );
-
-
-    $rowDate = \Carbon\Carbon::parse(
-        $violation->violation_date
-    )->format('Y-m-d');
+$rowDate = \Carbon\Carbon::parse(
+    $violation->violation_date
+)->format('Y-m-d');
 @endphp
+<tr
+    data-category-id="{{ $categoryId }}"
+    data-violation-type-id="{{ $typeId }}"
+    data-violation-date="{{ $rowDate }}"
+    data-sanction-status="{{ $rowSanctionStatus }}"
+>
+    
 
-                        <tr data-category-id="{{ $categoryId }}" data-violation-type-id="{{ $typeId }}" data-violation-date="{{ $rowDate }}" data-sanction-status="{{ $rowSanctionStatus }}">
-                            <td class="violation-type-col">{{ $violation->violation_type_display }}</td>
+    <td class="violation-type-col">{{ $violation->violation_type_display }}</td>
                             <td class="violation-date-col">
                                 <div>{{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y') }}</div>
                                 <small class="text-muted">{{ \Carbon\Carbon::parse($violation->violation_date)->format('h:i A') }}</small>

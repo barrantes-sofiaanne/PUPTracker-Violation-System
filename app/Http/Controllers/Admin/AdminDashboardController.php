@@ -45,12 +45,16 @@ class AdminDashboardController extends Controller
         ->get();
 
         // Get top students with most violations
-        $topOffenders = Violation::effective()
-            ->select('student_number', DB::raw('COUNT(*) as violation_count'))
-            ->groupBy('student_number')
-            ->orderByDesc('violation_count')
-            ->take(5)
-            ->get();
+// Get top offenders that have a student number.
+// The current student-history route still requires student_number.
+$topOffenders = Violation::effective()
+    ->whereNotNull('student_number')
+    ->where('student_number', '!=', '')
+    ->select('student_number', DB::raw('COUNT(*) as violation_count'))
+    ->groupBy('student_number')
+    ->orderByDesc('violation_count')
+    ->take(5)
+    ->get();
 
         // Daily series for the dashboard's DAILY bar chart (last 7 days).
         $dailyTrend = $this->dailyViolationSeries(7);

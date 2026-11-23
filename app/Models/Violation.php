@@ -36,6 +36,7 @@ class Violation extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'user_id',
         'student_number',
         'violation_type_id',
         'violation_date',
@@ -195,7 +196,7 @@ public function getOffenseLevelAttribute(): string
         return (string) $this->attributes['offense_level'];
     }
 
-    if (empty($this->student_number) || empty($this->violation_id)) {
+    if (empty($this->user_id) && empty($this->student_number) || empty($this->violation_id)) {
         return '';
     }
 
@@ -203,8 +204,20 @@ public function getOffenseLevelAttribute(): string
         return '';
     }
 
-    $count = self::where('student_number', $this->student_number)
-        ->where('violation_type_id', $this->violation_type_id)
+    $countQuery = self::query()->where('violation_type_id', $this->violation_type_id);
+
+    if (!empty($this->user_id)) {
+        $countQuery->where(function ($query) {
+            $query->where('user_id', $this->user_id)
+                ->orWhere(function ($legacy) {
+                    $legacy->whereNull('user_id')->where('student_number', $this->student_number);
+                });
+        });
+    } else {
+        $countQuery->where('student_number', $this->student_number);
+    }
+
+    $count = $countQuery
         ->where('violation_id', '<=', $this->violation_id)
         ->effective()
         ->count();
@@ -258,11 +271,7 @@ public function getOffenseLevelAttribute(): string
 
     public function student(): BelongsTo
     {
-        return $this->belongsTo(
-            User::class,
-            'student_number',
-            'student_number'
-        );
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
     /*

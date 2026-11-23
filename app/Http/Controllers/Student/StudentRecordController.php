@@ -73,7 +73,7 @@ $sanctionRequestsByType = SanctionRequest::where('student_number', $user->studen
 
 // Build filter options only from this student's confirmed violations.
 $studentRecordedViolations = Violation::with('violationType.violationCategory')
-    ->where('student_number', $user->student_number)
+    ->where('user_id', $user->user_id)
     ->where('status', Violation::STATUS_CONFIRMED)
     ->get();
 
@@ -104,7 +104,7 @@ $violationsQuery = Violation::with([
     'violationType.disciplinarySanctions',
     'evidence',
 ])
-    ->where('student_number', $user->student_number)
+    ->where('user_id', $user->user_id)
     // Only confirmed, non-deleted violations are visible to students.
     ->where('status', Violation::STATUS_CONFIRMED);
 
@@ -131,6 +131,33 @@ $violationsQuery = Violation::with([
             ->orderByDesc('violation_date')
             ->paginate(10)
             ->withQueryString();
+
+        // Warning-level violations: identify which confirmed violations resolve
+        // to a "warning" disciplinary sanction so the record view can suppress
+        // the Request Sanction action for them. Offense level is computed per
+        // individual violation (the Violation::offense_level accessor), then the
+        // sanction is matched for that offense level, falling back to the first
+        // configured sanction for the type — the same resolution used by the
+        // summary and ViolationRecordingService.
+        $warningLevelViolationIds = [];
+        foreach ($violations as $violation) {
+            $type = $violation->violationType;
+            $offenseLevel = $violation->offense_level;
+
+            if (! $type || $offenseLevel === '') {
+                continue;
+            }
+
+            $sanction = $type->disciplinarySanctions
+                    ->firstWhere('offense_level', $offenseLevel)
+                ?? $type->disciplinarySanctions
+                    ->sortBy('disciplinary_sanction_id')
+                    ->first();
+
+            if ($sanction && str_contains(strtolower((string) $sanction->disciplinary_sanction), 'warning')) {
+                $warningLevelViolationIds[(int) $violation->violation_id] = true;
+            }
+        }
 /*
 |--------------------------------------------------------------------------
 | Summary by Violation
@@ -211,7 +238,7 @@ $groupedViolations = Violation::with([
         'violationType.disciplinarySanctions',
         'evidence',
     ])
-    ->where('student_number', $user->student_number)
+    ->where('user_id', $user->user_id)
     // Only Administrator-confirmed violations are eligible for the
     // student-facing Summary by Violation. Pending/denied/unconfirmed
     // records must remain invisible to the student.
@@ -396,6 +423,7 @@ return view(
         'sanctionRequestsByType',
         'recordedViolationTypes',
         'recordedViolationCategories',
+        'warningLevelViolationIds',
         'filters'
     )
 );
@@ -438,7 +466,7 @@ public function requestSanction(Request $request)
         ->where('student_number', $user->student_number)
         ->where('status', ViolationCorrectionRequest::STATUS_PENDING)
         ->whereHas('violation', function ($query) use ($user, $violationType) {
-            $query->where('student_number', $user->student_number)
+            $query->where('user_id', $user->user_id)
                 ->where('violation_type_id', $violationType->violation_type_id)
                 ->where('status', Violation::STATUS_CONFIRMED);
         })
@@ -451,7 +479,7 @@ public function requestSanction(Request $request)
         ], 422);
     }
 
-$offenseCount = Violation::where('student_number', $user->student_number)
+$offenseCount = Violation::where('user_id', $user->user_id)
     ->where('violation_type_id', $violationType->violation_type_id)
     ->effective()
     ->count();
@@ -481,6 +509,17 @@ $offenseCount = Violation::where('student_number', $user->student_number)
         return response()->json([
             'success' => false,
             'message' => 'No disciplinary sanction is configured for this violation yet.'
+        ], 422);
+    }
+
+    // Warning-level violations do not require a formal sanction. Reject the
+    // request server-side (not merely by hiding the UI button) so a student
+    // cannot create a sanction request for a warning-level violation via a
+    // direct HTTP call.
+    if (str_contains(strtolower((string) $assignedSanction->disciplinary_sanction), 'warning')) {
+        return response()->json([
+            'success' => false,
+            'message' => 'A sanction request is not required for this warning-level violation.',
         ], 422);
     }
 
@@ -549,7 +588,7 @@ try {
         // here — it is created only after an administrator approves the request
         // (with the authenticated admin id and deadline). This keeps pending
         // requests out of the sanction tab / graduation screens until approved.
-$latestViolation = Violation::where('student_number', $user->student_number)
+$latestViolation = Violation::where('user_id', $user->user_id)
     ->where('violation_type_id', $violationType->violation_type_id)
     ->effective()
     ->latest('violation_date')
@@ -630,7 +669,7 @@ public function correctionOptions(Request $request, Violation $violation)
 
     abort_unless(
         $user instanceof User
-            && (string) $violation->student_number === (string) $user->student_number
+            && (int) $violation->user_id === (int) $user->user_id
             && $violation->is_effective,
         403
     );
@@ -646,7 +685,7 @@ public function correctionOptions(Request $request, Violation $violation)
 
 
 $effectiveCount = Violation::query()
-    ->where('student_number', $user->student_number)
+    ->where('user_id', $user->user_id)
     ->where('violation_type_id', $type->violation_type_id)
     ->where('violation_id', '!=', $violation->violation_id)
     ->effective()
@@ -680,7 +719,7 @@ $effectiveCount = Violation::query()
     {
         $user = Auth::user();
         abort_unless($user instanceof User, 403);
-        abort_unless((string) $violation->student_number === (string) $user->student_number, 403);
+        abort_unless((int) $violation->user_id === (int) $user->user_id, 403);
         abort_unless($this->isStudentAccountActive($user), 403, 'Your account is inactive.');
         abort_unless($violation->is_effective, 422, 'Only confirmed violations can be submitted for deletion review.');
 
@@ -796,7 +835,7 @@ public function requestCorrection(
      */
     if (
         ! $user instanceof User ||
-        (string) $violation->student_number !== (string) $user->student_number
+        (int) $violation->user_id !== (int) $user->user_id
     ) {
         abort(403, 'You are not authorized to request a correction for this violation.');
     }

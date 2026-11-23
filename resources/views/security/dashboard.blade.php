@@ -244,7 +244,7 @@
         <div class="dashboard-hero-grid">
             <div>
                 <h1 class="fw-bold dashboard-hero-title">Security Officer Dashboard</h1>
-                <p class="dashboard-hero-subtitle">Monitor student violations and manage campus security.</p>
+                <p class="dashboard-hero-subtitle">View and manage student violations, monitor reports, and track campus security activities.</p>
             </div>
 
             <div class="dashboard-time-wrap">
@@ -405,7 +405,7 @@
                                             data-offense="{{ $violation->offense_level ?: 'N/A' }}"
                                             data-violation-date="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->setTimezone('Asia/Manila')->format('M d, Y, H:i') : 'N/A' }}"
                                             data-description="{{ $violation->description ?: 'No description provided.' }}"
-                                            data-student-url="{{ route('security.violations.show', $violation->student_number) }}">
+                                            data-student-url="{{ route('security.violations.show', $violation->user_id) }}">
                                             View
                                         </button>
                                     </td>

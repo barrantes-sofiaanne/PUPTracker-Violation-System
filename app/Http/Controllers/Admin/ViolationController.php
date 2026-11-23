@@ -402,6 +402,7 @@ $violationHistory = Violation::with([
                     title: 'Violation Confirmed',
 message: 'Your recorded violation (' . $violationLabel . ') has been confirmed and added to your Student Record. Please check your PUPTracker account regularly for any disciplinary sanction related to this violation. If the system requires a disciplinary sanction request, you may submit the request through your account for proper review.',                    targetType: 'violation',
                     targetId: (int) $violation->violation_id,
+                    userId: (int) $student->user_id,
                 );
             } catch (\Throwable $e) {
                 // Notification must never break the confirmation.
@@ -506,13 +507,14 @@ public function show(Request $request, string $student_number)
         'studentInfo.studentStatus',
     ])
     ->where('student_number', $student_number)
+    ->orWhere('user_id', ctype_digit($student_number) ? (int) $student_number : -1)
     ->firstOrFail();
 
     $allViolations = Violation::with([
         'violationType.violationCategory',
         'recorder.adminInfo'
     ])
-    ->where('student_number', $student_number)
+    ->where('user_id', $student->user_id)
     ->effective()
     ->latest('violation_date')
     ->get();
@@ -522,7 +524,7 @@ $individualViolations = Violation::with([
     'recorder.adminInfo',
 'recordingSecurity.securityInfo',
 ])
-    ->where('student_number', $student_number)
+    ->where('user_id', $student->user_id)
     ->effective()
     ->latest('violation_date')
     ->paginate(10)
@@ -537,7 +539,7 @@ $individualViolations = Violation::with([
         ) === 0)
         ->count();
 
-    $sanctionRecords = StudentSanctionRecord::where('student_number', $student_number)->get();
+    $sanctionRecords = StudentSanctionRecord::where('student_number', $student->student_number)->get();
 
     $outstandingSanctions = $sanctionRecords
         ->filter(fn ($r) => strcasecmp((string) $r->status, 'Completed') !== 0)
@@ -724,6 +726,7 @@ public function searchStudents(Request $request)
 
     return response()->json($students->map(function (User $student) {
         return [
+            'user_id' => $student->user_id,
             'student_number' => $student->student_number,
             'first_name' => $student->first_name,
             'last_name' => $student->last_name,
@@ -782,7 +785,7 @@ public function searchStudents(Request $request)
     public function previewViolation(Request $request): JsonResponse
     {
         $request->validate([
-    'student_number' => ['required', 'string'],
+    'user_id' => ['required', 'integer', 'exists:users_tbl,user_id'],
     'violation_type_id' => ['required', 'integer'],
 ]);
 
@@ -802,10 +805,7 @@ $violationType = ViolationType::with('violationCategory')
         |--------------------------------------------------------------------------
         */
 
-$previousCount = Violation::where(
-    'student_number',
-    $request->student_number
-)
+$previousCount = Violation::where('user_id', $request->user_id)
     ->where(
         'violation_type_id',
         $violationType->violation_type_id
@@ -945,10 +945,9 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
             |--------------------------------------------------------------------------
             */
 
-$exists = Violation::where(
-        'student_number',
-        $validated['student_number']
-    )
+$student = User::findOrFail((int) $validated['user_id']);
+
+$exists = Violation::where('user_id', $student->user_id)
     ->where('violation_type_id', $violationType->violation_type_id)
                 ->whereDate(
                     'violation_date',
@@ -990,7 +989,8 @@ $exists = Violation::where(
 
             $violation = Violation::create([
 
-                'student_number' => $validated['student_number'],
+                'user_id' => $student->user_id,
+                'student_number' => $student->student_number,
 
                 'violation_type_id' => $violationType->violation_type_id,
 
@@ -1026,7 +1026,7 @@ $exists = Violation::where(
             // Notify the student about the recorded violation (target-aware).
             try {
                 app(\App\Services\StudentNotificationService::class)->create(
-                    studentNumber: $validated['student_number'],
+                    studentNumber: (string) ($student->student_number ?? ''),
                     type: 'violation',
                     title: 'Violation Notice',
                     message: 'A violation has been recorded against your record: ' . $violationType->violation_type . '. Please review your Student Record.',

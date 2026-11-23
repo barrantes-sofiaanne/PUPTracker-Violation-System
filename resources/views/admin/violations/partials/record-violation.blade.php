@@ -577,6 +577,7 @@ background: #800000 !important;
 
                 @csrf
 
+                <input type="hidden" id="selectedStudentId" name="user_id">
                 <input
                     type="hidden"
                     id="selectedStudentNumber"
@@ -951,7 +952,6 @@ background: #800000 !important;
                     id="violationDate"
                     name="violation_date"
                     class="form-control"
-                    value="{{ now()->format('Y-m-d\TH:i') }}"
                     required>
 
             </div>
