@@ -215,13 +215,6 @@ document.addEventListener("DOMContentLoaded", function () {
             HTMLMediaElement.HAVE_CURRENT_DATA) ||
         2;
 
-    // Classify mobile devices (Android/iOS phones/tablets) so the camera can
-    // request a moderate capture resolution instead of the native maximum.
-    const isMobileDevice = () =>
-        /Android|iPhone|iPad|iPod|Mobile|Mobi/i.test(navigator.userAgent) ||
-        (navigator.maxTouchPoints > 1 &&
-            window.matchMedia("(max-width: 768px)").matches);
-
     const phNow = () => {
         return new Date(
             new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }),
@@ -450,7 +443,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         paused: video.paused,
                         currentTime: video.currentTime,
                         hasRequestVideoFrameCallback:
-                            typeof video.requestVideoFrameCallback === "function",
+                            typeof video.requestVideoFrameCallback ===
+                            "function",
                     });
                     cleanup();
                     resolve();
@@ -531,23 +525,9 @@ document.addEventListener("DOMContentLoaded", function () {
             ? { deviceId: { exact: deviceId } }
             : { facingMode: { ideal: cameraFacingMode } };
 
-        // Mobile devices often select their native maximum camera resolution
-        // (4K on many rear sensors). Detecting and feather-blurring faces on a
-        // full-resolution frame can exhaust mobile WebGL/CPU/memory. Request a
-        // soft "ideal" cap on mobile so the browser picks the closest supported
-        // mode without ever forcing an unsupported one; desktop keeps its
-        // existing native-resolution behavior.
-        const mobileCap = isMobileDevice()
-            ? {
-                  width: { ideal: 1280 },
-                  height: { ideal: 720 },
-                  frameRate: { ideal: 24, max: 30 },
-              }
-            : {};
-
         return navigator.mediaDevices
             .getUserMedia({
-                video: { ...videoConstraint, ...mobileCap },
+                video: videoConstraint,
                 audio: false,
             })
             .then(async function (stream) {
@@ -569,8 +549,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 cameraDebug("stream acquired", {
                     facingMode: cameraFacingMode,
                     deviceIdRequested: !!deviceId,
-                    mobile: isMobileDevice(),
-                    requestedConstraints: mobileCap,
                     settings: (() => {
                         try {
                             const t = stream.getVideoTracks()[0];
@@ -584,9 +562,6 @@ document.addEventListener("DOMContentLoaded", function () {
                                 height: s.height || null,
                                 frameRate: s.frameRate || null,
                                 aspectRatio: s.aspectRatio || null,
-                                label: t.label || null,
-                                readyState: t.readyState || null,
-                                enabled: t.enabled,
                             };
                         } catch (e) {
                             return null;
@@ -833,9 +808,6 @@ document.addEventListener("DOMContentLoaded", function () {
         // Invalidate any in-flight stream request so a stale resolution can
         // never overwrite a newer camera selection.
         cameraRequestToken += 1;
-        // Release the capture lock so a subsequent recording session always
-        // starts clean, even if the modal was closed mid-capture.
-        captureInProgress = false;
         stopCameraTracks();
         if (capturePhotoBtn) {
             capturePhotoBtn.disabled = true;
@@ -869,7 +841,10 @@ document.addEventListener("DOMContentLoaded", function () {
             ) {
                 return;
             }
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            if (
+                !navigator.mediaDevices ||
+                !navigator.mediaDevices.getUserMedia
+            ) {
                 return;
             }
 
@@ -1276,9 +1251,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
             captureInProgress = true;
-            // Snapshot the request token so a camera switch or modal close that
-            // happens while processing invalidates this stale capture.
-            const captureToken = cameraRequestToken;
             cameraDebug("capture requested", {
                 readyState: cameraPreview.readyState,
                 videoWidth: cameraPreview.videoWidth,
@@ -1293,36 +1265,25 @@ document.addEventListener("DOMContentLoaded", function () {
             try {
                 // Face blur must succeed before the image can become evidence.
                 canvas = await drawWatermarkedCanvas(cameraPreview);
-                cameraDebug("final evidence generated", {
-                    width: canvas.width,
-                    height: canvas.height,
-                });
-
-                // A camera switch or modal close invalidates this capture;
-                // never review/submit a stale frame from a previous session.
-                if (captureToken !== cameraRequestToken) {
-                    return;
-                }
             } catch (error) {
-                if (captureToken === cameraRequestToken) {
-                    if (capturePhotoBtn && cameraActive) {
-                        capturePhotoBtn.disabled = false;
-                    }
-                    reportSecurityEvent(
-                        "CAMERA_ERROR",
-                        { reason: "face blur processing failed" },
-                        "warning",
-                    );
-                    showAlert(
-                        "error",
-                        "Privacy protection unavailable",
-                        "The face-blur protection could not process this image. The photo was not captured. Please try again.",
-                    );
-                }
-                return;
-            } finally {
                 captureInProgress = false;
+                if (capturePhotoBtn && cameraActive) {
+                    capturePhotoBtn.disabled = false;
+                }
+                reportSecurityEvent(
+                    "CAMERA_ERROR",
+                    { reason: "face blur processing failed" },
+                    "warning",
+                );
+                showAlert(
+                    "error",
+                    "Privacy protection unavailable",
+                    "The face-blur protection could not process this image. The photo was not captured. Please try again.",
+                );
+                return;
             }
+
+            captureInProgress = false;
 
             // Stop live camera while reviewing the captured photo.
             stopCamera();
@@ -1511,6 +1472,7 @@ document.addEventListener("DOMContentLoaded", function () {
         stopCamera();
         document.getElementById("violationForm").reset();
         document.getElementById("selectedStudentNumber").value = "";
+        document.getElementById("selectedStudentId").value = "";
         document.getElementById("previewCategory").textContent = "-";
         document.getElementById("previewViolationType").textContent = "-";
         document.getElementById("previewOffenseLevelDisplay").textContent = "-";
@@ -1602,7 +1564,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const validateStep = (stepNumber) => {
         if (stepNumber === 1) {
-            if (!document.getElementById("selectedStudentNumber").value) {
+            if (!document.getElementById("selectedStudentId").value) {
                 showAlert(
                     "warning",
                     "Select a student",
@@ -1765,8 +1727,9 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        document.getElementById("selectedStudentId").value = student.user_id;
         document.getElementById("selectedStudentNumber").value =
-            student.student_number;
+            student.student_number || "";
         document.getElementById("studentNumber").value = student.student_number;
         document.getElementById("studentName").value =
             `${student.last_name}, ${student.first_name}`;
@@ -1783,7 +1746,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .classList.remove("d-none");
 
         resultBox.innerHTML = "";
-        searchBox.value = `${student.student_number} - ${student.last_name}, ${student.first_name}`;
+        searchBox.value = `${student.student_number || "No student number"} - ${student.last_name}, ${student.first_name}`;
         updateLiveWatermark();
     };
 
@@ -1831,7 +1794,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             ? ' <span class="admin-badge" style="background:#fdecec;color:#8a1c1c;">Inactive account — cannot record</span>'
                             : "";
 
-                        item.innerHTML = `<strong>${student.student_number}</strong>${badge}<br>${student.last_name}, ${student.first_name}`;
+                        item.innerHTML = `<strong>${student.student_number || "No student number"}</strong>${badge}<br>${student.last_name}, ${student.first_name}`;
                         item.addEventListener("click", function () {
                             selectStudent(student);
                         });
@@ -1892,9 +1855,8 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     violationTypeSelect.addEventListener("change", function () {
-        const studentNumber = document.getElementById(
-            "selectedStudentNumber",
-        ).value;
+        const studentNumber =
+            document.getElementById("selectedStudentId").value;
         const violationTypeId = this.value;
 
         if (!studentNumber || !violationTypeId) {
@@ -1911,7 +1873,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 ).content,
             },
             body: JSON.stringify({
-                student_number: studentNumber,
+                user_id: studentNumber,
                 violation_type_id: violationTypeId,
             }),
         })
@@ -1948,9 +1910,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // Submit
     // ------------------------------------------------------------------
     saveBtn.addEventListener("click", function () {
-        const studentNumber = document.getElementById(
-            "selectedStudentNumber",
-        ).value;
+        const studentNumber =
+            document.getElementById("selectedStudentId").value;
         const violationTypeId = document.getElementById("violationType").value;
         const violationDate = document.getElementById("violationDate").value;
         const description = document.getElementById("description").value.trim();
@@ -1981,7 +1942,11 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const formData = new FormData();
-        formData.append("student_number", studentNumber);
+        formData.append("user_id", studentNumber);
+        formData.append(
+            "student_number",
+            document.getElementById("selectedStudentNumber").value || "",
+        );
         formData.append("violation_type_id", violationTypeId);
         formData.append("violation_date", violationDate);
         formData.append("description", description);

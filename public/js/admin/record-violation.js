@@ -1,2428 +1,2073 @@
-<style>
-    .admin-record-modal .modal-dialog {
-        max-width: 1160px;
+document.addEventListener("DOMContentLoaded", function () {
+    const modalElement = document.getElementById("addViolationModal");
+    const studentStep = document.getElementById("studentStep");
+    const violationStep = document.getElementById("violationStep");
+    const evidenceStep = document.getElementById("evidenceStep");
+    const reviewStep = document.getElementById("reviewStep");
+    const nextBtn =
+        document.getElementById("nextStep") ||
+        document.getElementById("continueStep");
+    const backBtn = document.getElementById("backStep");
+    const saveBtn = document.getElementById("saveViolation");
+    const studentIndicator = document.getElementById("studentStepIndicator");
+    const violationIndicator = document.getElementById(
+        "violationStepIndicator",
+    );
+    const evidenceIndicator = document.getElementById("evidenceStepIndicator");
+    const reviewIndicator = document.getElementById("reviewStepIndicator");
+    const searchBox = document.getElementById("studentSearch");
+    const resultBox = document.getElementById("studentResults");
+    const categorySelect = document.getElementById("violationCategory");
+    const violationTypeSelect = document.getElementById("violationType");
+    const evidenceInput = document.getElementById("evidenceInput");
+    const identityConfirmed = document.getElementById("identityConfirmed");
+
+    const securityNoticeModalEl = document.getElementById(
+        "securityNoticeModal",
+    );
+    const securityNoticeAck = document.getElementById("securityNoticeAck");
+    const securityNoticeStartBtn = document.getElementById(
+        "securityNoticeStartBtn",
+    );
+    const securityNoticeCancelBtn = document.getElementById(
+        "securityNoticeCancelBtn",
+    );
+    const openCameraBtn = document.getElementById("openCameraBtn");
+    const cameraIdlePanel = document.getElementById("cameraIdlePanel");
+    const cameraLivePanel = document.getElementById("cameraLivePanel");
+    const captureReviewPanel = document.getElementById("captureReviewPanel");
+    const cameraWrap = document.getElementById("cameraWrap");
+    const cameraPreview = document.getElementById("cameraPreview");
+    const flipCameraBtn = document.getElementById("flipCameraBtn");
+    const liveWatermarkStudent = document.getElementById(
+        "liveWatermarkStudent",
+    );
+    const liveWatermarkTime = document.getElementById("liveWatermarkTime");
+    const capturePhotoBtn = document.getElementById("capturePhotoBtn");
+    const closeCameraBtn = document.getElementById("closeCameraBtn");
+    const retakePhotoBtn = document.getElementById("retakePhotoBtn");
+    const usePhotoBtn = document.getElementById("usePhotoBtn");
+    const captureReviewImg = document.getElementById("captureReviewImg");
+    const captureReviewType = document.getElementById("captureReviewType");
+    const captureReviewSize = document.getElementById("captureReviewSize");
+    const cameraInterruptedOverlay = document.getElementById(
+        "cameraInterruptedOverlay",
+    );
+
+    if (
+        !modalElement ||
+        !studentStep ||
+        !violationStep ||
+        !evidenceStep ||
+        !reviewStep ||
+        !nextBtn ||
+        !backBtn ||
+        !saveBtn ||
+        !studentIndicator ||
+        !violationIndicator ||
+        !evidenceIndicator ||
+        !reviewIndicator ||
+        !searchBox ||
+        !resultBox ||
+        !categorySelect ||
+        !violationTypeSelect ||
+        !evidenceInput ||
+        !identityConfirmed
+    ) {
+        return;
     }
 
-    .admin-record-modal .modal-content {
-        border: 1px solid rgba(128, 0, 0, 0.12) !important;
-        border-radius: 1rem !important;
-        max-height: calc(100vh - 2rem);
-    }
+    const showAlert = (icon, title, text) => {
+        Swal.fire({ icon, title, text });
+    };
 
-    .admin-record-modal .modal-header {
-background: #800000 !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-        color: #fff;
-    }
+    const stepPanels = [studentStep, violationStep, evidenceStep, reviewStep];
+    const indicators = [
+        studentIndicator,
+        violationIndicator,
+        evidenceIndicator,
+        reviewIndicator,
+    ];
 
-    .admin-record-modal .modal-header .modal-title,
-    .admin-record-modal .modal-header .modal-title i,
-    .admin-record-modal .modal-header small {
-        color: #fff !important;
-    }
+    let currentStep = 1; // 1..4
+    // Staged evidence items: { file, name, method ('camera'|'upload'),
+    //   capturedAt (ISO|null), watermarked (bool), size }
+    let evidenceItems = [];
+    const MAX_EVIDENCE = 5;
+    const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-    .admin-record-modal .modal-body {
-background: #ffffff;
-        max-height: calc(100vh - 220px);
-        overflow-y: auto;
-    }
+    // Correlate every browser-monitor event of one capture attempt to a single
+    // camera/capture session (CAM-SESSION-YYYY-NNNNNN). Generated when the
+    // camera portal opens and sent with each security event + on submit.
+    let captureSessionId = null;
 
-    .admin-record-modal .modal-footer {
-        background: #fffdf6;
-        border-top: 1px solid rgba(128, 0, 0, 0.12);
-    }
+    // ------------------------------------------------------------------
+    // Security event reporting (browser monitor → server).
+    // These are DETECTION / DETERRENCE indicators only — never a claim that
+    // a screenshot "confirmed" occurred (browsers cannot prove that).
+    // ------------------------------------------------------------------
+    const beginCaptureSession = () => {
+        if (!captureSessionId) {
+            // Best-effort unique id; the server stores it as-is. This is an
+            // audit correlation key, never a security boundary.
+            const d = new Date();
+            const pad = (n) => String(n).padStart(2, "0");
+            const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(
+                d.getDate(),
+            )}${pad(d.getHours())}${pad(d.getMinutes())}${pad(
+                d.getSeconds(),
+            )}${String(d.getMilliseconds()).padStart(3, "0")}`;
+            captureSessionId = `CAM-SESSION-${stamp}`;
+        }
+        return captureSessionId;
+    };
 
-    .admin-record-modal .card {
-        border: 1px solid rgba(128, 0, 0, 0.12) !important;
-        border-radius: 0.95rem;
-        box-shadow: 0 8px 20px rgba(128, 0, 0, 0.08) !important;
-        overflow: hidden;
-    }
+    const reportSecurityEvent = (eventType, meta, severity) => {
+        if (!window.ViolationRoutes || !window.ViolationRoutes.securityEvent) {
+            return;
+        }
+        const payload = { event_type: eventType, severity: severity || "info" };
+        if (captureSessionId) {
+            payload.capture_session_id = captureSessionId;
+        }
+        if (meta && typeof meta === "object") {
+            payload.meta = meta;
+        }
+        fetch(window.ViolationRoutes.securityEvent, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                "X-CSRF-TOKEN": document.querySelector(
+                    'meta[name="csrf-token"]',
+                ).content,
+            },
+            body: JSON.stringify(payload),
+        }).catch(() => {
+            // Security logging must never break the capture flow.
+        });
+    };
 
-    .admin-record-modal .card-header {
-        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%) !important;
-        border-bottom: 1px solid rgba(128, 0, 0, 0.12);
-        color: #5f0000;
-    }
+    const setStep = (stepNumber) => {
+        currentStep = stepNumber;
 
-    /* ------------------------------------------------------------------
-       Wizard presentation — the Security module's Record Violation modal is
-       the SOURCE OF TRUTH for this UI. Every visual value below mirrors it
-       exactly.
+        stepPanels.forEach(function (panel, i) {
+            panel.classList.toggle("d-none", i !== stepNumber - 1);
+        });
 
-       The admin layout does not load portal.css, so the Security-only tokens
-       (`--portal-radius-lg`, `--portal-shadow`) and classes (`portal-btn`)
-       are NOT available here; their literal values are reproduced instead.
-       Maroon/gold are admin.css tokens and are used via those.
+        indicators.forEach(function (ind, i) {
+            // PUPTracker palette ONLY: maroon + gold. Never green/blue/purple.
+            //   completed -> gold (the "done" milestone tone)
+            //   current   -> maroon (the active step, strongest tone)
+            //   upcoming  -> muted/pale treatment that stays inside the palette
+            ind.classList.remove(
+                "wizard-step-completed",
+                "wizard-step-current",
+                "wizard-step-upcoming",
+                "bg-danger",
+                "bg-goldenrod",
+                "bg-success",
+                "bg-secondary",
+            );
+            if (i < stepNumber - 1) {
+                ind.classList.add("wizard-step-completed");
+            } else if (i === stepNumber - 1) {
+                ind.classList.add("wizard-step-current");
+            } else {
+                ind.classList.add("wizard-step-upcoming");
+            }
+        });
 
-       These classes are PRESENTATION ONLY: the Admin modal keeps its own ids
-       (`studentStepIndicator`, `violationWizardProgress`, ...), its own form
-       submission, validation and controller, so Admin authorization and
-       business rules are unchanged.
-       ------------------------------------------------------------------ */
-    .admin-record-modal .wizard-bubble {
-        width: 52px;
-        height: 52px;
-        border-radius: 999px;
-        font-weight: 800;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 6px 12px rgba(122, 15, 30, 0.15);
-        border: 2px solid transparent;
-        transition: background 0.15s ease, border-color 0.15s ease;
-    }
+        backBtn.classList.toggle("d-none", stepNumber === 1);
+        nextBtn.classList.toggle("d-none", stepNumber === 4);
+        saveBtn.classList.toggle("d-none", stepNumber !== 4);
 
-    /* ------------------------------------------------------------------
-       Wizard step states — PUPTracker MAROON + GOLD ONLY.
+        // Leaving the evidence step (forward or back) pauses the camera.
+        if (stepNumber !== 3) {
+            stopCamera();
+        } else {
+            updateEvidenceCount();
+        }
+    };
 
-       The states previously used Bootstrap's bg-success (GREEN) and
-       bg-danger (Bootstrap red), neither of which belongs to the PUPTracker
-       palette. They are replaced by these three classes, which use only the
-       module's maroon and gold tokens. No other hue is introduced.
-       ------------------------------------------------------------------ */
-    .admin-record-modal .wizard-bubble.wizard-step-current {
-        background: #7a0f1e;
-        border-color: #7a0f1e;
-        color: #fff;
-        box-shadow: 0 6px 14px rgba(122, 15, 30, 0.3);
-    }
+    // ------------------------------------------------------------------
+    // Camera lifecycle
+    // ------------------------------------------------------------------
+    let cameraStream = null;
+    let cameraActive = false;
+    let cameraPausedByInterruption = false;
+    let cameraNoticeAccepted = false;
+    let capturedImageBlob = null;
+    let capturedImageObjectUrl = null;
+    let liveClockInterval = null;
+    // Current camera facing mode: 'user' (front) or 'environment' (back).
+    // Defaults to the front camera; the flip button switches between them.
+    let cameraFacingMode = "user";
+    // Optional explicit deviceId (when the browser exposes multiple cameras
+    // that are not cleanly split into front/back via facingMode).
+    let cameraDeviceId = null;
+    // Guards against overlapping camera switches and stale stream application.
+    let cameraSwitchInProgress = false;
+    let cameraRequestToken = 0;
+    // Guards against overlapping capture processing (one capture at a time).
+    let captureInProgress = false;
 
-    .admin-record-modal .wizard-bubble.wizard-step-completed {
-        background: #daa520;
-        border-color: #daa520;
-        color: #4a0209;
-    }
+    // readyState threshold for "the video has decoded current frame data".
+    const HAVE_CURRENT_DATA =
+        (typeof HTMLMediaElement !== "undefined" &&
+            HTMLMediaElement.HAVE_CURRENT_DATA) ||
+        2;
 
-    .admin-record-modal .wizard-bubble.wizard-step-upcoming {
-        background: #fff8e8;
-        border-color: rgba(122, 15, 30, 0.28);
-        color: #7a0f1e;
-    }
+    const phNow = () => {
+        return new Date(
+            new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }),
+        );
+    };
 
-    /* Step cards use the module's maroon/gold tone rather than a generic
-       shadow, matching Security's `.wizard-card`. */
-    .admin-record-modal .wizard-card {
-        border: 1px solid rgba(122, 15, 30, 0.12);
-        border-radius: 1rem;
-        box-shadow: 0 8px 24px rgba(128, 0, 0, 0.12);
-        overflow: hidden;
-    }
+    const formatPhTimestamp = (date) => {
+        const d = date || new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+            d.getDate(),
+        )} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
 
-    .admin-record-modal .wizard-card .card-header {
-        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
-        border-bottom: 1px solid rgba(122, 15, 30, 0.12);
-        color: #4a0209;
-        padding: 0.9rem 1.1rem;
-    }
+    const currentStudentNumber = () =>
+        document.getElementById("selectedStudentNumber").value || "";
+    // ---------------------------------------------------------------
+    // Privacy face-blur protection
+    // Uses the same MediaPipe face-blur module as Security.
+    // ---------------------------------------------------------------
+    const getFaceBlur = () => window.PUPTrackerFaceBlur || null;
 
-    .admin-record-modal .wizard-card .card-header i {
-        color: #7a0f1e !important;
-    }
+    // Forward camera/video diagnostics to the shared logger (same prefix).
+    const cameraDebug = (message, data) => {
+        try {
+            const faceBlur = getFaceBlur();
+            if (faceBlur && typeof faceBlur.logCameraDebug === "function") {
+                faceBlur.logCameraDebug(message, data);
+            }
+        } catch (e) {
+            // Diagnostic logging must never break capture.
+        }
+    };
 
-    /* Preview/read-only summary panels (Review step). */
-    .admin-record-modal .preview-box {
-        border: 1px solid rgba(122, 15, 30, 0.1);
-        border-radius: 0.9rem;
-        background: #fffdf7;
-    }
+    const initializePrivacyFaceBlur = async () => {
+        const faceBlur = getFaceBlur();
 
-    .admin-record-modal .preview-box strong {
-        color: #4a0209;
-    }
-
-    /* Controlled camera capture — the live preview is obscured while the
-       video is interrupted, exactly as Security does. */
-    .admin-record-modal #cameraPreview {
-        filter: none;
-        transition: filter 0.15s ease;
-        background: #000;
-    }
-
-    .admin-record-modal #cameraPreview.camera-obscured {
-        filter: blur(18px) brightness(0.5);
-    }
-
-    .admin-record-modal #cameraWrap.video-interrupted #cameraPreview {
-        filter: blur(18px) brightness(0.5);
-    }
-
-    /* Disabled footer buttons stay readable — the maroon tone is preserved
-       instead of fading to a washed-out grey. */
-    .admin-record-modal .modal-footer .btn:disabled,
-    .admin-record-modal .modal-footer .btn.disabled {
-        opacity: 0.75;
-        filter: saturate(0.85);
-        cursor: not-allowed;
-    }
-
-    /* Mirrors Security's `.portal-btn:disabled` rule: the primary CTA keeps a
-       readable maroon fill when disabled. */
-    .admin-record-modal .modal-footer .admin-btn-primary:disabled,
-    .admin-record-modal .modal-footer .admin-btn-primary.disabled {
-        color: #fff;
-        background: linear-gradient(135deg, #a24a55 0%, #8a3a44 100%);
-        border-color: #a24a55;
-        box-shadow: none;
-    }
-
-    .admin-record-modal .form-control,
-    .admin-record-modal .form-select {
-        border-color: rgba(122, 15, 30, 0.2);
-        border-radius: 0.72rem;
-    }
-
-    /* The BODY scrolls independently so a long wizard never pushes the header or
-       the footer off-screen — header and footer stay reachable at all times. */
-    .admin-record-modal .modal-body {
-        overflow-y: auto;
-        overscroll-behavior: contain;
-    }
-
-    .admin-record-modal .modal-content {
-        /* Never taller than the viewport, so the footer can not be pushed out of
-           view by a tall step (the evidence step with a live camera is tall). */
-        max-height: calc(100vh - 1rem);
-    }
-
-    @media (max-width: 575.98px) {
-        .admin-record-modal .modal-dialog {
-            margin: 0.5rem;
+        if (!faceBlur) {
+            throw new Error(
+                "The privacy face-blur module is not available. Capture is disabled.",
+            );
         }
 
-        .admin-record-modal .modal-content {
-            max-height: calc(100vh - 1rem);
+        await faceBlur.initializeFaceDetector();
+
+        return faceBlur;
+    };
+    const updateLiveWatermark = () => {
+        if (liveWatermarkStudent) {
+            liveWatermarkStudent.textContent =
+                currentStudentNumber() || "NO-STUDENT";
         }
-    }
+        if (liveWatermarkTime) {
+            liveWatermarkTime.textContent = formatPhTimestamp();
+        }
+    };
 
-    .admin-record-modal .form-control:focus,
-    .admin-record-modal .form-select:focus {
-        border-color: rgba(122, 15, 30, 0.5);
-        box-shadow: 0 0 0 0.2rem rgba(122, 15, 30, 0.12);
-    }
+    const startLiveClock = () => {
+        if (liveClockInterval) {
+            clearInterval(liveClockInterval);
+        }
+        liveClockInterval = setInterval(updateLiveWatermark, 1000);
+    };
 
-    /* Header/footer chrome — literally the Security values (its radius token
-       is 1rem and its border tone is rgba(122, 15, 30, ...)). */
-    .admin-record-modal .modal-header {
-background: #800000 !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-        color: #fff;
-        padding: 1.1rem 1.25rem;
-        /* Layout: title block flexes, the × keeps a fixed touch target and can
-           never be pushed over the title or clipped on narrow screens. */
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 0.75rem;
-        flex-wrap: nowrap;
-    }
+    const stopLiveClock = () => {
+        if (liveClockInterval) {
+            clearInterval(liveClockInterval);
+            liveClockInterval = null;
+        }
+    };
 
-    .admin-record-modal .modal-header > div {
-        min-width: 0; /* allows the title to wrap instead of overflowing */
-        flex: 1 1 auto;
-    }
+    const showCameraIdle = () => {
+        if (cameraIdlePanel) {
+            cameraIdlePanel.classList.remove("d-none");
+        }
+        if (cameraLivePanel) {
+            cameraLivePanel.classList.add("d-none");
+        }
+        if (captureReviewPanel) {
+            captureReviewPanel.classList.add("d-none");
+        }
+        if (flipCameraBtn) {
+            flipCameraBtn.classList.add("d-none");
+        }
+    };
 
-    .admin-record-modal .modal-header .modal-title {
-        line-height: 1.25;
-        overflow-wrap: anywhere;
-    }
+    const showCameraLive = () => {
+        if (cameraIdlePanel) {
+            cameraIdlePanel.classList.add("d-none");
+        }
+        if (captureReviewPanel) {
+            captureReviewPanel.classList.add("d-none");
+        }
+        if (cameraLivePanel) {
+            cameraLivePanel.classList.remove("d-none");
+        }
+        // The flip control is only meaningful while the stream is live.
+        if (flipCameraBtn) {
+            flipCameraBtn.classList.add("d-flex");
+            flipCameraBtn.classList.remove("d-none");
+        }
+    };
 
-    /* The × is a bare icon: NO white pill/card behind it. `background-color`
-       is forced transparent and the glyph is drawn from an explicit white SVG
-       (a CSS `filter` over the whole button is what produced the visible white
-       box on phones). 44px keeps the touch target adequate. */
-    .admin-record-modal .modal-header .btn-close {
-        flex: 0 0 auto;
-        width: 44px;
-        height: 44px;
-        margin: 0;
-        padding: 0;
-        background-color: transparent !important;
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e") !important;
-        background-size: 1.1em auto;
-        background-position: center;
-        background-repeat: no-repeat;
-        border: 0;
-        border-radius: 999px;
-        opacity: 0.9;
-        box-shadow: none !important;
-        filter: none !important;
-    }
+    const showCaptureReview = (blob, objectUrl) => {
+        if (cameraIdlePanel) {
+            cameraIdlePanel.classList.add("d-none");
+        }
+        if (cameraLivePanel) {
+            cameraLivePanel.classList.add("d-none");
+        }
+        if (captureReviewPanel) {
+            captureReviewPanel.classList.remove("d-none");
+        }
+        if (captureReviewImg) {
+            captureReviewImg.src = objectUrl;
+        }
+        if (captureReviewType) {
+            captureReviewType.textContent = "JPEG";
+        }
+        if (captureReviewSize) {
+            captureReviewSize.textContent = `${(blob.size / 1024).toFixed(0)} KB`;
+        }
+    };
 
-    .admin-record-modal .modal-header .btn-close:hover,
-    .admin-record-modal .modal-header .btn-close:focus-visible {
-        opacity: 1;
-        background-color: rgba(255, 255, 255, 0.14) !important;
-        box-shadow: none !important;
-    }
+    const resetCameraPanels = () => {
+        showCameraIdle();
+        if (cameraWrap) {
+            cameraWrap.classList.remove("video-interrupted");
+        }
+        if (cameraInterruptedOverlay) {
+            cameraInterruptedOverlay.classList.add("d-none");
+            cameraInterruptedOverlay.classList.remove("d-flex");
+        }
+        if (cameraPreview) {
+            cameraPreview.classList.remove("camera-obscured");
+        }
+    };
 
-    .admin-record-modal .modal-footer {
-        background: #fffdf6;
-        border-top: 1px solid rgba(122, 15, 30, 0.12);
-        padding: 0.8rem 1rem;
-        /* Wrap rather than clip: on narrow screens the buttons stack instead of
-           overflowing or overlapping. */
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.5rem;
-    }
+    // Open the security-notice modal (mandatory before camera init).
+    const openSecurityNotice = () => {
+        resetCameraPanels();
+        // Fresh capture session for THIS portal open so every monitor event
+        // (open, blur, focus, capture, abandon) is correlated together.
+        beginCaptureSession();
+        if (!securityNoticeModalEl || !securityNoticeAck) {
+            // Modal missing — still try to start (defensive).
+            startCamera();
+            return;
+        }
+        securityNoticeAck.checked = false;
+        securityNoticeStartBtn.disabled = true;
+        const noticeModal = bootstrap.Modal.getOrCreateInstance(
+            securityNoticeModalEl,
+        );
+        noticeModal.show();
+        reportSecurityEvent("CAMERA_PORTAL_OPENED", null, "info");
+    };
 
-    /* Keep the footer visible and make every action reachable on phones. */
-    .admin-record-modal .modal-content {
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
+    securityNoticeAck &&
+        securityNoticeAck.addEventListener("change", function () {
+            securityNoticeStartBtn.disabled = !this.checked;
+        });
 
-    .admin-record-modal .modal-body {
-        min-height: 0;
-        flex: 1 1 auto;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-    }
+    securityNoticeStartBtn &&
+        securityNoticeStartBtn.addEventListener("click", function () {
+            const noticeModal = bootstrap.Modal.getInstance(
+                securityNoticeModalEl,
+            );
+            if (noticeModal) {
+                noticeModal.hide();
+            }
+            cameraNoticeAccepted = true;
+            reportSecurityEvent("SECURITY_NOTICE_ACCEPTED", null, "info");
+            startCamera();
+        });
 
-    .admin-record-modal .modal-footer {
-        position: relative;
-        z-index: 5;
-        flex: 0 0 auto;
-    }
+    securityNoticeCancelBtn &&
+        securityNoticeCancelBtn.addEventListener("click", function () {
+            const noticeModal = bootstrap.Modal.getInstance(
+                securityNoticeModalEl,
+            );
+            if (noticeModal) {
+                noticeModal.hide();
+            }
+            reportSecurityEvent(
+                "CAPTURE_ABANDONED",
+                { stage: "notice" },
+                "info",
+            );
+            showCameraIdle();
+        });
 
-    @media (max-width: 575.98px) {
-        .admin-record-modal .modal-dialog {
-            margin: 0.5rem;
-            max-width: calc(100% - 1rem);
+    openCameraBtn &&
+        openCameraBtn.addEventListener("click", openSecurityNotice);
+
+    // Wait until the attached MediaStream has actually produced a decoded,
+    // current video frame. This is the real readiness signal — the capture
+    // button must not be enabled merely because getUserMedia() resolved or the
+    // detector initialized. `requestVideoFrameCallback` (when available) gives
+    // an authoritative "a frame was presented" signal; `loadeddata` /
+    // `loadedmetadata` + `readyState` + non-zero dimensions are the fallback.
+    const waitForVideoReady = (video, token) => {
+        return new Promise((resolve, reject) => {
+            const isReady = () =>
+                video.readyState >= HAVE_CURRENT_DATA &&
+                video.videoWidth > 0 &&
+                video.videoHeight > 0;
+
+            const superseded = () => {
+                cleanup();
+                reject(new Error("camera request superseded"));
+            };
+
+            const finish = () => {
+                if (token !== cameraRequestToken) {
+                    superseded();
+                    return;
+                }
+                if (isReady()) {
+                    cameraDebug("video ready", {
+                        readyState: video.readyState,
+                        videoWidth: video.videoWidth,
+                        videoHeight: video.videoHeight,
+                        paused: video.paused,
+                        currentTime: video.currentTime,
+                        hasRequestVideoFrameCallback:
+                            typeof video.requestVideoFrameCallback ===
+                            "function",
+                    });
+                    cleanup();
+                    resolve();
+                }
+            };
+
+            const onLoadedData = () => finish();
+            const onLoadedMetadata = () => finish();
+            const onFrame = () => finish();
+
+            let frameCallbackId = null;
+
+            // A final safety net — never the primary readiness mechanism.
+            const timeoutId = setTimeout(() => {
+                cleanup();
+                if (token !== cameraRequestToken) {
+                    reject(new Error("camera request superseded"));
+                } else if (isReady()) {
+                    resolve();
+                } else {
+                    cameraDebug("video not ready (timeout)", {
+                        readyState: video.readyState,
+                        videoWidth: video.videoWidth,
+                        videoHeight: video.videoHeight,
+                        paused: video.paused,
+                    });
+                    reject(new Error("Camera video frame timeout"));
+                }
+            }, 10000);
+
+            const cleanup = () => {
+                clearTimeout(timeoutId);
+                if (
+                    frameCallbackId !== null &&
+                    typeof video.cancelVideoFrameCallback === "function"
+                ) {
+                    video.cancelVideoFrameCallback(frameCallbackId);
+                }
+                video.removeEventListener("loadeddata", onLoadedData);
+                video.removeEventListener("loadedmetadata", onLoadedMetadata);
+            };
+
+            // Prefer the frame-presented callback to wait for a REAL decoded
+            // frame from the newly attached stream.
+            if (typeof video.requestVideoFrameCallback === "function") {
+                frameCallbackId = video.requestVideoFrameCallback(onFrame);
+            }
+
+            video.addEventListener("loadeddata", onLoadedData);
+            video.addEventListener("loadedmetadata", onLoadedMetadata);
+
+            // Kick playback; muted autoplay should already be running.
+            const playPromise = video.play ? video.play() : null;
+            if (playPromise && typeof playPromise.then === "function") {
+                playPromise.then(finish).catch(finish);
+            }
+
+            // Fast path: already ready (e.g. stream reused without re-attach).
+            finish();
+        });
+    };
+
+    // Core camera start. `deviceId` (when provided) pins an exact camera;
+    // otherwise `facingMode` ('user' | 'environment') is requested as ideal.
+    const startStream = (facingMode, deviceId) => {
+        if (facingMode) {
+            cameraFacingMode = facingMode;
+        }
+        // A monotonically increasing token invalidates any in-flight stream
+        // request that resolves after a newer camera selection.
+        const token = ++cameraRequestToken;
+        showCameraLive();
+        if (capturePhotoBtn) {
+            capturePhotoBtn.disabled = true; // enabled only after stream is live
         }
 
-        .admin-record-modal .modal-content {
-            max-height: calc(100dvh - 1rem);
+        const videoConstraint = deviceId
+            ? { deviceId: { exact: deviceId } }
+            : { facingMode: { ideal: cameraFacingMode } };
+
+        return navigator.mediaDevices
+            .getUserMedia({
+                video: videoConstraint,
+                audio: false,
+            })
+            .then(async function (stream) {
+                // A newer request superseded this one — discard the stale stream.
+                if (token !== cameraRequestToken) {
+                    stream.getTracks().forEach(function (track) {
+                        track.stop();
+                    });
+                    return;
+                }
+                cameraStream = stream;
+                cameraActive = true;
+                cameraPausedByInterruption = false;
+                cameraDeviceId = deviceId || null;
+
+                if (cameraPreview) {
+                    cameraPreview.srcObject = stream;
+                }
+
+                cameraDebug("stream acquired", {
+                    facingMode: cameraFacingMode,
+                    deviceIdRequested: !!deviceId,
+                    settings: (() => {
+                        try {
+                            const t = stream.getVideoTracks()[0];
+                            if (!t || typeof t.getSettings !== "function") {
+                                return null;
+                            }
+                            const s = t.getSettings();
+                            return {
+                                facingMode: s.facingMode || null,
+                                width: s.width || null,
+                                height: s.height || null,
+                                frameRate: s.frameRate || null,
+                                aspectRatio: s.aspectRatio || null,
+                            };
+                        } catch (e) {
+                            return null;
+                        }
+                    })(),
+                });
+
+                // ---------------------------------------------------------------
+                // 1. Video readiness: wait for a decoded, current frame from the
+                //    newly attached stream BEFORE enabling capture. Retaking a
+                //    photo re-attaches a fresh stream, and capture would fail
+                //    (blank frame) if we proceeded before the frame is ready.
+                // ---------------------------------------------------------------
+                try {
+                    await waitForVideoReady(cameraPreview, token);
+                } catch (error) {
+                    if (token !== cameraRequestToken) {
+                        // Superseded by a newer request / camera switch.
+                        stream.getTracks().forEach(function (track) {
+                            track.stop();
+                        });
+                        return;
+                    }
+                    stream.getTracks().forEach(function (track) {
+                        track.stop();
+                    });
+                    cameraStream = null;
+                    cameraActive = false;
+                    if (cameraPreview) {
+                        cameraPreview.srcObject = null;
+                    }
+                    showCameraIdle();
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        { reason: "video frame not ready" },
+                        "warning",
+                    );
+                    showAlert(
+                        "error",
+                        "Camera not ready",
+                        "The camera video frame could not be loaded. Please try again.",
+                    );
+                    return;
+                }
+
+                // ---------------------------------------------------------------
+                // 2. Privacy protection MUST initialize before capture is enabled.
+                //    If face detection cannot initialize, the system will not allow
+                //    an evidence photograph to be captured.
+                // ---------------------------------------------------------------
+                try {
+                    await initializePrivacyFaceBlur();
+                } catch (error) {
+                    stream.getTracks().forEach(function (track) {
+                        track.stop();
+                    });
+
+                    cameraStream = null;
+                    cameraActive = false;
+
+                    if (cameraPreview) {
+                        cameraPreview.srcObject = null;
+                    }
+
+                    showCameraIdle();
+
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        {
+                            reason: "face blur initialization failed",
+                        },
+                        "warning",
+                    );
+
+                    showAlert(
+                        "error",
+                        "Privacy protection unavailable",
+                        "The face-blur protection could not be initialized. The photo was not captured. Please try again.",
+                    );
+
+                    return;
+                }
+
+                // Capture is enabled ONLY after the video frame is ready AND
+                // privacy protection is ready.
+                if (capturePhotoBtn) {
+                    capturePhotoBtn.disabled = false;
+                }
+
+                updateLiveWatermark();
+                startLiveClock();
+
+                reportSecurityEvent("CAMERA_INITIALIZED", null, "info");
+            })
+            .catch(function (error) {
+                if (token !== cameraRequestToken) {
+                    return;
+                }
+                cameraActive = false;
+                if (error && error.name === "OverconstrainedError") {
+                    // The requested facingMode / device is not available here.
+                    // Enumerate and pick a concrete camera.
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        { reason: String(error.name) },
+                        "warning",
+                    );
+                    enumerateAndStartFallback();
+                    return;
+                }
+                let reason = "Camera unavailable";
+                if (error && error.name === "NotAllowedError") {
+                    reason = "Permission denied";
+                    reportSecurityEvent(
+                        "CAMERA_PERMISSION_DENIED",
+                        { reason: String(error.name) },
+                        "warning",
+                    );
+                } else if (error && error.name === "NotFoundError") {
+                    reason = "Camera hardware not found";
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        { reason: String(error.name) },
+                        "warning",
+                    );
+                } else if (error && error.name === "NotReadableError") {
+                    reason = "Camera is in use by another application";
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        { reason: String(error.name) },
+                        "warning",
+                    );
+                } else {
+                    reason = "Unable to access the camera";
+                    reportSecurityEvent(
+                        "CAMERA_ERROR",
+                        {
+                            reason: error
+                                ? String(error.name || error.message)
+                                : "unknown",
+                        },
+                        "warning",
+                    );
+                }
+                showAlert("error", "Camera error", reason);
+                showCameraIdle();
+            });
+    };
+
+    // Public entry point used by the Open Camera / retake / initial flows.
+    // Clears any pinned deviceId so the browser resolves via facingMode.
+    const startCamera = (facingMode) => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            reportSecurityEvent(
+                "CAMERA_ERROR",
+                { reason: "API unsupported" },
+                "warning",
+            );
+            showAlert(
+                "error",
+                "Camera unsupported",
+                "This browser does not support camera access (getUserMedia). You can still attach a PDF document.",
+            );
+            showCameraIdle();
+            return;
+        }
+        cameraDeviceId = null;
+        startStream(facingMode || cameraFacingMode, null);
+    };
+
+    // Enumerate available video inputs and start with a concrete device,
+    // falling back gracefully when facingMode is not honoured (e.g.
+    // single-camera desktops or unusual mobile browsers). When a flip is
+    // requested we rotate to the NEXT video input so the button still works on
+    // devices that only expose several generic cameras without a usable
+    // facingMode label.
+    const enumerateAndStartFallback = () => {
+        if (
+            !navigator.mediaDevices ||
+            !navigator.mediaDevices.enumerateDevices
+        ) {
+            showCameraIdle();
+            return;
+        }
+        navigator.mediaDevices
+            .enumerateDevices()
+            .then(function (devices) {
+                const videoInputs = devices.filter(function (device) {
+                    return device.kind === "videoinput";
+                });
+                if (videoInputs.length === 0) {
+                    showCameraIdle();
+                    return;
+                }
+                // If we already have an active deviceId, try the next camera in
+                // the list so a flip visibly switches on multi-camera devices
+                // that do not expose a facingMode label.
+                let preferred = null;
+                if (cameraDeviceId) {
+                    const currentIndex = videoInputs.findIndex(
+                        function (device) {
+                            return device.deviceId === cameraDeviceId;
+                        },
+                    );
+                    const nextDevice =
+                        videoInputs[(currentIndex + 1) % videoInputs.length];
+                    if (nextDevice) {
+                        preferred = nextDevice;
+                    }
+                }
+                if (!preferred) {
+                    // Otherwise prefer a labeled front/back match for the
+                    // current facingMode, falling back to the first camera.
+                    preferred =
+                        videoInputs.find(function (device) {
+                            return (
+                                device.label &&
+                                (cameraFacingMode === "environment"
+                                    ? /back|rear|environment/i.test(
+                                          device.label,
+                                      )
+                                    : /front|user/i.test(device.label))
+                            );
+                        }) || videoInputs[0];
+                }
+
+                const chosenDeviceId =
+                    preferred && preferred.deviceId ? preferred.deviceId : null;
+
+                if (!chosenDeviceId) {
+                    showCameraIdle();
+                    return;
+                }
+
+                startStream(cameraFacingMode, chosenDeviceId);
+            })
+            .catch(function () {
+                showCameraIdle();
+            });
+    };
+
+    // Stop the active video tracks without tearing down the UI panels. Used by
+    // camera switching so the live preview can be re-used for the new camera.
+    const stopCameraTracks = () => {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(function (track) {
+                track.stop();
+            });
+            cameraStream = null;
+        }
+        cameraActive = false;
+        cameraPausedByInterruption = false;
+        if (cameraPreview) {
+            cameraPreview.srcObject = null;
+        }
+    };
+
+    const stopCamera = () => {
+        stopLiveClock();
+        // Invalidate any in-flight stream request so a stale resolution can
+        // never overwrite a newer camera selection.
+        cameraRequestToken += 1;
+        stopCameraTracks();
+        if (capturePhotoBtn) {
+            capturePhotoBtn.disabled = true;
+        }
+        resetCameraPanels();
+    };
+
+    closeCameraBtn &&
+        closeCameraBtn.addEventListener("click", function () {
+            reportSecurityEvent(
+                "CAPTURE_ABANDONED",
+                { stage: "camera" },
+                "info",
+            );
+            stopCamera();
+        });
+
+    // Flip between the front and back camera. `facingMode` is the authority on
+    // mobile (some browsers expose incomplete device labels/ids), so we toggle
+    // 'user' <-> 'environment' directly and only fall back to device
+    // enumeration if the requested facing mode is not available
+    // (OverconstrainedError). A single tap switches immediately.
+    flipCameraBtn &&
+        flipCameraBtn.addEventListener("click", function () {
+            // Cannot flip while paused for a possible screen-capture /
+            // interruption, or while a previous switch is still in flight.
+            if (
+                !cameraActive ||
+                cameraPausedByInterruption ||
+                cameraSwitchInProgress
+            ) {
+                return;
+            }
+            if (
+                !navigator.mediaDevices ||
+                !navigator.mediaDevices.getUserMedia
+            ) {
+                return;
+            }
+
+            const nextMode =
+                cameraFacingMode === "environment" ? "user" : "environment";
+
+            cameraSwitchInProgress = true;
+
+            reportSecurityEvent(
+                "CAMERA_FLIP",
+                { from: cameraFacingMode, to: nextMode },
+                "info",
+            );
+
+            // Stop the previous camera before acquiring the new one, but keep
+            // the live panel visible while the switch completes.
+            stopCameraTracks();
+
+            // facingMode is the primary selection mechanism.
+            cameraDeviceId = null;
+
+            startStream(nextMode, null).finally(function () {
+                cameraSwitchInProgress = false;
+            });
+        });
+
+    // Interruption handling — pause capture, blur/hide the preview, log event.
+    const handleInterruption = (kind, meta) => {
+        const isPrtSc = kind === "prtsc";
+        if (cameraActive && !cameraPausedByInterruption) {
+            cameraPausedByInterruption = true;
+            if (capturePhotoBtn) {
+                capturePhotoBtn.disabled = true;
+            }
+            if (flipCameraBtn) {
+                flipCameraBtn.classList.add("d-none");
+                flipCameraBtn.classList.remove("d-flex");
+            }
+            if (cameraPreview) {
+                cameraPreview.classList.add("camera-obscured");
+            }
+            if (cameraWrap) {
+                cameraWrap.classList.add("video-interrupted");
+            }
+            if (cameraInterruptedOverlay) {
+                cameraInterruptedOverlay.classList.remove("d-none");
+                cameraInterruptedOverlay.classList.add("d-flex");
+            }
+        }
+        // Terminology is deliberately "possible screen capture or browser
+        // interruption" — NOT "screenshot confirmed".
+        reportSecurityEvent(
+            isPrtSc ? "PRINTSCREEN_DETECTED" : "POSSIBLE_SCREEN_CAPTURE",
+            meta || {},
+            "warning",
+        );
+    };
+
+    const restoreAfterInterruption = () => {
+        if (cameraPausedByInterruption && cameraActive) {
+            cameraPausedByInterruption = false;
+            if (cameraPreview) {
+                cameraPreview.classList.remove("camera-obscured");
+            }
+            if (cameraWrap) {
+                cameraWrap.classList.remove("video-interrupted");
+            }
+            if (cameraInterruptedOverlay) {
+                cameraInterruptedOverlay.classList.add("d-none");
+                cameraInterruptedOverlay.classList.remove("d-flex");
+            }
+            if (flipCameraBtn) {
+                flipCameraBtn.classList.remove("d-none");
+                flipCameraBtn.classList.add("d-flex");
+            }
+            // Capture re-enabled because the page is active again.
+            if (capturePhotoBtn && cameraActive) {
+                capturePhotoBtn.disabled = false;
+            }
+            reportSecurityEvent("PAGE_FOCUS_RESTORED", null, "info");
+        }
+    };
+
+    // ------------------------------------------------------------------
+    // Browser focus / visibility / PrintScreen monitoring
+    // (DETECTION ONLY — the watermark is the primary protection.)
+    // ------------------------------------------------------------------
+    const onWindowBlur = () => {
+        if (currentStep === 3) {
+            handleInterruption("blur", { source: "window blur" });
+        }
+    };
+
+    const onWindowFocus = () => {
+        restoreAfterInterruption();
+    };
+
+    const onVisibilityChange = () => {
+        if (currentStep !== 3) {
+            return;
+        }
+        reportSecurityEvent(
+            "PAGE_VISIBILITY_CHANGED",
+            { hidden: document.hidden },
+            "info",
+        );
+        if (document.hidden) {
+            handleInterruption("visibility", {
+                source: "visibilitychange hidden",
+            });
+        } else {
+            restoreAfterInterruption();
+        }
+    };
+
+    const onKeyDown = (event) => {
+        if (currentStep !== 3) {
+            return;
+        }
+        const key = event.key || "";
+        const isPrintScreen = key === "PrintScreen";
+        // macOS: Cmd+Shift+3 / Cmd+Shift+4 are handled by the OS; the browser
+        // typically does not see them. We only catch what the browser exposes.
+        const isMacShot = event.metaKey && event.shiftKey && /^[34]$/.test(key);
+
+        if (isPrintScreen || isMacShot) {
+            handleInterruption("prtsc", { key });
+        }
+    };
+
+    window.addEventListener("blur", onWindowBlur);
+    window.addEventListener("focus", onWindowFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    document.addEventListener("keydown", onKeyDown);
+
+    // ------------------------------------------------------------------
+    // Active camera identification (used in the baked-in evidence watermark).
+    // Reads the live MediaStreamTrack settings/capabilities instead of a
+    // hardcoded "Web Camera" label.
+    // ------------------------------------------------------------------
+    const describeActiveCamera = () => {
+        const track =
+            cameraStream && cameraStream.getVideoTracks
+                ? cameraStream.getVideoTracks()[0]
+                : null;
+
+        let facingMode = null;
+        let label = "";
+
+        if (track) {
+            try {
+                const settings = track.getSettings ? track.getSettings() : null;
+                if (settings && settings.facingMode) {
+                    facingMode = settings.facingMode;
+                }
+            } catch (e) {
+                // Ignore; getSettings may be unavailable on some browsers.
+            }
+
+            if (!facingMode) {
+                try {
+                    const capabilities = track.getCapabilities
+                        ? track.getCapabilities()
+                        : null;
+                    if (
+                        capabilities &&
+                        capabilities.facingMode &&
+                        Array.isArray(capabilities.facingMode) &&
+                        capabilities.facingMode.length === 1
+                    ) {
+                        facingMode = capabilities.facingMode[0];
+                    }
+                } catch (e) {
+                    // Ignore; getCapabilities may be unavailable.
+                }
+            }
+
+            label = (track.label || "").trim();
         }
 
-        .admin-record-modal .modal-header {
-            padding: 0.8rem 0.9rem;
-            flex: 0 0 auto;
+        const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(
+            navigator.userAgent || "",
+        );
+
+        if (facingMode === "environment") {
+            return "Phone Camera (Rear)";
+        }
+        if (facingMode === "user") {
+            return isMobile ? "Phone Camera (Front)" : "Built-in Camera";
         }
 
-        .admin-record-modal .modal-header .modal-title {
-            font-size: 1.1rem;
-            line-height: 1.3;
+        const lower = label.toLowerCase();
+        if (lower) {
+            if (/webcam|web camera|built-?in|integrated|facetime/.test(lower)) {
+                return "Built-in Camera";
+            }
+            if (/usb|external|hd pro|stream|capture card/.test(lower)) {
+                return "External Camera";
+            }
+            return label;
         }
 
-        .admin-record-modal .modal-body {
-            max-height: none;
-            padding: 0.85rem;
+        return "Camera (Device information unavailable)";
+    };
+
+    // ------------------------------------------------------------------
+    // Canvas watermark — the watermark is BAKED into the captured image.
+    // ------------------------------------------------------------------
+    const drawWatermarkedCanvas = async (video) => {
+        // Never fall back to stale/default dimensions: a fresh, decoded frame
+        // is required before any pixels are drawn.
+        if (
+            video.readyState < HAVE_CURRENT_DATA ||
+            !video.videoWidth ||
+            !video.videoHeight
+        ) {
+            throw new Error("Camera frame not ready.");
         }
 
-        .admin-record-modal .modal-footer,
-        .admin-record-modal .modal-footer.justify-content-between {
-            display: grid !important;
-            grid-template-columns: minmax(0, 1fr);
-            gap: 0.55rem;
-            padding: 0.7rem 0.85rem calc(0.7rem + env(safe-area-inset-bottom, 0px));
+        const width = video.videoWidth;
+        const height = video.videoHeight;
+
+        const canvas = document.createElement("canvas");
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+
+        // ------------------------------------------------------------
+        // 1. Draw original camera frame
+        // ------------------------------------------------------------
+
+        ctx.drawImage(video, 0, 0, width, height);
+
+        // ------------------------------------------------------------
+        // 2. Face detection + privacy blur
+        // ------------------------------------------------------------
+
+        // Preserve this module's required privacy gate: do not capture evidence
+        // unless face-blur initialization succeeds. Blur happens before watermark.
+        const faceBlur = await initializePrivacyFaceBlur();
+
+        // The blur function may re-sample the live video when detection needs a
+        // fresh frame, so it always processes the LATEST camera frame. Dimensions
+        // are re-read on each sample so a resolution change is honored.
+        const sampleLatestFrame = () => {
+            const w = video.videoWidth || width;
+            const h = video.videoHeight || height;
+            if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+            }
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        };
+
+        await faceBlur.blurFacesOnCanvas(canvas, sampleLatestFrame);
+
+        // ------------------------------------------------------------
+        // 3. Professional PUPTracker watermark
+        // ------------------------------------------------------------
+
+        const timestamp = formatPhTimestamp();
+
+        // Scale watermark based on image width.
+        const scale = Math.max(0.75, Math.min(1.5, width / 1280));
+
+        const padding = Math.round(18 * scale);
+
+        const headerHeight = Math.round(105 * scale);
+
+        const footerHeight = Math.round(48 * scale);
+
+        // ------------------------------------------------------------
+        // TOP HEADER
+        // ------------------------------------------------------------
+
+        ctx.save();
+
+        ctx.fillStyle = "rgba(0, 0, 0, 0.68)";
+
+        ctx.fillRect(0, 0, width, headerHeight);
+
+        // ------------------------------------------------------------
+        // PUPTracker title
+        // ------------------------------------------------------------
+
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+
+        ctx.fillStyle = "#ffffff";
+
+        ctx.font = `bold ${Math.round(30 * scale)}px Arial, sans-serif`;
+
+        ctx.fillText("PUPTRACKER", padding, Math.round(18 * scale));
+
+        // ------------------------------------------------------------
+        // Organization
+        // ------------------------------------------------------------
+
+        ctx.font = `${Math.round(13 * scale)}px Arial, sans-serif`;
+
+        ctx.fillStyle = "#f5f5f5";
+
+        ctx.fillText(
+            "POLYTECHNIC UNIVERSITY OF THE PHILIPPINES",
+            padding,
+            Math.round(53 * scale),
+        );
+
+        ctx.fillText(
+            "VIOLATION MONITORING SYSTEM",
+            padding,
+            Math.round(72 * scale),
+        );
+
+        // ------------------------------------------------------------
+        // Header divider
+        // ------------------------------------------------------------
+
+        const dividerX = Math.round(width * 0.7);
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+
+        ctx.fillRect(
+            dividerX,
+            Math.round(16 * scale),
+            1,
+            headerHeight - Math.round(32 * scale),
+        );
+
+        // ------------------------------------------------------------
+        // Capture information
+        // ------------------------------------------------------------
+
+        const infoX = dividerX + Math.round(22 * scale);
+
+        ctx.font = `${Math.round(13 * scale)}px Arial, sans-serif`;
+
+        ctx.fillStyle = "#ffffff";
+
+        ctx.fillText(`Captured: ${timestamp}`, infoX, Math.round(25 * scale));
+
+        ctx.fillText(
+            `Device: ${describeActiveCamera()}`,
+            infoX,
+            Math.round(49 * scale),
+        );
+
+        ctx.fillText("For Official Use Only", infoX, Math.round(73 * scale));
+
+        ctx.restore();
+
+        // ------------------------------------------------------------
+        // BOTTOM FOOTER
+        // ------------------------------------------------------------
+
+        ctx.save();
+
+        ctx.fillStyle = "rgba(128, 0, 0, 0.88)";
+
+        ctx.fillRect(0, height - footerHeight, width, footerHeight);
+
+        // Left footer
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+
+        ctx.fillStyle = "#ffffff";
+
+        ctx.font = `bold ${Math.round(15 * scale)}px Arial, sans-serif`;
+
+        ctx.fillText(
+            "PUPTRACKER EVIDENCE RECORD",
+            padding,
+            height - footerHeight / 2,
+        );
+
+        // Right footer
+        ctx.textAlign = "right";
+
+        ctx.font = `${Math.round(12 * scale)}px Arial, sans-serif`;
+
+        ctx.fillText(
+            "DISCIPLINE  |  INTEGRITY  |  SERVICE",
+            width - padding,
+            height - footerHeight / 2,
+        );
+
+        ctx.restore();
+
+        return canvas;
+    };
+
+    capturePhotoBtn &&
+        capturePhotoBtn.addEventListener("click", async function () {
+            if (!cameraActive || cameraPausedByInterruption) {
+                return; // Capture disabled while inactive/paused.
+            }
+            if (!cameraPreview) {
+                return;
+            }
+            // Prevent overlapping captures (double-click / rapid taps).
+            if (captureInProgress) {
+                return;
+            }
+            captureInProgress = true;
+            cameraDebug("capture requested", {
+                readyState: cameraPreview.readyState,
+                videoWidth: cameraPreview.videoWidth,
+                videoHeight: cameraPreview.videoHeight,
+                paused: cameraPreview.paused,
+            });
+            if (capturePhotoBtn) {
+                capturePhotoBtn.disabled = true;
+            }
+
+            let canvas;
+
+            try {
+                // Face blur must succeed before the image can become evidence.
+                canvas = await drawWatermarkedCanvas(cameraPreview);
+            } catch (error) {
+                captureInProgress = false;
+                if (capturePhotoBtn && cameraActive) {
+                    capturePhotoBtn.disabled = false;
+                }
+                reportSecurityEvent(
+                    "CAMERA_ERROR",
+                    {
+                        reason: "face blur processing failed",
+                    },
+                    "warning",
+                );
+
+                showAlert(
+                    "error",
+                    "Privacy protection unavailable",
+                    "The face-blur protection could not process this image. The photo was not captured. Please try again.",
+                );
+
+                return;
+            }
+
+            captureInProgress = false;
+
+            // Stop live camera while reviewing the captured photo.
+            stopCamera();
+
+            canvas.toBlob(
+                function (blob) {
+                    if (!blob) {
+                        showAlert(
+                            "error",
+                            "Capture failed",
+                            "Unable to encode the captured photo. Please try again.",
+                        );
+                        reportSecurityEvent(
+                            "CAMERA_ERROR",
+                            { reason: "canvas toBlob failed" },
+                            "warning",
+                        );
+                        return;
+                    }
+                    capturedImageBlob = blob;
+                    if (capturedImageObjectUrl) {
+                        URL.revokeObjectURL(capturedImageObjectUrl);
+                    }
+                    capturedImageObjectUrl = URL.createObjectURL(blob);
+                    showCaptureReview(blob, capturedImageObjectUrl);
+                    reportSecurityEvent(
+                        "EVIDENCE_CAPTURED",
+                        { bytes: blob.size },
+                        "info",
+                    );
+                },
+                "image/jpeg",
+                0.92,
+            );
+        });
+
+    retakePhotoBtn &&
+        retakePhotoBtn.addEventListener("click", function () {
+            // Retake → return to live camera (security notice already accepted).
+            if (capturedImageObjectUrl) {
+                URL.revokeObjectURL(capturedImageObjectUrl);
+                capturedImageObjectUrl = null;
+            }
+            capturedImageBlob = null;
+            cameraDebug("retake requested");
+            reportSecurityEvent(
+                "CAPTURE_ABANDONED",
+                { stage: "retake" },
+                "info",
+            );
+            startCamera();
+        });
+
+    usePhotoBtn &&
+        usePhotoBtn.addEventListener("click", function () {
+            if (!capturedImageBlob) {
+                return;
+            }
+            // Derive a display filename for the staged item; the actual disk
+            // name is generated server-side from the evidence code.
+            const capturedAt = new Date();
+            const stamp = formatPhTimestamp(capturedAt).replace(/[^\d]/g, "");
+            const fakeName = `EVD_${stamp}.jpg`;
+            const file = new File([capturedImageBlob], fakeName, {
+                type: "image/jpeg",
+                lastModified: capturedAt.getTime(),
+            });
+
+            addEvidenceItem({
+                file: file,
+                method: "camera",
+                capturedAt: capturedAt.toISOString(),
+                watermarked: true,
+            });
+
+            if (capturedImageObjectUrl) {
+                URL.revokeObjectURL(capturedImageObjectUrl);
+                capturedImageObjectUrl = null;
+            }
+            capturedImageBlob = null;
+            resetCameraPanels();
+        });
+
+    // ------------------------------------------------------------------
+    // Staged evidence list (camera photos + secure PDF uploads)
+    // ------------------------------------------------------------------
+    const updateEvidenceCount = () => {
+        const badge = document.getElementById("evidenceCountBadge");
+        if (badge) {
+            badge.textContent = `${evidenceItems.length} / ${MAX_EVIDENCE} files`;
+        }
+    };
+
+    const addEvidenceItem = (item) => {
+        if (evidenceItems.length >= MAX_EVIDENCE) {
+            showAlert(
+                "warning",
+                "Too many files",
+                `You may attach at most ${MAX_EVIDENCE} evidence files.`,
+            );
+            return;
+        }
+        if (item.file.size > MAX_FILE_BYTES) {
+            showAlert(
+                "warning",
+                "File too large",
+                `${item.file.name} exceeds the 5 MB limit.`,
+            );
+            return;
+        }
+        evidenceItems.push(item);
+        renderEvidenceList();
+        updateEvidenceCount();
+    };
+
+    const renderEvidenceList = () => {
+        const container = document.getElementById("evidencePreviewList");
+        if (!container) {
+            return;
         }
 
-        .admin-record-modal .modal-footer > #backStep {
-            grid-row: 1;
-            width: 100%;
-            margin: 0;
-            justify-content: center;
+        if (!evidenceItems.length) {
+            container.innerHTML = "";
+            return;
         }
 
-        .admin-record-modal .modal-footer > .ms-auto {
-            grid-row: 2;
-            margin: 0 !important;
-            width: 100%;
-            min-width: 0;
-            display: grid;
-            grid-template-columns: minmax(0, 1fr);
-            gap: 0.55rem;
-        }
-
-        .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
-            width: 100%;
-            min-width: 0;
-            margin: 0 !important;
-            justify-content: center;
-            white-space: normal;
-        }
-
-        /* The submit CTA must remain visible on step 4, on its own row. */
-        .admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
-            display: inline-flex !important;
-            grid-row: 3;
-            width: 100%;
-            min-height: 46px;
-        }
-
-        .admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none) {
-            grid-row: 3;
-            min-height: 46px;
-        }
-
-        .admin-record-modal .modal-footer > .ms-auto > #cancelViolationBtn {
-            grid-row: 1;
-            min-height: 44px;
-        }
-    }
-
-
-/* Final fix: keep the wizard actions visible and make only the form body scroll. */
-.admin-record-modal.modal {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch;
-}
-.admin-record-modal .modal-dialog,
-.admin-record-modal .modal-dialog.modal-dialog-scrollable {
-    display: flex !important;
-    flex-direction: column !important;
-    width: min(1160px, calc(100% - 2rem)) !important;
-    height: calc(100dvh - 2rem) !important;
-    max-height: calc(100dvh - 2rem) !important;
-    margin: 1rem auto !important;
-}
-.admin-record-modal .modal-content {
-    display: flex !important;
-    flex-direction: column !important;
-    flex: 1 1 auto !important;
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    max-height: 100% !important;
-    overflow: hidden !important;
-}
-/* The form sits between the header and the modal body/footer, so it must also
-   be a flex column; otherwise its body cannot shrink and the footer gets pushed off-screen. */
-.admin-record-modal .modal-content > form#violationForm {
-    display: flex !important;
-    flex: 1 1 auto !important;
-    flex-direction: column !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    height: auto !important;
-    overflow: hidden !important;
-}
-.admin-record-modal .modal-header {
-    flex: 0 0 auto !important;
-    min-width: 0;
-    position: relative;
-    z-index: 2;
-}
-.admin-record-modal .modal-body {
-    display: block !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    height: auto !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
-}
-.admin-record-modal .modal-footer {
-    display: flex !important;
-    flex: 0 0 auto !important;
-    flex-wrap: wrap !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    gap: .5rem !important;
-    min-height: 0;
-    padding: .65rem .85rem calc(.65rem + env(safe-area-inset-bottom, 0px)) !important;
-    position: relative;
-    z-index: 3;
-    background: #fffdf6;
-}
-.admin-record-modal .modal-footer > #backStep {
-    flex: 0 1 auto !important;
-    min-width: 5.5rem;
-    margin: 0 !important;
-}
-.admin-record-modal .modal-footer > .ms-auto {
-    display: flex !important;
-    flex: 0 1 auto !important;
-    flex-wrap: wrap !important;
-    gap: .5rem !important;
-    min-width: 0;
-    margin-left: auto !important;
-}
-.admin-record-modal .modal-footer .btn,
-.admin-record-modal .modal-header .btn-close {
-    min-height: 44px;
-    touch-action: manipulation;
-}
-.admin-record-modal .modal-footer .btn {
-    max-width: 100%;
-    white-space: normal !important;
-}
-@media (max-width: 767.98px), (max-height: 600px) {
-    .admin-record-modal.modal { padding: 0 !important; }
-    .admin-record-modal .modal-dialog,
-    .admin-record-modal .modal-dialog.modal-dialog-scrollable {
-        width: calc(100% - 1rem) !important;
-        height: calc(100dvh - 1rem) !important;
-        max-height: calc(100dvh - 1rem) !important;
-        margin: .5rem auto !important;
-    }
-    .admin-record-modal .modal-content { border-radius: .85rem !important; }
-    .admin-record-modal .modal-header {
-        padding: .75rem 3.25rem .75rem .85rem !important;
-        align-items: flex-start;
-    }
-    .admin-record-modal .modal-header .modal-title {
-        min-width: 0;
-        font-size: clamp(1rem, 4.2vw, 1.2rem);
-        line-height: 1.25;
-        overflow-wrap: anywhere;
-    }
-    .admin-record-modal .modal-header .btn-close {
-        position: absolute;
-        top: .6rem;
-        right: .6rem;
-    }
-    .admin-record-modal .modal-body { padding: .75rem !important; }
-    .admin-record-modal .modal-body .row { --bs-gutter-x: .75rem; }
-    .admin-record-modal .modal-body .card { min-width: 0; }
-    .admin-record-modal .modal-body input,
-    .admin-record-modal .modal-body select,
-    .admin-record-modal .modal-body textarea,
-    .admin-record-modal .modal-body .form-control,
-    .admin-record-modal .modal-body .form-select { max-width: 100%; min-width: 0; }
-    .admin-record-modal .modal-footer {
-        justify-content: stretch !important;
-        gap: .4rem !important;
-        padding: .55rem .65rem calc(.55rem + env(safe-area-inset-bottom, 0px)) !important;
-    }
-    .admin-record-modal .modal-footer > #backStep { flex: 1 1 calc(50% - .4rem) !important; }
-    .admin-record-modal .modal-footer > .ms-auto {
-        flex: 1 1 100% !important;
-        width: 100%;
-        margin: 0 !important;
-        justify-content: stretch;
-    }
-    .admin-record-modal .modal-footer > .ms-auto > .btn,
-    .admin-record-modal .modal-footer > .ms-auto > .portal-btn,
-    .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
-        flex: 1 1 calc(50% - .4rem) !important;
-        min-width: 0;
-        margin: 0 !important;
-    }
-    .admin-record-modal .modal-footer #continueStep:not(.d-none),
-    .admin-record-modal .modal-footer #nextStep:not(.d-none),
-    .admin-record-modal .modal-footer #saveViolation:not(.d-none) {
-        flex: 1 1 100% !important;
-        width: 100% !important;
-        min-height: 46px;
-        order: 10;
-    }
-}
-@media (max-width: 359.98px) {
-    .admin-record-modal .modal-footer > #backStep,
-    .admin-record-modal .modal-footer > .ms-auto > .btn,
-    .admin-record-modal .modal-footer > .ms-auto > .portal-btn,
-    .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
-        flex-basis: 100% !important;
-        width: 100% !important;
-    }
-}
-
-</style>
-
-<div class="modal fade admin-record-modal"
-     id="addViolationModal"
-     tabindex="-1"
-     aria-labelledby="addViolationModalLabel"
-     aria-hidden="true">
-
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-
-        <div class="modal-content shadow-lg border-0 rounded-4 overflow-hidden">
-
-            <!-- =============================================== -->
-            <!-- Header -->
-            <!-- =============================================== -->
-
-            <div class="modal-header text-white">
-
-                <div>
-
-                    <h4
-                        class="modal-title fw-bold"
-                        id="addViolationModalLabel">
-
-                        <i class="bi bi-shield-exclamation me-2"></i>
-
-                        Record Student Violation
-
-                    </h4>
-
-                    <small class="opacity-75 d-block mt-1">
-
-                        Create a new violation record for a student.
-
-                    </small>
-
-                </div>
-
-                <button
-                    type="button"
-                    class="btn-close btn-close-white"
-                    data-bs-dismiss="modal"
-                    aria-label="Close">
-                </button>
-
-            </div>
-
-            <form id="violationForm">
-
-                @csrf
-
-                <input type="hidden" id="selectedStudentId" name="user_id">
-                <input
-                    type="hidden"
-                    id="selectedStudentNumber"
-                    name="student_number">
-
-                <div class="modal-body">
-
-                    <!-- =========================================== -->
-                    <!-- Validation -->
-                    <!-- =========================================== -->
-
-                    <!-- =========================================== -->
-                    <!-- Wizard -->
-                    <!-- =========================================== -->
-
-                    <div class="row text-center mb-4 g-2">
-
-                        <div class="col">
-
-                            <div
-                                id="studentStepIndicator"
-                                class="wizard-bubble wizard-step-current mx-auto">
-
-                                1
-
-                            </div>
-
-                            <div class="mt-2 fw-semibold">
-
-                                Student
-
-                            </div>
-
-                        </div>
-
-                        <div class="col">
-
-                            <div
-                                id="violationStepIndicator"
-                                class="wizard-bubble wizard-step-upcoming mx-auto">
-
-                                2
-
-                            </div>
-
-                            <div class="mt-2 fw-semibold">
-
-                                Violation
-
-                            </div>
-
-                        </div>
-
-                        <div class="col">
-
-                            <div
-                                id="evidenceStepIndicator"
-                                class="wizard-bubble wizard-step-upcoming mx-auto">
-
-                                3
-
-                            </div>
-
-                            <div class="mt-2 fw-semibold">
-
-                                Evidence
-
-                            </div>
-
-                        </div>
-
-                        <div class="col">
-
-                            <div
-                                id="reviewStepIndicator"
-                                class="wizard-bubble wizard-step-upcoming mx-auto">
-
-                                4
-
-                            </div>
-
-                            <div class="mt-2 fw-semibold">
-
-                                Review
-
-                            </div>
-
-                        </div>
-
+        container.innerHTML = evidenceItems
+            .map(function (item, index) {
+                const isCamera = item.method === "camera";
+                const isPdf = !isCamera && item.file.type === "application/pdf";
+                const icon = isPdf
+                    ? '<i class="bi bi-file-earmark-pdf" style="font-size:1.6rem;color:#b91c1c"></i>'
+                    : isCamera
+                      ? '<i class="bi bi-camera-fill" style="font-size:1.6rem;color:#7a0f1e"></i>'
+                      : '<i class="bi bi-file-earmark-image" style="font-size:1.6rem;color:#7a0f1e"></i>';
+                const tag = isCamera
+                    ? '<span class="badge text-bg-light border ms-1">watermarked</span>'
+                    : isPdf
+                      ? '<span class="badge text-bg-light border ms-1">PDF</span>'
+                      : '<span class="badge text-bg-light border ms-1">upload</span>';
+                return `<div class="border rounded p-2 d-flex align-items-center gap-2" style="max-width:300px">
+                    ${icon}
+                    <div class="flex-grow-1">
+                        <div class="small text-truncate" style="max-width:140px" title="${item.file.name}">${item.file.name}</div>
+                        <div class="small text-muted">${(item.file.size / 1024).toFixed(0)} KB ${tag}</div>
                     </div>
-
-                    {{--
-                        The horizontal progress line was removed: the numbered
-                        circles ARE the progress indicator. `violationWizardProgress`
-                        is intentionally absent; the JS no longer looks it up.
-                    --}}
-
-                    <!-- =========================================== -->
-                    <!-- STEP 1 -->
-                    <!-- =========================================== -->
-
-                    <div id="studentStep">
-
-                        <div class="card wizard-card">
-
-                            <div class="card-header bg-white">
-
-                                <h5 class="mb-0">
-
-                                    <i class="bi bi-search me-2 text-danger"></i>
-
-                                    Search Student
-
-                                </h5>
-
-                            </div>
-
-                            <div class="card-body">
-
-                                <div class="position-relative">
-
-                                    <input
-                                        id="studentSearch"
-                                        type="text"
-                                        class="form-control form-control-lg"
-                                        placeholder="Search by Student Number or Student Name">
-
-                                    <div
-                                        id="studentSearchLoader"
-                                        class="spinner-border spinner-border-sm text-danger position-absolute top-50 end-0 translate-middle-y me-3 d-none">
-                                    </div>
-
-                                </div>
-
-                                <div
-                                    id="studentResults"
-                                    class="list-group mt-3">
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        <!-- ======================================= -->
-                        <!-- Selected Student -->
-                        <!-- ======================================= -->
-
-                        <div class="card wizard-card mt-4">
-
-                            <div class="card-header bg-white">
-
-                                <h5 class="mb-0">
-
-                                    <i class="bi bi-person-badge me-2 text-danger"></i>
-
-                                    Selected Student
-
-                                </h5>
-
-                            </div>
-
-                            <div class="card-body">
-
-                                <div
-                                    id="noStudentSelected"
-                                    class="text-center py-5 text-muted">
-
-                                    <i
-                                        class="bi bi-person-x display-5 d-block mb-3">
-                                    </i>
-
-                                    No student selected.
-
-                                </div>
-
-                                <div
-                                    id="selectedStudentInfo"
-                                    class="d-none">
-
-                                    <div class="row g-3">
-
-                                        <div class="col-md-6">
-
-                                            <label class="form-label">
-
-                                                Student Number
-
-                                            </label>
-
-                                            <input
-                                                id="studentNumber"
-                                                class="form-control"
-                                                readonly>
-
-                                        </div>
-
-                                        <div class="col-md-6">
-
-                                            <label class="form-label">
-
-                                                Student Name
-
-                                            </label>
-
-                                            <input
-                                                id="studentName"
-                                                class="form-control"
-                                                readonly>
-
-                                        </div>
-
-                                        <div class="col-md-4">
-
-                                            <label class="form-label">
-
-                                                Program
-
-                                            </label>
-
-                                            <input
-                                                id="studentProgram"
-                                                class="form-control"
-                                                readonly>
-
-                                        </div>
-
-                                        <div class="col-md-4">
-
-                                            <label class="form-label">
-
-                                                Year Level
-
-                                            </label>
-
-                                            <input
-                                                id="studentYear"
-                                                class="form-control"
-                                                readonly>
-
-                                        </div>
-
-                                        <div class="col-md-4">
-
-                                            <label class="form-label">
-
-                                                Section
-
-                                            </label>
-
-                                            <input
-                                                id="studentSection"
-                                                class="form-control"
-                                                readonly>
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <!-- =========================================== -->
-                    <!-- STEP 2 STARTS BELOW -->
-                    <!-- =========================================== -->
-
-                    <div
-                        id="violationStep"
-                        class="d-none">
-                        <!-- =========================================== -->
-<!-- Violation Details -->
-<!-- =========================================== -->
-
-<div class="card wizard-card">
-
-    <div class="card-header bg-white">
-
-        <h5 class="mb-0">
-
-            <i class="bi bi-exclamation-octagon me-2 text-danger"></i>
-
-            Violation Information
-
-        </h5>
-
-    </div>
-
-    <div class="card-body">
-
-        <div class="row g-4">
-
-            <!-- Category -->
-
-            <div class="col-md-6">
-
-                <label
-                    for="violationCategory"
-                    class="form-label fw-semibold">
-
-                    Violation Category
-                    <span class="text-danger">*</span>
-
-                </label>
-
-               <select
-    id="violationCategory"
-    name="category_id"
-    class="form-select"
-    required>
-
-    <option value="">Select Category</option>
-
-    @foreach($categories as $category)
-        <option value="{{ $category->violation_category_id }}">
-            {{-- Human-readable label only. Security renders exactly this, so the
-                 admin dropdown must not append the raw category ID. --}}
-            {{ $category->category_name }}
-        </option>
-    @endforeach
-
-</select>
-
-            </div>
-
-            <!-- Type -->
-
-            <div class="col-md-6">
-
-                <label
-                    for="violationType"
-                    class="form-label fw-semibold">
-
-                    Violation Type
-                    <span class="text-danger">*</span>
-
-                </label>
-
-                <select
-                    id="violationType"
-                    name="violation_type"
-                    class="form-select"
-                    disabled
-                    required>
-
-                    <option value="">
-                        Select Violation Type
-                    </option>
-
-                </select>
-
-            </div>
-
-            <!-- Date -->
-
-            <div class="col-md-6">
-
-                <label
-                    for="violationDate"
-                    class="form-label fw-semibold">
-
-                    Date & Time
-                    <span class="text-danger">*</span>
-
-                </label>
-
-                <input
-                    type="datetime-local"
-                    id="violationDate"
-                    name="violation_date"
-                    class="form-control"
-                    value="{{ now()->format('Y-m-d\TH:i') }}"
-                    required>
-
-            </div>
-
-            <!-- Preview Offense -->
-
-            <div class="col-md-6">
-
-                <label
-                    class="form-label fw-semibold">
-
-                    Current Offense Level
-
-                </label>
-
-                <input
-                    id="previewOffenseLevel"
-                    type="text"
-                    class="form-control bg-light"
-                    value="-"
-                    readonly>
-
-            </div>
-
-            <!-- Description -->
-
-            <div class="col-12">
-
-                <label
-                    for="description"
-                    class="form-label fw-semibold">
-
-                    Incident Description
-                    <span class="text-danger">*</span>
-
-                </label>
-
-                <textarea
-                    id="description"
-                    name="description"
-                    rows="6"
-                    maxlength="1000"
-                    class="form-control"
-                    placeholder="Provide a detailed description of the incident..."
-                    required></textarea>
-
-                <div
-                    class="d-flex justify-content-end mt-2">
-
-                    <small
-                        id="descriptionCounter"
-                        class="text-muted">
-
-                        0/1000
-
-                    </small>
-
-                </div>
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- =========================================== -->
-<!-- Preview -->
-<!-- =========================================== -->
-
-<div class="card wizard-card">
-
-    <div class="card-header bg-white">
-
-        <h5 class="mb-0">
-
-            <i class="bi bi-eye me-2 text-danger"></i>
-
-            Violation Preview
-
-        </h5>
-
-    </div>
-
-    <div class="card-body">
-
-        <div class="row gy-3">
-
-            <div class="col-md-6">
-
-                <label class="text-muted small">
-
-                    Category
-
-                </label>
-
-                <div
-                    id="previewCategory"
-                    class="fw-semibold">
-
-                    -
-
-                </div>
-
-            </div>
-
-            <div class="col-md-6">
-
-                <label class="text-muted small">
-
-                    Violation
-
-                </label>
-
-                <div
-                    id="previewViolationType"
-                    class="fw-semibold">
-
-                    -
-
-                </div>
-
-            </div>
-
-            <div class="col-md-6">
-
-                <label class="text-muted small">
-
-                    Offense Level
-
-                </label>
-
-                <div
-                    id="previewOffenseLevelCard"
-                    class="fw-semibold text-warning">
-
-                    <span id="previewOffenseLevelDisplay">
-
-                        -
-
-                    </span>
-
-                </div>
-
-            </div>
-
-            <div class="col-md-6">
-
-                <label class="text-muted small">
-
-                    Sanction
-
-                </label>
-
-                <div
-                    id="previewSanction"
-                    class="fw-semibold text-danger">
-
-                    No disciplinary sanction available.
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-                    </div>
-                    <!-- End #violationStep -->
-
-                    <!-- =========================================== -->
-                    <!-- STEP 3 : EVIDENCE -->
-                    <!-- =========================================== -->
-
-                    <div id="evidenceStep" class="d-none">
-
-                        <div class="card wizard-card">
-
-                            <div
-                                class="card-header bg-white d-flex justify-content-between align-items-center">
-
-                                <h5 class="mb-0">
-
-                                    <i class="bi bi-shield-lock me-2 text-danger"></i>
-
-                                    Evidence
-
-                                </h5>
-
-                                <span
-                                    class="badge bg-secondary"
-                                    id="evidenceCountBadge">
-
-                                    0 / 5 files
-
-                                </span>
-
-                            </div>
-
-                            <div class="card-body">
-
-                                <div
-                                    class="alert alert-warning small mb-3">
-
-                                    <i class="bi bi-shield-exclamation me-1"></i>
-
-                                    <strong>Protected capture:</strong>
-                                    photos must be taken through the PUPTracker camera interface so a permanent
-                                    watermark can be applied. Photo capture is monitored for suspicious
-                                    interruptions (screen capture, focus loss) as a deterrent — these are
-                                    recorded as security events requiring review. PDF documents use the secure
-                                    upload path. All files are stored privately.
-                                </div>
-
-                                <div class="row g-3">
-
-                                    {{-- Camera capture --}}
-                                    <div class="col-lg-7">
-
-                                        <div class="border rounded-3 p-3 h-100 bg-white">
-
-                                            <div class="d-flex align-items-center mb-2">
-
-                                                <i class="bi bi-camera-fill fs-4 me-2 text-danger"></i>
-
-                                                <div>
-
-                                                    <strong>Capture Photo</strong>
-
-                                                    <div class="small text-muted">
-
-                                                        Live capture with watermark
-
-                                                    </div>
-
-                                                </div>
-
-                                            </div>
-
-                                            {{-- Camera idle --}}
-                                            <div
-                                                id="cameraIdlePanel"
-                                                class="text-center py-4 text-muted">
-
-                                                <i class="bi bi-camera-video-off display-5 d-block mb-2"></i>
-
-                                                <p class="small mb-3">
-
-                                                    Camera is off. A security notice will be shown before the camera starts.
-
-                                                </p>
-
-                                                <button
-                                                    type="button"
-                                                    id="openCameraBtn"
-                                                    class="admin-btn admin-btn-primary btn-sm">
-
-                                                    <i class="bi bi-camera-video me-1"></i>
-
-                                                    Open Camera
-
-                                                </button>
-
-                                            </div>
-
-                                            {{-- Camera live --}}
-                                            <div
-                                                id="cameraLivePanel"
-                                                class="d-none">
-
-                                                <div
-                                                    id="cameraWrap"
-                                                    class="position-relative rounded-3 overflow-hidden bg-dark"
-                                                    style="aspect-ratio:4/3;">
-
-                                                    <video
-                                                        id="cameraPreview"
-                                                        autoplay
-                                                        playsinline
-                                                        muted
-                                                        class="w-100 h-100 object-fit-cover"></video>
-
-                                                    <button
-                                                        type="button"
-                                                        id="flipCameraBtn"
-                                                        class="position-absolute top-0 end-0 m-2 btn btn-sm btn-light rounded-circle d-none align-items-center justify-content-center"
-                                                        style="width:40px;height:40px;box-shadow:0 2px 8px rgba(0,0,0,0.4);z-index:5;"
-                                                        title="Switch camera (front/back)"
-                                                        aria-label="Switch camera">
-
-                                                        <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
-
-                                                    </button>
-
-                                                    <div
-                                                        id="liveWatermarkOverlay"
-                                                        class="position-absolute bottom-0 start-0 end-0 px-2 py-1 text-white small"
-                                                        style="background:rgba(0,0,0,0.55);font-family:ui-monospace,monospace;pointer-events:none;">
-
-                                                        PUPTracker &nbsp;|&nbsp;
-                                                        <span id="liveWatermarkStudent">&mdash;</span> &nbsp;|&nbsp;
-                                                        <span id="liveWatermarkTime">--/--/---- --:--</span>
-
-                                                    </div>
-
-                                                    <div
-                                                        id="cameraInterruptedOverlay"
-                                                        class="position-absolute top-0 start-0 end-0 bottom-0 d-none align-items-center justify-content-center text-white"
-                                                        style="background:rgba(122,15,30,0.85);">
-
-                                                        <div class="text-center px-3">
-
-                                                            <i class="bi bi-eye-slash display-6 d-block mb-2"></i>
-
-                                                            <strong>Camera paused</strong>
-
-                                                            <div class="small">
-
-                                                                Possible screen capture or browser interruption was detected. Return to this window to continue.
-
-                                                            </div>
-
-                                                        </div>
-
-                                                    </div>
-
-                                                </div>
-
-                                                <div class="d-flex align-items-center justify-content-between mt-2">
-
-                                                    <span class="small text-muted">
-
-                                                        <i class="bi bi-shield-check me-1"></i>
-
-                                                        Watermark will be applied on capture
-
-                                                    </span>
-
-                                                    <div class="d-flex gap-2">
-
-                                                        <button
-                                                            type="button"
-                                                            id="capturePhotoBtn"
-                                                            class="admin-btn admin-btn-primary btn-sm"
-                                                            disabled>
-
-                                                            <i class="bi bi-camera me-1"></i>
-
-                                                            Capture Photo
-
-                                                        </button>
-
-                                                        <button
-                                                            type="button"
-                                                            id="closeCameraBtn"
-                                                            class="admin-btn admin-btn-neutral btn-sm">
-
-                                                            <i class="bi bi-x-lg me-1"></i>
-
-                                                            Stop
-
-                                                        </button>
-
-                                                    </div>
-
-                                                </div>
-
-                                            </div>
-
-                                            {{-- Capture review --}}
-                                            <div
-                                                id="captureReviewPanel"
-                                                class="d-none">
-
-                                                <div class="rounded-3 overflow-hidden bg-dark mb-2">
-
-                                                    <img
-                                                        id="captureReviewImg"
-                                                        alt="Captured photo preview"
-                                                        class="w-100 d-block">
-
-                                                </div>
-
-                                                <div class="small text-muted mb-2">
-
-                                                    <div>
-
-                                                        Evidence ID:
-                                                        <strong id="captureReviewCode">assigned on submit</strong>
-
-                                                    </div>
-
-                                                    <div>
-
-                                                        Type:
-                                                        <span id="captureReviewType">JPEG</span>
-                                                        &middot;
-                                                        Size:
-                                                        <span id="captureReviewSize">0 KB</span>
-
-                                                    </div>
-
-                                                </div>
-
-                                                <div class="d-flex gap-2">
-
-                                                    <button
-                                                        type="button"
-                                                        id="retakePhotoBtn"
-                                                        class="admin-btn admin-btn-neutral btn-sm">
-
-                                                        <i class="bi bi-arrow-counterclockwise me-1"></i>
-
-                                                        Retake
-
-                                                    </button>
-
-                                                    <button
-                                                        type="button"
-                                                        id="usePhotoBtn"
-                                                        class="admin-btn admin-btn-primary btn-sm">
-
-                                                        <i class="bi bi-check-lg me-1"></i>
-
-                                                        Use Photo
-
-                                                    </button>
-
-                                                </div>
-
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                    {{-- PDF upload --}}
-                                    <div class="col-lg-5">
-
-                                        <div class="border rounded-3 p-3 h-100 bg-white">
-
-                                            <div class="d-flex align-items-center mb-2">
-
-                                                <i class="bi bi-file-earmark-pdf-fill fs-4 me-2" style="color:#b91c1c;"></i>
-
-                                                <div>
-
-                                                    <strong>Upload PDF Document</strong>
-
-                                                    <div class="small text-muted">
-
-                                                        Secure private upload
-
-                                                    </div>
-
-                                                </div>
-
-                                            </div>
-
-                                            <p class="small text-muted">
-
-                                                For document-type evidence (e.g. written reports). Photos must be captured with the camera above.
-
-                                            </p>
-
-                                            <input
-                                                type="file"
-                                                id="evidenceInput"
-                                                name="evidence[]"
-                                                class="form-control"
-                                                accept=".pdf,application/pdf">
-
-                                            <small class="text-muted">
-
-                                                Allowed: PDF &mdash; max 5 MB each, up to 5 total files.
-
-                                            </small>
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                                <hr>
-
-                                <label class="form-label fw-semibold">
-
-                                    Staged Evidence
-
-                                </label>
-
-                                <div
-                                    id="evidencePreviewList"
-                                    class="d-flex flex-wrap gap-2"></div>
-
-                                <p class="text-muted small mb-0 mt-2">
-
-                                    Each file is stored privately with its own unique Evidence ID (EVD-&hellip;) and is never overwritten.
-
-                                </p>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <!-- =========================================== -->
-                    <!-- STEP 4 : REVIEW -->
-                    <!-- =========================================== -->
-
-                    <div id="reviewStep" class="d-none">
-
-                        <div class="card wizard-card">
-
-                            <div class="card-header bg-white">
-
-                                <h5 class="mb-0">
-
-                                    <i class="bi bi-clipboard-check me-2 text-danger"></i>
-
-                                    Review &amp; Submit
-
-                                </h5>
-
-                            </div>
-
-                            <div class="card-body">
-
-                                <div class="row g-3">
-
-                                    <div class="col-md-6">
-
-                                        <div class="border rounded-3 p-3 bg-white h-100">
-
-                                            <h6 class="fw-bold mb-2">
-
-                                                <i class="bi bi-person-badge me-1 text-danger"></i>
-
-                                                Student
-
-                                            </h6>
-
-                                            <div class="small mb-1">
-
-                                                <strong>Number:</strong>
-                                                <span id="reviewStudentNumber">&mdash;</span>
-
-                                            </div>
-
-                                            <div class="small mb-1">
-
-                                                <strong>Name:</strong>
-                                                <span id="reviewStudentName">&mdash;</span>
-
-                                            </div>
-
-                                            <div class="small mb-1">
-
-                                                <strong>Program:</strong>
-                                                <span id="reviewStudentProgram">&mdash;</span>
-
-                                            </div>
-
-                                            <div class="small mb-1">
-
-                                                <strong>Year:</strong>
-                                                <span id="reviewStudentYear">&mdash;</span>
-
-                                            </div>
-
-                                            <div class="small">
-
-                                                <strong>Section:</strong>
-                                                <span id="reviewStudentSection">&mdash;</span>
-
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                    <div class="col-md-6">
-
-                                        <div class="border rounded-3 p-3 bg-white h-100">
-
-                                            <h6 class="fw-bold mb-2">
-
-                                                <i class="bi bi-exclamation-octagon me-1 text-danger"></i>
-
-                                                Violation
-
-                                            </h6>
-
-                                            <div class="small mb-1">
-
-                                                <strong>Category:</strong>
-                                                <span id="reviewCategory">&mdash;</span>
-
-                                            </div>
-
-                                            <div class="small mb-1">
-
-                                                <strong>Type:</strong>
-                                                <span id="reviewViolationType">&mdash;</span>
-
-                                            </div>
-
-                                            <div class="small mb-1">
-
-                                                <strong>Date &amp; Time:</strong>
-                                                <span id="reviewDate">&mdash;</span>
-
-                                            </div>
-
-                                            <div class="small mb-1">
-
-                                                <strong>Offense Level:</strong>
-                                                <span id="reviewOffenseLevel">&mdash;</span>
-
-                                            </div>
-
-                                            <div class="small">
-
-                                                <strong>Sanction:</strong>
-                                                <span id="reviewSanction">&mdash;</span>
-
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                    <div class="col-12">
-
-                                        <div class="border rounded-3 p-3 bg-white">
-
-                                            <h6 class="fw-bold mb-2">
-
-                                                <i class="bi bi-chat-left-text me-1 text-danger"></i>
-
-                                                Description
-
-                                            </h6>
-
-                                            <div
-                                                class="small"
-                                                id="reviewDescription"
-                                                style="white-space:pre-line;">
-
-                                                &mdash;
-
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                    <div class="col-12">
-
-                                        <div class="border rounded-3 p-3 bg-white">
-
-                                            <h6 class="fw-bold mb-2">
-
-                                                <i class="bi bi-paperclip me-1 text-danger"></i>
-
-                                                Evidence
-
-                                            </h6>
-
-                                            <div
-                                                class="small"
-                                                id="reviewEvidenceSummary">
-
-                                                No evidence attached.
-
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                    <div class="col-12">
-
-                                        <div class="border rounded-3 p-3 bg-white">
-
-                                            <h6 class="fw-bold mb-2">
-
-                                                <i class="bi bi-person-check me-1 text-danger"></i>
-
-                                                Recorded By
-
-                                            </h6>
-
-                                            <div
-                                                class="small"
-                                                id="reviewRecordedBy">
-
-                                                {{ trim(
-                                                    (string) (auth('admin')->user()?->adminInfo?->firstname ?? '') . ' ' .
-                                                    (string) (auth('admin')->user()?->adminInfo?->middlename ?? '') . ' ' .
-                                                    (string) (auth('admin')->user()?->adminInfo?->lastname ?? '')
-                                                ) ?: (auth('admin')->user()?->email ?? 'Current Administrator') }}
-
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                                <div class="alert alert-warning small mt-3 mb-0">
-
-                                    <i class="bi bi-person-check me-1"></i>
-
-                                    Please verify the student's identity before recording this violation.
-
-                                </div>
-
-                                <div class="form-check mt-3 p-3 border rounded-3 bg-white">
-
-                                    <input
-                                        class="form-check-input"
-                                        type="checkbox"
-                                        id="identityConfirmed"
-                                        name="identity_confirmed"
-                                        value="1">
-
-                                    <label
-                                        class="form-check-label fw-semibold"
-                                        for="identityConfirmed">
-
-                                        I confirm that I have verified the student's identity and that the student information shown above belongs to the student being recorded.
-
-                                    </label>
-
-                                </div>
-
-                                <div class="alert alert-info small mt-3 mb-0">
-
-                                    <i class="bi bi-shield-check me-1"></i>
-
-                                    The violation will be recorded immediately as confirmed and the student will be notified. Review everything before submitting.
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-                <!-- End Modal Body -->
-
-                <!-- =========================================== -->
-                <!-- Footer -->
-                <!-- =========================================== -->
-
-                <div class="modal-footer justify-content-between">
-
-                    <button
-                        type="button"
-                        id="backStep"
-                        class="admin-btn admin-btn-neutral d-none">
-
-                        <i class="bi bi-arrow-left me-2"></i>
-
-                        Back
-
-                    </button>
-
-                    <div class="ms-auto">
-
-                        <button
-                            type="button"
-                            class="admin-btn admin-btn-neutral"
-                            data-bs-dismiss="modal"
-                            id="cancelViolationBtn">
-
-                            Cancel
-
-                        </button>
-
-                        <button
-                            type="button"
-                            id="continueStep"
-                            class="admin-btn admin-btn-primary">
-
-                            Next
-
-                            <i class="bi bi-arrow-right ms-2"></i>
-
-                        </button>
-
-                        <button
-                            type="button"
-                            id="saveViolation"
-                            class="admin-btn admin-btn-success d-none">
-
-                            <i class="bi bi-check-circle me-2"></i>
-
-                            Record Violation
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-           </form>
-
-        </div>
- 
-    </div>
-
-</div>
-
-<!-- ========================================================= -->
-<!-- Security Notice (camera gate) -->
-<!-- ========================================================= -->
-
-<div
-    class="modal fade"
-    id="securityNoticeModal"
-    tabindex="-1"
-    aria-labelledby="securityNoticeModalLabel"
-    aria-hidden="true"
-    data-bs-backdrop="static"
-    data-bs-keyboard="false">
-
-    <div class="modal-dialog modal-dialog-centered">
-
-        <div class="modal-content shadow-lg border-0 rounded-4">
-
-<div class="modal-header evidence-capture-modal-header">
-
-    <h5
-        class="modal-title fw-bold"
-        id="securityNoticeModalLabel">
-
-        <i class="bi bi-shield-lock me-2"></i>
-        Evidence Capture Notice
-
-    </h5>
-
-    <button
-        type="button"
-        class="btn-close evidence-capture-modal-close"
-        data-bs-dismiss="modal"
-        aria-label="Close">
-    </button>
-
-</div>
-
-            <div class="modal-body">
-
-                <div class="alert alert-warning small mb-3">
-
-                    <i class="bi bi-exclamation-triangle me-1"></i>
-
-                    Photo evidence must be captured live through the PUPTracker camera. A permanent watermark will be applied, and capture is monitored for suspicious interruptions.
-                </div>
-
-                <p class="small text-muted">
-
-                    By starting the camera you agree to the controlled evidence capture policy.
-                </p>
-
-                <div class="form-check">
-
-                    <input
-                        type="checkbox"
-                        class="form-check-input"
-                        id="securityNoticeAck">
-
-                    <label
-                        class="form-check-label"
-                        for="securityNoticeAck">
-
-                        I understand the security notice.
-
-                    </label>
-
-                </div>
-
-            </div>
-
-            <div class="modal-footer">
-
-                <button
-                    type="button"
-                    class="admin-btn admin-btn-neutral"
-                    id="securityNoticeCancelBtn">
-
-                    Cancel
-
-                </button>
-
-                <button
-                    type="button"
-                    class="admin-btn admin-btn-primary"
-                    id="securityNoticeStartBtn"
-                    disabled>
-
-                    <i class="bi bi-camera-video me-1"></i>
-
-                    Start Camera
-
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- ========================================================= -->
-<!-- Success Toast -->
-<!-- ========================================================= -->
-
-<div
-    class="toast-container position-fixed bottom-0 end-0 p-3">
-
-    <div
-        id="successToast"
-        class="toast align-items-center text-bg-success border-0"
-        role="alert"
-        aria-live="assertive"
-        aria-atomic="true">
-
-        <div class="d-flex">
-
-            <div
-                id="successToastMessage"
-                class="toast-body">
-
-                Violation successfully recorded.
-
-            </div>
-
-            <button
-                type="button"
-                class="btn-close btn-close-white me-2 m-auto"
-                data-bs-dismiss="toast"
-                aria-label="Close">
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-<style>
-/* Shared Security module visual baseline */
-.admin-record-modal .modal-dialog {
-        max-width: 1160px;
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-evidence-index="${index}" aria-label="Remove">&times;</button>
+                </div>`;
+            })
+            .join("");
+    };
+
+    // PDF / document secure upload.
+    evidenceInput &&
+        evidenceInput.addEventListener("change", function () {
+            const incoming = Array.from(this.files || []);
+            incoming.forEach(function (file) {
+                addEvidenceItem({
+                    file: file,
+                    method: "upload",
+                    capturedAt: null,
+                    watermarked: false,
+                });
+            });
+            this.value = "";
+        });
+
+    const evidenceListEl = document.getElementById("evidencePreviewList");
+    if (evidenceListEl) {
+        evidenceListEl.addEventListener("click", function (event) {
+            const btn = event.target.closest("[data-evidence-index]");
+            if (!btn) {
+                return;
+            }
+            const index = Number(btn.dataset.evidenceIndex);
+            evidenceItems.splice(index, 1);
+            renderEvidenceList();
+            updateEvidenceCount();
+        });
     }
 
-    .admin-record-modal .modal-content {
-        border: 1px solid rgba(122, 15, 30, 0.12);
-        border-radius: var(--portal-radius-lg);
-        overflow: hidden;
-        max-height: calc(100vh - 2rem);
-    }
+    // ------------------------------------------------------------------
+    // Reset
+    // ------------------------------------------------------------------
+    const resetModal = () => {
+        stopCamera();
+        document.getElementById("violationForm").reset();
+        document.getElementById("selectedStudentNumber").value = "";
+        document.getElementById("selectedStudentId").value = "";
+        document.getElementById("previewCategory").textContent = "-";
+        document.getElementById("previewViolationType").textContent = "-";
+        document.getElementById("previewOffenseLevelDisplay").textContent = "-";
+        document.getElementById("previewOffenseLevel").value = "";
+        document.getElementById("previewSanction").textContent = "-";
 
-.admin-record-modal .modal-header {
-    position: relative;
-    background: #800000;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-    color: #fff;
-    padding: 1.1rem 4.5rem 1.1rem 1.25rem;
-}
+        resultBox.innerHTML = "";
+        violationTypeSelect.innerHTML =
+            '<option value="">Select Category First</option>';
+        violationTypeSelect.disabled = true;
 
-.admin-record-modal .modal-header .btn-close {
-    position: absolute;
-    top: 50%;
-    right: 1rem;
-    transform: translateY(-50%);
+        document.getElementById("selectedStudentInfo").classList.add("d-none");
+        document.getElementById("noStudentSelected").classList.remove("d-none");
 
-    width: 44px;
-    height: 44px;
+        evidenceItems = [];
+        if (identityConfirmed) {
+            identityConfirmed.checked = false;
+        }
+        if (evidenceInput) {
+            evidenceInput.value = "";
+        }
+        const evList = document.getElementById("evidencePreviewList");
+        if (evList) {
+            evList.innerHTML = "";
+        }
+        updateEvidenceCount();
+        cameraNoticeAccepted = false;
+        // Each modal open starts a NEW capture session.
+        captureSessionId = null;
+        if (capturedImageObjectUrl) {
+            URL.revokeObjectURL(capturedImageObjectUrl);
+            capturedImageObjectUrl = null;
+        }
+        capturedImageBlob = null;
 
-    margin: 0 !important;
-    padding: 0;
+        setStep(1);
+    };
 
-    z-index: 10;
-
-    background-color: transparent !important;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 1 1-1.414 1.414L8 9.414l-6.293 6.293-1.414 1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414-1.414z'/%3e%3c/svg%3e") !important;
-
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    background-size: 1rem auto !important;
-
-    filter: none !important;
-    opacity: 0.9;
-}
-
-.admin-record-modal .modal-header .btn-close:hover,
-.admin-record-modal .modal-header .btn-close:focus-visible {
-    opacity: 1;
-}
-
-    .admin-record-modal .modal-header .modal-title,
-    .admin-record-modal .modal-header .modal-title i,
-    .admin-record-modal .modal-header small {
-        color: #fff !important;
-    }
-
-    .admin-record-modal .modal-body {
-background: #ffffff;
-        overflow-y: auto;
-        max-height: calc(100vh - 220px);
-    }
-
-    .admin-record-modal .modal-footer {
-        background: #fffdf6;
-        border-top: 1px solid rgba(122, 15, 30, 0.12);
-        padding: 0.8rem 1rem;
-        /* Wrap rather than clip — buttons must never be cut off or overlap. */
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    /* The body scrolls independently so a tall step never pushes the header or
-       footer out of view. */
-    .admin-record-modal .modal-body {
-        overflow-y: auto;
-        overscroll-behavior: contain;
-    }
-
-    .admin-record-modal .modal-content {
-        max-height: calc(100vh - 1rem);
-    }
-
-    /* Small screens: the primary CTA takes its own full-width row. */
-    @media (max-width: 575.98px) {
-        .admin-record-modal .modal-dialog {
-            margin: 0.5rem;
+    // Set the violation date/time input to the current Philippine time (PHT).
+    const setCurrentPhTime = () => {
+        const violationDateInput = document.getElementById("violationDate");
+        if (!violationDateInput) {
+            return;
         }
 
-        .admin-record-modal .modal-footer > .ms-auto {
-            margin-left: 0 !important;
-            width: 100%;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
+        const now = new Date();
+        const parts = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Manila",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23",
+        }).formatToParts(now);
+
+        const get = (type) =>
+            (parts.find((p) => p.type === type) || {}).value || "00";
+
+        // en-CA gives YYYY-MM-DD style; build a datetime-local value.
+        const value = `${get("year")}-${get("month")}-${get("day")}T${get(
+            "hour",
+        )}:${get("minute")}`;
+
+        if (violationDateInput.value !== value) {
+            violationDateInput.value = value;
+        }
+    };
+
+    let phTimeInterval = null;
+
+    // Start/stop a live clock so the default time stays current while open.
+    modalElement.addEventListener("show.bs.modal", function () {
+        // Every open is a fresh Record Violation wizard — always begin at the
+        // Student step so the Back/Next/Submit footer buttons are shown with the
+        // correct visibility (they start hidden in the markup).
+        setStep(1);
+        setCurrentPhTime();
+        if (phTimeInterval) {
+            clearInterval(phTimeInterval);
+        }
+        phTimeInterval = setInterval(setCurrentPhTime, 1000);
+    });
+
+    modalElement.addEventListener("hidden.bs.modal", function () {
+        if (phTimeInterval) {
+            clearInterval(phTimeInterval);
+            phTimeInterval = null;
+        }
+        stopCamera();
+    });
+
+    const validateStep = (stepNumber) => {
+        if (stepNumber === 1) {
+            if (!document.getElementById("selectedStudentId").value) {
+                showAlert(
+                    "warning",
+                    "Select a student",
+                    "Choose a student before continuing.",
+                );
+                return false;
+            }
+            return true;
+        }
+        if (stepNumber === 2) {
+            if (!violationTypeSelect.value) {
+                showAlert(
+                    "warning",
+                    "Select a violation type",
+                    "Please choose a violation type.",
+                );
+                return false;
+            }
+            if (!document.getElementById("violationDate").value) {
+                showAlert(
+                    "warning",
+                    "Select a date",
+                    "Please set the violation date & time.",
+                );
+                return false;
+            }
+            if (!document.getElementById("description").value.trim()) {
+                showAlert(
+                    "warning",
+                    "Enter a description",
+                    "Please describe the violation.",
+                );
+                return false;
+            }
+            return true;
+        }
+        if (stepNumber === 3) {
+            if (evidenceItems.length > MAX_EVIDENCE) {
+                showAlert(
+                    "warning",
+                    "Too many files",
+                    `You may attach at most ${MAX_EVIDENCE} evidence files.`,
+                );
+                return false;
+            }
+            for (const item of evidenceItems) {
+                if (item.file.size > MAX_FILE_BYTES) {
+                    showAlert(
+                        "warning",
+                        "File too large",
+                        `${item.file.name} exceeds the 5 MB limit.`,
+                    );
+                    return false;
+                }
+                const allowed = [
+                    "image/jpeg",
+                    "image/png",
+                    "image/jpg",
+                    "application/pdf",
+                ];
+                if (!allowed.includes(item.file.type)) {
+                    showAlert(
+                        "warning",
+                        "Unsupported file",
+                        `${item.file.name} must be a JPG, PNG, or PDF.`,
+                    );
+                    return false;
+                }
+            }
+            return true;
+        }
+        return true;
+    };
+
+    const populateReview = () => {
+        document.getElementById("reviewStudentNumber").textContent =
+            document.getElementById("selectedStudentNumber").value || "-";
+        document.getElementById("reviewStudentName").textContent =
+            document.getElementById("studentName").value || "-";
+        document.getElementById("reviewStudentProgram").textContent =
+            document.getElementById("studentProgram").value || "-";
+        document.getElementById("reviewStudentYear").textContent =
+            document.getElementById("studentYear").value || "-";
+        document.getElementById("reviewStudentSection").textContent =
+            document.getElementById("studentSection").value || "-";
+        document.getElementById("reviewCategory").textContent =
+            document.getElementById("previewCategory").textContent || "-";
+        document.getElementById("reviewViolationType").textContent =
+            document.getElementById("previewViolationType").textContent || "-";
+        document.getElementById("reviewDate").textContent = formatReviewDate(
+            document.getElementById("violationDate").value,
+        );
+        document.getElementById("reviewOffenseLevel").textContent =
+            document.getElementById("previewOffenseLevelDisplay").textContent ||
+            "-";
+        document.getElementById("reviewSanction").textContent =
+            document.getElementById("previewSanction").textContent || "-";
+        document.getElementById("reviewDescription").textContent =
+            document.getElementById("description").value.trim() || "-";
+
+        if (evidenceItems.length) {
+            const labels = evidenceItems.map(function (item) {
+                return (
+                    item.file.name +
+                    (item.method === "camera" ? " [watermarked]" : "")
+                );
+            });
+            document.getElementById("reviewEvidenceSummary").textContent =
+                evidenceItems.length +
+                " file(s) attached: " +
+                labels.join(", ");
+        } else {
+            document.getElementById("reviewEvidenceSummary").textContent =
+                "No evidence attached.";
+        }
+    };
+
+    const formatReviewDate = (value) => {
+        if (!value) {
+            return "-";
+        }
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) {
+            return value;
+        }
+        return d.toLocaleString("en-PH", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            timeZone: "Asia/Manila",
+        });
+    };
+
+    nextBtn.addEventListener("click", function () {
+        if (!validateStep(currentStep)) {
+            return;
+        }
+        if (currentStep === 3) {
+            populateReview();
+        }
+        setStep(currentStep + 1);
+    });
+
+    backBtn.addEventListener("click", function () {
+        if (currentStep > 1) {
+            setStep(currentStep - 1);
+        }
+    });
+
+    const selectStudent = (student) => {
+        // An inactive PUPTracker account may not receive a NEW violation.
+        // Refuse to select it so the operator is told immediately instead of at
+        // the end of the wizard. The server enforces the same rule on submit,
+        // so this is a UX guard and NOT the security boundary.
+        if (student.account_active === false) {
+            showAlert(
+                "error",
+                "Student account inactive",
+                "Violation cannot be recorded because this student account is inactive.",
+            );
+            return;
         }
 
-        .admin-record-modal .modal-footer > .ms-auto > .portal-btn,
-        .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
-            flex: 1 1 auto;
+        document.getElementById("selectedStudentId").value = student.user_id;
+        document.getElementById("selectedStudentNumber").value =
+            student.student_number || "";
+        document.getElementById("studentNumber").value = student.student_number;
+        document.getElementById("studentName").value =
+            `${student.last_name}, ${student.first_name}`;
+        document.getElementById("studentProgram").value =
+            student.program?.program_name ?? "-";
+        document.getElementById("studentYear").value =
+            student.year?.year_name ?? "-";
+        const sectionName =
+            student.section?.section_name ?? student.section_name ?? "-";
+
+        document.getElementById("studentSection").value = sectionName;
+
+        document.getElementById("noStudentSelected").classList.add("d-none");
+        document
+            .getElementById("selectedStudentInfo")
+            .classList.remove("d-none");
+
+        resultBox.innerHTML = "";
+        searchBox.value = `${student.student_number || "No student number"} - ${student.last_name}, ${student.first_name}`;
+        updateLiveWatermark();
+    };
+
+    let searchTimer;
+    searchBox.addEventListener("keyup", function () {
+        const keyword = this.value.trim();
+
+        clearTimeout(searchTimer);
+
+        if (keyword.length < 2) {
+            resultBox.innerHTML = "";
+            return;
         }
 
-        .admin-record-modal .modal-footer #saveViolation {
-            order: 3;
-            flex: 1 1 100%;
+        searchTimer = setTimeout(() => {
+            fetch(
+                `${window.ViolationRoutes.searchStudent}?search=${encodeURIComponent(keyword)}`,
+            )
+                .then(async (response) => {
+                    if (!response.ok) {
+                        throw new Error("Unable to search students.");
+                    }
+
+                    return response.json();
+                })
+                .then((data) => {
+                    resultBox.innerHTML = "";
+
+                    if (!Array.isArray(data) || data.length === 0) {
+                        resultBox.innerHTML =
+                            '<div class="list-group-item text-muted">No matching students found.</div>';
+                        return;
+                    }
+
+                    data.forEach((student) => {
+                        const item = document.createElement("button");
+                        item.type = "button";
+                        item.className =
+                            "list-group-item list-group-item-action";
+
+                        // Inactive accounts are surfaced here so the operator
+                        // learns BEFORE filling in the whole wizard. This is a
+                        // convenience only — the server refuses the submission
+                        // regardless (StoreViolationRequest re-checks status).
+                        const inactive = student.account_active === false;
+                        const badge = inactive
+                            ? ' <span class="admin-badge" style="background:#fdecec;color:#8a1c1c;">Inactive account — cannot record</span>'
+                            : "";
+
+                        item.innerHTML = `<strong>${student.student_number || "No student number"}</strong>${badge}<br>${student.last_name}, ${student.first_name}`;
+                        item.addEventListener("click", function () {
+                            selectStudent(student);
+                        });
+                        resultBox.appendChild(item);
+                    });
+                })
+                .catch(() => {
+                    showAlert(
+                        "error",
+                        "Search failed",
+                        "Unable to search students right now.",
+                    );
+                });
+        }, 250);
+    });
+
+    categorySelect.addEventListener("change", function () {
+        const categoryId = this.value;
+
+        violationTypeSelect.innerHTML = '<option value="">Loading...</option>';
+        violationTypeSelect.disabled = true;
+
+        if (!categoryId) {
+            violationTypeSelect.innerHTML =
+                '<option value="">Select Violation Type</option>';
+            return;
         }
+
+        fetch(
+            `${window.ViolationRoutes.violationTypes}?category_id=${categoryId}`,
+        )
+            .then(async (response) => {
+                if (!response.ok) {
+                    throw new Error("Unable to load violation types.");
+                }
+
+                return response.json();
+            })
+            .then((types) => {
+                violationTypeSelect.innerHTML =
+                    '<option value="">Select Violation Type</option>';
+
+                types.forEach((type) => {
+                    violationTypeSelect.innerHTML += `<option value="${type.violation_type_id}">${type.violation_type}</option>`;
+                });
+
+                violationTypeSelect.disabled = false;
+            })
+            .catch(() => {
+                violationTypeSelect.innerHTML =
+                    '<option value="">Unable to load</option>';
+                showAlert(
+                    "error",
+                    "Load failed",
+                    "Unable to load violation types.",
+                );
+            });
+    });
+
+    violationTypeSelect.addEventListener("change", function () {
+        const studentNumber =
+            document.getElementById("selectedStudentId").value;
+        const violationTypeId = this.value;
+
+        if (!studentNumber || !violationTypeId) {
+            return;
+        }
+
+        fetch(window.ViolationRoutes.previewViolation, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                "X-CSRF-TOKEN": document.querySelector(
+                    'meta[name="csrf-token"]',
+                ).content,
+            },
+            body: JSON.stringify({
+                user_id: studentNumber,
+                violation_type_id: violationTypeId,
+            }),
+        })
+            .then(async (response) => {
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message || "Unable to preview violation details.",
+                    );
+                }
+
+                return data;
+            })
+            .then((data) => {
+                document.getElementById("previewOffenseLevel").value =
+                    data.offense_level ?? "-";
+                document.getElementById("previewCategory").textContent =
+                    data.category ?? "-";
+                document.getElementById("previewViolationType").textContent =
+                    data.violation_type ?? "-";
+                document.getElementById(
+                    "previewOffenseLevelDisplay",
+                ).textContent = data.offense_level ?? "-";
+                document.getElementById("previewSanction").textContent =
+                    data.sanction ?? "-";
+            })
+            .catch((error) => {
+                showAlert("error", "Preview failed", error.message);
+            });
+    });
+
+    // ------------------------------------------------------------------
+    // Submit
+    // ------------------------------------------------------------------
+    saveBtn.addEventListener("click", function () {
+        const studentNumber =
+            document.getElementById("selectedStudentId").value;
+        const violationTypeId = document.getElementById("violationType").value;
+        const violationDate = document.getElementById("violationDate").value;
+        const description = document.getElementById("description").value.trim();
+
+        if (
+            !studentNumber ||
+            !violationTypeId ||
+            !violationDate ||
+            !description
+        ) {
+            showAlert(
+                "warning",
+                "Missing required fields",
+                "Complete all required fields before saving.",
+            );
+            return;
+        }
+
+        if (!identityConfirmed.checked) {
+            showAlert(
+                "warning",
+                "Confirm Student Identity",
+                "You must confirm the student identity before recording the violation.",
+            );
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("user_id", studentNumber);
+        formData.append(
+            "student_number",
+            document.getElementById("selectedStudentNumber").value || "",
+        );
+        formData.append("violation_type_id", violationTypeId);
+        formData.append("violation_date", violationDate);
+        formData.append("description", description);
+        formData.append(
+            "identity_confirmed",
+            identityConfirmed.checked ? "1" : "0",
+        );
+        // Correlate the submitted evidence to the camera/capture session.
+        if (captureSessionId) {
+            formData.append("capture_session_id", captureSessionId);
+        }
+        evidenceItems.forEach(function (item, index) {
+            formData.append("evidence[]", item.file, item.file.name);
+            formData.append("capture_methods[" + index + "]", item.method);
+            formData.append(
+                "captured_ats[" + index + "]",
+                item.capturedAt || "",
+            );
+            formData.append(
+                "watermarked[" + index + "]",
+                item.watermarked ? "1" : "0",
+            );
+        });
+
+        saveBtn.disabled = true;
+
+        fetch(window.ViolationRoutes.store, {
+            method: "POST",
+            headers: {
+                Accept: "application/json",
+                "X-CSRF-TOKEN": document.querySelector(
+                    'meta[name="csrf-token"]',
+                ).content,
+            },
+            body: formData,
+        })
+            .then(async (response) => {
+                const data = await response.json();
+
+                if (!response.ok) {
+                    console.error("Violation submission failed:", data);
+
+                    throw new Error(
+                        data.error
+                            ? `${data.message || "Unable to submit violation."} ${data.error}`
+                            : data.message || "Unable to submit violation.",
+                    );
+                }
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                modal.hide();
+
+                await Swal.fire({
+                    icon: "success",
+                    title: "Violation recorded",
+                    text:
+                        data.message ||
+                        "The violation was recorded successfully.",
+                });
+
+                loadManagementTable();
+            })
+            .catch((error) => {
+                showAlert("error", "Submit failed", error.message);
+            })
+            .finally(() => {
+                saveBtn.disabled = false;
+            });
+    });
+
+    modalElement.addEventListener("hidden.bs.modal", resetModal);
+
+    function loadManagementTable() {
+        fetch(window.location.href)
+            .then((response) => response.text())
+            .then((html) => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, "text/html");
+                const newTable = doc.querySelector("#managementTableContainer");
+                const currentTable = document.querySelector(
+                    "#managementTableContainer",
+                );
+
+                if (newTable && currentTable) {
+                    currentTable.innerHTML = newTable.innerHTML;
+                } else {
+                    window.location.reload();
+                }
+            })
+            .catch(() => {
+                window.location.reload();
+            });
     }
-
-    .admin-record-modal .wizard-bubble {
-        width: 52px;
-        height: 52px;
-        border-radius: 999px;
-        font-weight: 800;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 6px 12px rgba(122, 15, 30, 0.15);
-        border: 2px solid transparent;
-        transition: background 0.15s ease, border-color 0.15s ease;
-    }
-
-    /* ------------------------------------------------------------------
-       Wizard step states — PUPTracker MAROON + GOLD ONLY.
-
-       These previously used Bootstrap's bg-success (GREEN) and bg-danger
-       (Bootstrap red). Replaced with palette-only states so the Security
-       wizard matches the Admin wizard exactly.
-       ------------------------------------------------------------------ */
-    .admin-record-modal .wizard-bubble.wizard-step-current {
-        background: #7a0f1e;
-        border-color: #7a0f1e;
-        color: #fff;
-        box-shadow: 0 6px 14px rgba(122, 15, 30, 0.3);
-    }
-
-    .admin-record-modal .wizard-bubble.wizard-step-completed {
-        background: #daa520;
-        border-color: #daa520;
-        color: #4a0209;
-    }
-
-    .admin-record-modal .wizard-bubble.wizard-step-upcoming {
-        background: #fff8e8;
-        border-color: rgba(122, 15, 30, 0.28);
-        color: #7a0f1e;
-    }
-
-    .admin-record-modal .wizard-card {
-        border: 1px solid rgba(122, 15, 30, 0.12);
-        border-radius: var(--portal-radius-lg);
-        box-shadow: var(--portal-shadow);
-    }
-
-    .admin-record-modal .wizard-card .card-header {
-        background: linear-gradient(180deg, #fffefa 0%, #fff8e8 100%);
-        border-bottom: 1px solid rgba(122, 15, 30, 0.12);
-        color: #4a0209;
-        padding: 0.9rem 1.1rem;
-    }
-
-    .admin-record-modal .wizard-card .card-header i {
-        color: #7a0f1e !important;
-    }
-
-    .admin-record-modal .form-control,
-    .admin-record-modal .form-select {
-        border-color: rgba(122, 15, 30, 0.2);
-        border-radius: 0.72rem;
-    }
-
-    .admin-record-modal .form-control:focus,
-    .admin-record-modal .form-select:focus {
-        border-color: rgba(122, 15, 30, 0.5);
-        box-shadow: 0 0 0 0.2rem rgba(122, 15, 30, 0.12);
-    }
-
-    .admin-record-modal .preview-box {
-        border: 1px solid rgba(122, 15, 30, 0.1);
-        border-radius: 0.9rem;
-        background: #fffdf7;
-    }
-
-    .admin-record-modal .preview-box strong {
-        color: #4a0209;
-    }
-
-    /* Controlled camera capture */
-    .admin-record-modal #cameraPreview {
-        filter: none;
-        transition: filter 0.15s ease;
-        background: #000;
-    }
-
-    .admin-record-modal #cameraPreview.camera-obscured {
-        filter: blur(18px) brightness(0.5);
-    }
-
-    .admin-record-modal #cameraWrap.video-interrupted #cameraPreview {
-        filter: blur(18px) brightness(0.5);
-    }
-
-    .security-notice-modal .modal-content {
-        border-radius: 1rem;
-    }
-
-    /* Disabled buttons stay readable — keep the maroon/gold tone visible. */
-    .admin-record-modal .modal-footer .btn:disabled,
-    .admin-record-modal .modal-footer .btn.disabled {
-        opacity: 0.75;
-        filter: saturate(0.85);
-        cursor: not-allowed;
-    }
-
-    .admin-record-modal .modal-footer .portal-btn:disabled {
-        color: #fff;
-        background: linear-gradient(135deg, #a24a55 0%, #8a3a44 100%);
-        border-color: #a24a55;
-        box-shadow: none;
-    }
-
-/* Shared Security-inspired mobile layout: independent scrolling and reachable actions */
-@media (max-width: 767.98px) {
-  .admin-record-modal .modal-dialog { width: calc(100% - 1rem); max-width: none; margin: .5rem auto; }
-  .admin-record-modal .modal-content { height: calc(100dvh - 1rem); max-height: calc(100dvh - 1rem); min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-  .admin-record-modal .modal-header { flex: 0 0 auto; padding: .9rem 3.5rem .9rem 1rem; }
-  .admin-record-modal .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto !important; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; padding: .85rem !important; }
-  .admin-record-modal .modal-footer { flex: 0 0 auto; position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem max(.75rem, env(safe-area-inset-right)) calc(.75rem + env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left)); }
-  .admin-record-modal .modal-footer .btn { min-height: 44px; max-width: 100%; }
-  .admin-record-modal .modal-body .row { --bs-gutter-x: .75rem; }
-  .admin-record-modal .modal-body input, .admin-record-modal .modal-body select, .admin-record-modal .modal-body textarea { max-width: 100%; }
-  .admin-record-modal .modal-body img, .admin-record-modal .modal-body canvas, .admin-record-modal .modal-body video { max-width: 100%; height: auto; }
-}
-@media (max-width: 420px) {
-  .admin-record-modal .modal-footer { justify-content: stretch; }
-  .admin-record-modal .modal-footer .btn { flex: 1 1 auto; }
-  .admin-record-modal .modal-title { font-size: 1rem; }
-  .admin-record-modal .modal-body { font-size: .95rem; }
-}
-
-
-
-/* UI alignment with the Security Record Violation modal.
-   Presentation-only overrides: do not change wizard or submission handlers. */
-.admin-record-modal .modal-header {
-    background: #800000 !important;
-    color: #fff !important;
-}
-.admin-record-modal .modal-header .modal-title,
-.admin-record-modal .modal-header .modal-title i,
-.admin-record-modal .modal-header small {
-    color: #fff !important;
-}
-.admin-record-modal .modal-footer {
-    background: #fffdf6 !important;
-    border-top: 1px solid rgba(122, 15, 30, .12) !important;
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: .5rem !important;
-}
-.admin-record-modal .modal-footer > .ms-auto {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    flex: 1 1 auto !important;
-    width: auto !important;
-    min-width: 0 !important;
-    margin-left: auto !important;
-    gap: .5rem !important;
-}
-.admin-record-modal .modal-footer #cancelViolationBtn {
-    display: none !important;
-}
-.admin-record-modal .modal-footer #backStep,
-.admin-record-modal .modal-footer #continueStep,
-.admin-record-modal .modal-footer #saveViolation {
-    min-height: 44px;
-    margin: 0 !important;
-    white-space: nowrap;
-}
-.admin-record-modal .modal-footer #continueStep,
-.admin-record-modal .modal-footer #saveViolation {
-    color: #fff !important;
-    background: #800000 !important;
-    border-color: #800000 !important;
-}
-.admin-record-modal .modal-footer #backStep {
-    flex: 0 1 45% !important;
-}
-.admin-record-modal .modal-footer #continueStep,
-.admin-record-modal .modal-footer #saveViolation {
-    flex: 0 1 55% !important;
-}
-@media (max-width: 575.98px) {
-    .admin-record-modal .modal-footer {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        gap: .5rem !important;
-        padding: .75rem max(.75rem, env(safe-area-inset-right)) calc(.75rem + env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left)) !important;
-    }
-    .admin-record-modal .modal-footer > #backStep {
-        flex: 1 1 45% !important;
-        width: auto !important;
-        grid-row: auto !important;
-    }
-    .admin-record-modal .modal-footer > .ms-auto {
-        flex: 1 1 55% !important;
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        width: auto !important;
-        margin: 0 !important;
-        gap: .5rem !important;
-    }
-    .admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none),
-    .admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
-        flex: 1 1 100% !important;
-        width: 100% !important;
-        min-width: 0 !important;
-        grid-row: auto !important;
-    }
-    .admin-record-modal .modal-footer > .ms-auto > #cancelViolationBtn {
-        display: none !important;
-    }
-}
-
-</style>
-
-
-{{-- Final UI parity overrides: review identity confirmation and compact footer --}}
-<style>
-/* Keep the Admin identity confirmation readable and visually aligned with Security. */
-.admin-record-modal #identityConfirmed {
-    width: 1.15rem; height: 1.15rem; margin-top: .2rem; flex: 0 0 auto;
-    accent-color: #850000; cursor: pointer;
-}
-.admin-record-modal .form-check:has(#identityConfirmed) {
-    display: flex; align-items: flex-start; gap: .7rem;
-    padding: 1rem !important; margin-top: 1rem !important;
-    border: 1px solid #eadfdb !important; border-radius: 14px !important;
-    background: #fff !important;
-}
-.admin-record-modal .form-check:has(#identityConfirmed) .form-check-input {
-    float: none !important; margin-left: 0 !important;
-}
-.admin-record-modal .form-check:has(#identityConfirmed) .form-check-label {
-    display: block; line-height: 1.55; font-size: clamp(.95rem, 2.8vw, 1.05rem);
-}
-.admin-record-modal .modal-footer {
-    display: flex !important; align-items: stretch !important;
-    justify-content: space-between !important; gap: .65rem !important;
-}
-.admin-record-modal .modal-footer > #backStep,
-.admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none),
-.admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
-    min-height: 52px !important; height: 52px !important;
-    padding: .7rem 1rem !important; border-radius: 14px !important;
-    font-size: 1rem !important; font-weight: 700 !important;
-    flex: 1 1 0 !important; width: auto !important; min-width: 0 !important;
-}
-.admin-record-modal .modal-footer > .ms-auto {
-    display: flex !important; flex: 1 1 0 !important;
-    flex-direction: row !important; flex-wrap: nowrap !important;
-    gap: .65rem !important; width: auto !important; margin: 0 !important;
-}
-.admin-record-modal .modal-footer > #backStep { flex: 1 1 0 !important; }
-.admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none),
-.admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
-    background: #850000 !important; border-color: #850000 !important; color: #fff !important;
-}
-@media (max-width: 576px) {
-    .admin-record-modal .modal-footer {
-        display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
-        padding: .7rem max(.7rem, env(safe-area-inset-right)) calc(.7rem + env(safe-area-inset-bottom)) max(.7rem, env(safe-area-inset-left)) !important;
-    }
-    .admin-record-modal .modal-footer > #backStep,
-    .admin-record-modal .modal-footer > .ms-auto > #continueStep:not(.d-none),
-    .admin-record-modal .modal-footer > .ms-auto > #saveViolation:not(.d-none) {
-        min-height: 48px !important; height: 48px !important; padding: .6rem .5rem !important;
-        font-size: .92rem !important;
-    }
-}
-
-
-/* Final responsive override: Record Violation modal (mobile/tablet safe area).
-   Keep the header and action buttons visible; only the form content scrolls. */
-@supports (height: 100dvh) {
-  .admin-record-modal.modal-content { max-height: calc(100dvh - 1rem); }
-}
-.admin-record-modal .modal-content {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-}
-.admin-record-modal .modal-header,
-.admin-record-modal .modal-footer {
-  flex: 0 0 auto;
-  position: relative;
-  z-index: 2;
-}
-.admin-record-modal .modal-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
-  overflow-y: auto !important;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-}
-.admin-record-modal .modal-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .5rem;
-  padding-bottom: calc(.75rem + env(safe-area-inset-bottom, 0px));
-  background: #fffdf6;
-}
-.admin-record-modal .modal-footer .btn,
-.admin-record-modal .modal-header .btn-close {
-  min-height: 44px;
-  touch-action: manipulation;
-}
-.admin-record-modal .modal-footer .btn { white-space: normal; }
-
-@media (max-width: 767.98px), (max-height: 600px) {
-  .admin-record-modal.modal { padding: 0 !important; overflow: hidden; }
-  .admin-record-modal .modal-dialog,
-  .admin-record-modal .modal-dialog.modal-dialog-scrollable {
-    width: calc(100% - 1rem);
-    max-width: none;
-    height: calc(100dvh - 1rem);
-    max-height: calc(100dvh - 1rem);
-    margin: .5rem auto;
-  }
-  .admin-record-modal .modal-content {
-    height: calc(100dvh - 1rem);
-    max-height: calc(100dvh - 1rem);
-    border-radius: .9rem;
-  }
-  .admin-record-modal .modal-header {
-    padding: .8rem 3.5rem .8rem .9rem;
-    align-items: flex-start;
-  }
-  .admin-record-modal .modal-header .modal-title {
-    min-width: 0;
-    font-size: clamp(1rem, 4.2vw, 1.2rem);
-    line-height: 1.25;
-    overflow-wrap: anywhere;
-  }
-  .admin-record-modal .modal-header small { line-height: 1.35; }
-  .admin-record-modal .modal-body { padding: .75rem !important; }
-  .admin-record-modal .modal-body .row { --bs-gutter-x: .75rem; }
-  .admin-record-modal .modal-body .card { min-width: 0; }
-  .admin-record-modal .modal-body input,
-  .admin-record-modal .modal-body select,
-  .admin-record-modal .modal-body textarea,
-  .admin-record-modal .modal-body .form-control,
-  .admin-record-modal .modal-body .form-select { max-width: 100%; min-width: 0; }
-  .admin-record-modal .modal-footer {
-    flex-wrap: wrap !important;
-    justify-content: stretch;
-    gap: .45rem;
-    padding: .6rem .7rem calc(.6rem + env(safe-area-inset-bottom, 0px));
-  }
-  .admin-record-modal .modal-footer > #backStep {
-    flex: 1 1 calc(50% - .45rem);
-    width: auto !important;
-    margin: 0 !important;
-  }
-  .admin-record-modal .modal-footer > .ms-auto {
-    display: flex !important;
-    flex: 1 1 100%;
-    flex-wrap: wrap !important;
-    gap: .45rem;
-    width: 100%;
-    min-width: 0;
-    margin: 0 !important;
-  }
-  .admin-record-modal .modal-footer > .ms-auto > .btn,
-  .admin-record-modal .modal-footer > .ms-auto > .portal-btn,
-  .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
-    flex: 1 1 calc(50% - .45rem);
-    min-width: 0;
-    width: auto !important;
-    margin: 0 !important;
-    justify-content: center;
-  }
-  .admin-record-modal .modal-footer #continueStep:not(.d-none),
-  .admin-record-modal .modal-footer #nextStep:not(.d-none),
-  .admin-record-modal .modal-footer #saveViolation:not(.d-none) {
-    flex: 1 1 100%;
-    width: 100% !important;
-    min-height: 46px;
-    order: 10;
-  }
-}
-
-@media (max-width: 359.98px) {
-  .admin-record-modal .modal-footer > #backStep,
-  .admin-record-modal .modal-footer > .ms-auto > .btn,
-  .admin-record-modal .modal-footer > .ms-auto > .portal-btn,
-  .admin-record-modal .modal-footer > .ms-auto > .admin-btn {
-    flex-basis: 100%;
-    width: 100% !important;
-  }
-}
-
-</style>
+});
