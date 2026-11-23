@@ -1960,12 +1960,18 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     violationTypeSelect.addEventListener("change", function () {
-        const studentNumber = document.getElementById(
-            "selectedStudentNumber",
-        ).value;
+        const userId = currentUserId();
         const violationTypeId = this.value;
 
-        if (!studentNumber || !violationTypeId) {
+        // Clear previous preview before requesting updated details.
+        document.getElementById("previewOffenseLevel").value = "";
+        document.getElementById("previewCategory").textContent = "-";
+        document.getElementById("previewViolationType").textContent = "-";
+        document.getElementById("previewOffenseLevelDisplay").textContent = "-";
+        document.getElementById("previewSanction").textContent =
+            "No disciplinary sanction available.";
+
+        if (!userId || !violationTypeId) {
             return;
         }
 
@@ -1979,8 +1985,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 ).content,
             },
             body: JSON.stringify({
-                student_number: studentNumber,
-                violation_type_id: violationTypeId,
+                user_id: Number(userId),
+                violation_type_id: Number(violationTypeId),
             }),
         })
             .then(async (response) => {
@@ -1997,15 +2003,19 @@ document.addEventListener("DOMContentLoaded", function () {
             .then((data) => {
                 document.getElementById("previewOffenseLevel").value =
                     data.offense_level ?? "-";
+
                 document.getElementById("previewCategory").textContent =
                     data.category ?? "-";
+
                 document.getElementById("previewViolationType").textContent =
                     data.violation_type ?? "-";
+
                 document.getElementById(
                     "previewOffenseLevelDisplay",
                 ).textContent = data.offense_level ?? "-";
+
                 document.getElementById("previewSanction").textContent =
-                    data.sanction ?? "-";
+                    data.sanction ?? "No disciplinary sanction available.";
             })
             .catch((error) => {
                 showAlert("error", "Preview failed", error.message);
