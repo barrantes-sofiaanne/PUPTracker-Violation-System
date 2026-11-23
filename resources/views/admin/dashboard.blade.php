@@ -128,7 +128,7 @@
                                         </small>
                                     </td>
                                     <td>
-                                        <a href="{{ route('admin.violations.show', ['student_number' => $violation->student_number, 'source' => 'dashboard']) }}" 
+                                        <a href="{{ route('admin.violations.show', ['student_number' => $violation->user_id, 'source' => 'dashboard']) }}" 
                                            class="admin-btn admin-btn-view admin-btn-sm">
                                             <i class="bi bi-eye me-1"></i>
                                             View Record

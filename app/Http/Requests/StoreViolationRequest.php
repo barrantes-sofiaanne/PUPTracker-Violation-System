@@ -27,9 +27,15 @@ class StoreViolationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'student_number' => [
+            'user_id' => [
                 'required',
-                'exists:users_tbl,student_number',
+                'integer',
+                'exists:users_tbl,user_id',
+            ],
+            'student_number' => [
+                'nullable',
+                'string',
+                'max:50',
             ],
             'violation_type_id' => [
                 'required',
@@ -85,32 +91,22 @@ class StoreViolationRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $studentNumber = $this->input('student_number');
+            $userId = $this->input('user_id');
 
-            if (! is_string($studentNumber) || trim($studentNumber) === '') {
-                // The `required` rule already reports this.
+            if (! is_numeric($userId) || $validator->errors()->has('user_id')) {
                 return;
             }
 
-            // Already failed the existence check -> no account to inspect.
-            if ($validator->errors()->has('student_number')) {
-                return;
-            }
+            $student = User::query()->find((int) $userId);
 
-            $student = User::query()
-                ->where('student_number', $studentNumber)
-                ->first();
-
-            // Defensive: the exists rule passed but the row is gone (race).
             if (! $student) {
-                $validator->errors()->add('student_number', 'The selected student does not exist.');
-
+                $validator->errors()->add('user_id', 'The selected student account does not exist.');
                 return;
             }
 
             if (! $student->isActiveAccount()) {
                 $validator->errors()->add(
-                    'student_number',
+                    'user_id',
                     'Violation cannot be recorded because this student account is inactive.'
                 );
             }
@@ -120,8 +116,8 @@ class StoreViolationRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'student_number.required' => 'A student number is required.',
-            'student_number.exists' => 'The selected student does not exist.',
+            'user_id.required' => 'Please select a student account.',
+            'user_id.exists' => 'The selected student account does not exist.',
             'violation_type_id.required' => 'A violation type is required.',
             'violation_type_id.exists' => 'The selected violation type is invalid.',
             'violation_date.required' => 'The violation date and time is required.',

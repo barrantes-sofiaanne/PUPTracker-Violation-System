@@ -208,7 +208,7 @@ class ViolationRecordingService
      *
      * @return array<string, mixed>|null
      */
-    public function previewViolationData(string $studentNumber, int $violationTypeId): ?array
+    public function previewViolationData(int $userId, int $violationTypeId): ?array
     {
         $violationType = \App\Models\ViolationType::with('violationCategory')
             ->find($violationTypeId);
@@ -217,10 +217,15 @@ class ViolationRecordingService
             return null;
         }
 
-$previousCount = Violation::where('student_number', $studentNumber)
-    ->where('violation_type_id', $violationType->violation_type_id)
-    ->effective()
-    ->count();
+$previousCount = Violation::where(function ($query) use ($userId) {
+        $query->where('user_id', $userId)
+            ->orWhere(function ($legacy) use ($userId) {
+                $legacy->whereNull('user_id')->whereIn('student_number', \App\Models\User::where('user_id', $userId)->select('student_number'));
+            });
+    })
+        ->where('violation_type_id', $violationType->violation_type_id)
+        ->effective()
+        ->count();
 
         $currentOffenseNumber = $previousCount + 1;
         $offenseLevel = $this->formatOffenseLevel($currentOffenseNumber);

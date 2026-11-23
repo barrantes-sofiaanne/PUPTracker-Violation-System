@@ -329,7 +329,7 @@ background: #800000;
     <div id="managementTableContainer" class="card portal-card">
         <div class="card-body p-0">
             @forelse($students as $student)
-            <a href="{{ route('oss-staff.violations.show', $student->student_number) }}" class="text-decoration-none text-dark">
+            <a href="{{ route('oss-staff.violations.show', $student->user_id) }}" class="text-decoration-none text-dark">
                 <div class="student-card">
                     <div class="violation-badge">
                         {{ $student->violations_count }}

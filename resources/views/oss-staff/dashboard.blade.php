@@ -306,7 +306,7 @@
                                             data-offense="{{ $violation->offense_level ?: 'N/A' }}"
                                             data-violation-date="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->setTimezone('Asia/Manila')->format('M d, Y, H:i') : 'N/A' }}"
                                             data-description="{{ $violation->description ?: 'No description provided.' }}"
-                                            data-student-url="{{ route('oss-staff.violations.show', $violation->student_number) }}">
+                                            data-student-url="{{ route('oss-staff.violations.show', $violation->user_id) }}">
                                             View
                                         </button>
                                     </td>

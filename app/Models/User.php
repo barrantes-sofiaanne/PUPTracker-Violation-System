@@ -246,11 +246,7 @@ protected $fillable = [
      */
     public function violations(): HasMany
     {
-        return $this->hasMany(
-            Violation::class,
-            'student_number',
-            'student_number'
-        );
+        return $this->hasMany(Violation::class, 'user_id', 'user_id');
     }
 
     /**

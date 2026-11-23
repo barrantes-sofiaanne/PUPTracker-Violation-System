@@ -507,13 +507,14 @@ public function show(Request $request, string $student_number)
         'studentInfo.studentStatus',
     ])
     ->where('student_number', $student_number)
+    ->orWhere('user_id', ctype_digit($student_number) ? (int) $student_number : -1)
     ->firstOrFail();
 
     $allViolations = Violation::with([
         'violationType.violationCategory',
         'recorder.adminInfo'
     ])
-    ->where('student_number', $student_number)
+    ->where('user_id', $student->user_id)
     ->effective()
     ->latest('violation_date')
     ->get();
@@ -523,7 +524,7 @@ $individualViolations = Violation::with([
     'recorder.adminInfo',
 'recordingSecurity.securityInfo',
 ])
-    ->where('student_number', $student_number)
+    ->where('user_id', $student->user_id)
     ->effective()
     ->latest('violation_date')
     ->paginate(10)
@@ -538,7 +539,7 @@ $individualViolations = Violation::with([
         ) === 0)
         ->count();
 
-    $sanctionRecords = StudentSanctionRecord::where('student_number', $student_number)->get();
+    $sanctionRecords = StudentSanctionRecord::where('student_number', $student->student_number)->get();
 
     $outstandingSanctions = $sanctionRecords
         ->filter(fn ($r) => strcasecmp((string) $r->status, 'Completed') !== 0)
@@ -783,18 +784,10 @@ public function searchStudents(Request $request)
 
     public function previewViolation(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users_tbl,user_id'],
-            'violation_type_id' => ['required', 'integer', 'exists:violation_type_tbl,violation_type_id'],
-        ]);
-
-        $student = User::query()
-            ->whereHas('role', fn ($query) => $query->where('roles_name', 'Student'))
-            ->findOrFail($validated['user_id']);
-
-        if (! $student->isActiveAccount()) {
-            return response()->json(['message' => 'Violation cannot be recorded because this student account is inactive.'], 422);
-        }
+        $request->validate([
+    'user_id' => ['required', 'integer', 'exists:users_tbl,user_id'],
+    'violation_type_id' => ['required', 'integer'],
+]);
 
 $violationType = ViolationType::with('violationCategory')
     ->find($request->violation_type_id);
@@ -812,18 +805,11 @@ $violationType = ViolationType::with('violationCategory')
         |--------------------------------------------------------------------------
         */
 
-$previousCount = Violation::query()
-    ->where('violation_type_id', $violationType->violation_type_id)
-    ->where(function ($query) use ($student) {
-        $query->where('user_id', $student->user_id);
-        if (! empty($student->student_number)) {
-            // Include legacy records that have not yet been backfilled.
-            $query->orWhere(function ($legacy) use ($student) {
-                $legacy->whereNull('user_id')
-                    ->where('student_number', $student->student_number);
-            });
-        }
-    })
+$previousCount = Violation::where('user_id', $request->user_id)
+    ->where(
+        'violation_type_id',
+        $violationType->violation_type_id
+    )
     ->effective()
     ->count();
 
@@ -945,18 +931,6 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
         ], 422);
     }
 
-    $student = User::query()
-        ->whereHas('role', fn ($query) => $query->where('roles_name', 'Student'))
-        ->findOrFail((int) $validated['user_id']);
-
-    if (! $student->isActiveAccount()) {
-        return response()->json([
-            'message' => 'Violation cannot be recorded because this student account is inactive.',
-        ], 422);
-    }
-
-    $studentNumber = $student->student_number ?: null;
-
     $violationType = ViolationType::findOrFail(
         $validated['violation_type_id']
     );
@@ -971,15 +945,10 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
             |--------------------------------------------------------------------------
             */
 
-$exists = Violation::where('violation_type_id', $violationType->violation_type_id)
-    ->where(function ($query) use ($student, $studentNumber) {
-        $query->where('user_id', $student->user_id);
-        if ($studentNumber !== null) {
-            $query->orWhere(function ($legacy) use ($studentNumber) {
-                $legacy->whereNull('user_id')->where('student_number', $studentNumber);
-            });
-        }
-    })
+$student = User::findOrFail((int) $validated['user_id']);
+
+$exists = Violation::where('user_id', $student->user_id)
+    ->where('violation_type_id', $violationType->violation_type_id)
                 ->whereDate(
                     'violation_date',
                     date(
@@ -1021,7 +990,7 @@ $exists = Violation::where('violation_type_id', $violationType->violation_type_i
             $violation = Violation::create([
 
                 'user_id' => $student->user_id,
-                'student_number' => $studentNumber,
+                'student_number' => $student->student_number,
 
                 'violation_type_id' => $violationType->violation_type_id,
 
@@ -1057,7 +1026,7 @@ $exists = Violation::where('violation_type_id', $violationType->violation_type_i
             // Notify the student about the recorded violation (target-aware).
             try {
                 app(\App\Services\StudentNotificationService::class)->create(
-                    studentNumber: $studentNumber ?? '',
+                    studentNumber: (string) ($student->student_number ?? ''),
                     type: 'violation',
                     title: 'Violation Notice',
                     message: 'A violation has been recorded against your record: ' . $violationType->violation_type . '. Please review your Student Record.',
@@ -1077,7 +1046,6 @@ $exists = Violation::where('violation_type_id', $violationType->violation_type_i
         } catch (\Throwable $exception) {
     Log::error('Admin violation store failed', [
         'student_number' => $request->input('student_number'),
-        'user_id' => $request->input('user_id'),
         'error' => $exception->getMessage(),
         'file' => $exception->getFile(),
         'line' => $exception->getLine(),
