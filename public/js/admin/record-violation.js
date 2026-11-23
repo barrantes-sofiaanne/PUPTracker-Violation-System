@@ -2025,24 +2025,36 @@ document.addEventListener("DOMContentLoaded", function () {
     // ------------------------------------------------------------------
     // Submit
     // ------------------------------------------------------------------
+
     saveBtn.addEventListener("click", function () {
-        const studentNumber = document.getElementById(
-            "selectedStudentNumber",
-        ).value;
-        const violationTypeId = document.getElementById("violationType").value;
+        const studentNumber = currentStudentNumber();
+        const violationTypeId = violationTypeSelect.value.trim();
         const violationDate = document.getElementById("violationDate").value;
         const description = document.getElementById("description").value.trim();
 
-        if (
-            !studentNumber ||
-            !violationTypeId ||
-            !violationDate ||
-            !description
-        ) {
+        const missingFields = [];
+
+        if (!studentNumber) {
+            missingFields.push("Student");
+        }
+
+        if (!violationTypeId) {
+            missingFields.push("Violation Type");
+        }
+
+        if (!violationDate) {
+            missingFields.push("Date & Time");
+        }
+
+        if (!description) {
+            missingFields.push("Incident Description");
+        }
+
+        if (missingFields.length > 0) {
             showAlert(
                 "warning",
-                "Missing required fields",
-                "Complete all required fields before saving.",
+                "Missing Required Fields",
+                "Please complete: " + missingFields.join(", "),
             );
             return;
         }
@@ -2056,9 +2068,8 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        const formData = new FormData();
-
         const userId = currentUserId();
+
         if (!userId) {
             showAlert(
                 "warning",
@@ -2067,6 +2078,8 @@ document.addEventListener("DOMContentLoaded", function () {
             );
             return;
         }
+
+        // Keep the remaining existing submission code below this point.
 
         formData.append("user_id", userId);
         formData.append("student_number", studentNumber);
