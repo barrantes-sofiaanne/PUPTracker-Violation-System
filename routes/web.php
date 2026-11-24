@@ -574,6 +574,15 @@ Route::get(
         Route::get('/violations/{student_number}', [ViolationController::class, 'show'])
             ->name('admin.violations.show');
 
+            Route::get('/violations/bulk-import', [\App\Http\Controllers\Admin\BulkViolationImportController::class, 'show'])
+    ->name('admin.violations.bulk-import');
+Route::get('/violations/bulk-import/template', [\App\Http\Controllers\Admin\BulkViolationImportController::class, 'template'])
+    ->name('admin.violations.bulk-import.template');
+Route::post('/violations/bulk-import/preview', [\App\Http\Controllers\Admin\BulkViolationImportController::class, 'preview'])
+    ->name('admin.violations.bulk-import.preview');
+Route::post('/violations/bulk-import/commit', [\App\Http\Controllers\Admin\BulkViolationImportController::class, 'commit'])
+    ->name('admin.violations.bulk-import.commit');
+
         /*
         |--------------------------------------------------------------------------
         | Violation Categories

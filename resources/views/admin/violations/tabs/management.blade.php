@@ -13,17 +13,18 @@
         </small>
     </div>
 
-    <button
-        type="button"
-        class="admin-btn admin-btn-primary"
-        data-bs-toggle="modal"
-        data-bs-target="#addViolationModal">
-
-        <i class="bi bi-plus-circle me-1"></i>
-
-        Record Violation
-
-    </button>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ route('admin.violations.bulk-import') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Bulk Record
+        </a>
+        <button
+            type="button"
+            class="admin-btn admin-btn-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#addViolationModal">
+            <i class="bi bi-plus-circle me-1"></i> Record Violation
+        </button>
+    </div>
 
 </div>
 <form
