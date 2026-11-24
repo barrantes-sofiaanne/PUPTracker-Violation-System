@@ -2297,111 +2297,70 @@ class StudentController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function destroy(
-        string $student_number
-    ) {
+public function destroy(int $user_id)
+{
+    $student = User::query()
+        ->where('user_id', $user_id)
+        ->firstOrFail();
 
-        $student = User::query()
-            ->where(
-                'student_number',
-                $student_number
-            )
-            ->firstOrFail();
+    $studentName = trim(
+        ($student->first_name ?? '') . ' ' .
+        ($student->middle_name ?? '') . ' ' .
+        ($student->last_name ?? '')
+    );
 
-        $studentName = trim(
-            ($student->first_name ?? '')
-            . ' '
-            . ($student->middle_name ?? '')
-            . ' '
-            . ($student->last_name ?? '')
-        ) ?: $student_number;
-
-        $program =
-            optional(
-                $student->studentInfo
-            )->program?->program_name
-            ?? '—';
-
-        $section =
-            optional(
-                $student->studentInfo
-            )->section?->section_name
-            ?? '—';
-
-        $studentId =
-            $student->getKey();
-
-        $studentEmail =
-            $student->email;
-
-        if ($student->studentInfo) {
-            $student->studentInfo->delete();
-        }
-
-        $student->delete();
-
-        $this->logUserManagementAction(
-            'student',
-            'Delete',
-            $studentId,
-            $studentEmail,
-            [
-                [
-                    'field' =>
-                        'Student Number',
-
-                    'from' =>
-                        $student_number,
-
-                    'to' =>
-                        '— (deleted)',
-                ],
-
-                [
-                    'field' =>
-                        'Name',
-
-                    'from' =>
-                        $studentName,
-
-                    'to' =>
-                        '— (deleted)',
-                ],
-
-                [
-                    'field' =>
-                        'Program',
-
-                    'from' =>
-                        $program,
-
-                    'to' =>
-                        '— (deleted)',
-                ],
-
-                [
-                    'field' =>
-                        'Section',
-
-                    'from' =>
-                        $section,
-
-                    'to' =>
-                        '— (deleted)',
-                ],
-            ]
-        );
-
-        return redirect()
-            ->route(
-                'admin.students',
-                ['tab' => 'students']
-            )
-            ->with(
-                'success',
-                'Student deleted successfully.'
-            );
+    if ($studentName === '') {
+        $studentName = $student->email ?: 'Student Account #' . $user_id;
     }
+
+    $studentNumber = $student->student_number ?: '— (not provided)';
+
+    $program = $student->studentInfo?->program?->program_name ?? '—';
+
+    $section = $student->studentInfo?->section?->section_name ?? '—';
+
+    $studentId = $student->user_id;
+    $studentEmail = $student->email;
+
+    if ($student->studentInfo) {
+        $student->studentInfo->delete();
+    }
+
+    $student->delete();
+
+    $this->logUserManagementAction(
+        'student',
+        'Delete',
+        $studentId,
+        $studentEmail,
+        [
+            [
+                'field' => 'Student Number',
+                'from' => $studentNumber,
+                'to' => '— (deleted)',
+            ],
+            [
+                'field' => 'Name',
+                'from' => $studentName,
+                'to' => '— (deleted)',
+            ],
+            [
+                'field' => 'Program',
+                'from' => $program,
+                'to' => '— (deleted)',
+            ],
+            [
+                'field' => 'Section',
+                'from' => $section,
+                'to' => '— (deleted)',
+            ],
+        ]
+    );
+
+    return redirect()
+        ->route('admin.students', ['tab' => 'students'])
+        ->with('success', 'Student deleted successfully.');
+}
 
     /*
     |--------------------------------------------------------------------------
