@@ -1785,17 +1785,14 @@ class StudentController extends Controller
      *
      * Year level can be manually changed from the normal Edit Student form.
      */
-    public function update(
-        Request $request,
-        string $student_number
-    ) {
+public function update(
+    Request $request,
+    int $user_id
+) {
 
-        $student = User::query()
-            ->where(
-                'student_number',
-                $student_number
-            )
-            ->firstOrFail();
+    $student = User::query()
+        ->where('user_id', $user_id)
+        ->firstOrFail();
 
         $request->validate([
             'program_id' =>
