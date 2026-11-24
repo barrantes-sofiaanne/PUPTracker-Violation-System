@@ -437,8 +437,9 @@ Route::post(
         Route::get('/students/{student_number}/edit', [StudentController::class, 'edit'])
             ->name('admin.students.edit');
 
-        Route::put('/students/{student_number}', [StudentController::class, 'update'])
-            ->name('admin.students.update');
+        Route::put('/students/{user_id}', [StudentController::class, 'update'])
+    ->whereNumber('user_id')
+    ->name('admin.students.update');
 
 Route::delete('/students/{user_id}', [StudentController::class, 'destroy'])
     ->whereNumber('user_id')
