@@ -210,6 +210,10 @@ Route::get('/password/reset/{guard}/{token}', [ForgotPasswordController::class, 
     ->whereIn('guard', ['student', 'admin', 'security'])
     ->name('password.reset.form');
 
+Route::post('/password/reset/{guard}/otp', [ForgotPasswordController::class, 'verifyOtp'])
+    ->whereIn('guard', ['admin', 'security'])
+    ->middleware('throttle:10,10')
+    ->name('password.reset.otp');
 
 Route::post('/password/reset/{guard}', [ForgotPasswordController::class, 'reset'])
     ->whereIn('guard', ['student', 'admin', 'security'])
@@ -436,8 +440,9 @@ Route::post(
         Route::put('/students/{student_number}', [StudentController::class, 'update'])
             ->name('admin.students.update');
 
-        Route::delete('/students/{student_number}', [StudentController::class, 'destroy'])
-            ->name('admin.students.destroy');
+Route::delete('/students/{user_id}', [StudentController::class, 'destroy'])
+    ->whereNumber('user_id')
+    ->name('admin.students.destroy');
 
         Route::get('/students/{student_number}', [StudentController::class, 'show'])
             ->name('admin.students.show');
@@ -1083,4 +1088,3 @@ Route::middleware(['auth:admin', 'oss.staff', 'session.inactivity'])
 // Route::get('/debug/reset-admin-password', [App\Http\Controllers\Admin\DebugPasswordResetController::class, 'resetAdminPassword'])
 //     ->withoutMiddleware(['web'])
 //     ->name('debug.reset-admin-password');
-
