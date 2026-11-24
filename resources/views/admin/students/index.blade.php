@@ -258,8 +258,9 @@
 <div class="user-action-group">
 
     <button
-        class="admin-btn admin-btn-view admin-btn-sm user-action-btn editStudentBtn"
-        data-id="{{ $student->student_number }}"
+        <button
+    class="admin-btn admin-btn-view admin-btn-sm user-action-btn editStudentBtn"
+    data-id="{{ $student->user_id }}"
         data-first="{{ $student->first_name }}"
         data-middle="{{ $student->middle_name }}"
         data-last="{{ $student->last_name }}"
@@ -276,11 +277,11 @@
         Edit
     </button>
 
-    <button
-        class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteStudentBtn"
-        data-id="{{ $student->student_number }}"
-        data-name="{{ $student->first_name }} {{ $student->last_name }}"
-    >
+<button
+    class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteStudentBtn"
+    data-id="{{ $student->user_id }}"
+    data-name="{{ $student->first_name }} {{ $student->last_name }}"
+>
         <i class="bi bi-trash me-1"></i>
         Delete
     </button>
@@ -909,7 +910,10 @@ document.getElementById('section_id').value = this.dataset.section;
             toggleEditLadderizedField(document.getElementById('program_id'));
         }
 
-        document.getElementById('editStudentForm').action = "{{ url('/admin/students') }}/" + this.dataset.id;
+        const updateUrlTemplate = @json(route('admin.students.update', ['user_id' => '__USER_ID__']));
+
+document.getElementById('editStudentForm').action =
+    updateUrlTemplate.replace('__USER_ID__', encodeURIComponent(this.dataset.id));
         new bootstrap.Modal(document.getElementById('editStudentModal')).show();
     });
 });
@@ -964,7 +968,12 @@ function toggleEditLadderizedField(selectEl) {
 document.querySelectorAll('.deleteStudentBtn').forEach(function (button) {
     button.addEventListener('click', function () {
         document.getElementById('studentDeleteName').textContent = this.dataset.name;
-        document.getElementById('deleteStudentForm').action = "{{ url('/admin/students') }}/" + this.dataset.id;
+
+        const deleteUrlTemplate = @json(route('admin.students.destroy', ['user_id' => '__USER_ID__']));
+
+        document.getElementById('deleteStudentForm').action =
+            deleteUrlTemplate.replace('__USER_ID__', encodeURIComponent(this.dataset.id));
+
         new bootstrap.Modal(document.getElementById('deleteStudentModal')).show();
     });
 });
