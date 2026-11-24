@@ -564,18 +564,13 @@ Route::get(
             [ViolationController::class, 'show']
         )->name('admin.violations.studentHistory');
 
-        /*
-        |--------------------------------------------------------------------------
-        | IMPORTANT'requestSanction
-        | Keep this LAST because it catches ANY value after /violations/
-        |--------------------------------------------------------------------------
-        */
+       
+/*
+|--------------------------------------------------------------------------
+| Bulk Violation Import
+|--------------------------------------------------------------------------
+*/
 
-        Route::get('/violations/{student_number}', [ViolationController::class, 'show'])
-            ->name('admin.violations.show');
-
-
-// Bulk Violation Import — declare these BEFORE the wildcard route.
 Route::get('/violations/bulk-import', [
     \App\Http\Controllers\Admin\BulkViolationImportController::class,
     'show'
@@ -596,11 +591,15 @@ Route::post('/violations/bulk-import/commit', [
     'commit'
 ])->name('admin.violations.bulk-import.commit');
 
-// Keep this catch-all LAST among the violation routes.
-Route::get('/violations/{student_number}', [
-    ViolationController::class,
-    'show'
-])->name('admin.violations.show');
+
+/*
+|--------------------------------------------------------------------------
+| Student Violation History — Keep LAST
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/violations/{student_number}', [ViolationController::class, 'show'])
+    ->name('admin.violations.show');
 
 
         /*
