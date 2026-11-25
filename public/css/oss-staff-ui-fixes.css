@@ -1,0 +1,165 @@
+/* =========================================
+   OSS STAFF - MAROON AND GOLD THEME
+========================================= */
+
+.module-oss {
+    --pt-accent: #800000;
+    --pt-accent-rgb: 128, 0, 0;
+    --pt-accent-soft: #f8eeee;
+    --pt-accent-deep: #5f0000;
+}
+
+/* Dashboard and page headers */
+.module-oss .portal-hero,
+.module-oss .page-header-modern {
+    color: #fff !important;
+    background: linear-gradient(
+        112deg,
+        #970d0d 0%,
+        #740000 58%,
+        #873d19 100%
+    ) !important;
+
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    box-shadow: 0 14px 30px rgba(80, 12, 12, 0.14);
+}
+
+/* Header text */
+.module-oss .portal-hero h1,
+.module-oss .portal-hero h2,
+.module-oss .portal-hero h3,
+.module-oss .portal-hero p,
+.module-oss .portal-hero .text-muted,
+.module-oss .page-header-modern h1,
+.module-oss .page-header-modern h2,
+.module-oss .page-header-modern h3,
+.module-oss .page-header-modern h4,
+.module-oss .page-header-modern h5,
+.module-oss .page-header-modern p,
+.module-oss .page-header-modern .text-muted,
+.module-oss .dashboard-hero-subtitle {
+    color: #fff !important;
+}
+
+.module-oss .portal-hero::after,
+.module-oss .page-header-modern::after {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Dashboard clock */
+.module-oss .dashboard-time-label {
+    color: rgba(255, 255, 255, 0.86) !important;
+}
+
+.module-oss .dashboard-time-value {
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.14) !important;
+    border-color: rgba(255, 255, 255, 0.28) !important;
+    box-shadow: none !important;
+}
+
+/* =========================================
+   NAVBAR AND PROFILE
+========================================= */
+
+.module-oss .oss-topbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+    min-width: 0;
+    gap: 0.65rem !important;
+}
+
+/* Circular initials button */
+.module-oss .user-menu-toggle-avatar-only {
+    width: 54px;
+    height: 54px;
+    min-width: 54px;
+    max-width: 54px;
+    padding: 4px;
+    justify-content: center;
+    border: 1px solid rgba(128, 0, 0, 0.2);
+    border-radius: 50%;
+    background: #fff;
+}
+
+.module-oss .user-menu-toggle-avatar-only .user-menu-avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 0.95rem;
+}
+
+/* Hide account name and email beside avatar */
+.module-oss .user-menu-toggle-avatar-only .user-menu-toggle-label,
+.module-oss .user-menu-toggle-avatar-only .user-menu-toggle-sub {
+    display: none !important;
+}
+
+/* =========================================
+   MOBILE RESPONSIVENESS
+========================================= */
+
+@media (max-width: 767.98px) {
+    .module-oss .portal-topbar > .container-fluid {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.45rem;
+        min-width: 0;
+    }
+
+    .module-oss .portal-topbar > .container-fluid > .d-flex:first-child {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .module-oss .portal-topbar .oss-topbar-actions {
+        flex: 0 0 auto;
+        margin-left: auto;
+        gap: 0.45rem !important;
+    }
+
+    .module-oss .portal-topbar .admin-notif-bell,
+    .module-oss .portal-topbar .admin-notif-bell-btn,
+    .module-oss .portal-topbar .user-menu {
+        flex: 0 0 auto;
+    }
+
+    .module-oss .portal-topbar .user-menu-toggle-avatar-only {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        max-width: 44px;
+    }
+
+    .module-oss .portal-topbar .user-menu-toggle-avatar-only .user-menu-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 0.8rem;
+    }
+
+    .module-oss .portal-topbar .admin-notif-dropdown,
+    .module-oss .portal-topbar .user-menu-dropdown {
+        max-width: calc(100vw - 1rem);
+    }
+}
+
+@media (max-width: 380px) {
+    .module-oss .portal-topbar .oss-topbar-actions {
+        gap: 0.3rem !important;
+    }
+
+    .module-oss .portal-topbar .user-menu-toggle-avatar-only {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        max-width: 40px;
+    }
+
+    .module-oss .portal-topbar .user-menu-toggle-avatar-only .user-menu-avatar {
+        width: 33px;
+        height: 33px;
+    }
+}
