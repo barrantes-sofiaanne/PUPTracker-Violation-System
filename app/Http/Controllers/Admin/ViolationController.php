@@ -146,7 +146,11 @@ $violationHistory = Violation::with([
     'evidence',
 ])
 ->where(function ($query) {
-    $query->whereNull('status')
+    // Admin-recorded violations are always retained in History, regardless
+    // of legacy status formatting. Other recorder types retain the established
+    // pending/confirmed/deleted visibility rules.
+    $query->where('recorder_type', 'admin')
+        ->orWhereNull('status')
         ->orWhereIn('status', [
             Violation::STATUS_PENDING,
             Violation::STATUS_CONFIRMED,
@@ -1176,7 +1180,11 @@ return \App\Support\Responses::unexpectedError();
         'recorder.adminInfo'
     ])
 ->where(function ($query) {
-    $query->whereNull('status')
+    // Admin-recorded violations are always retained in History, regardless
+    // of legacy status formatting. Other recorder types retain the established
+    // pending/confirmed/deleted visibility rules.
+    $query->where('recorder_type', 'admin')
+        ->orWhereNull('status')
         ->orWhereIn('status', [
             Violation::STATUS_PENDING,
             Violation::STATUS_CONFIRMED,

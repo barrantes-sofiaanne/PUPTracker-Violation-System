@@ -16,11 +16,13 @@ use App\Models\StudentInfo;
 use App\Models\StudentStatus;
 use App\Models\User;
 use App\Models\Year;
+use App\Support\Storage\EvidenceDisk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
@@ -2313,20 +2315,121 @@ public function destroy(int $user_id)
         $studentName = $student->email ?: 'Student Account #' . $user_id;
     }
 
-    $studentNumber = $student->student_number ?: '— (not provided)';
-
+    $studentNumberRaw = trim((string) ($student->student_number ?? ''));
+    $studentNumber = $studentNumberRaw !== '' ? $studentNumberRaw : '— (not provided)';
     $program = $student->studentInfo?->program?->program_name ?? '—';
-
     $section = $student->studentInfo?->section?->section_name ?? '—';
-
-    $studentId = $student->user_id;
+    $studentId = (int) $student->user_id;
     $studentEmail = $student->email;
 
-    if ($student->studentInfo) {
-        $student->studentInfo->delete();
-    }
+    // Delete the student and every dependent disciplinary row atomically.
+    // Legacy violations may have user_id=NULL, so match those by student_number too.
+    $cleanup = DB::transaction(function () use ($studentId, $studentNumberRaw): array {
+        $violationQuery = DB::table('violation_tbl')->where(function ($query) use ($studentId, $studentNumberRaw) {
+            $query->where('user_id', $studentId);
+            if ($studentNumberRaw !== '') {
+                $query->orWhere(function ($legacy) use ($studentNumberRaw) {
+                    $legacy->whereNull('user_id')->where('student_number', $studentNumberRaw);
+                });
+            }
+        });
+        $violationIds = $violationQuery->pluck('violation_id')->map(fn ($id) => (int) $id)->all();
 
-    $student->delete();
+        $evidencePaths = [];
+        $evidenceIds = [];
+        if (Schema::hasTable('violation_evidence_tbl') && $violationIds !== []) {
+            $evidenceRows = DB::table('violation_evidence_tbl')
+                ->whereIn('violation_id', $violationIds)
+                ->get(['evidence_id', 'disk_path']);
+            $evidenceIds = $evidenceRows->pluck('evidence_id')->map(fn ($id) => (int) $id)->all();
+            $evidencePaths = $evidenceRows->pluck('disk_path')->filter()->values()->all();
+        }
+
+        $sanctionRows = collect();
+        $sanctionRecordIds = [];
+        $proofPaths = [];
+        if (Schema::hasTable('student_sanction_records_tbl')) {
+            $sanctionRows = DB::table('student_sanction_records_tbl')
+                ->where('student_number', $studentNumberRaw)
+                ->get();
+            $sanctionRecordIds = $sanctionRows->pluck('record_id')->map(fn ($id) => (int) $id)->all();
+            if (Schema::hasColumn('student_sanction_records_tbl', 'proof_path')) {
+                $proofPaths = $sanctionRows->pluck('proof_path')->filter()->values()->all();
+            }
+        }
+
+        if (Schema::hasTable('sanction_proofs_tbl')) {
+            $proofQuery = DB::table('sanction_proofs_tbl');
+            $hasProofMatch = false;
+            if ($sanctionRecordIds !== []) {
+                $proofQuery->whereIn('record_id', $sanctionRecordIds);
+                $hasProofMatch = true;
+            }
+            if (Schema::hasColumn('sanction_proofs_tbl', 'student_number') && $studentNumberRaw !== '') {
+                $proofQuery->when($hasProofMatch,
+                    fn ($query) => $query->orWhere('student_number', $studentNumberRaw),
+                    fn ($query) => $query->where('student_number', $studentNumberRaw)
+                );
+                $hasProofMatch = true;
+            }
+            if ($hasProofMatch) {
+                $proofPaths = array_merge($proofPaths, $proofQuery->pluck('disk_path')->filter()->values()->all());
+                $proofQuery->delete();
+            }
+        }
+
+        // Remove evidence-related audit events before their evidence/violation rows.
+        if (Schema::hasTable('evidence_security_events_tbl') && ($violationIds !== [] || $evidenceIds !== [])) {
+            DB::table('evidence_security_events_tbl')->where(function ($query) use ($violationIds, $evidenceIds) {
+                if ($violationIds !== []) {
+                    $query->whereIn('violation_id', $violationIds);
+                }
+                if ($evidenceIds !== []) {
+                    $query->orWhereIn('evidence_id', $evidenceIds);
+                }
+            })->delete();
+        }
+
+        if (Schema::hasTable('violation_evidence_tbl') && $violationIds !== []) {
+            DB::table('violation_evidence_tbl')->whereIn('violation_id', $violationIds)->delete();
+        }
+
+        if (Schema::hasTable('student_sanction_records_tbl') && $sanctionRecordIds !== []) {
+            DB::table('student_sanction_records_tbl')->whereIn('record_id', $sanctionRecordIds)->delete();
+        }
+
+        // Explicitly delete the violation rows (including legacy rows); dependent
+        // edit histories and correction requests cascade through their FKs.
+        if ($violationIds !== []) {
+            DB::table('violation_tbl')->whereIn('violation_id', $violationIds)->delete();
+        }
+
+        $lockedStudent = User::query()->where('user_id', $studentId)->lockForUpdate()->firstOrFail();
+        if ($lockedStudent->studentInfo) {
+            $lockedStudent->studentInfo->delete();
+        }
+        $lockedStudent->delete();
+
+        return [
+            'file_paths' => array_values(array_unique(array_merge($evidencePaths, $proofPaths))),
+            'violations_deleted' => count($violationIds),
+            'sanctions_deleted' => count($sanctionRecordIds),
+        ];
+    });
+
+    // Remove private evidence/proof objects after the database commit. A storage
+    // outage must not roll back or partially undo the account deletion.
+    foreach ($cleanup['file_paths'] as $path) {
+        try {
+            EvidenceDisk::disk()->delete($path);
+        } catch (\Throwable $exception) {
+            Log::warning('Student deletion left a private evidence/proof object for later cleanup.', [
+                'user_id' => $studentId,
+                'path' => $path,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
 
     $this->logUserManagementAction(
         'student',
@@ -2334,32 +2437,18 @@ public function destroy(int $user_id)
         $studentId,
         $studentEmail,
         [
-            [
-                'field' => 'Student Number',
-                'from' => $studentNumber,
-                'to' => '— (deleted)',
-            ],
-            [
-                'field' => 'Name',
-                'from' => $studentName,
-                'to' => '— (deleted)',
-            ],
-            [
-                'field' => 'Program',
-                'from' => $program,
-                'to' => '— (deleted)',
-            ],
-            [
-                'field' => 'Section',
-                'from' => $section,
-                'to' => '— (deleted)',
-            ],
+            ['field' => 'Student Number', 'from' => $studentNumber, 'to' => '— (deleted)'],
+            ['field' => 'Name', 'from' => $studentName, 'to' => '— (deleted)'],
+            ['field' => 'Program', 'from' => $program, 'to' => '— (deleted)'],
+            ['field' => 'Section', 'from' => $section, 'to' => '— (deleted)'],
+            ['field' => 'Violations deleted', 'from' => (string) $cleanup['violations_deleted'], 'to' => '0 remaining'],
+            ['field' => 'Sanction records deleted', 'from' => (string) $cleanup['sanctions_deleted'], 'to' => '0 remaining'],
         ]
     );
 
     return redirect()
         ->route('admin.students', ['tab' => 'students'])
-        ->with('success', 'Student deleted successfully.');
+        ->with('success', 'Student and associated violation/sanction records deleted successfully.');
 }
 
     /*
