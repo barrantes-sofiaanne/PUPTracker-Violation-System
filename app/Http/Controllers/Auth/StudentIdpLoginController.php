@@ -11,13 +11,12 @@ use App\Models\User;
 use App\Models\Year;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use App\Http\Middleware\EnforceInactivityTimeout;
+use App\Support\MfaService;
 
 class StudentIdpLoginController extends Controller
 {
@@ -43,6 +42,10 @@ class StudentIdpLoginController extends Controller
 
         $state = Str::random(40);
         $request->session()->put('student.idp.state', $state);
+        $request->session()->put(
+            'student.idp.state_expires_at',
+            now()->addMinutes(10)->timestamp
+        );
 
         $authorizeUrl = $baseUrl . '/auth/authorize';
 
@@ -59,8 +62,8 @@ class StudentIdpLoginController extends Controller
      *
      * Exchanges the authorization code for a token (POST /auth/token, JSON body),
      * fetches the user profile (GET /me, Bearer), maps the IdP identity to a
-     * users_tbl record, verifies the local account, and authenticates with the
-     * Laravel "student" guard.
+     * users_tbl record, verifies the local account, and stages MFA before the
+     * Laravel "student" guard is authenticated.
      */
     public function callback(Request $request)
     {
@@ -70,14 +73,15 @@ class StudentIdpLoginController extends Controller
         ]);
 
         $expectedState = $request->session()->pull('student.idp.state');
+        $expectedStateExpiresAt = $request->session()->pull('student.idp.state_expires_at');
 
-        // Validate state when the IdP echoes it back. The IdP login SPA does not
-        // always preserve state, so validation is skipped when state is absent.
         if (
-            is_string($expectedState)
-            && $expectedState !== ''
-            && $request->filled('state')
-            && ! hash_equals($expectedState, (string) $request->string('state'))
+            ! $request->filled('state')
+            || ! is_string($expectedState)
+            || $expectedState === ''
+            || ! is_int($expectedStateExpiresAt)
+            || $expectedStateExpiresAt < now()->timestamp
+            || ! hash_equals($expectedState, (string) $validated['state'])
         ) {
             return redirect()->route('student.login')
                 ->withErrors([
@@ -474,12 +478,20 @@ class StudentIdpLoginController extends Controller
                 ]);
             }
             $student = $nameMatches->first();
-            $request->validate([
+            $validated = $request->validate([
+                'student_number' => [
+                    'required', 'string', 'max:50',
+                    Rule::unique('users_tbl', 'student_number')->ignore($student->user_id, 'user_id'),
+                ],
+                'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
+                'year_id' => ['required', 'integer', 'exists:year_tbl,year_id'],
+                'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
                 'privacy_acknowledged' => ['accepted'],
             ], [
                 'privacy_acknowledged.accepted' => 'Please acknowledge the PUPTracker Privacy Statement to continue.',
+                'student_number.unique' => 'That student number is already assigned to another account.',
             ]);
-            return $this->bindExistingStudent($request, $student, $idpSubject, $idpEmail, $profile);
+            return $this->bindExistingStudent($request, $student, $idpSubject, $idpEmail, $profile, $validated);
         }
 
         if ($mode === 'duplicate') {
@@ -527,6 +539,10 @@ class StudentIdpLoginController extends Controller
             'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
             'gender_id' => ['required', 'integer', 'exists:gender_tbl,gender_id'],
             'privacy_acknowledged' => ['accepted'],
+            // The ladderized answer is optional in the browser (the field is
+            // hidden until an eligible program is chosen). Only the two allowed
+            // values are accepted; anything else is rejected outright.
+            'ladderized' => ['nullable', 'in:0,1'],
         ]);
 
         if (User::query()->where('student_number', trim($validated['student_number']))->exists()) {
@@ -535,8 +551,16 @@ class StudentIdpLoginController extends Controller
             ]);
         }
 
+        // The server decides whether the chosen program supports the ladderized
+        // track. A forged "ladderized=1" for an ineligible program is discarded
+        // here, never persisted. Missing/omitted values default to 0.
+        $ladderized = $this->resolveLadderizedSelection(
+            (int) $validated['program_id'],
+            $validated['ladderized'] ?? null
+        );
+
         try {
-            $student = DB::transaction(function () use ($validated, $profile, $idpSubject, $idpEmail) {
+            $student = DB::transaction(function () use ($validated, $profile, $idpSubject, $idpEmail, $ladderized) {
                 $student = User::create([
                     'idp_subject' => $idpSubject,
                     'idp_email' => $idpEmail ?: null,
@@ -558,7 +582,7 @@ class StudentIdpLoginController extends Controller
                     (int) $validated['program_id'],
                     (int) $validated['year_id'],
                     (int) $validated['section_id'],
-                    0
+                    $ladderized
                 );
                 return $student;
             });
@@ -576,10 +600,10 @@ class StudentIdpLoginController extends Controller
     }
 
     /** Bind the verified IDP identity to one existing, unlinked student record. */
-    protected function bindExistingStudent(Request $request, User $candidate, string $idpSubject, string $email, array $profile): RedirectResponse
+    protected function bindExistingStudent(Request $request, User $candidate, string $idpSubject, string $email, array $profile, array $academicDetails = []): RedirectResponse
     {
         try {
-            $student = DB::transaction(function () use ($candidate, $idpSubject, $email, $profile) {
+            $student = DB::transaction(function () use ($candidate, $idpSubject, $email, $profile, $academicDetails) {
                 $student = User::query()->whereKey($candidate->user_id)->lockForUpdate()->firstOrFail();
                 if (! $this->userIsStudent($student) || ! $student->isActiveAccount()) {
                     throw new \RuntimeException('The selected student account is not eligible for linking.');
@@ -589,6 +613,19 @@ class StudentIdpLoginController extends Controller
                 }
                 if (User::query()->where('idp_subject', $idpSubject)->where('user_id', '!=', $student->user_id)->exists()) {
                     throw new \RuntimeException('This IDP identity is already linked to another student record.');
+                }
+                // Only PUPTracker academic fields are editable here. Verified IDP
+                // identity fields (name/email/subject) remain sourced from the IDP.
+                if ($academicDetails !== []) {
+                    $student->student_number = trim((string) $academicDetails['student_number']);
+                    $student->saveOrFail();
+                    $this->createStudentInfo(
+                        $student,
+                        (int) $academicDetails['program_id'],
+                        (int) $academicDetails['year_id'],
+                        (int) $academicDetails['section_id'],
+                        (int) (optional($student->studentInfo)->ladderized ?? 0)
+                    );
                 }
                 $this->persistIdpBinding($student, $idpSubject, $email, $profile);
                 $student->refresh();
@@ -652,14 +689,17 @@ class StudentIdpLoginController extends Controller
             'student.idp.pending_year_id',
         ]);
 
-Auth::guard('student')->login($student);
-$request->session()->regenerate();
+        app(MfaService::class)->beginChallenge(
+            $request,
+            'student',
+            (string) $student->student_number,
+            (string) $student->email,
+            null,
+            false
+        );
 
-EnforceInactivityTimeout::startFreshActivityWindow($request);
-        $request->session()->put('show_privacy_consent_modal', true);
-
-        return redirect()->route('student.dashboard')
-            ->with('success', 'Your existing student record has been linked successfully. You may now access PUPTracker.');
+        return redirect()->route('mfa.verify.show')
+            ->with('success', 'Continue with multi-factor verification.');
     }
 
     /**
