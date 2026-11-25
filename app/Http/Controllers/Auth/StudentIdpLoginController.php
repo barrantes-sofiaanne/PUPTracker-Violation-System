@@ -689,10 +689,17 @@ class StudentIdpLoginController extends Controller
         // Do not start a second, local PUPTracker MFA challenge on this path.
         // The callback reaches this method only after the IDP identity and
         // local Student account checks have succeeded.
-        Auth::guard('student')->login($student);
-        $request->session()->regenerate();
+// Authenticate the student through the Student guard.
+Auth::guard('student')->login($student, false);
 
-        return redirect()->route('student.dashboard');
+// Regenerate the authenticated session.
+$request->session()->regenerate();
+
+// Show the Privacy Statement and Terms modal after successful login.
+$request->session()->put('show_privacy_consent_modal', true);
+
+// Redirect to the Student Dashboard.
+return redirect()->route('student.dashboard');
     }
 
     /**
