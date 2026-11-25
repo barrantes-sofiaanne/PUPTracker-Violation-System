@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\OssStaff;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\OssStaff\Concerns\ResolvesOssStaffActor;
 use App\Models\EvidenceSecurityEvent;
 use App\Models\Program;
 use App\Models\ViolationCategory;
@@ -13,7 +14,6 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
@@ -22,13 +22,15 @@ use App\Models\ViolationEvidence;
 
 class StudentViolationController extends Controller
 {
+    use ResolvesOssStaffActor;
+
     /**
      * Identity-free recording helpers (evidence pipeline, report content, PDF
-     * rendering, offense-level/type lookups) shared with the OSS Staff module.
+     * rendering, offense-level/type lookups) shared with the Security module.
      *
-     * The actor is NOT read from this service: the Security module always
-     * supplies 'security' + the security account id itself, so the shared code
-     * can never mislabel an OSS Staff actor as Security (or the reverse).
+     * The actor is NOT read from this service: this controller always supplies
+     * 'admin' + the OSS Staff admin id itself, so an OSS Staff actor can never
+     * be mislabelled as Security (or the reverse).
      */
     public function __construct(private readonly \App\Services\ViolationRecordingService $recording)
     {
@@ -59,7 +61,7 @@ class StudentViolationController extends Controller
      */
     public function index(Request $request)
     {
-        return view('security.violations.students', $this->buildViolationsPagePayload(
+        return view('oss-staff.violations.students', $this->buildViolationsPagePayload(
             $request,
             $request->input('tab') === 'submitted' ? 'submitted' : 'students'
         ));
@@ -74,7 +76,7 @@ class StudentViolationController extends Controller
      */
     public function submitted(Request $request)
     {
-        return view('security.violations.students', $this->buildViolationsPagePayload($request, 'submitted'));
+        return view('oss-staff.violations.students', $this->buildViolationsPagePayload($request, 'submitted'));
     }
 
     /**
@@ -244,7 +246,7 @@ $query->whereIn('status', [
 
         $violationStats = $this->getViolationStats($student);
 
-        return view('security.violations.show', compact('student', 'violations', 'violationStats', 'highlightViolationId'));
+        return view('oss-staff.violations.show', compact('student', 'violations', 'violationStats', 'highlightViolationId'));
     }
 
     /**
@@ -363,9 +365,8 @@ $query->whereIn('status', [
                 ], 422);
             }
 
-            $security = Auth::guard('security')->user();
-            $securityLabel = $this->buildSecurityAccountName($security);
-            $securityId = $security?->id;
+            $ossStaffId = $this->ossStaffId();
+            $ossStaffLabel = $this->ossStaffName();
 
             $violationData = [
                 'user_id' => $student->user_id,
@@ -376,22 +377,21 @@ $query->whereIn('status', [
 
 'identity_verified' => true,
 'identity_verified_at' => now(),
-'identity_verified_by_type' => 'security',
-'identity_verified_by_id' => $securityId,
-                // recorder_id references admins.id; security accounts are in a different table.
-'recorder_type' => 'security',
-'recorder_id' => null,
-'recorder_name' => $securityLabel,
-                // Security-recorded violations are sent to the admin for
+'identity_verified_by_type' => 'admin',
+'identity_verified_by_id' => $ossStaffId,
+                // recorder_id references admins.id and the OSS Staff account IS
+                // an admins row, so the identity is persisted directly.
+'recorder_type' => 'admin',
+'recorder_id' => $ossStaffId,
+'recorder_name' => $ossStaffLabel,
+                // OSS-Staff-recorded violations are sent to the admin for
                 // confirmation before they count toward the student's record.
                 'status' => Violation::STATUS_PENDING,
             ];
 
-            // Persist the exact recording security account so notifications about
-            // this violation can be addressed to the right officer.
-            if ($securityId !== null && \Illuminate\Support\Facades\Schema::hasColumn('violation_tbl', 'recorded_by_security_id')) {
-                $violationData['recorded_by_security_id'] = $securityId;
-            }
+            // `recorded_by_security_id` is intentionally NOT set: it addresses
+            // the SECURITY account that recorded a row, and OSS Staff is an
+            // admin account.
 
             $violation = Violation::create($violationData);
 
@@ -400,7 +400,7 @@ $query->whereIn('status', [
             $captureSessionId = $request->input('capture_session_id')
                 ? (string) $request->input('capture_session_id')
                 : null;
-            $this->storeEvidence($violation, $request, $security, $securityId, $captureSessionId);
+            $this->storeEvidence($violation, $request, $ossStaffId, $captureSessionId);
 
             DB::commit();
 
@@ -416,7 +416,7 @@ $query->whereIn('status', [
                 app(\App\Services\AdminNotificationService::class)->create(
                     type: 'violation_confirmation',
                     title: 'Violation Awaiting Confirmation',
-                    message: 'Security recorded a violation for ' . $studentName . ' (' . $validated['student_number'] . '): ' . $violationType->violation_type . '. Confirm or deny this violation.',
+                    message: 'OSS Staff recorded a violation for ' . $studentName . ' (' . $validated['student_number'] . '): ' . $violationType->violation_type . '. Confirm or deny this violation.',
                     targetType: 'violation',
                     targetId: (int) $violation->violation_id,
                 );
@@ -433,7 +433,7 @@ $query->whereIn('status', [
             DB::rollBack();
 
             // Log technical detail server-side only; never leak to the client.
-            Log::error('Security violation store failed', [
+            Log::error('OSS Staff violation store failed', [
                 'student_number' => $request->input('student_number'),
                 'error' => $exception->getMessage(),
                 'file' => $exception->getFile(),
@@ -447,7 +447,7 @@ return \App\Support\Responses::unexpectedError();
     /**
      * Resubmit a previously REJECTED (denied) violation with corrections.
      *
-     * Only the recording security officer may resubmit, and only while the
+     * Only the recording OSS Staff member may resubmit, and only while the
      * original row is still denied. A resubmission creates a NEW pending
      * violation for the same student + violation type with the corrected
      * details and any new evidence. The original denied row is preserved for
@@ -456,8 +456,8 @@ return \App\Support\Responses::unexpectedError();
      */
     public function resubmitViolation(Request $request, int $violationId)
     {
-        $security = Auth::guard('security')->user();
-        if (! $security) {
+        $ossStaff = $this->ossStaffUser();
+        if (! $ossStaff) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
@@ -471,7 +471,7 @@ return \App\Support\Responses::unexpectedError();
             return back()->withErrors(['violation' => 'Only a rejected violation can be resubmitted.']);
         }
 
-        if (! $this->recorderMatches($original, $security)) {
+        if (! $this->recorderMatches($original)) {
             abort(403);
         }
 
@@ -486,29 +486,28 @@ $violationType = $original->resolvedViolationType();
         DB::beginTransaction();
 
         try {
-            $securityLabel = $this->buildSecurityAccountName($security);
-            $securityId = $security->id;
+            $ossStaffId = $this->ossStaffId();
+            $ossStaffLabel = $this->ossStaffName();
 
             $violationData = [
+                'user_id' => $original->user_id,
                 'student_number' => $original->student_number,
 'violation_type_id' => $violationType?->violation_type_id,                'violation_date' => $validated['violation_date'],
                 'description' => trim($validated['description']),
-'recorder_type' => 'security',
-'recorder_id' => null,
-'recorder_name' => $securityLabel,
+'recorder_type' => 'admin',
+'recorder_id' => $ossStaffId,
+'recorder_name' => $ossStaffLabel,
                 'status' => Violation::STATUS_PENDING,
             ];
 
-            if (\Illuminate\Support\Facades\Schema::hasColumn('violation_tbl', 'recorded_by_security_id')) {
-                $violationData['recorded_by_security_id'] = $securityId;
-            }
+            // `recorded_by_security_id` is deliberately NOT set (see store()).
 
             $violation = Violation::create($violationData);
 
             $captureSessionId = $request->input('capture_session_id')
                 ? (string) $request->input('capture_session_id')
                 : null;
-            $this->storeEvidence($violation, $request, $security, $securityId, $captureSessionId);
+            $this->storeEvidence($violation, $request, $ossStaffId, $captureSessionId);
 
             DB::commit();
 
@@ -521,7 +520,7 @@ $violationType = $original->resolvedViolationType();
                 app(\App\Services\AdminNotificationService::class)->create(
                     type: 'violation_confirmation',
                     title: 'Violation Resubmitted for Confirmation',
-                    message: 'Security resubmitted a corrected violation for ' . $studentName . ' (' . $original->student_number . '): ' . $typeLabel . '. Confirm or deny this violation.',
+                    message: 'OSS Staff resubmitted a corrected violation for ' . $studentName . ' (' . $original->student_number . '): ' . $typeLabel . '. Confirm or deny this violation.',
                     targetType: 'violation',
                     targetId: (int) $violation->violation_id,
                 );
@@ -533,7 +532,7 @@ $violationType = $original->resolvedViolationType();
         } catch (\Throwable $exception) {
             DB::rollBack();
 
-            Log::error('Security violation resubmit failed', [
+            Log::error('OSS Staff violation resubmit failed', [
                 'violation_id' => $violationId,
                 'student_number' => $original?->student_number,
                 'error' => $exception->getMessage(),
@@ -552,12 +551,12 @@ $violationType = $original->resolvedViolationType();
      * events. Runs inside the caller's DB transaction.
      *
      * The implementation is the SHARED, identity-free one, called with the
-     * Security actor explicitly ('security' + the security account id) so this
-     * module's audit identity is unchanged.
+     * OSS Staff actor explicitly ('admin' + the OSS Staff admin id) so this
+     * module's audit identity is never attributed to Security.
      */
-    private function storeEvidence(Violation $violation, Request $request, $security, ?int $securityId, ?string $captureSessionId = null): void
+    private function storeEvidence(Violation $violation, Request $request, ?int $ossStaffId, ?string $captureSessionId = null): void
     {
-        $this->recording->storeEvidence($violation, $request, 'security', $securityId, $captureSessionId);
+        $this->recording->storeEvidence($violation, $request, 'admin', $ossStaffId, $captureSessionId);
     }
 
     public function report(Request $request)
@@ -569,13 +568,13 @@ $violationType = $original->resolvedViolationType();
         if (strtolower((string) $request->input('format', '')) === 'pdf') {
             return $this->recording->reportPdf(
                 $report,
-                'security.violations.report',
-                'security.violations.students',
-                'Security'
+                'oss-staff.violations.report',
+                'oss-staff.violations.students',
+                'OSS Staff'
             );
         }
 
-        return view('security.violations.report', $report);
+        return view('oss-staff.violations.report', $report);
     }
 
     /**
@@ -601,13 +600,13 @@ $violationType = $original->resolvedViolationType();
             $dateFrom,
             $dateTo,
             function ($query) {
-                // Authorization: only this officer's own recorded violations.
+                // Authorization: only this OSS Staff member's own recorded
+                // violations.
                 $this->applyRecorderScope($query);
             }
         );
 
-        $security = Auth::guard('security')->user();
-        $reportedBy = $this->buildSecurityAccountName($security);
+        $reportedBy = $this->ossStaffName();
 
         $filtersApplied = match ($period) {
             'today' => 'Today (PHT)',
@@ -646,9 +645,9 @@ $violationType = $original->resolvedViolationType();
     {
         return $this->recording->reportPdf(
             $report,
-            'security.violations.report',
-            'security.violations.students',
-            'Security'
+            'oss-staff.violations.report',
+            'oss-staff.violations.students',
+            'OSS Staff'
         );
     }
 
@@ -695,62 +694,6 @@ $violationType = $original->resolvedViolationType();
         ];
     }
 
-    private function applyRecorderScope($query, bool $includeDenied = false): void
-    {
-        $security = Auth::guard('security')->user();
-        $securityLabel = $this->buildSecurityAccountName($security);
-        $legacySecurityEmailLabel = !empty($security?->email) ? 'Security: ' . $security->email : null;
-        $legacySecurityIdLabel = 'Security #' . ($security?->id ?? 'Unknown');
-
-        $query->where('recorder_type', 'security')
-            ->where(function ($innerQuery) use ($securityLabel, $legacySecurityEmailLabel, $legacySecurityIdLabel) {
-                $innerQuery->where('recorder_name', $securityLabel)
-                    ->orWhere('recorder_name', $legacySecurityIdLabel);
-
-                if ($legacySecurityEmailLabel !== null) {
-                    $innerQuery->orWhere('recorder_name', $legacySecurityEmailLabel);
-                }
-            });
-
-        // Denied violations are not real violations, so by default they are
-        // excluded from the officer's record/dashboard views. The "Submitted
-        // Violations" tracker opts in ($includeDenied = true) because officers
-        // must see their rejected submissions there in order to resubmit them.
-        if (! $includeDenied) {
-            $query->notDenied();
-        }
-    }
-
-    private function buildSecurityRecorderLabel($securityId, ?string $email): string
-    {
-        if (!empty($email)) {
-            return 'Security: ' . $email;
-        }
-
-        return 'Security #' . ($securityId ?? 'Unknown');
-    }
-
-    private function buildSecurityAccountName($security): string
-    {
-        if (!$security) {
-            return 'Security Account';
-        }
-
-$info = $security->securityInfo;
-
-$fullName = trim(implode(' ', array_filter([
-    $info?->firstname,
-    $info?->middlename,
-    $info?->lastname,
-        ], fn ($value) => !empty($value))));
-
-        if ($fullName !== '') {
-            return $fullName;
-        }
-
-        return $security->email ?: 'Security Account';
-    }
-
     /**
      * Accept a security/audit event reported by the browser monitoring layer
      * during the controlled evidence capture workflow.
@@ -760,11 +703,14 @@ $fullName = trim(implode(' ', array_filter([
      * denied, camera error, security notice accepted, capture abandoned). The
      * browser never reports a "confirmed screenshot" because browsers cannot
      * prove that — only indicators that require administrative review.
+     *
+     * The event's ACTOR is recorded as 'admin' with the OSS Staff id, so the
+     * audit trail never misattributes OSS Staff activity to Security.
      */
     public function logSecurityEvent(Request $request): JsonResponse
     {
-        $security = Auth::guard('security')->user();
-        if (! $security) {
+        $ossStaff = $this->ossStaffUser();
+        if (! $ossStaff) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
@@ -803,8 +749,8 @@ $fullName = trim(implode(' ', array_filter([
             $severity,
             $request,
             $meta,
-            'security',
-            (int) $security->id,
+            'admin',
+            (int) $ossStaff->id,
             $captureSessionId,
         );
 
@@ -814,7 +760,9 @@ $fullName = trim(implode(' ', array_filter([
     /**
      * Serve a violation evidence file from private storage.
      *
-     * Security officers may view evidence attached to violations they recorded.
+     * OSS Staff members may view evidence attached to violations they recorded.
+     * The file is streamed through the authorized responder, so no permanent
+     * public/object-storage URL is ever exposed.
      *
      * @return \Symfony\Component\HttpFoundation\StreamedResponse
      */
@@ -826,9 +774,9 @@ $fullName = trim(implode(' ', array_filter([
             abort(404);
         }
 
-        // Only the recording security officer may open it.
-        $security = Auth::guard('security')->user();
-        if (! $security || ! $this->recorderMatches($violation, $security)) {
+        // Only the recording OSS Staff member may open it.
+        $ossStaff = $this->ossStaffUser();
+        if (! $ossStaff || ! $this->recorderMatches($violation)) {
             abort(403);
         }
 
@@ -843,12 +791,13 @@ $fullName = trim(implode(' ', array_filter([
             );
         }
 
-        // Audit the access + record an evidence security event.
+        // Audit the access + record an evidence security event. The actor is
+        // 'admin' (the OSS Staff account's guard), never 'security'.
         app(EvidenceSecurityService::class)->auditEvidenceAccess(
             'EVIDENCE_VIEWED',
             $evidence,
-            'security',
-            (int) $security->id,
+            'admin',
+            (int) $ossStaff->id,
             request(),
         );
 
@@ -860,20 +809,4 @@ $fullName = trim(implode(' ', array_filter([
         );
     }
 
-    /**
-     * Whether the given violation was recorded by this security account.
-     */
-    private function recorderMatches(Violation $violation, $security): bool
-    {
-        $label = $this->buildSecurityAccountName($security);
-        $legacyEmailLabel = !empty($security?->email) ? 'Security: ' . $security->email : null;
-        $legacyIdLabel = 'Security #' . ($security?->id ?? 'Unknown');
-
-        return (string) $violation->recorder_type === 'security'
-            && in_array((string) $violation->recorder_name, array_filter([
-                $label,
-                $legacyEmailLabel,
-                $legacyIdLabel,
-            ]), true);
-    }
 }
