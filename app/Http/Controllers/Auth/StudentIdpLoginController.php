@@ -11,12 +11,12 @@ use App\Models\User;
 use App\Models\Year;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use App\Support\MfaService;
 
 class StudentIdpLoginController extends Controller
 {
@@ -685,17 +685,14 @@ class StudentIdpLoginController extends Controller
             'student.idp.pending_year_id',
         ]);
 
-        app(MfaService::class)->beginChallenge(
-            $request,
-            'student',
-            (string) $student->student_number,
-            (string) $student->email,
-            null,
-            false
-        );
+        // PUP IDP is the required authentication provider for students.
+        // Do not start a second, local PUPTracker MFA challenge on this path.
+        // The callback reaches this method only after the IDP identity and
+        // local Student account checks have succeeded.
+        Auth::guard('student')->login($student);
+        $request->session()->regenerate();
 
-        return redirect()->route('mfa.verify.show')
-            ->with('success', 'Continue with multi-factor verification.');
+        return redirect()->route('student.dashboard');
     }
 
     /**
