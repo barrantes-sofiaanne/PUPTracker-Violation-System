@@ -14,9 +14,6 @@
     </div>
 
     <div class="d-flex flex-wrap gap-2">
-        <a href="{{ route('admin.violations.bulk-import') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Bulk Record
-        </a>
         <button
             type="button"
             class="admin-btn admin-btn-primary"
