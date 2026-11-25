@@ -259,7 +259,7 @@
 
     <button
         class="admin-btn admin-btn-view admin-btn-sm user-action-btn editStudentBtn"
-        data-id="{{ $student->student_number }}"
+        data-id="{{ $student->user_id }}"
         data-first="{{ $student->first_name }}"
         data-middle="{{ $student->middle_name }}"
         data-last="{{ $student->last_name }}"
@@ -276,14 +276,15 @@
         Edit
     </button>
 
-    <button
-        class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteStudentBtn"
-        data-id="{{ $student->student_number }}"
-        data-name="{{ $student->first_name }} {{ $student->last_name }}"
-    >
-        <i class="bi bi-trash me-1"></i>
-        Delete
-    </button>
+<button
+    type="button"
+    class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteStudentBtn"
+    data-user-id="{{ $student->user_id }}"
+    data-name="{{ trim($student->first_name . ' ' . $student->last_name) }}"
+>
+    <i class="bi bi-trash me-1"></i>
+    Delete
+</button>
 
 </div>
                                         </td>
@@ -963,9 +964,27 @@ function toggleEditLadderizedField(selectEl) {
 
 document.querySelectorAll('.deleteStudentBtn').forEach(function (button) {
     button.addEventListener('click', function () {
-        document.getElementById('studentDeleteName').textContent = this.dataset.name;
-        document.getElementById('deleteStudentForm').action = "{{ url('/admin/students') }}/" + this.dataset.id;
-        new bootstrap.Modal(document.getElementById('deleteStudentModal')).show();
+
+        const userId = this.dataset.userId;
+
+        if (!userId || !/^\d+$/.test(userId)) {
+            console.error('Invalid student user_id:', userId);
+
+            alert('Unable to identify this student account. Please refresh the page and try again.');
+            return;
+        }
+
+        const deleteForm = document.getElementById('deleteStudentForm');
+
+        document.getElementById('studentDeleteName').textContent =
+            this.dataset.name || 'Selected Student';
+
+        deleteForm.action =
+            "{{ url('/admin/students') }}/" + encodeURIComponent(userId);
+
+        new bootstrap.Modal(
+            document.getElementById('deleteStudentModal')
+        ).show();
     });
 });
 
@@ -1029,8 +1048,8 @@ const importTemplateBaseUrl = "{{ route('admin.users.import.template') }}";
 const importAccountsModal = document.getElementById('importAccountsModal');
 const importGuides = {
     student_create_activate: {
-        columns: ['student_number', 'email', 'first_name', 'middle_name', 'last_name', 'name_suffix', 'program', 'year', 'section', 'gender', 'ladderized'],
-        help: 'Use the downloaded Excel template dropdowns for program, year, section, gender, and ladderized. Student number, section, and gender may be left blank temporarily. Email, first name, last name, program, and year are required.',
+        columns: ['student_number', 'first_name', 'middle_name', 'last_name', 'name_suffix', 'program', 'year', 'section', 'gender', 'ladderized'],
+        help: 'Use the downloaded Excel template dropdowns for program, year, section, gender, and ladderized. Student number, section, and gender may be left blank temporarily. Do not enter an email; the verified email is supplied by the PUP IDP when the student links their account. Provide the student name so the IDP can match the imported record.',
     },
     student_deactivate_students: {
         columns: ['student_number'],
