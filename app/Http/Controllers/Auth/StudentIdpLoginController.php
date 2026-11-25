@@ -75,18 +75,35 @@ class StudentIdpLoginController extends Controller
         $expectedState = $request->session()->pull('student.idp.state');
         $expectedStateExpiresAt = $request->session()->pull('student.idp.state_expires_at');
 
+        // Some PUP IDP callback responses omit the OAuth `state` parameter.
+        // Keep the locally-created state and expiry checks so the browser's
+        // Laravel session must still be present and the login attempt must be
+        // fresh. If the provider DOES return state, require an exact match.
+        // When state is omitted by the provider, log the condition and continue
+        // (same compatibility behavior used by the Admin IDP callback).
+        $hasReturnedState = $request->filled('state');
+
         if (
-            ! $request->filled('state')
-            || ! is_string($expectedState)
+            ! is_string($expectedState)
             || $expectedState === ''
-            || ! is_int($expectedStateExpiresAt)
-            || $expectedStateExpiresAt < now()->timestamp
-            || ! hash_equals($expectedState, (string) $validated['state'])
+            || ! is_numeric($expectedStateExpiresAt)
+            || (int) $expectedStateExpiresAt < now()->timestamp
+            || (
+                $hasReturnedState
+                && ! hash_equals($expectedState, (string) $validated['state'])
+            )
         ) {
             return redirect()->route('student.login')
                 ->withErrors([
                     'login' => 'The IDP login session expired. Please try again.',
                 ]);
+        }
+
+        if (! $hasReturnedState) {
+            Log::warning('Student IDP callback did not include OAuth state; proceeding with the active server-side login session.', [
+                'session_has_expected_state' => true,
+                'state_expired' => false,
+            ]);
         }
 
         $clientId = (string) config('services.idp.client_id');
@@ -478,20 +495,12 @@ class StudentIdpLoginController extends Controller
                 ]);
             }
             $student = $nameMatches->first();
-            $validated = $request->validate([
-                'student_number' => [
-                    'required', 'string', 'max:50',
-                    Rule::unique('users_tbl', 'student_number')->ignore($student->user_id, 'user_id'),
-                ],
-                'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
-                'year_id' => ['required', 'integer', 'exists:year_tbl,year_id'],
-                'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
+            $request->validate([
                 'privacy_acknowledged' => ['accepted'],
             ], [
                 'privacy_acknowledged.accepted' => 'Please acknowledge the PUPTracker Privacy Statement to continue.',
-                'student_number.unique' => 'That student number is already assigned to another account.',
             ]);
-            return $this->bindExistingStudent($request, $student, $idpSubject, $idpEmail, $profile, $validated);
+            return $this->bindExistingStudent($request, $student, $idpSubject, $idpEmail, $profile);
         }
 
         if ($mode === 'duplicate') {
@@ -600,10 +609,10 @@ class StudentIdpLoginController extends Controller
     }
 
     /** Bind the verified IDP identity to one existing, unlinked student record. */
-    protected function bindExistingStudent(Request $request, User $candidate, string $idpSubject, string $email, array $profile, array $academicDetails = []): RedirectResponse
+    protected function bindExistingStudent(Request $request, User $candidate, string $idpSubject, string $email, array $profile): RedirectResponse
     {
         try {
-            $student = DB::transaction(function () use ($candidate, $idpSubject, $email, $profile, $academicDetails) {
+            $student = DB::transaction(function () use ($candidate, $idpSubject, $email, $profile) {
                 $student = User::query()->whereKey($candidate->user_id)->lockForUpdate()->firstOrFail();
                 if (! $this->userIsStudent($student) || ! $student->isActiveAccount()) {
                     throw new \RuntimeException('The selected student account is not eligible for linking.');
@@ -613,19 +622,6 @@ class StudentIdpLoginController extends Controller
                 }
                 if (User::query()->where('idp_subject', $idpSubject)->where('user_id', '!=', $student->user_id)->exists()) {
                     throw new \RuntimeException('This IDP identity is already linked to another student record.');
-                }
-                // Only PUPTracker academic fields are editable here. Verified IDP
-                // identity fields (name/email/subject) remain sourced from the IDP.
-                if ($academicDetails !== []) {
-                    $student->student_number = trim((string) $academicDetails['student_number']);
-                    $student->saveOrFail();
-                    $this->createStudentInfo(
-                        $student,
-                        (int) $academicDetails['program_id'],
-                        (int) $academicDetails['year_id'],
-                        (int) $academicDetails['section_id'],
-                        (int) (optional($student->studentInfo)->ladderized ?? 0)
-                    );
                 }
                 $this->persistIdpBinding($student, $idpSubject, $email, $profile);
                 $student->refresh();
