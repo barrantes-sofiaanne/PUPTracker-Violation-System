@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Security;
+namespace App\Http\Controllers\OssStaff;
 
 use App\Http\Controllers\Controller;
 use App\Models\EvidenceSecurityEvent;
