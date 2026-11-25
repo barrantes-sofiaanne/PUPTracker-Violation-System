@@ -223,7 +223,9 @@
 
                 'menuUserSub' => $ossStaffDisplaySub,
 
-                'menuItems' => [],
+                'menuItems' => [
+                    ['label' => 'Profile', 'url' => route('oss-staff.profile'), 'icon' => 'bi-person-vcard'],
+                ],
 
                 'menuAvatar' => isset($info)
                     ? mb_strtoupper(

@@ -22,6 +22,16 @@ class OssStaffProfileController extends Controller
 
         $admin->load('adminInfo');
 
-        return view('oss-staff.profile', compact('admin'));
+        // Role and account status come from this account's own lookup tables:
+        // admin_info_tbl.role_id -> roles_tbl and status_id -> status_tbl.
+        $roleName = $admin->roleName() ?: \App\Models\Admin::ROLE_OSS_STAFF;
+
+        $statusId = $admin->adminInfo?->status_id;
+
+        $accountStatus = $statusId
+            ? \App\Models\Status::query()->whereKey($statusId)->value('status_name')
+            : null;
+
+        return view('oss-staff.profile', compact('admin', 'roleName', 'accountStatus'));
     }
 }
