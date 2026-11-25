@@ -54,7 +54,7 @@
                     </div>
                     <div class="ap-field-group">
                         <label class="ap-label" for="matched_program_id">Program/Course <span class="ap-req">*</span></label>
-                        <div class="ap-field ap-field--select"><select id="matched_program_id" name="program_id" required><option value="">Select program</option>@foreach($programs as $program)<option value="{{ $program->program_id }}" @selected((string)old('program_id', optional($matchedStudent->studentInfo)->program_id) === (string)$program->program_id)>{{ $program->program_name }}</option>@endforeach</select></div>
+                        <div class="ap-field ap-field--select"><select id="matched_program_id" name="program_id" required data-ladderized-programs='@json($ladderizedProgramIds)' onchange="syncLadderizedVisibility('matched_program_id', 'matched_ladderizedWrap')"><option value="">Select program</option>@foreach($programs as $program)<option value="{{ $program->program_id }}" @selected((string)old('program_id', optional($matchedStudent->studentInfo)->program_id) === (string)$program->program_id)>{{ $program->program_name }}</option>@endforeach</select></div>
                     </div>
                     <div class="ap-field-group">
                         <label class="ap-label" for="matched_year_id">Year level <span class="ap-req">*</span></label>
@@ -63,6 +63,23 @@
                     <div class="ap-field-group">
                         <label class="ap-label" for="matched_section_id">Section <span class="ap-req">*</span></label>
                         <div class="ap-field ap-field--select"><select id="matched_section_id" name="section_id" required><option value="">Select section</option>@foreach($sections as $section)<option value="{{ $section->section_id }}" @selected((string)old('section_id', optional($matchedStudent->studentInfo)->section_id) === (string)$section->section_id)>{{ $section->section_name }}</option>@endforeach</select></div>
+                    </div>
+                </div>
+                @php
+                    $matchedProgramId = old('program_id', optional($matchedStudent->studentInfo)->program_id);
+                    $matchedLadderizedAvailable = $matchedProgramId !== null
+                        && in_array((int) $matchedProgramId, $ladderizedProgramIds, true);
+                    $matchedLadderizedValue = old('ladderized', (string) (optional($matchedStudent->studentInfo)->ladderized ?? 0));
+                @endphp
+                <div class="ap-field-group {{ $matchedLadderizedAvailable ? '' : 'd-none' }}" id="matched_ladderizedWrap">
+                    <label class="ap-label d-block">Is your program ladderized? <span class="ap-req">*</span></label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="ladderized" id="matched_ladderizedYes" value="1" @checked((string) $matchedLadderizedValue === '1')>
+                        <label class="form-check-label" for="matched_ladderizedYes">Yes</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="ladderized" id="matched_ladderizedNo" value="0" @checked((string) $matchedLadderizedValue !== '1')>
+                        <label class="form-check-label" for="matched_ladderizedNo">No</label>
                     </div>
                 </div>
                 <p class="ap-field-help">Please make sure these details are accurate. The corrected academic information will be saved to your matched student record when you confirm and link your account.</p>
@@ -144,9 +161,9 @@
     // Reveal the Ladderized question only when the selected program supports it.
     // Eligibility is supplied by the server via data-ladderized-programs; the
     // browser never decides which programs qualify.
-    function syncLadderizedVisibility() {
-        const select = document.getElementById('program_id');
-        const wrap = document.getElementById('ladderizedWrap');
+    function syncLadderizedVisibility(selectId = 'program_id', wrapId = 'ladderizedWrap') {
+        const select = document.getElementById(selectId);
+        const wrap = document.getElementById(wrapId);
         if (!select || !wrap) {
             return;
         }
@@ -166,6 +183,9 @@
         wrap.classList.toggle('d-none', !available);
     }
 
-    document.addEventListener('DOMContentLoaded', syncLadderizedVisibility);
+    document.addEventListener('DOMContentLoaded', function () {
+        syncLadderizedVisibility('program_id', 'ladderizedWrap');
+        syncLadderizedVisibility('matched_program_id', 'matched_ladderizedWrap');
+    });
 </script>
 @endpush

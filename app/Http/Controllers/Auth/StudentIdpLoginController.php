@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use App\Support\MfaService;
 
 class StudentIdpLoginController extends Controller
 {
@@ -416,6 +417,21 @@ class StudentIdpLoginController extends Controller
             if ($name === $code || str_contains($name, $code)) {
                 return true;
             }
+
+            // Match full official names such as "Bachelor of Science in
+            // Information Technology" (BSIT) and "Bachelor of Science in
+            // Office Administration" (BSOA), not only abbreviated names.
+            $words = preg_split('/[^A-Z0-9]+/', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $initials = '';
+            foreach ($words as $word) {
+                if (! in_array($word, ['IN', 'OF', 'THE', 'AND'], true)) {
+                    $initials .= $word[0];
+                }
+            }
+
+            if ($initials === $code) {
+                return true;
+            }
         }
 
         return false;
@@ -495,12 +511,24 @@ class StudentIdpLoginController extends Controller
                 ]);
             }
             $student = $nameMatches->first();
-            $request->validate([
+            $selectedProgramName = Program::query()
+                ->whereKey((int) $request->input('program_id'))
+                ->value('program_name');
+            $ladderizedRules = $this->programSupportsLadderized($selectedProgramName)
+                ? ['required', 'in:0,1']
+                : ['nullable', 'in:0,1'];
+
+            $validated = $request->validate([
+                'student_number' => ['required', 'string', 'max:50'],
+                'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
+                'year_id' => ['required', 'integer', 'exists:year_tbl,year_id'],
+                'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
+                'ladderized' => $ladderizedRules,
                 'privacy_acknowledged' => ['accepted'],
             ], [
                 'privacy_acknowledged.accepted' => 'Please acknowledge the PUPTracker Privacy Statement to continue.',
             ]);
-            return $this->bindExistingStudent($request, $student, $idpSubject, $idpEmail, $profile);
+            return $this->bindExistingStudent($request, $student, $idpSubject, $idpEmail, $profile, $validated);
         }
 
         if ($mode === 'duplicate') {
@@ -609,10 +637,10 @@ class StudentIdpLoginController extends Controller
     }
 
     /** Bind the verified IDP identity to one existing, unlinked student record. */
-    protected function bindExistingStudent(Request $request, User $candidate, string $idpSubject, string $email, array $profile): RedirectResponse
+    protected function bindExistingStudent(Request $request, User $candidate, string $idpSubject, string $email, array $profile, array $academicData = []): RedirectResponse
     {
         try {
-            $student = DB::transaction(function () use ($candidate, $idpSubject, $email, $profile) {
+            $student = DB::transaction(function () use ($candidate, $idpSubject, $email, $profile, $academicData) {
                 $student = User::query()->whereKey($candidate->user_id)->lockForUpdate()->firstOrFail();
                 if (! $this->userIsStudent($student) || ! $student->isActiveAccount()) {
                     throw new \RuntimeException('The selected student account is not eligible for linking.');
@@ -623,6 +651,69 @@ class StudentIdpLoginController extends Controller
                 if (User::query()->where('idp_subject', $idpSubject)->where('user_id', '!=', $student->user_id)->exists()) {
                     throw new \RuntimeException('This IDP identity is already linked to another student record.');
                 }
+                if ($academicData !== []) {
+                    $studentNumber = trim((string) $academicData['student_number']);
+                    $duplicateNumber = User::query()
+                        ->where('student_number', $studentNumber)
+                        ->where('user_id', '!=', $student->user_id)
+                        ->exists();
+
+                    if ($duplicateNumber) {
+                        throw new \RuntimeException('The submitted student number is already assigned to another account.');
+                    }
+
+                    $previousStudentNumber = trim((string) $student->student_number);
+                    $student->student_number = $studentNumber;
+                    $student->saveOrFail();
+
+                    // Backfill legacy violation rows to the immutable local user_id.
+                    if (Schema::hasTable('violation_tbl') && Schema::hasColumn('violation_tbl', 'user_id')) {
+                        DB::table('violation_tbl')
+                            ->whereNull('user_id')
+                            ->where('student_number', $previousStudentNumber)
+                            ->update(['user_id' => $student->user_id]);
+                    }
+
+                    // Keep the current student number synchronized as a display snapshot.
+                    // Violation ownership remains anchored to user_id / violation_id.
+                    if (Schema::hasTable('violation_tbl') && Schema::hasColumn('violation_tbl', 'student_number')) {
+                        DB::table('violation_tbl')
+                            ->where('user_id', $student->user_id)
+                            ->update(['student_number' => $studentNumber]);
+                    }
+
+                    if (Schema::hasTable('student_sanction_records_tbl')
+                        && Schema::hasColumn('student_sanction_records_tbl', 'student_number')) {
+                        DB::table('student_sanction_records_tbl')
+                            ->whereIn('violation_id', function ($query) use ($student) {
+                                $query->select('violation_id')
+                                    ->from('violation_tbl')
+                                    ->where('user_id', $student->user_id);
+                            })
+                            ->update(['student_number' => $studentNumber]);
+                    }
+
+                    $ladderized = $this->resolveLadderizedSelection(
+                        (int) $academicData['program_id'],
+                        $academicData['ladderized'] ?? null
+                    );
+
+                    $studentInfoData = [
+                        'program_id' => (int) $academicData['program_id'],
+                        'year_id' => (int) $academicData['year_id'],
+                        'section_id' => (int) $academicData['section_id'],
+                    ];
+
+                    if (Schema::hasColumn('student_info_tbl', 'ladderized')) {
+                        $studentInfoData['ladderized'] = $ladderized;
+                    }
+
+                    $student->studentInfo()->updateOrCreate(
+                        ['user_id' => $student->user_id],
+                        $studentInfoData
+                    );
+                }
+
                 $this->persistIdpBinding($student, $idpSubject, $email, $profile);
                 $student->refresh();
                 if ((string) $student->idp_subject !== $idpSubject) {
@@ -685,21 +776,15 @@ class StudentIdpLoginController extends Controller
             'student.idp.pending_year_id',
         ]);
 
-        // PUP IDP is the required authentication provider for students.
-        // Do not start a second, local PUPTracker MFA challenge on this path.
-        // The callback reaches this method only after the IDP identity and
-        // local Student account checks have succeeded.
-// Authenticate the student through the Student guard.
-Auth::guard('student')->login($student, false);
+        // Student IDP is the authentication provider; do not start local MFA.
+        Auth::guard('student')->login($student, false);
+        $request->session()->regenerate();
 
-// Regenerate the authenticated session.
-$request->session()->regenerate();
+        // Show the privacy and terms modal after every successful login.
+        $request->session()->put('show_privacy_consent_modal', true);
 
-// Show the Privacy Statement and Terms modal after successful login.
-$request->session()->put('show_privacy_consent_modal', true);
+        return redirect()->route('student.dashboard');
 
-// Redirect to the Student Dashboard.
-return redirect()->route('student.dashboard');
     }
 
     /**
