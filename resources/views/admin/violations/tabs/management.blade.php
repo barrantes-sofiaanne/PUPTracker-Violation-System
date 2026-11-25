@@ -13,17 +13,15 @@
         </small>
     </div>
 
-    <button
-        type="button"
-        class="admin-btn admin-btn-primary"
-        data-bs-toggle="modal"
-        data-bs-target="#addViolationModal">
-
-        <i class="bi bi-plus-circle me-1"></i>
-
-        Record Violation
-
-    </button>
+    <div class="d-flex flex-wrap gap-2">
+        <button
+            type="button"
+            class="admin-btn admin-btn-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#addViolationModal">
+            <i class="bi bi-plus-circle me-1"></i> Record Violation
+        </button>
+    </div>
 
 </div>
 <form

@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/php:8.5-cli
+FROM public.ecr.aws/docker/library/php:8.5.13-cli
 # Install system packages and PHP extensions
 RUN apt-get update && apt-get install -y \
     git \

@@ -20,14 +20,37 @@
         <td>{{ optional($report->sanction)->disciplinary_sanction ?? '-' }}</td>
         <td>{{ $report->violation_date ? \Carbon\Carbon::parse($report->violation_date)->format('M d, Y') : '-' }}</td>
         <td>{{ $report->recorded_by_display }}</td>
-        <td>
-            @php
-                $reportContext = array_merge(['student_number' => $report->student?->student_number], request()->query(), ['source' => 'reports']);
-            @endphp
-            <a href="{{ route('admin.violations.show', $reportContext) }}" class="admin-btn admin-btn-view admin-btn-sm">
-                <i class="bi bi-eye me-1"></i>View Record
-            </a>
-        </td>
+       
+<td>
+    @php
+        // Use user_id as the primary student identifier.
+        // Retain student_number as a fallback for legacy records.
+        $studentIdentifier = $report->user_id
+            ?: $report->student?->user_id
+            ?: $report->student_number
+            ?: $report->student?->student_number;
+
+        $reportContext = array_merge(
+            request()->query(),
+            [
+                'student_number' => $studentIdentifier,
+                'source' => 'reports',
+            ]
+        );
+    @endphp
+
+    @if (filled($studentIdentifier))
+        <a href="{{ route('admin.violations.show', $reportContext) }}"
+           class="admin-btn admin-btn-view admin-btn-sm">
+            <i class="bi bi-eye me-1"></i>View Record
+        </a>
+    @else
+        <span class="text-muted small">
+            Student record unavailable
+        </span>
+    @endif
+</td>
+
     </tr>
 @empty
     <x-admin.empty-state
