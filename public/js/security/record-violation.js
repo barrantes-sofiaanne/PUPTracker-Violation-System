@@ -1783,7 +1783,8 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("selectedStudentId").value = student.user_id;
         document.getElementById("selectedStudentNumber").value =
             student.student_number || "";
-        document.getElementById("studentNumber").value = student.student_number;
+        document.getElementById("studentNumber").value =
+            student.student_number || "";
         document.getElementById("studentName").value =
             `${student.last_name}, ${student.first_name}`;
         document.getElementById("studentProgram").value =

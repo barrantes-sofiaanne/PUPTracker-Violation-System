@@ -211,7 +211,12 @@ class StudentViolationController extends Controller
      */
     public function show(string $student_number)
     {
+        // The route carries the student account id (see students.blade.php),
+        // but legacy links use the student number. Resolve either, exactly like
+        // Admin and OSS Staff, so a student without a student number still has
+        // a reachable record page.
         $student = User::where('student_number', $student_number)
+            ->orWhere('user_id', ctype_digit($student_number) ? (int) $student_number : -1)
             ->with(['violations' => function ($query) {
                 // Denied rows are included so an administrator REJECTION is
                 // reflected on the record rather than silently disappearing.
@@ -241,7 +246,7 @@ $query->whereIn('status', [
             $highlightViolationId = 0;
         }
 
-        $violationStats = $this->getViolationStats($student_number);
+        $violationStats = $this->getViolationStats($student);
 
         return view('security.violations.show', compact('student', 'violations', 'violationStats', 'highlightViolationId'));
     }
@@ -273,12 +278,16 @@ $query->whereIn('status', [
 
         return response()->json($students->map(function (User $student) {
             return [
-                'id' => $student->student_number,
+                // Internal account id — the identifier the wizard submits and
+                // the server resolves. A student number may be NULL.
+                'id' => $student->user_id,
+                'user_id' => $student->user_id,
                 'student_number' => $student->student_number,
                 'first_name' => $student->first_name,
                 'middle_name' => $student->middle_name,
                 'last_name' => $student->last_name,
-                'text' => "{$student->student_number} - {$student->last_name}, {$student->first_name}",
+                'text' => ($student->student_number ? $student->student_number . ' - ' : '')
+                    . $student->last_name . ', ' . $student->first_name,
                 'violations_count' => $student->violations_count,
                 // PUPTracker ACCOUNT status — the client warns before recording
                 // a violation for an inactive student. The server independently
@@ -309,13 +318,16 @@ $query->whereIn('status', [
 
     public function previewViolation(Request $request): JsonResponse
     {
+        // Identify the student by the internal account id, like Admin and OSS
+        // Staff. `student_number` is not required: a valid student account may
+        // legitimately have none.
         $validated = $request->validate([
-            'student_number' => ['required', 'string'],
+            'user_id' => ['required', 'integer', 'exists:users_tbl,user_id'],
             'violation_type_id' => ['required', 'integer'],
         ]);
 
         $preview = $this->recording->previewViolationData(
-            $validated['student_number'],
+            (int) $validated['user_id'],
             (int) $validated['violation_type_id']
         );
 
@@ -332,12 +344,18 @@ $query->whereIn('status', [
     {
         $validated = $request->validated();
 
+        // Resolve the student from the INTERNAL account id (user_id), exactly
+        // like the Admin and OSS Staff flows. A student number is optional at
+        // the schema level (a student account can exist without one), so it
+        // must never be the lookup key or a required field.
+        $student = User::findOrFail((int) $validated['user_id']);
+
         $violationType = ViolationType::findOrFail($validated['violation_type_id']);
 
         DB::beginTransaction();
 
         try {
-            $exists = Violation::where('student_number', $validated['student_number'])
+            $exists = Violation::where('user_id', $student->user_id)
                 ->where(function ($query) use ($violationType) {
                     $query->where(
     'violation_type_id',
@@ -363,7 +381,10 @@ $query->whereIn('status', [
             $securityId = $security?->id;
 
             $violationData = [
-                'student_number' => $validated['student_number'],
+                'user_id' => $student->user_id,
+                // Preserve the student number when one exists; never generate
+                // or mutate one for a student who does not have it.
+                'student_number' => $student->student_number,
 'violation_type_id' => $violationType->violation_type_id,
 'violation_date' => $validated['violation_date'],
 'description' => trim($validated['description']),
@@ -405,12 +426,17 @@ $query->whereIn('status', [
                 $student = $violation->student;
                 $studentName = $student
                     ? trim(($student->first_name ?? '') . ' ' . ($student->last_name ?? ''))
-                    : $validated['student_number'];
+                    : '';
+                $studentName = $studentName !== '' ? $studentName : 'a student';
+                $studentNumber = (string) ($student->student_number ?? '');
+                $studentLabel = $studentNumber !== ''
+                    ? $studentName . ' (' . $studentNumber . ')'
+                    : $studentName;
 
                 app(\App\Services\AdminNotificationService::class)->create(
                     type: 'violation_confirmation',
                     title: 'Violation Awaiting Confirmation',
-                    message: 'Security recorded a violation for ' . $studentName . ' (' . $validated['student_number'] . '): ' . $violationType->violation_type . '. Confirm or deny this violation.',
+                    message: 'Security recorded a violation for ' . $studentLabel . ': ' . $violationType->violation_type . '. Confirm or deny this violation.',
                     targetType: 'violation',
                     targetId: (int) $violation->violation_id,
                 );
@@ -428,6 +454,7 @@ $query->whereIn('status', [
 
             // Log technical detail server-side only; never leak to the client.
             Log::error('Security violation store failed', [
+                'user_id' => $request->input('user_id'),
                 'student_number' => $request->input('student_number'),
                 'error' => $exception->getMessage(),
                 'file' => $exception->getFile(),
@@ -484,6 +511,7 @@ $violationType = $original->resolvedViolationType();
             $securityId = $security->id;
 
             $violationData = [
+                'user_id' => $original->user_id,
                 'student_number' => $original->student_number,
 'violation_type_id' => $violationType?->violation_type_id,                'violation_date' => $validated['violation_date'],
                 'description' => trim($validated['description']),
@@ -509,13 +537,17 @@ $violationType = $original->resolvedViolationType();
             // Notify admins a (corrected) violation is awaiting confirmation.
             try {
                 $studentName = trim(($original->student?->first_name ?? '') . ' ' . ($original->student?->last_name ?? ''));
-                $studentName = $studentName !== '' ? $studentName : ($original->student_number ?? 'a student');
+                $studentName = $studentName !== '' ? $studentName : 'a student';
+                $studentNumber = (string) ($original->student_number ?? '');
+                $studentLabel = $studentNumber !== ''
+                    ? $studentName . ' (' . $studentNumber . ')'
+                    : $studentName;
                 $typeLabel = $violationType?->violation_type ?? 'the recorded violation';
 
                 app(\App\Services\AdminNotificationService::class)->create(
                     type: 'violation_confirmation',
                     title: 'Violation Resubmitted for Confirmation',
-                    message: 'Security resubmitted a corrected violation for ' . $studentName . ' (' . $original->student_number . '): ' . $typeLabel . '. Confirm or deny this violation.',
+                    message: 'Security resubmitted a corrected violation for ' . $studentLabel . ': ' . $typeLabel . '. Confirm or deny this violation.',
                     targetType: 'violation',
                     targetId: (int) $violation->violation_id,
                 );
@@ -649,9 +681,9 @@ $violationType = $original->resolvedViolationType();
     /**
      * Get violation statistics for a student
      */
-    private function getViolationStats(string $student_number)
+    private function getViolationStats(User $student)
     {
-        $violations = Violation::where('student_number', $student_number)
+        $violations = Violation::where('user_id', $student->user_id)
             ->where(function ($query) {
                 $this->applyRecorderScope($query);
             })
