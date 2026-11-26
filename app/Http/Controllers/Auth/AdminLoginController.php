@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AuditLog;
 use App\Support\Auth\LoginAttemptLimiter;
+use App\Support\Auth\PortalLoginRedirect;
 use App\Support\Auth\SessionExpiryNotice;
 use App\Support\MfaService;
 use App\Support\MfaTrustedDeviceService;
@@ -247,6 +248,23 @@ return $this->beginMfaForVerifiedAdmin($request, $mfaService, $admin);
 
     public function logout(Request $request)
     {
+        // Resolve WHERE this account signs in again BEFORE the guard forgets it.
+        //
+        // An OSS Staff member is an `admins` row on the `admin` guard, but their
+        // login page is the SHARED Security + OSS Staff portal in its OSS mode
+        // (`security.login?portal=oss`), not the Administrator login. The
+        // decision is derived from the account's resolved ROLE through the
+        // existing PortalLoginRedirect rule — the same one the MFA-cancel and
+        // inactivity paths use — so a regular Administrator and an IT
+        // Administrator keep the Administrator login.
+        //
+        // This must happen before logout(): afterwards the guard has no user and
+        // the role can no longer be resolved.
+        $admin = Auth::guard('admin')->user();
+
+        $loginRoute = PortalLoginRedirect::forGuard('admin', $admin);
+        $loginParameters = PortalLoginRedirect::parametersForGuard('admin', $admin);
+
         // Capture the IDP access token BEFORE the session is destroyed, and only
         // when this administrator actually signed in through the IDP (the token
         // is written by AdminIdpLoginController on a successful IDP login).
@@ -270,7 +288,7 @@ return $this->beginMfaForVerifiedAdmin($request, $mfaService, $admin);
 
         $request->session()->regenerateToken();
 
-        return redirect()->route('admin.login');
+        return redirect()->route($loginRoute, $loginParameters);
     }
 
     /**

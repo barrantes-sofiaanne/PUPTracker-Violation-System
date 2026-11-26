@@ -152,17 +152,9 @@
         }
     }
 
-    .violation-guide-wrapper {
-    width: 100%;
-}
-
-.violation-guide-wrapper > .card {
-    width: 100%;
-    margin: 0;
-}
-/* =========================================================
-   VIOLATION DETAILS MODAL
-   ========================================================= */
+    /* =========================================================
+       VIOLATION DETAILS MODAL
+       ========================================================= */
 
 .violation-detail-modal-header {
     background: linear-gradient(135deg, #7a0f1e 0%, #4a0209 100%);
@@ -298,11 +290,8 @@
     <div class="search-bar-container">
         <div class="card portal-card">
             <div class="card-body">
-<form
-    method="GET"
-    action="{{ route('security.dashboard') }}"
-    class="row g-2"
->                    <div class="col-md-8">
+                <form method="GET" action="{{ route('security.dashboard') }}" class="row g-2">
+                    <div class="col-md-8">
                         <div class="input-group">
                             <span class="input-group-text bg-light border-0">
                                 <i class="bi bi-search"></i>
@@ -326,12 +315,11 @@
     </div>
 
 {{-- Main Content Row --}}
-{{-- Main Content Row --}}
-<div class="row g-3 mb-4 align-items-start">
+<div class="row g-3 mb-4">
 
     {{-- Recent Violations: Left Side --}}
     <div class="col-lg-8">
-        <div class="card portal-card h-100">
+        <div class="card portal-card">
             <div class="card-header card-header-custom">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="fw-bold mb-0">
@@ -429,16 +417,6 @@
         </div>
     </div>
 
-    {{-- Sidebar Widgets: Right Side --}}
-
-{{-- Violation and Sanction Guide: Below Both Columns --}}
-<div class="violation-guide-wrapper mt-3 mb-4">
-    @include('partials.violation-sanction-guide', [
-        'guideId' => 'securityGuide',
-        'guideTitle' => 'Violation and Sanction Guide',
-    ])
-</div>
-
         {{-- Sidebar Widgets --}}
         <div class="col-lg-4">
             
@@ -484,7 +462,8 @@
                                  aria-valuemin="0"
                                  aria-valuemax="100"
                                  aria-valuenow="0"
-data-progress-width="{{ $totalViolations > 0 ? round(($category->count / $totalViolations) * 100, 1) : 0 }}"                            </div>
+                                 data-progress-width="{{ $totalViolations > 0 ? round(($category->count / $totalViolations) * 100, 1) : 0 }}">
+                            </div>
                         </div>
                     </div>
                     @empty
@@ -557,6 +536,14 @@ data-progress-width="{{ $totalViolations > 0 ? round(($category->count / $totalV
         </div>
     </div>
 </div>
+
+{{-- Violation and Sanction Guide — the SAME shared partial the Student and
+     OSS Staff dashboards render, placed BELOW both columns so the 8/4 grid
+     above keeps its intended two-column layout on desktop. --}}
+@include('partials.violation-sanction-guide', [
+    'guideId' => 'securityGuide',
+    'guideTitle' => 'Violation and Sanction Guide',
+])
 
 @push('scripts')
 <script>

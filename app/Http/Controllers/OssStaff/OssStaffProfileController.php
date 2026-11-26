@@ -23,7 +23,8 @@ class OssStaffProfileController extends Controller
         $admin->load('adminInfo');
 
         // Role and account status come from this account's own lookup tables:
-        // admin_info_tbl.role_id -> roles_tbl and status_id -> status_tbl.
+        // admin_info_tbl.role_id -> roles_tbl (and status_id -> status_tbl, which
+        // is no longer displayed now that the Account Status card is gone).
         $roleName = $admin->roleName() ?: \App\Models\Admin::ROLE_OSS_STAFF;
 
         // POSITION.
@@ -44,12 +45,8 @@ class OssStaffProfileController extends Controller
             ? $roleName
             : ($storedPosition !== '' ? $storedPosition : $roleName);
 
-        $statusId = $admin->adminInfo?->status_id;
-
-        $accountStatus = $statusId
-            ? \App\Models\Status::query()->whereKey($statusId)->value('status_name')
-            : null;
-
-        return view('oss-staff.profile', compact('admin', 'roleName', 'position', 'accountStatus'));
+        // The profile shows three fields only — Full Name, Email and Position —
+        // so the status lookup that fed the removed Account Status card is gone.
+        return view('oss-staff.profile', compact('admin', 'roleName', 'position'));
     }
 }

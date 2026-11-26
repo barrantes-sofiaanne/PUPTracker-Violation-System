@@ -329,6 +329,8 @@ class MfaService
         }
 
         if (empty($pending['code_hash']) || empty($pending['expires_at'])) {
+            $this->audit($guard, $identifier, 'mfa.verify.failed', 'Authentication', 'Verification failed: email OTP was not issued.');
+
             return [
                 'valid' => false,
                 'message' => 'Please choose Email OTP first to generate a verification code.',

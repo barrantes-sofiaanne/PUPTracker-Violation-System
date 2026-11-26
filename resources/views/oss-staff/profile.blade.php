@@ -36,9 +36,9 @@
     // `admin_info_tbl.Position` column that still held "Admin".
     $ossStaffPosition = $position ?? ($roleName ?? 'OSS Staff');
 
+    // The hero badge is part of the page's existing design, so it keeps the
+    // module label ($roleName) even though the Role information CARD was removed.
     $ossStaffRole = $roleName ?? 'OSS Staff';
-    $ossStaffStatus = $accountStatus ?? null;
-    $ossStaffUsername = $admin->username ?? null;
 @endphp
 
 <div class="container-fluid py-4">
@@ -92,69 +92,6 @@
                         </div>
                         <div class="profile-info-value">
                             {{ $ossStaffPosition }}
-                        </div>
-                    </div>
-
-                    <div class="profile-info-item">
-                        <div class="profile-info-label">
-                            <i class="bi bi-person" aria-hidden="true"></i> First Name
-                        </div>
-                        <div class="profile-info-value">
-                            {{ $ossStaffFirstName !== '' ? $ossStaffFirstName : '—' }}
-                        </div>
-                    </div>
-
-                    <div class="profile-info-item">
-                        <div class="profile-info-label">
-                            <i class="bi bi-person" aria-hidden="true"></i> Middle Name
-                        </div>
-                        <div class="profile-info-value">
-                            {{ $ossStaffMiddleName !== '' ? $ossStaffMiddleName : '—' }}
-                        </div>
-                    </div>
-
-                    <div class="profile-info-item">
-                        <div class="profile-info-label">
-                            <i class="bi bi-person" aria-hidden="true"></i> Last Name
-                        </div>
-                        <div class="profile-info-value">
-                            {{ $ossStaffLastName !== '' ? $ossStaffLastName : '—' }}
-                        </div>
-                    </div>
-
-                    <div class="profile-info-item">
-                        <div class="profile-info-label">
-                            <i class="bi bi-person-up" aria-hidden="true"></i> Suffix
-                        </div>
-                        <div class="profile-info-value">
-                            {{ $ossStaffSuffix !== '' ? $ossStaffSuffix : '—' }}
-                        </div>
-                    </div>
-
-                    <div class="profile-info-item">
-                        <div class="profile-info-label">
-                            <i class="bi bi-person-vcard" aria-hidden="true"></i> Username
-                        </div>
-                        <div class="profile-info-value">
-                            {{ $ossStaffUsername ?: '—' }}
-                        </div>
-                    </div>
-
-                    <div class="profile-info-item">
-                        <div class="profile-info-label">
-                            <i class="bi bi-person-check" aria-hidden="true"></i> Role
-                        </div>
-                        <div class="profile-info-value">
-                            {{ $ossStaffRole }}
-                        </div>
-                    </div>
-
-                    <div class="profile-info-item">
-                        <div class="profile-info-label">
-                            <i class="bi bi-toggle-on" aria-hidden="true"></i> Account Status
-                        </div>
-                        <div class="profile-info-value">
-                            {{ $ossStaffStatus ?: '—' }}
                         </div>
                     </div>
 

@@ -1466,9 +1466,58 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ------------------------------------------------------------------
+    // Required form fields
+    // ------------------------------------------------------------------
+    // Elements the student-selection step WRITES to. They are required: if one
+    // is missing, the Blade partial and this script have drifted apart and the
+    // form can no longer populate (or submit) the student correctly.
+    const STUDENT_SELECTION_FIELDS = [
+        "selectedStudentId",
+        "selectedStudentNumber",
+        "studentNumber",
+        "studentName",
+        "studentProgram",
+        "studentYear",
+        "studentSection",
+        "noStudentSelected",
+        "selectedStudentInfo",
+    ];
+
+    /**
+     * Report (once per interaction) any required field the rendered form is
+     * missing.
+     *
+     * This is deliberately LOUD rather than silent: a missing field means the
+     * form is genuinely broken, so the console names every absent id instead of
+     * letting an opaque "Cannot set properties of null" surface somewhere else.
+     */
+    const reportMissingSelectionFields = () => {
+        const missing = STUDENT_SELECTION_FIELDS.filter(
+            (id) => !document.getElementById(id),
+        );
+
+        if (missing.length > 0) {
+            console.error(
+                "[record-violation] Cannot select a student: the violation form is missing required field(s) " +
+                    missing.map((id) => `#${id}`).join(", ") +
+                    ". The Security Blade partial and this script are out of sync.",
+            );
+        }
+
+        return missing;
+    };
+
+    // ------------------------------------------------------------------
     // Reset
     // ------------------------------------------------------------------
     const resetModal = () => {
+        // The modal opens before any student is selected, so this is the first
+        // place a markup/script mismatch would surface. Stop here rather than
+        // half-resetting a form that cannot work.
+        if (reportMissingSelectionFields().length > 0) {
+            return;
+        }
+
         stopCamera();
         document.getElementById("violationForm").reset();
         document.getElementById("selectedStudentNumber").value = "";
@@ -1723,6 +1772,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 "Student account inactive",
                 "Violation cannot be recorded because this student account is inactive.",
             );
+            return;
+        }
+
+        // Stop BEFORE half-populating the form if the markup is incomplete.
+        if (reportMissingSelectionFields().length > 0) {
             return;
         }
 
