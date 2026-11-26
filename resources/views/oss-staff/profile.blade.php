@@ -31,9 +31,10 @@
     ], fn ($part) => trim((string) $part) !== '')))
         ?: ($admin->email ?? 'OSS Staff');
 
-    // `admin_info_tbl.Position` is the optional designation; the assigned role
-    // (resolved by the controller) is the authoritative module label.
-    $ossStaffPosition = trim((string) ($ossStaffInfo?->Position ?? '')) ?: ($roleName ?? 'OSS Staff');
+    // POSITION comes from the controller, which resolves it from the account's
+    // ASSIGNED ROLE ("OSS Staff") rather than the legacy free-text
+    // `admin_info_tbl.Position` column that still held "Admin".
+    $ossStaffPosition = $position ?? ($roleName ?? 'OSS Staff');
 
     $ossStaffRole = $roleName ?? 'OSS Staff';
     $ossStaffStatus = $accountStatus ?? null;

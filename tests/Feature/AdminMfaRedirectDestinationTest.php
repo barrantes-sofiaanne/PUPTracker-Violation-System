@@ -82,10 +82,22 @@ class AdminMfaRedirectDestinationTest extends TestCase
             'lastname' => 'Admin',
         ]);
 
-        $this->post(route('admin.login.post'), [
-            'email' => $admin->email,
-            'password' => 'adminpass',
-        ])->assertRedirect(route('mfa.verify.show'));
+        // OSS Staff accounts are refused on the Administrator login (strict
+        // module separation), so they reach their MFA challenge through the
+        // SHARED Security + OSS Staff portal instead. The ROLE-based landing
+        // rule under test is identical on both paths.
+        if ($roleName === Admin::ROLE_OSS_STAFF) {
+            $this->post(route('security.login.post'), [
+                'portal' => 'oss',
+                'email' => $admin->email,
+                'password' => 'adminpass',
+            ])->assertRedirect(route('mfa.verify.show'));
+        } else {
+            $this->post(route('admin.login.post'), [
+                'email' => $admin->email,
+                'password' => 'adminpass',
+            ])->assertRedirect(route('mfa.verify.show'));
+        }
 
         $pending = session(MfaService::SESSION_KEY);
         $this->assertIsArray($pending, 'The MFA challenge should have started.');

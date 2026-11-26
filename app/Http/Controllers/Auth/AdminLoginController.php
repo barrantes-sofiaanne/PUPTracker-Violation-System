@@ -21,10 +21,10 @@ use App\Http\Middleware\EnforceInactivityTimeout;
 class AdminLoginController extends Controller
 {
     /**
-     * The module key used for the login-attempt limiter and its config.
+     * Module key, kept for audit/log wording only.
      *
-     * A lockout is scoped to this module, so an Administrator lockout does not
-     * block the Security login.
+     * The login-attempt counter itself is GLOBAL (one budget per client), so it
+     * is no longer scoped by module — see LoginAttemptLimiter.
      */
     public const LOGIN_MODULE = 'admin';
 
@@ -48,20 +48,20 @@ class AdminLoginController extends Controller
             $emailMask = $this->maskEmail((string) $request->input('email'));
             Log::info('Admin login attempt started', ['email_masked' => $emailMask]);
 
-            // Failed credential attempts are bounded per account, using the
-            // SHARED rule in LoginAttemptLimiter so the Administrator and
-            // Security modules cannot drift apart.
+            // Failed credential attempts are bounded per CLIENT, using the
+            // SHARED rule in LoginAttemptLimiter so every login page (Admin,
+            // Security, OSS Staff, Student) enforces the same budget.
             //
             // The route throttle (`throttle:5,1`) is a PER-IP network backstop;
-            // this is the per-ACCOUNT lock the brief requires, so rotating IPs
-            // cannot buy extra guesses. The limiter keys on the module plus the
-            // submitted email, so an Administrator lockout never blocks the
-            // Security login, and the counter lives in the server-side cache so
-            // refreshing the login page cannot reset it.
-            if (LoginAttemptLimiter::isLocked(self::LOGIN_MODULE, $request)) {
+            // this is the per-CLIENT lock the brief requires. The limiter keys on
+            // the client IP only — never on the submitted email or this module —
+            // so changing the email or switching login pages cannot reset it.
+            // The counter lives in the server-side cache, so refreshing the login
+            // page cannot reset it either.
+            if (LoginAttemptLimiter::isLocked($request)) {
                 Log::warning('Admin login blocked: too many failed attempts', [
                     'email_masked' => $emailMask,
-                    'retry_after_seconds' => LoginAttemptLimiter::secondsRemaining(self::LOGIN_MODULE, $request),
+                    'retry_after_seconds' => LoginAttemptLimiter::secondsRemaining($request),
                 ]);
 
                 AuditLog::create([
@@ -69,38 +69,51 @@ class AdminLoginController extends Controller
                     'actor_id' => null,
                     'action' => 'Login Blocked',
                     'module' => 'Authentication',
-                    'description' => 'Admin login blocked after ' . LoginAttemptLimiter::policy(self::LOGIN_MODULE)['max'] . ' failed attempts.',
+                    'description' => 'Admin login blocked after ' . LoginAttemptLimiter::policy()['max'] . ' failed attempts.',
                     'created_at' => now(),
                 ]);
 
                 return back()
                     ->withErrors([
-                        'login' => LoginAttemptLimiter::lockedMessage(self::LOGIN_MODULE, $request),
+                        'login' => LoginAttemptLimiter::lockedMessage($request),
                     ])
                     ->withInput();
             }
 
             $admin = Admin::where('email', $request->email)->first();
 
-            if (!$admin || !Hash::check($request->password, $admin->password)) {
+            // STRICT MODULE SEPARATION.
+            //
+            // An OSS Staff account is an `admins` row, so its credentials WOULD
+            // verify here — but it must sign in only through the shared
+            // Security + OSS Staff portal. Rejecting it BEFORE any session is
+            // created is what stops an OSS Staff member from entering the Admin
+            // module. The rejection is indistinguishable from a wrong password
+            // (same message, same counter) so this page cannot be used to
+            // discover which emails belong to OSS Staff.
+            $isOssStaffAccount = $admin instanceof Admin && $admin->isOssStaff();
+
+            if (! $admin || ! Hash::check($request->password, $admin->password) || $isOssStaffAccount) {
                 // Count the failure BEFORE responding so the threshold cannot be
                 // slipped past by a concurrent request.
-                LoginAttemptLimiter::recordFailure(self::LOGIN_MODULE, $request);
+                LoginAttemptLimiter::recordFailure($request);
 
-                Log::info('Admin login: invalid credentials', [
-                    'attempts_remaining' => LoginAttemptLimiter::remaining(self::LOGIN_MODULE, $request),
+                Log::info('Admin login: rejected', [
+                    'email_masked' => $emailMask,
+                    'reason' => $isOssStaffAccount ? 'oss-staff-account-on-admin-login' : 'invalid-credentials',
+                    'attempts_remaining' => LoginAttemptLimiter::remaining($request),
                 ]);
 
                 return back()
                     ->withErrors([
-                        'login' => LoginAttemptLimiter::failureMessage(self::LOGIN_MODULE, $request),
+                        'login' => LoginAttemptLimiter::failureMessage($request),
                     ])
                     ->withInput();
             }
 
             // A SUCCESSFUL credential check clears the failed-attempt counter.
             // "3 attempts" means three FAILURES, never three lifetime logins.
-            LoginAttemptLimiter::clear(self::LOGIN_MODULE, $request);
+            LoginAttemptLimiter::clear($request);
 
            Log::info('Admin login: credentials verified', ['admin_id' => $admin->id]);
 
@@ -243,6 +256,11 @@ return $this->beginMfaForVerifiedAdmin($request, $mfaService, $admin);
         $idpAccessToken = (string) $request->session()->get('admin.idp.access_token', '');
 
         Auth::guard('admin')->logout();
+
+        // NOTE: the MFA trusted-device record is deliberately NOT deleted here.
+        // Logging out ends the authenticated session; it must not discard a
+        // still-valid remembered verification, whose 12-hour window is measured
+        // from the original verification (never from this logout).
 
         if ($idpAccessToken !== '') {
             $this->revokeIdpSession($idpAccessToken);

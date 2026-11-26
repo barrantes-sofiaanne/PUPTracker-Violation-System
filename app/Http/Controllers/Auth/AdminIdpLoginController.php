@@ -227,6 +227,19 @@ class AdminIdpLoginController extends Controller
                 return $this->fail('No administrator account is associated with this PUP IDP account. Please contact the IT Administrator.');
             }
 
+            // STRICT MODULE SEPARATION: an OSS Staff account belongs to the
+            // shared Security + OSS Staff portal. The administrator IDP path must
+            // not sign it in on the admin guard, or it would land in the Admin
+            // module with admin-guard access.
+            if ($admin->isOssStaff()) {
+                $this->logSecurityEvent('IDP login rejected: OSS Staff account used the administrator IDP login', [
+                    'idp_subject' => $idpSubject,
+                    'admin_id' => $admin->getKey(),
+                ]);
+
+                return $this->fail('This account cannot sign in through the administrator portal.');
+            }
+
             // The IDP role authorises ENTRY only. Which local role the account
             // holds is never derived from it: a matching local account is all
             // that is required, and IT Administrator / Super Admin privileges

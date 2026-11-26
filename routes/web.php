@@ -352,7 +352,7 @@ Route::get('/violations/evidence/{evidence:access_key}', [StudentRecordControlle
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:admin', 'session.inactivity'])
+Route::middleware(['auth:admin', 'admin.module', 'session.inactivity'])
     ->prefix('admin')
     ->group(function () {
 
@@ -563,33 +563,6 @@ Route::get(
             '/violations/student/{student_number}',
             [ViolationController::class, 'show']
         )->name('admin.violations.studentHistory');
-
-       
-/*
-|--------------------------------------------------------------------------
-| Bulk Violation Import
-|--------------------------------------------------------------------------
-*/
-
-Route::get('/violations/bulk-import', [
-    \App\Http\Controllers\Admin\BulkViolationImportController::class,
-    'show'
-])->name('admin.violations.bulk-import');
-
-Route::get('/violations/bulk-import/template', [
-    \App\Http\Controllers\Admin\BulkViolationImportController::class,
-    'template'
-])->name('admin.violations.bulk-import.template');
-
-Route::post('/violations/bulk-import/preview', [
-    \App\Http\Controllers\Admin\BulkViolationImportController::class,
-    'preview'
-])->name('admin.violations.bulk-import.preview');
-
-Route::post('/violations/bulk-import/commit', [
-    \App\Http\Controllers\Admin\BulkViolationImportController::class,
-    'commit'
-])->name('admin.violations.bulk-import.commit');
 
 
 /*
