@@ -306,7 +306,7 @@
                                             data-offense="{{ $violation->offense_level ?: 'N/A' }}"
                                             data-violation-date="{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->setTimezone('Asia/Manila')->format('M d, Y, H:i') : 'N/A' }}"
                                             data-description="{{ $violation->description ?: 'No description provided.' }}"
-                                            data-student-url="{{ route('oss-staff.violations.show', $violation->user_id) }}">
+                                            data-student-url="{{ $violation->user_id ? route('oss-staff.violations.show', $violation->user_id) : '' }}">
                                             View
                                         </button>
                                     </td>
@@ -537,9 +537,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const studentLink = document.getElementById('detailStudentLink');
             if (studentLink) {
-                const studentNumber = encodeURIComponent(attrStudentNumber || violation?.student_number || '');
-                studentLink.href = attrStudentUrl || `/oss-staff/violations/student/${studentNumber}`;
-                studentLink.classList.toggle('disabled', !(attrStudentNumber || violation?.student_number));
+                // The record page is addressed by the INTERNAL account id; the
+                // student number is optional display data, never a route key.
+                const studentId = violation?.user_id ? String(violation.user_id) : '';
+                studentLink.href = attrStudentUrl
+                    || (studentId !== '' ? `/oss-staff/violations/student/${encodeURIComponent(studentId)}` : '');
+                studentLink.classList.toggle('disabled', !(attrStudentUrl || studentId !== ''));
             }
         });
     }

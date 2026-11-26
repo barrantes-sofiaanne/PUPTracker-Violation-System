@@ -920,7 +920,11 @@ Route::middleware(['auth:security,admin', 'security.operational', 'session.inact
         Route::get('/violations/submitted', [App\Http\Controllers\Security\StudentViolationController::class, 'submitted'])
             ->name('security.violations.submitted');
 
-        Route::get('/violations/student/{student_number}', [App\Http\Controllers\Security\StudentViolationController::class, 'show'])
+        // The student record is addressed by the internal account id (the key
+        // Admin uses). A student number is optional display data and may be
+        // NULL, so it must never be the route key.
+        Route::get('/violations/student/{user_id}', [App\Http\Controllers\Security\StudentViolationController::class, 'show'])
+            ->whereNumber('user_id')
             ->name('security.violations.show');
 
         Route::post('/violations/store', [App\Http\Controllers\Security\StudentViolationController::class, 'store'])
@@ -1022,7 +1026,9 @@ Route::middleware(['auth:admin', 'oss.staff', 'session.inactivity'])
         Route::get('/violations/submitted', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'submitted'])
             ->name('violations.submitted');
 
-        Route::get('/violations/student/{student_number}', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'show'])
+        // Addressed by the internal account id, matching Admin and Security.
+        Route::get('/violations/student/{user_id}', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'show'])
+            ->whereNumber('user_id')
             ->name('violations.show');
 
         Route::post('/violations/store', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'store'])

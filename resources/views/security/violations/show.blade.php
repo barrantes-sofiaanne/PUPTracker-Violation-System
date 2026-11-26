@@ -1,6 +1,6 @@
 @extends('layouts.security')
 
-@section('title', "Violations - {$student->student_number}")
+@section('title', 'Violations - ' . ($student->student_number ?: 'No student number'))
 
 @push('styles')
 <style>
@@ -288,8 +288,8 @@
         <div class="student-header-content">
             <div class="student-identity">
                 <div class="student-header-label">Student Record</div>
-                <div class="student-number fs-3">{{ $student->student_number }}</div>
-                <h2 class="fw-bold student-name-line mb-0">{{ $student->last_name }}, {{ $student->first_name }}</h2>
+                <div class="student-number fs-3">{{ $student->student_number ?: 'No student number' }}</div>
+                <h2 class="fw-bold student-name-line mb-0">{{ $student->formal_name ?: 'Name unavailable' }}</h2>
             </div>
         </div>
 

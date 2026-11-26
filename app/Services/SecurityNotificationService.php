@@ -110,13 +110,16 @@ return $notification;
 
         // A CONFIRMED violation reflects on the student's record page, so the
         // notification deep-links there and highlights the exact violation.
-        if (strtolower((string) $violation->status) === Violation::STATUS_CONFIRMED) {
+        // The page is addressed by the internal account id: a student number is
+        // optional display data and may be NULL, which would break generation.
+        if (strtolower((string) $violation->status) === Violation::STATUS_CONFIRMED
+            && $violation->user_id !== null) {
             if (! Route::has('security.violations.show')) {
                 return null;
             }
 
             return route('security.violations.show', [
-                'student_number' => $violation->student_number,
+                'user_id' => $violation->user_id,
                 'highlight_violation' => $violation->violation_id,
             ]);
         }

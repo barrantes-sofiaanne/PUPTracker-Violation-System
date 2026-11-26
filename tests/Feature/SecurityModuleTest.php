@@ -364,12 +364,12 @@ class SecurityModuleTest extends TestCase
     {
         $officer = $this->createSecurity('officer@example.com');
         $this->createCategory(1, 'Major Offenses');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating', severityLevel: 1);
         $this->createViolation('2024-0001', 1, 'Security: officer@example.com', 'security', Violation::STATUS_CONFIRMED);
 
         $html = $this->actingAs($officer, 'security')
-            ->get(route('security.violations.show', '2024-0001'))
+            ->get(route('security.violations.show', $student->user_id))
             ->assertOk()
             ->getContent();
 
@@ -394,7 +394,7 @@ class SecurityModuleTest extends TestCase
     {
         $officer = $this->createSecurity('officer@example.com');
         $this->createCategory(1, 'Major Offenses');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
         $this->createViolation(
             '2024-0001', 1, 'Security: officer@example.com', 'security',
@@ -402,20 +402,21 @@ class SecurityModuleTest extends TestCase
         );
 
         $html = $this->actingAs($officer, 'security')
-            ->get(route('security.violations.show', '2024-0001'))
+            ->get(route('security.violations.show', $student->user_id))
             ->assertOk()
             ->getContent();
 
         $this->assertStringContainsString('Rejected submission.', $html);
-        $this->assertStringContainsString('>Rejected<', $html);
-        $this->assertStringNotContainsString('>Confirmed<', $html);
+        // The badge label is rendered on its own line inside the span.
+        $this->assertMatchesRegularExpression('/>\s*Rejected\s*</', $html);
+        $this->assertDoesNotMatchRegularExpression('/>\s*Approved\s*</', $html);
     }
 
     public function test_student_record_shows_confirmed_and_rejected_together_with_correct_labels(): void
     {
         $officer = $this->createSecurity('officer@example.com');
         $this->createCategory(1, 'Major Offenses');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
         $this->createViolationType(2, 'Fighting');
 
@@ -429,25 +430,26 @@ class SecurityModuleTest extends TestCase
         );
 
         $html = $this->actingAs($officer, 'security')
-            ->get(route('security.violations.show', '2024-0001'))
+            ->get(route('security.violations.show', $student->user_id))
             ->assertOk()
             ->getContent();
 
         $this->assertStringContainsString('Approved submission.', $html);
         $this->assertStringContainsString('Rejected submission.', $html);
-        $this->assertStringContainsString('>Confirmed<', $html);
-        $this->assertStringContainsString('>Rejected<', $html);
+        $this->assertMatchesRegularExpression('/>\s*Approved\s*</', $html);
+        $this->assertMatchesRegularExpression('/>\s*Rejected\s*</', $html);
     }
 
     /**
-     * Pending/unreviewed violations must remain excluded from the record: only
-     * the administrator's decision (Confirmed / Rejected) reflects there.
+     * A pending/unreviewed violation is visible for status tracking with a
+     * Pending badge, but is never presented as an administrator decision and
+     * never counts toward the official record totals.
      */
-    public function test_student_record_excludes_pending_violations(): void
+    public function test_student_record_shows_pending_without_treating_it_as_a_decision(): void
     {
         $officer = $this->createSecurity('officer@example.com');
         $this->createCategory(1, 'Major Offenses');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
         $this->createViolation(
             '2024-0001', 1, 'Security: officer@example.com', 'security',
@@ -455,13 +457,18 @@ class SecurityModuleTest extends TestCase
         );
 
         $html = $this->actingAs($officer, 'security')
-            ->get(route('security.violations.show', '2024-0001'))
+            ->get(route('security.violations.show', $student->user_id))
             ->assertOk()
             ->getContent();
 
-        $this->assertStringNotContainsString('Awaiting review.', $html);
-        $this->assertStringNotContainsString('>Confirmed<', $html);
-        $this->assertStringNotContainsString('>Rejected<', $html);
+        // Tracked, but not a confirmed/rejected decision.
+        $this->assertStringContainsString('Awaiting review.', $html);
+        $this->assertMatchesRegularExpression('/>\s*Pending\s*</', $html);
+        $this->assertDoesNotMatchRegularExpression('/>\s*Approved\s*</', $html);
+        $this->assertDoesNotMatchRegularExpression('/>\s*Rejected\s*</', $html);
+
+        // ...and it does not count as an effective violation.
+        $this->assertStringContainsString('<div class="stat-mini-value">0</div>', $html);
     }
 
     /**
@@ -490,7 +497,7 @@ class SecurityModuleTest extends TestCase
         $officerA = $this->createSecurity('officer-a@example.com');
         $this->createSecurity('officer-b@example.com');
         $this->createCategory(1, 'Major Offenses');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Mine');
         $this->createViolationType(2, 'Theirs');
 
@@ -498,7 +505,7 @@ class SecurityModuleTest extends TestCase
         $this->createViolation('2024-0001', 2, 'Security: officer-b@example.com', 'security', Violation::STATUS_CONFIRMED);
 
         $html = $this->actingAs($officerA, 'security')
-            ->get(route('security.violations.show', '2024-0001'))
+            ->get(route('security.violations.show', $student->user_id))
             ->assertOk()
             ->getContent();
 
@@ -855,7 +862,7 @@ class SecurityModuleTest extends TestCase
     {
         $officer = $this->createSecurity('officer@example.com');
         $this->createCategory(1, 'Major Offenses');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
         $violation = $this->createViolation(
             '2024-0001', 1, 'Security: officer@example.com', 'security',
@@ -871,8 +878,8 @@ class SecurityModuleTest extends TestCase
         );
 
         $this->assertNotNull($url);
-        // Lands on the exact student's record with the record identified.
-        $this->assertStringContainsString('security/violations/student/2024-0001', $url);
+        // Lands on the exact student's record, addressed by the ACCOUNT id.
+        $this->assertStringContainsString('security/violations/student/' . $student->user_id, $url);
         $this->assertStringContainsString('highlight_violation=' . $violation->violation_id, $url);
 
         // And the page actually highlights that record.
@@ -1307,6 +1314,325 @@ class SecurityModuleTest extends TestCase
     }
 
     // ==================================================================
+    // 7. user_id-based management + profile combinations
+    // ==================================================================
+
+    /**
+     * The listing renders students whose student number is NULL or empty and
+     * links each card to the record by ACCOUNT ID (never the optional number).
+     */
+    public function test_student_listing_works_for_students_without_a_student_number(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $this->createViolationType(1, 'Cheating');
+
+        $withNumber = $this->createStudent('2024-0001');
+        $nullNumber = $this->createStudent(null);
+        $emptyNumber = $this->createStudent('');
+
+        foreach ([$withNumber, $nullNumber, $emptyNumber] as $student) {
+            $this->createViolationFor($student, 1, 'Listed record.', Violation::STATUS_CONFIRMED);
+        }
+
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.students'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('2024-0001', $html);
+        // Missing numbers show a clear fallback, never a fake number.
+        $this->assertStringContainsString('No student number', $html);
+
+        foreach ([$withNumber, $nullNumber, $emptyNumber] as $student) {
+            $this->assertStringContainsString(
+                route('security.violations.show', $student->user_id),
+                $html,
+                'Every student card must link to the record by account id.'
+            );
+        }
+    }
+
+    /**
+     * The record page resolves the student by account id and shows fallbacks
+     * when every optional profile field is missing.
+     */
+    public function test_student_record_resolves_by_account_id_without_profile_details(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $student = $this->createStudent(null, firstName: null, lastName: null);
+        $this->createViolationType(1, 'Cheating');
+
+        $this->createViolationFor($student, 1, 'Numberless record.', Violation::STATUS_CONFIRMED);
+
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.show', $student->user_id))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Numberless record.', $html);
+        $this->assertStringContainsString('No student number', $html);
+        $this->assertStringContainsString('Name unavailable', $html);
+    }
+
+    /**
+     * Two students can both have a NULL student number; their histories must
+     * never mix (the old student_number key did exactly that).
+     */
+    public function test_student_record_does_not_mix_students_sharing_a_null_student_number(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $first = $this->createStudent(null);
+        $second = $this->createStudent(null);
+        $this->createViolationType(1, 'Cheating');
+
+        $this->createViolationFor($first, 1, 'Alpha only', Violation::STATUS_CONFIRMED);
+        $this->createViolationFor($second, 1, 'Beta only', Violation::STATUS_CONFIRMED);
+
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.show', $first->user_id))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Alpha only', $html);
+        $this->assertStringNotContainsString('Beta only', $html);
+    }
+
+    /** Statistics count only the requested account's effective violations. */
+    public function test_student_record_counts_violations_by_account_id(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createCategory(1, 'Major Offenses');
+        $student = $this->createStudent('2024-0001');
+        $other = $this->createStudent('2024-0002');
+        $this->createViolationType(1, 'Cheating');
+        $this->createViolationType(2, 'Fighting');
+
+        foreach ([1, 1, 2] as $typeId) {
+            $this->createViolationFor($student, $typeId, 'Owned by the requested student.', Violation::STATUS_CONFIRMED);
+        }
+
+        // Tracked but not an effective violation.
+        $this->createViolationFor($student, 1, 'Awaiting review.', Violation::STATUS_PENDING);
+
+        // Another student's violation must never leak into the count.
+        $this->createViolationFor($other, 1, 'Someone else.', Violation::STATUS_CONFIRMED);
+
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.show', $student->user_id))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('<div class="stat-mini-value">3</div>', $html);
+        $this->assertStringNotContainsString('Someone else.', $html);
+    }
+
+    /** A student with no violation records still has a working record page. */
+    public function test_student_record_loads_with_zero_counts_when_there_are_no_violations(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $student = $this->createStudent('2024-0001');
+
+        $html = $this->actingAs($officer, 'security')
+            ->get(route('security.violations.show', $student->user_id))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('<div class="stat-mini-value">0</div>', $html);
+    }
+
+    /** An unknown account id is a 404, never another student's record. */
+    public function test_student_record_returns_404_for_an_unknown_account_id(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+
+        $this->actingAs($officer, 'security')
+            ->get(route('security.violations.show', 99999))
+            ->assertNotFound();
+    }
+
+    /** The record route is no longer addressable by a student number. */
+    public function test_student_record_is_not_addressable_by_student_number(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createStudent('2024-0001');
+
+        $this->actingAs($officer, 'security')
+            ->get('/security/violations/student/2024-0001')
+            ->assertNotFound();
+    }
+
+    /**
+     * Profile combinations B–G: an existing ACTIVE student records a violation
+     * through the account id even when the student number and/or name and/or
+     * academic details are missing. The student row is never modified.
+     */
+    public function test_recording_works_for_incomplete_student_profiles(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createViolationType(1, 'Cheating');
+
+        $profiles = [
+            'A: complete' => ['student_number' => '2024-0001', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz'],
+            'B: null number' => ['student_number' => null, 'first_name' => 'Juan', 'last_name' => 'Dela Cruz'],
+            'C: empty number' => ['student_number' => '', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz'],
+            'D: first name only' => ['student_number' => null, 'first_name' => 'Juan', 'last_name' => null],
+            'E: last name only' => ['student_number' => null, 'first_name' => null, 'last_name' => 'Dela Cruz'],
+            'F: incomplete name' => ['student_number' => null, 'first_name' => 'J', 'last_name' => ''],
+            'G: no name at all' => ['student_number' => null, 'first_name' => null, 'last_name' => null],
+        ];
+
+        foreach ($profiles as $label => $attributes) {
+            $student = User::create(array_merge([
+                'email' => 'profile-' . uniqid() . '@example.com',
+                'password_hash' => Hash::make('Password123!'),
+                'roles_id' => 2,
+                'status_id' => 1,
+                'profile_completed_at' => now()->subDay(),
+            ], $attributes));
+
+            $this->actingAs($officer, 'security')
+                ->postJson(route('security.violations.store'), [
+                    'user_id' => $student->user_id,
+                    'violation_type_id' => 1,
+                    'violation_date' => now()->format('Y-m-d H:i:s'),
+                    'description' => 'Profile case: ' . $label,
+                ])
+                ->assertOk()
+                ->assertJsonPath('success', true);
+
+            $violation = Violation::where('description', 'Profile case: ' . $label)->firstOrFail();
+
+            $this->assertSame((int) $student->user_id, (int) $violation->user_id, "Wrong account for {$label}");
+            $this->assertSame(
+                $attributes['student_number'],
+                $violation->student_number,
+                "The student number must be preserved as-is for {$label}"
+            );
+            // Security recordings still await administrator review.
+            $this->assertSame(Violation::STATUS_PENDING, $violation->status);
+
+            // The student record is untouched.
+            $fresh = $student->fresh();
+            $this->assertSame($attributes['student_number'], $fresh->student_number);
+            $this->assertSame($attributes['first_name'], $fresh->first_name);
+            $this->assertSame($attributes['last_name'], $fresh->last_name);
+        }
+    }
+
+    /**
+     * Negative validation: an empty or unknown account id and missing violation
+     * details are all still rejected server-side.
+     */
+    public function test_store_rejects_empty_account_id_and_missing_required_fields(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $student = $this->createStudent('2024-0001');
+        $this->createViolationType(1, 'Cheating');
+
+        $base = [
+            'violation_type_id' => 1,
+            'violation_date' => now()->format('Y-m-d H:i:s'),
+            'description' => 'Negative case.',
+        ];
+
+        // Empty user_id.
+        $this->actingAs($officer, 'security')
+            ->postJson(route('security.violations.store'), $base)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('user_id');
+
+        // Nonexistent user_id.
+        $this->actingAs($officer, 'security')
+            ->postJson(route('security.violations.store'), array_merge($base, ['user_id' => 99999]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('user_id');
+
+        // Missing violation type.
+        $this->actingAs($officer, 'security')
+            ->postJson(route('security.violations.store'), array_merge($base, [
+                'user_id' => $student->user_id,
+                'violation_type_id' => null,
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('violation_type_id');
+
+        // Missing violation date.
+        $this->actingAs($officer, 'security')
+            ->postJson(route('security.violations.store'), array_merge($base, [
+                'user_id' => $student->user_id,
+                'violation_date' => null,
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('violation_date');
+
+        // Missing description.
+        $this->actingAs($officer, 'security')
+            ->postJson(route('security.violations.store'), array_merge($base, [
+                'user_id' => $student->user_id,
+                'description' => '',
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('description');
+
+        $this->assertSame(0, Violation::count());
+    }
+
+    /** An inactive account is still refused by the shared request rule. */
+    public function test_store_rejects_an_inactive_student_account(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $student = $this->createStudent('2024-0001');
+        $student->update(['status_id' => 2]);
+        $this->createViolationType(1, 'Cheating');
+
+        $this->actingAs($officer, 'security')
+            ->postJson(route('security.violations.store'), [
+                'user_id' => $student->user_id,
+                'violation_type_id' => 1,
+                'violation_date' => now()->format('Y-m-d H:i:s'),
+                'description' => 'Inactive account.',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('user_id');
+
+        $this->assertSame(0, Violation::count());
+    }
+
+    /** Student search returns the account id and degrades gracefully. */
+    public function test_search_returns_the_internal_user_id_for_a_student_without_a_student_number(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $student = $this->createStudent(null);
+
+        $payload = $this->actingAs($officer, 'security')
+            ->getJson(route('security.search.student', ['search' => 'Dela']))
+            ->assertOk()
+            ->json();
+
+        $this->assertNotEmpty($payload);
+        $this->assertSame((int) $student->user_id, (int) $payload[0]['user_id']);
+        $this->assertNull($payload[0]['student_number']);
+        $this->assertSame('Dela Cruz, Juan', $payload[0]['display_name']);
+    }
+
+    /** A search that matches nobody returns nothing (no accidental full list). */
+    public function test_search_does_not_fall_back_to_every_student(): void
+    {
+        $officer = $this->createSecurity('officer@example.com');
+        $this->createStudent('2024-0001');
+
+        $payload = $this->actingAs($officer, 'security')
+            ->getJson(route('security.search.student', ['search' => 'zzz-no-match']))
+            ->assertOk()
+            ->json();
+
+        $this->assertSame([], $payload);
+    }
+
+    // ==================================================================
     // Helpers
     // ==================================================================
 
@@ -1319,13 +1645,13 @@ class SecurityModuleTest extends TestCase
         ]);
     }
 
-    private function createStudent(string $studentNumber, ?int $programId = null, ?int $yearId = null): User
+    private function createStudent(?string $studentNumber = '2024-0001', ?int $programId = null, ?int $yearId = null, ?string $firstName = 'Juan', ?string $lastName = 'Dela Cruz'): User
     {
         $user = User::create([
             'student_number' => $studentNumber,
-            'first_name' => 'Juan',
-            'last_name' => 'Dela Cruz',
-            'email' => $studentNumber . '@example.com',
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => ($studentNumber ?: 'student-' . uniqid()) . '@example.com',
             'password_hash' => Hash::make('Password123!'),
             'roles_id' => 2,
             'status_id' => 1,
@@ -1380,12 +1706,42 @@ class SecurityModuleTest extends TestCase
         string $status = Violation::STATUS_PENDING,
         string $description = 'Test violation.',
     ): Violation {
+        // The internal account id is the student identity; student_number is
+        // optional display data.
+        $student = User::where('student_number', $studentNumber)->first();
+
         return Violation::create([
+            'user_id' => $student?->user_id,
             'student_number' => $studentNumber,
+            'violation_type_id' => $typeId,
             'violation_type' => $typeId,
             'violation_date' => now(),
             'description' => $description,
             'recorder_type' => $recorderType,
+            'recorder_name' => $recorderName,
+            'status' => $status,
+        ]);
+    }
+
+    /**
+     * A violation linked to the student's ACCOUNT id (the identity key), with
+     * the student number copied for display.
+     */
+    private function createViolationFor(
+        User $student,
+        int $typeId,
+        string $description = 'Test violation.',
+        string $status = Violation::STATUS_CONFIRMED,
+        string $recorderName = 'Security: officer@example.com'
+    ): Violation {
+        return Violation::create([
+            'user_id' => $student->user_id,
+            'student_number' => $student->student_number,
+            'violation_type_id' => $typeId,
+            'violation_type' => $typeId,
+            'violation_date' => now(),
+            'description' => $description,
+            'recorder_type' => 'security',
             'recorder_name' => $recorderName,
             'status' => $status,
         ]);
@@ -1496,10 +1852,18 @@ class SecurityModuleTest extends TestCase
             },
             'violation_tbl' => function (Blueprint $table): void {
                 $table->increments('violation_id');
+                // The student is identified by the internal account id; the
+                // student number is optional (a student may not have one).
+                $table->unsignedInteger('user_id')->nullable();
                 $table->string('student_number')->nullable();
+                $table->unsignedInteger('violation_type_id')->nullable();
                 $table->string('violation_type')->nullable();
                 $table->dateTime('violation_date')->nullable();
                 $table->text('description')->nullable();
+                $table->boolean('identity_verified')->default(false);
+                $table->timestamp('identity_verified_at')->nullable();
+                $table->string('identity_verified_by_type', 30)->nullable();
+                $table->integer('identity_verified_by_id')->nullable();
                 $table->unsignedInteger('recorder_id')->nullable();
                 $table->string('recorder_type')->nullable();
                 $table->string('recorder_name')->nullable();

@@ -232,6 +232,28 @@ document.addEventListener("DOMContentLoaded", function () {
     const currentStudentNumber = () =>
         document.getElementById("selectedStudentNumber").value || "";
 
+    /**
+     * Display-only student label.
+     *
+     * The ACCOUNT id (user_id) is the student identity; name fields and the
+     * student number are optional profile data. A missing name must therefore
+     * never render as "undefined, undefined" nor block selection.
+     */
+    const studentDisplayName = (student) => {
+        const last = String(student?.last_name ?? "").trim();
+        const first = String(student?.first_name ?? "").trim();
+
+        if (last === "" && first === "") {
+            return "Name unavailable";
+        }
+
+        if (last === "") {
+            return first;
+        }
+
+        return first === "" ? last : `${last}, ${first}`;
+    };
+
     // ---------------------------------------------------------------
     // Privacy face-blur protection
     // Uses the same MediaPipe face-blur module as Admin and OSS Staff.
@@ -1786,7 +1808,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("studentNumber").value =
             student.student_number || "";
         document.getElementById("studentName").value =
-            `${student.last_name}, ${student.first_name}`;
+            studentDisplayName(student);
         document.getElementById("studentProgram").value =
             student.program?.program_name ?? "-";
         document.getElementById("studentYear").value =
@@ -1800,7 +1822,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .classList.remove("d-none");
 
         resultBox.innerHTML = "";
-        searchBox.value = `${student.student_number || "No student number"} - ${student.last_name}, ${student.first_name}`;
+        searchBox.value = `${student.student_number || "No student number"} - ${studentDisplayName(student)}`;
         updateLiveWatermark();
     };
 
@@ -1848,7 +1870,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             ? ' <span class="admin-badge" style="background:#fdecec;color:#8a1c1c;">Inactive account — cannot record</span>'
                             : "";
 
-                        item.innerHTML = `<strong>${student.student_number || "No student number"}</strong>${badge}<br>${student.last_name}, ${student.first_name}`;
+                        item.innerHTML = `<strong>${student.student_number || "No student number"}</strong>${badge}<br>${studentDisplayName(student)}`;
                         item.addEventListener("click", function () {
                             selectStudent(student);
                         });

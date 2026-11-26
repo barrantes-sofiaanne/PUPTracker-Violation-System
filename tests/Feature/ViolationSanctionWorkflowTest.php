@@ -34,7 +34,7 @@ class ViolationSanctionWorkflowTest extends TestCase
     {
         $this->createTables();
         $admin = $this->createAdmin('admin@example.com');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
 
         // Force the store's catch (\Throwable) path.
@@ -44,10 +44,12 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $response = $this->actingAs($admin, 'admin')
             ->postJson(route('admin.violations.store'), [
+                'user_id' => $student->user_id,
                 'student_number' => '2024-0001',
                 'violation_type_id' => 1,
                 'violation_date' => now()->format('Y-m-d H:i:s'),
                 'description' => 'trigger',
+                'identity_confirmed' => true,
             ]);
 
         $response->assertStatus(500);
@@ -66,7 +68,7 @@ class ViolationSanctionWorkflowTest extends TestCase
     {
         $this->createTables();
         $security = $this->createSecurity('security@example.com', 'Officer', 'One');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
 
         \App\Models\Violation::creating(function (): void {
@@ -75,6 +77,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $response = $this->actingAs($security, 'security')
             ->postJson(route('security.violations.store'), [
+                'user_id' => $student->user_id,
                 'student_number' => '2024-0001',
                 'violation_type_id' => 1,
                 'violation_date' => now()->format('Y-m-d H:i:s'),
@@ -102,7 +105,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'x',
             'status' => 'confirmed',
@@ -177,7 +180,7 @@ class ViolationSanctionWorkflowTest extends TestCase
         $this->createDisciplinarySanction($typeA->violation_type_id, '1st Offense', 'Community service 40 hours');
         Violation::create([
             'student_number' => '2024-0101',
-            'violation_type' => $typeA->violation_type_id,
+            'violation_type_id' => $typeA->violation_type_id,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'admin',
@@ -190,7 +193,7 @@ class ViolationSanctionWorkflowTest extends TestCase
             ->assertOk()
             ->getContent();
         // The button must appear for this eligible (sanctionable) violation.
-        $this->assertStringContainsString('request-sanction-btn', $eligibleContent);
+        $this->assertStringContainsString('class="btn request-sanction-btn', $eligibleContent);
         $this->assertStringContainsString('Request Sanction', $eligibleContent);
 
         // Student B: a violation type that already has a COMPLETED sanction.
@@ -202,7 +205,7 @@ class ViolationSanctionWorkflowTest extends TestCase
         $this->createDisciplinarySanction($typeB->violation_type_id, '1st Offense', 'Community service 20 hours');
         $completedViolation = Violation::create([
             'student_number' => '2024-0102',
-            'violation_type' => $typeB->violation_type_id,
+            'violation_type_id' => $typeB->violation_type_id,
             'violation_date' => now(),
             'description' => 'Vandalism.',
             'recorder_type' => 'admin',
@@ -224,7 +227,7 @@ class ViolationSanctionWorkflowTest extends TestCase
             ->assertOk()
             ->getContent();
         // A completed sanction must NOT allow another request.
-        $this->assertStringNotContainsString('request-sanction-btn', $completedContent);
+        $this->assertStringNotContainsString('class="btn request-sanction-btn', $completedContent);
         // The completed sanction is visible in the Sanction Record tab.
         $this->assertStringContainsString('Your Sanction Records', $completedContent);
     }
@@ -244,6 +247,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $this->actingAs($security, 'security')
             ->postJson(route('security.violations.store'), [
+                'user_id' => $student->user_id,
                 'student_number' => '2024-0001',
                 'violation_type_id' => 1,
                 'violation_date' => now()->format('Y-m-d H:i:s'),
@@ -273,13 +277,14 @@ class ViolationSanctionWorkflowTest extends TestCase
     {
         $this->createTables();
         $security = $this->createSecurity('security@example.com', 'Officer', 'One');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
 
         \Illuminate\Support\Facades\Storage::fake('local');
 
         $this->actingAs($security, 'security')
             ->post(route('security.violations.store'), [
+                'user_id' => $student->user_id,
                 'student_number' => '2024-0001',
                 'violation_type_id' => 1,
                 'violation_date' => now()->format('Y-m-d H:i:s'),
@@ -317,7 +322,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $violation = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now()->subMonth(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'admin',
@@ -374,7 +379,7 @@ class ViolationSanctionWorkflowTest extends TestCase
         // Pending violation with evidence → owner cannot open yet.
         $pending = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'security',
@@ -398,7 +403,7 @@ class ViolationSanctionWorkflowTest extends TestCase
         // Confirmed violation with evidence → owning student may open it.
         $confirmed = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'security',
@@ -430,13 +435,14 @@ class ViolationSanctionWorkflowTest extends TestCase
     {
         $this->createTables();
         $security = $this->createSecurity('security@example.com', 'Officer', 'One');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
 
         \Illuminate\Support\Facades\Storage::fake('local');
 
         $this->actingAs($security, 'security')
             ->post(route('security.violations.store'), [
+                'user_id' => $student->user_id,
                 'student_number' => '2024-0001',
                 'violation_type_id' => 1,
                 'violation_date' => now()->format('Y-m-d H:i:s'),
@@ -476,7 +482,7 @@ class ViolationSanctionWorkflowTest extends TestCase
     {
         $this->createTables();
         $admin = $this->createAdmin('admin@example.com');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
         $this->createDisciplinarySanction(1, '1st Offense', 'Community service 40 hours');
 
@@ -484,10 +490,12 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $this->actingAs($admin, 'admin')
             ->post(route('admin.violations.store'), [
+                'user_id' => $student->user_id,
                 'student_number' => '2024-0001',
                 'violation_type_id' => 1,
                 'violation_date' => now()->format('Y-m-d H:i:s'),
                 'description' => 'Caught cheating (admin).',
+                'identity_confirmed' => true,
                 'evidence' => [
                     \Illuminate\Http\UploadedFile::fake()->image('photo.jpg'),
                 ],
@@ -597,7 +605,7 @@ class ViolationSanctionWorkflowTest extends TestCase
         // A confirmed violation exists so the request is valid.
         Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'admin',
@@ -605,10 +613,11 @@ class ViolationSanctionWorkflowTest extends TestCase
             'status' => 'confirmed',
         ]);
 
-        $this->actingAs($student, 'student')
+        $response = $this->actingAs($student, 'student')
             ->postJson(route('student.request-sanction'), [
                 'violation_type_id' => 1,
-            ])
+            ]);
+        $response
             ->assertOk()
             ->assertJsonPath('success', true);
 
@@ -632,7 +641,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $violation = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'security',
@@ -673,7 +682,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $violation = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'security',
@@ -711,7 +720,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $violation = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'security',
@@ -740,7 +749,7 @@ class ViolationSanctionWorkflowTest extends TestCase
         // A confirmed violation exists for this student.
         $violation = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'admin',
@@ -785,7 +794,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $violation = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'admin',
@@ -858,7 +867,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $violation = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'admin',
@@ -903,7 +912,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Confirmed violation.',
             'recorder_type' => 'admin',
@@ -944,7 +953,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $violation = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'admin',
@@ -1033,7 +1042,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $violation = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'admin',
@@ -1072,7 +1081,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $violation = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'security',
@@ -1107,12 +1116,13 @@ class ViolationSanctionWorkflowTest extends TestCase
         $this->createTables();
         $admin = $this->createAdmin('admin@example.com');
         $security = $this->createSecurity('security@example.com', 'Officer', 'One');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
 
         $violation = Violation::create([
+            'user_id' => $student->user_id,
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'security',
@@ -1126,15 +1136,17 @@ class ViolationSanctionWorkflowTest extends TestCase
             'title' => 'Violation Confirmed',
             'notification_type' => 'violation',
             'recipient_type' => 'security',
+            'recipient_id' => $security->id,
             'target_type' => 'violation',
             'target_id' => $violation->violation_id,
             'is_read' => false,
             'created_at' => now(),
         ]);
 
-        $this->actingAs($security, 'security')
-            ->get(route('security.notifications.open', $notification))
-            ->assertRedirectContains('security/violations/student/2024-0001')
+        $response = $this->actingAs($security, 'security')
+            ->get(route('security.notifications.open', $notification));
+        $response
+            ->assertRedirectContains('security/violations/student/' . $student->user_id)
             ->assertRedirectContains('highlight_violation=' . $violation->violation_id);
 
         $this->assertDatabaseHas('notifications_tbl', [
@@ -1154,7 +1166,7 @@ class ViolationSanctionWorkflowTest extends TestCase
         foreach (['pending', 'denied'] as $status) {
             $violation = Violation::create([
                 'student_number' => '2024-0001',
-                'violation_type' => 1,
+                'violation_type_id' => 1,
                 'violation_date' => now(),
                 'description' => 'Caught cheating.',
                 'recorder_type' => 'security',
@@ -1168,6 +1180,7 @@ class ViolationSanctionWorkflowTest extends TestCase
                 'title' => 'Violation ' . ucfirst($status),
                 'notification_type' => 'violation',
                 'recipient_type' => 'security',
+                'recipient_id' => $security->id,
                 'target_type' => 'violation',
                 'target_id' => $violation->violation_id,
                 'is_read' => false,
@@ -1187,22 +1200,22 @@ class ViolationSanctionWorkflowTest extends TestCase
     }
 
     /**
-     * SUPERSEDED by the explicit new requirement: the Security Student Record
-     * now reflects the administrator's CURRENT decision, so a rejected
-     * violation is shown as "Rejected". Pending/unreviewed rows stay excluded.
+     * The Security Student Record lists every review state for status
+     * tracking; only confirmed rows count as an effective violation.
      */
-    public function test_pending_violation_is_not_shown_on_the_security_student_record_page(): void
+    public function test_pending_violation_is_listed_on_the_security_student_record_page(): void
     {
         $this->createTables();
         $admin = $this->createAdmin('admin@example.com');
         $security = $this->createSecurity('security@example.com', 'Officer', 'One');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
 
         // Pending (unreviewed) violation - must NOT reflect on the record page.
         Violation::create([
+            'user_id' => $student->user_id,
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Pending record',
             'recorder_type' => 'security',
@@ -1212,8 +1225,9 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         // Confirmed violation - should be visible.
         Violation::create([
+            'user_id' => $student->user_id,
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now()->subDay(),
             'description' => 'Confirmed record',
             'recorder_type' => 'security',
@@ -1222,10 +1236,16 @@ class ViolationSanctionWorkflowTest extends TestCase
         ]);
 
         $this->actingAs($security, 'security')
-            ->get(route('security.violations.show', '2024-0001'))
+            ->get(route('security.violations.show', $student->user_id))
             ->assertOk()
             ->assertSee('Confirmed record')
-            ->assertDontSee('Pending record');
+            ->assertSee('Pending record');
+
+        // Only the confirmed row is an effective violation.
+        $this->assertSame(
+            1,
+            Violation::effective()->where('user_id', $student->user_id)->count()
+        );
     }
 
     /**
@@ -1237,12 +1257,13 @@ class ViolationSanctionWorkflowTest extends TestCase
         $this->createTables();
         $this->createAdmin('admin@example.com');
         $security = $this->createSecurity('security@example.com', 'Officer', 'One');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
 
         Violation::create([
+            'user_id' => $student->user_id,
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Rejected record',
             'recorder_type' => 'security',
@@ -1251,7 +1272,7 @@ class ViolationSanctionWorkflowTest extends TestCase
         ]);
 
         $this->actingAs($security, 'security')
-            ->get(route('security.violations.show', '2024-0001'))
+            ->get(route('security.violations.show', $student->user_id))
             ->assertOk()
             ->assertSee('Rejected record')
             ->assertSee('Rejected');
@@ -1267,7 +1288,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $denied = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Original description.',
             'recorder_type' => 'security',
@@ -1310,7 +1331,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Rejected violation remains traceable.',
             'recorder_type' => 'security',
@@ -1336,7 +1357,7 @@ class ViolationSanctionWorkflowTest extends TestCase
 
         $confirmed = Violation::create([
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Already confirmed.',
             'recorder_type' => 'security',
@@ -1363,12 +1384,13 @@ class ViolationSanctionWorkflowTest extends TestCase
         $this->createTables();
         $admin = $this->createAdmin('admin@example.com');
         $security = $this->createSecurity('security@example.com', 'Officer', 'One');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
         $this->createViolationType(1, 'Cheating');
 
         $denied = Violation::create([
+            'user_id' => $student->user_id,
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Original description.',
             'recorder_type' => 'security',
@@ -1398,7 +1420,7 @@ class ViolationSanctionWorkflowTest extends TestCase
         ]);
 
         $this->actingAs($security, 'security')
-            ->get(route('security.violations.show', '2024-0001'))
+            ->get(route('security.violations.show', $student->user_id))
             ->assertOk()
             ->assertSee('Corrected description.')
             // The original DENIED row is now also visible on the record
@@ -1577,10 +1599,18 @@ class ViolationSanctionWorkflowTest extends TestCase
             },
             'violation_tbl' => function (Blueprint $table): void {
                 $table->increments('violation_id');
+                // The student is identified by the internal account id; the
+                // student number is optional display data.
+                $table->unsignedInteger('user_id')->nullable();
                 $table->string('student_number')->nullable();
+                $table->unsignedInteger('violation_type_id')->nullable();
                 $table->string('violation_type')->nullable();
                 $table->dateTime('violation_date')->nullable();
                 $table->text('description')->nullable();
+                $table->boolean('identity_verified')->default(false);
+                $table->timestamp('identity_verified_at')->nullable();
+                $table->string('identity_verified_by_type', 30)->nullable();
+                $table->integer('identity_verified_by_id')->nullable();
                 $table->unsignedBigInteger('recorder_id')->nullable();
                 $table->string('recorder_type', 20)->nullable();
                 $table->string('recorder_name', 150)->nullable();
@@ -1602,6 +1632,8 @@ class ViolationSanctionWorkflowTest extends TestCase
                 $table->dateTime('request_date')->nullable();
                 $table->boolean('is_active')->default(true);
                 $table->string('status')->nullable();
+                $table->boolean('is_resubmission')->default(false);
+                $table->text('decline_reason')->nullable();
                 $table->unsignedInteger('approved_by_admin_id')->nullable();
                 $table->dateTime('approved_at')->nullable();
             },
@@ -1618,6 +1650,7 @@ class ViolationSanctionWorkflowTest extends TestCase
                 $table->timestamp('date_assigned')->nullable();
                 $table->timestamp('date_completed')->nullable();
                 $table->string('proof_path', 500)->nullable();
+                $table->string('proof_access_key', 64)->nullable();
                 $table->string('proof_original_name', 255)->nullable();
                 $table->timestamp('proof_submitted_at')->nullable();
                 $table->text('proof_notes')->nullable();
@@ -1642,9 +1675,24 @@ class ViolationSanctionWorkflowTest extends TestCase
                 $table->text('review_remarks')->nullable();
                 $table->timestamp('submitted_at')->nullable();
             },
+            'violation_correction_requests' => function (Blueprint $table): void {
+                $table->increments('request_id');
+                $table->integer('violation_id');
+                $table->string('student_number', 50)->nullable();
+                $table->integer('requested_violation_type_id')->nullable();
+                $table->dateTime('requested_violation_date')->nullable();
+                $table->text('requested_description')->nullable();
+                $table->text('reason');
+                $table->string('status', 20)->default('pending');
+                $table->integer('reviewed_by_admin_id')->nullable();
+                $table->dateTime('reviewed_at')->nullable();
+                $table->text('review_remarks')->nullable();
+                $table->timestamps();
+            },
             'violation_evidence_tbl' => function (Blueprint $table): void {
                 $table->increments('evidence_id');
                 $table->string('evidence_code', 32)->nullable();
+                $table->string('access_key', 64)->nullable();
                 $table->string('capture_session_id', 64)->nullable();
                 $table->unsignedBigInteger('violation_id')->nullable();
                 $table->string('disk_path', 500)->nullable();
@@ -1736,5 +1784,22 @@ class ViolationSanctionWorkflowTest extends TestCase
                 ['violation_category_id' => 1, 'category_name' => 'Major'],
             ]);
         }
+
+        // Violations reference the student account, not the optional student
+        // number, so legacy fixtures that only pass a student number get the
+        // owning account resolved for them.
+        Violation::creating(function (Violation $violation): void {
+            if ($violation->user_id === null && $violation->student_number) {
+                $violation->user_id = DB::table('users_tbl')
+                    ->where('student_number', $violation->student_number)
+                    ->value('user_id');
+            }
+
+            if ($violation->violation_type_id === null && $violation->violation_type) {
+                $violation->violation_type_id = DB::table('violation_type_tbl')
+                    ->where('violation_type_id', $violation->violation_type)
+                    ->value('violation_type_id');
+            }
+        });
     }
 }

@@ -211,11 +211,12 @@ class StudentViolationController extends Controller
      * record until the administrator has reviewed them; the officer tracks
      * those in "Submitted Violations".
      */
-    public function show(string $student_number)
+    public function show(int $user_id)
     {
-        $student = User::where('student_number', $student_number)
-            ->orWhere('user_id', ctype_digit($student_number) ? (int) $student_number : -1)
-            ->with(['violations' => function ($query) {
+        // Identified by the INTERNAL account id (users_tbl.user_id), matching
+        // Admin and Security. `student_number` is optional display data and is
+        // never a route key or lookup key.
+        $student = User::with(['violations' => function ($query) {
                 // Denied rows are included so an administrator REJECTION is
                 // reflected on the record rather than silently disappearing.
                 $this->applyRecorderScope($query, true);
@@ -233,7 +234,7 @@ $query->whereIn('status', [
 
                 $query->latest('violation_date');
             }, 'violations.violationType.violationCategory'])
-            ->firstOrFail();
+            ->findOrFail($user_id);
 
         $violations = $student->violations;
 
@@ -260,9 +261,15 @@ $query->whereIn('status', [
             return response()->json([]);
         }
 
-        $students = User::where('student_number', 'like', "%{$query}%")
-            ->orWhere('first_name', 'like', "%{$query}%")
-            ->orWhere('last_name', 'like', "%{$query}%")
+        $students = User::where(function ($inner) use ($query) {
+                // Grouped so a search that matches nothing cannot fall through
+                // to "every student", and a student with no student number is
+                // still findable by name.
+                $term = "%{$query}%";
+                $inner->where('student_number', 'like', $term)
+                    ->orWhere('first_name', 'like', $term)
+                    ->orWhere('last_name', 'like', $term);
+            })
             ->with([
                 'violations',
                 'studentInfo.program',
@@ -282,7 +289,14 @@ $query->whereIn('status', [
                 'first_name' => $student->first_name,
                 'middle_name' => $student->middle_name,
                 'last_name' => $student->last_name,
-                'text' => "{$student->student_number} - {$student->last_name}, {$student->first_name}",
+                'name_suffix' => $student->name_suffix,
+                // Display-only label. Name fields and the student number are
+                // both optional, so neither may produce a broken label.
+                'display_name' => $student->formal_name,
+                'text' => trim(
+                    ($student->student_number ? $student->student_number . ' - ' : '')
+                    . ($student->formal_name !== '' ? $student->formal_name : 'Name unavailable')
+                ),
                 'violations_count' => $student->violations_count,
                 // PUPTracker ACCOUNT status — the client warns before recording
                 // a violation for an inactive student. The server independently

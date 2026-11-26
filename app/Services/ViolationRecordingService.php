@@ -377,7 +377,11 @@ $previousCount = Violation::where(function ($query) use ($userId) {
             ->get();
 
         return $violations
-            ->groupBy('student_number')
+            // One row per student account. Grouping by the optional student
+            // number would merge every student whose number is NULL/empty.
+            ->groupBy(fn (Violation $violation) => $violation->user_id
+                ? 'user:' . $violation->user_id
+                : 'number:' . $violation->student_number)
             ->map(function ($studentViolations) {
                 $firstViolation = $studentViolations->first();
                 $student = $firstViolation?->student;
