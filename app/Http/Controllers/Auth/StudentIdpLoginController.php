@@ -379,29 +379,14 @@ class StudentIdpLoginController extends Controller
     /**
      * Program names that offer a Ladderized track (BSOA / BSIT by default).
      *
-     * Read from the SAME config key the Admin student screens and the graduating
-     * report filter use, so the three can never disagree about which programs
-     * qualify. An institution can change the list via
-     * GRADUATION_REVIEW_LADDERIZED_PROGRAMS without touching any code.
+     * Delegates to App\Support\Student\LadderizedPrograms so the Student
+     * registration flow and Admin User Management can never disagree.
      *
      * @return array<int, string> upper-cased program names
      */
     protected function ladderizedProgramCodes(): array
     {
-        $configured = (array) config(
-            'graduation_review.graduating.ladderized_programs',
-            ['BSOA', 'BSIT']
-        );
-
-        $codes = array_map(
-            static fn ($name): string => strtoupper(trim((string) $name)),
-            $configured
-        );
-
-        return array_values(array_filter(
-            $codes,
-            static fn (string $name): bool => $name !== ''
-        ));
+        return app(\App\Support\Student\LadderizedPrograms::class)->codes();
     }
 
     /**
@@ -414,34 +399,8 @@ class StudentIdpLoginController extends Controller
      */
     protected function programSupportsLadderized(?string $programName): bool
     {
-        $name = strtoupper(trim((string) $programName));
-
-        if ($name === '') {
-            return false;
-        }
-
-        foreach ($this->ladderizedProgramCodes() as $code) {
-            if ($name === $code || str_contains($name, $code)) {
-                return true;
-            }
-
-            // Match full official names such as "Bachelor of Science in
-            // Information Technology" (BSIT) and "Bachelor of Science in
-            // Office Administration" (BSOA), not only abbreviated names.
-            $words = preg_split('/[^A-Z0-9]+/', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-            $initials = '';
-            foreach ($words as $word) {
-                if (! in_array($word, ['IN', 'OF', 'THE', 'AND'], true)) {
-                    $initials .= $word[0];
-                }
-            }
-
-            if ($initials === $code) {
-                return true;
-            }
-        }
-
-        return false;
+        return app(\App\Support\Student\LadderizedPrograms::class)
+            ->supports($programName);
     }
 
     /**
@@ -455,11 +414,8 @@ class StudentIdpLoginController extends Controller
      */
     protected function resolveLadderizedSelection(int $programId, $requested): int
     {
-        $programName = Program::query()->whereKey($programId)->value('program_name');
-
-        return $this->programSupportsLadderized($programName)
-            ? (int) ($requested ?? 0)
-            : 0;
+        return app(\App\Support\Student\LadderizedPrograms::class)
+            ->resolveForProgram($programId, $requested);
     }
 
     /**

@@ -110,7 +110,7 @@
 
                     <label class="admin-filter-label">
 
-                        Course
+                        Program
 
                     </label>
 
@@ -121,7 +121,7 @@
 
                         <option value="">
 
-                            All Courses
+                            All Programs
 
                         </option>
 
@@ -447,7 +447,7 @@
 
         <th>Student</th>
 
-        <th>Course</th>
+        <th>Program</th>
 
         <th>Violation</th>
 

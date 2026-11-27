@@ -684,10 +684,10 @@ $violationCounts = $reports->groupBy(
         $headers = [
             'Student Number',
             'Student Name',
-            'Course',
+            'Program',
             'Violation',
             'Category',
-            'Offense/Severity',
+            'Offense',
             'Sanction',
             'Date',
             'Recorded By',
@@ -705,7 +705,7 @@ $violationCounts = $reports->groupBy(
             $sheet->setCellValue('C' . $row, optional($report->student?->studentInfo?->program)->program_name ?? '-');
             $sheet->setCellValue('D' . $row, optional($report->violationType)->violation_type ?: '-');
             $sheet->setCellValue('E' . $row, optional($report->violationType?->violationCategory)->category_name ?? '-');
-            $sheet->setCellValue('F' . $row, optional($report->violationType)->severity_level ?? '-');
+            $sheet->setCellValue('F' . $row, $report->offense_level ?: '-');
             $sheet->setCellValue('G' . $row, optional($report->sanction)->disciplinary_sanction ?? '-');
             $sheet->setCellValue(
                 'H' . $row,

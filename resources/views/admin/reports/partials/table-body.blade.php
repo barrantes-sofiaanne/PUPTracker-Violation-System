@@ -14,7 +14,7 @@
         </td>
         <td>
             <span class="badge bg-maroon-soft text-maroon">
-                {{ optional($report->violationType)->severity_level ?? '-' }}
+                {{ $report->offense_level ?: '-' }}
             </span>
         </td>
         <td>{{ optional($report->sanction)->disciplinary_sanction ?? '-' }}</td>

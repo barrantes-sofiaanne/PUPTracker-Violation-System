@@ -295,6 +295,12 @@ class StudentController extends Controller
             ->orderBy('roles_name')
             ->get();
 
+        // Programs that offer the Ladderized track, resolved through the SAME
+        // rules used by student registration and by the Add/Edit Student
+        // server-side validation.
+        $ladderizedProgramIds = app(\App\Support\Student\LadderizedPrograms::class)
+            ->programIds();
+
         return view(
             'admin.students.index',
             compact(
@@ -307,7 +313,8 @@ class StudentController extends Controller
                 'sections',
                 'genders',
                 'statuses',
-                'adminRoles'
+                'adminRoles',
+                'ladderizedProgramIds'
             )
         );
     }
@@ -321,8 +328,17 @@ class StudentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            // Student number is OPTIONAL, exactly like the student
+            // registration/profile workflows: a student account can exist
+            // before the number is assigned, and identity is always user_id.
+            // When a number IS provided it must still be unique.
             'student_number' =>
-                'required|string|max:50|unique:users_tbl,student_number',
+                [
+                    'nullable',
+                    'string',
+                    'max:50',
+                    Rule::unique('users_tbl', 'student_number'),
+                ],
 
             'first_name' =>
                 'required|string|max:100',
@@ -337,13 +353,13 @@ class StudentController extends Controller
                 'nullable|string|max:20',
 
             'program_id' =>
-                'nullable|exists:program_tbl,program_id',
+                'required|exists:program_tbl,program_id',
 
             'section_id' =>
                 'required|exists:section_tbl,section_id',
 
             'year_id' =>
-                'nullable|exists:year_tbl,year_id',
+                'required|exists:year_tbl,year_id',
 
             'gender_id' =>
                 'required|exists:gender_tbl,gender_id',
@@ -355,10 +371,21 @@ class StudentController extends Controller
                 'nullable|in:0,1',
         ]);
 
+        // Blank input normalises to NULL (never an empty string or a fabricated
+        // placeholder number).
+        $studentNumber = $this->nullableTrim($validated['student_number'] ?? null);
+        $ladderized = app(\App\Support\Student\LadderizedPrograms::class)
+            ->resolveForProgram(
+                (int) $validated['program_id'],
+                $validated['ladderized'] ?? null
+            );
+
         $student = null;
 
         DB::transaction(function () use (
             $validated,
+            $studentNumber,
+            $ladderized,
             &$student
         ): void {
 
@@ -377,7 +404,7 @@ class StudentController extends Controller
 
             $student = User::create([
                 'student_number' =>
-                    $validated['student_number'],
+                    $studentNumber,
 
                 'first_name' =>
                     trim((string) $validated['first_name']),
@@ -422,7 +449,7 @@ class StudentController extends Controller
                     $studentStatusId,
 
                 'ladderized' =>
-                    (int) ($validated['ladderized'] ?? 0),
+                    $ladderized,
             ]);
         });
 
@@ -864,7 +891,7 @@ class StudentController extends Controller
                 'First Name',
 
             'middlename' =>
-                'Middle Name',
+                'Middle Initials',
 
             'lastname' =>
                 'Last Name',
@@ -1144,7 +1171,7 @@ class StudentController extends Controller
                 'First Name',
 
             'middlename' =>
-                'Middle Name',
+                'Middle Initials',
 
             'lastname' =>
                 'Last Name',
@@ -1714,27 +1741,26 @@ class StudentController extends Controller
         string $student_number
     ) {
 
-        $student = User::query()
-            ->with([
-                'studentInfo.program',
-                'studentInfo.year',
-                'studentInfo.section',
-                'studentInfo.studentStatus',
-                'gender',
-                'status',
-                'violations' => function ($query) {
-                    $query
-                        ->notDenied()
-                        ->with(
-                            'violationType.violationCategory'
-                        );
-                },
-            ])
-            ->where(
-                'student_number',
-                $student_number
-            )
-            ->firstOrFail();
+        // Accept the internal account id as well as the student number, so a
+        // student whose number has not been assigned yet can still be opened.
+        // Identity remains users_tbl.user_id.
+        $student = $this->findStudentForEditOrFail($student_number);
+
+        $student->load([
+            'studentInfo.program',
+            'studentInfo.year',
+            'studentInfo.section',
+            'studentInfo.studentStatus',
+            'gender',
+            'status',
+            'violations' => function ($query) {
+                $query
+                    ->notDenied()
+                    ->with(
+                        'violationType.violationCategory'
+                    );
+            },
+        ]);
 
         return view(
             'admin.students.show',
@@ -1889,6 +1915,21 @@ class StudentController extends Controller
             ]);
         }
 
+        // Ladderized value for this save.
+        //
+        // • A program that does not offer the track always stores 0.
+        // • When the request carries an explicit choice (the modal radios), the
+        //   server validates it again against the same program rules.
+        // • When the field is absent (e.g. the simple edit form), the stored
+        //   value is preserved instead of being silently reset.
+        $ladderizedPrograms = app(\App\Support\Student\LadderizedPrograms::class);
+        $programId = (int) $request->input('program_id');
+        $ladderizedValue = $ladderizedPrograms->supportsProgramId($programId)
+            ? ($request->has('ladderized')
+                ? (int) $request->input('ladderized')
+                : (int) ($studentInfoBefore['ladderized'] ?? 0))
+            : 0;
+
         // Empty input normalises to NULL so the optional student number keeps a
         // single representation. When the field is absent entirely (older
         // callers), the existing value is preserved rather than wiped.
@@ -1911,7 +1952,8 @@ class StudentController extends Controller
             $request,
             $studentStatusId,
             $newStudentNumber,
-            $previousStudentNumber
+            $previousStudentNumber,
+            $ladderizedValue
         ): StudentInfo {
             $student->update([
                 'student_number' =>
@@ -1959,11 +2001,10 @@ class StudentController extends Controller
                 'student_status_id' =>
                     $studentStatusId,
 
+                // The SAME ladderized rules as registration/Add Student: a
+                // program that does not offer the track always stores 0.
                 'ladderized' =>
-                    (int) (
-                        $request->input('ladderized')
-                        ?? 0
-                    ),
+                    $ladderizedValue,
             ]);
 
             $studentInfo->save();

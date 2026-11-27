@@ -36,6 +36,51 @@ class OffenseNumberService
     ];
 
     /**
+     * Offense-number filters accepted by the Admin confirmation queue.
+     *
+     * `4plus` means "4th offense and succeeding offenses".
+     *
+     * @var array<int, string>
+     */
+    public const OFFENSE_FILTERS = ['1', '2', '3', '4plus'];
+
+    /**
+     * Correlated SQL expression that yields the SAME 1-based offense number
+     * the PHP accessor derives, for use in WHERE / ORDER BY / SELECT clauses.
+     *
+     * Mirrors eligibleViolations(): identical counted statuses, identical
+     * `user_id` + `violation_type_id` partition, and identical ordering
+     * (`violation_date`, then `violation_id` as the stable tie-breaker). A NULL
+     * violation date sorts first, exactly like the Eloquent ordering.
+     *
+     * Only a plain table identifier is accepted; anything else falls back to
+     * `violation_tbl`, so the expression can never carry injected SQL.
+     */
+    public function offenseNumberSql(string $table = 'violation_tbl'): string
+    {
+        $alias = preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $table) === 1
+            ? $table
+            : 'violation_tbl';
+
+        $statuses = "'" . implode("', '", self::COUNTED_STATUSES) . "'";
+        $earliest = "'1000-01-01 00:00:00'";
+
+        $position = '(SELECT COUNT(*) FROM violation_tbl AS offense_peer'
+            . " WHERE offense_peer.user_id = {$alias}.user_id"
+            . " AND offense_peer.violation_type_id = {$alias}.violation_type_id"
+            . " AND (offense_peer.status IS NULL OR LOWER(TRIM(offense_peer.status)) IN ({$statuses}))"
+            . " AND (COALESCE(offense_peer.violation_date, {$earliest}) < COALESCE({$alias}.violation_date, {$earliest})"
+            . " OR (COALESCE(offense_peer.violation_date, {$earliest}) = COALESCE({$alias}.violation_date, {$earliest})"
+            . " AND offense_peer.violation_id <= {$alias}.violation_id)))";
+
+        // A row that does not itself occupy a slot (denied / deleted / any
+        // other status) reports 0, exactly like the PHP accessor returns ''.
+        return "CASE WHEN {$alias}.status IS NULL"
+            . " OR LOWER(TRIM({$alias}.status)) IN ({$statuses})"
+            . " THEN {$position} ELSE 0 END";
+    }
+
+    /**
      * Eligible violations for one student + violation type, in chronological
      * order (violation date, then violation id).
      *

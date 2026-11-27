@@ -30,7 +30,7 @@
                         <input type="text" class="form-control" value="{{ $student->first_name ?? '—' }}" readonly>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Middle Name</label>
+                        <label class="form-label">Middle Initials</label>
                         <input type="text" class="form-control" value="{{ $student->middle_name ?? '—' }}" readonly>
                     </div>
                     <div class="col-md-3">

@@ -26,6 +26,7 @@ use App\Models\StudentSanctionRecord;
 use App\Models\AuditLog;
 use App\Models\EvidenceSecurityEvent;
 use App\Services\EvidenceSecurityService;
+use App\Services\OffenseNumberService;
 
 class ViolationController extends Controller
 {
@@ -221,14 +222,28 @@ $violationHistory = Violation::with([
     /**
      * Build the Violation Confirmations dataset.
      *
-     * Body lifted unchanged from the former standalone `confirmations()` action —
-     * same query, filters, ordering and pagination — so the tab behaves exactly
-     * as the old page did.
+     * The queue is the admin REVIEW LIST, so it is ordered by the OLDEST
+     * violation date first (ties broken by the record id). That way the first
+     * confirmation an administrator sees for a student + violation type is the
+     * chronological 1st Offense, never whatever order the database happened to
+     * return.
      *
-     * @return array{violations: \Illuminate\Contracts\Pagination\LengthAwarePaginator, pendingCount: int, highlightId: int}
+     * The offense filter is applied with the SAME derived sequence the UI
+     * displays (see OffenseNumberService::offenseNumberSql()), so filtering by
+     * "2nd Offense" can never disagree with the number in the row.
+     *
+     * Filters: search, from, to, offense, category, violation_type. The queue
+     * only ever contains pending rows, so a status filter is not applicable.
+     *
+     * @return array{violations: \Illuminate\Contracts\Pagination\LengthAwarePaginator, pendingCount: int, highlightId: int, offenseFilter: string}
      */
     protected function buildConfirmationsPayload(Request $request): array
     {
+        $offenseFilter = strtolower(trim((string) $request->input('offense', '')));
+        if (! in_array($offenseFilter, OffenseNumberService::OFFENSE_FILTERS, true)) {
+            $offenseFilter = '';
+        }
+
         $violations = Violation::with([
                 'student.studentInfo.program',
                 'violationType.violationCategory',
@@ -246,7 +261,30 @@ $violationHistory = Violation::with([
             })
             ->when($request->filled('from'), fn ($query) => $query->whereDate('violation_date', '>=', $request->input('from')))
             ->when($request->filled('to'), fn ($query) => $query->whereDate('violation_date', '<=', $request->input('to')))
-            ->latest('violation_date')
+            ->when($request->filled('category'), function ($query) use ($request) {
+                $query->whereHas(
+                    'violationType',
+                    fn ($typeQuery) => $typeQuery->where(
+                        'violation_category_id',
+                        $request->input('category')
+                    )
+                );
+            })
+            ->when($request->filled('violation_type'), function ($query) use ($request) {
+                $query->where('violation_type_id', $request->input('violation_type'));
+            })
+            ->when($offenseFilter !== '', function ($query) use ($offenseFilter) {
+                $expression = app(OffenseNumberService::class)->offenseNumberSql();
+
+                if ($offenseFilter === '4plus') {
+                    $query->whereRaw($expression . ' >= 4');
+                } else {
+                    $query->whereRaw($expression . ' = ?', [(int) $offenseFilter]);
+                }
+            })
+            // Oldest first: the earliest eligible violation is the 1st Offense.
+            ->orderBy('violation_date')
+            ->orderBy('violation_id')
             ->paginate(15, ['*'], 'confirmation_page')
             ->withQueryString();
 
@@ -256,7 +294,7 @@ $violationHistory = Violation::with([
         // so the view can highlight the exact violation.
         $highlightId = $request->integer('pending_id');
 
-        return compact('violations', 'pendingCount', 'highlightId');
+        return compact('violations', 'pendingCount', 'highlightId', 'offenseFilter');
     }
 
     /*
@@ -283,7 +321,7 @@ $violationHistory = Violation::with([
     {
         $params = ['tab' => 'confirmations'];
 
-        foreach (['search', 'from', 'to', 'pending_id'] as $key) {
+        foreach (['search', 'from', 'to', 'offense', 'category', 'violation_type', 'pending_id'] as $key) {
             if ($request->filled($key)) {
                 $params[$key] = $request->input($key);
             }

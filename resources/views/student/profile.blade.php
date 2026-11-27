@@ -75,7 +75,7 @@
 
                     <div class="profile-info-item">
                         <div class="profile-info-label">
-                            <i class="bi bi-book" aria-hidden="true"></i> Course
+                            <i class="bi bi-book" aria-hidden="true"></i> Program
                         </div>
                         <div class="profile-info-value">
                             {{ optional(optional($user->studentInfo)->program)->program_name ?? 'N/A' }}

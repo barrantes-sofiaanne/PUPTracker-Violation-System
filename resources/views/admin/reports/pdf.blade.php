@@ -172,7 +172,7 @@
             <tr>
                 <th style="width: 12%;">Student #</th>
                 <th style="width: 18%;">Student Name</th>
-                <th style="width: 14%;">Course</th>
+                <th style="width: 14%;">Program</th>
                 <th style="width: 20%;">Violation</th>
                 <th style="width: 12%;">Category</th>
                 <th style="width: 10%;">Date</th>

@@ -256,13 +256,13 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <div class="table-responsive pt-responsive-table">
                         <table class="table mb-0 portal-table">
                             <thead>
                                 <tr>
                                     <th>Student</th>
                                     <th>Violation Type</th>
-                                    <th>Severity</th>
+                                    <th>Offense Level</th>
                                     <th>Date & Time</th>
                                     <th>Action</th>
                                 </tr>
@@ -270,7 +270,7 @@
                             <tbody>
                                 @forelse($recentViolations as $violation)
                                 <tr class="violation-item">
-                                    <td>
+                                    <td data-label="Student">
                                         <strong>{{ $violation->student_number }}</strong>
                                         @if($violation->student)
                                         <br><small class="text-muted">
@@ -278,22 +278,22 @@
                                         </small>
                                         @endif
                                     </td>
-                                    <td>
+                                    <td data-label="Violation Type">
                                         <span class="portal-badge muted">
                                             {{ $violation->violation_type_display }}
                                         </span>
                                     </td>
-                                    <td>
+                                    <td data-label="Offense Level">
                                         <span class="portal-badge danger">
                                             {{ $violation->offense_level ?: '—' }}
                                         </span>
                                     </td>
-                                    <td>
+                                    <td data-label="Date & Time">
                                         <small class="text-muted">
                                             {{ \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y H:i') }}
                                         </small>
                                     </td>
-                                    <td>
+                                    <td class="pt-cell-actions" data-label="Action">
                                         <button
                                             class="btn btn-sm portal-btn-outline"
                                             data-bs-toggle="modal"

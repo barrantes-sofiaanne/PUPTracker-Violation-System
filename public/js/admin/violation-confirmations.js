@@ -207,6 +207,15 @@ document.addEventListener("DOMContentLoaded", function () {
                     button.dataset.student || "-";
                 document.getElementById("confirmModalViolation").textContent =
                     button.dataset.violation || "-";
+
+                // The offense number is the SAME derived sequence shown in the
+                // list, so the administrator reviews the exact slot before
+                // confirming.
+                const offenseEl = document.getElementById("confirmModalOffense");
+                if (offenseEl) {
+                    offenseEl.textContent = button.dataset.offense || "—";
+                }
+
                 document.getElementById("confirmModalDate").textContent =
                     button.dataset.date || "-";
                 document.getElementById("confirmModalRecordedBy").textContent =

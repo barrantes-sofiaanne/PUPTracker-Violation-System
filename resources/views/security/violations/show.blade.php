@@ -313,7 +313,7 @@
                 <div class="card-body">
                     <div class="student-info-grid">
                         <div class="student-info-item">
-                            <span class="label">Course:</span>
+                            <span class="label">Program:</span>
                             <span class="value">{{ optional(optional($student->studentInfo)->program)->program_name ?? 'N/A' }}</span>
                         </div>
                         <div class="student-info-item">

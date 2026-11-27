@@ -62,7 +62,7 @@
 
 <div class="card shadow-sm">
     <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive pt-responsive-table">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
@@ -79,14 +79,14 @@
                     @forelse($violations as $violation)
                         <tr class="{{ ($highlightViolationId ?? 0) > 0 && (int) $violation->violation_id === (int) $highlightViolationId ? 'resubmit-highlight' : '' }}"
                             data-violation-id="{{ $violation->violation_id }}">
-                            <td>{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') : '-' }}</td>
-                            <td>
+                            <td data-label="Date">{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y h:i A') : '-' }}</td>
+                            <td data-label="Student">
                                 <strong>{{ $violation->student_number }}</strong>
                                 <div class="text-muted small">{{ optional($violation->student)->last_name ?? '' }}, {{ optional($violation->student)->first_name ?? '' }}</div>
                             </td>
-                            <td>{{ optional($violation->violationType)->violation_type ?? $violation->violation_type_display }}</td>
-                            <td style="max-width:220px; white-space:normal;">{{ $violation->description ?: '-' }}</td>
-                            <td>
+                            <td data-label="Violation">{{ optional($violation->violationType)->violation_type ?? $violation->violation_type_display }}</td>
+                            <td data-label="Remarks" style="max-width:220px; white-space:normal;">{{ $violation->description ?: '-' }}</td>
+                            <td data-label="Evidence">
                                 @php $evCount = $violation->evidence->count(); @endphp
                                 @if($evCount > 0)
                                     <span class="badge text-bg-light border">{{ $evCount }} file(s)</span>
@@ -99,7 +99,7 @@
                                     <span class="text-muted small">—</span>
                                 @endif
                             </td>
-                            <td>
+                            <td data-label="Status">
                                 @php $vStatus = strtolower((string) $violation->status); @endphp
                                 @if($vStatus === 'pending')
                                     <x-admin.badge status="pending" label="Pending Review" />
@@ -111,7 +111,7 @@
                                     <x-admin.badge status="gray" :label="$violation->status" />
                                 @endif
                             </td>
-                            <td class="text-end">
+                            <td class="text-end pt-cell-actions" data-label="Review Note">
                                 @if($vStatus === 'denied')
                                     <button type="button"
                                         class="btn btn-sm admin-btn admin-btn-warning resubmit-trigger"
