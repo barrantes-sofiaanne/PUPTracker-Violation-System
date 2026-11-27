@@ -1,6 +1,6 @@
 @extends('layouts.oss-staff')
 
-@section('title', "Violations - {$student->student_number}")
+@section('title', 'Violations - ' . ($student->student_number ?: 'No student number'))
 
 @push('styles')
 <style>
@@ -288,8 +288,8 @@
         <div class="student-header-content">
             <div class="student-identity">
                 <div class="student-header-label">Student Record</div>
-                <div class="student-number fs-3">{{ $student->student_number }}</div>
-                <h2 class="fw-bold student-name-line mb-0">{{ $student->last_name }}, {{ $student->first_name }}</h2>
+                <div class="student-number fs-3">{{ $student->student_number ?: 'No student number' }}</div>
+                <h2 class="fw-bold student-name-line mb-0">{{ $student->formal_name ?: 'Name unavailable' }}</h2>
             </div>
         </div>
 
@@ -313,7 +313,7 @@
                 <div class="card-body">
                     <div class="student-info-grid">
                         <div class="student-info-item">
-                            <span class="label">Course:</span>
+                            <span class="label">Program:</span>
                             <span class="value">{{ optional(optional($student->studentInfo)->program)->program_name ?? 'N/A' }}</span>
                         </div>
                         <div class="student-info-item">
@@ -400,7 +400,7 @@
                     </div>
                     <div>
                         <span class="badge-severity portal-badge danger">
-                            {{ $violation->offense_level ?: '1st Offense' }}
+                            {{ $violation->offense_level ?: (strtolower((string) $violation->status) === \App\Models\Violation::STATUS_DENIED ? 'Rejected — not counted' : '—') }}
                         </span>
                         <span class="portal-badge muted">
                             {{ $violation->violation_category_display }}

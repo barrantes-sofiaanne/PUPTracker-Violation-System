@@ -148,7 +148,7 @@
         <div class="student-block">
             <div class="student-line">
                 Student: {{ trim(($student?->last_name ?? 'Unknown') . ', ' . ($student?->first_name ?? '')) }}
-                | Number: {{ $student?->student_number ?? 'N/A' }}
+                | Number: {{ filled($student?->student_number) ? $student->student_number : 'N/A' }}
                 | Program: {{ optional(optional($student?->studentInfo)->program)->program_name ?? 'N/A' }}
                 | Year: {{ optional(optional($student?->studentInfo)->year)->year ?? 'N/A' }}
                 | Section: {{ optional(optional($student?->studentInfo)->section)->section_name ?? 'N/A' }}

@@ -182,7 +182,7 @@
 
                                             <label class="form-label">
 
-                                                Course
+                                                Program
 
                                             </label>
 

@@ -10,7 +10,6 @@
                 <th>Violation Type</th>
                 <th>Description</th>
                 <th>Resolution No.</th>
-                <th>Severity</th>
                 <th width="140">Actions</th>
 
             </tr>
@@ -27,7 +26,6 @@
                     <td>{{ $type->violation_type }}</td>
                     <td>{{ $type->violation_description ?: '-' }}</td>
                     <td>{{ $type->resolution_number ?: '-' }}</td>
-                    <td>{{ $type->severity_level }}</td>
                     <td>
                         <div class="admin-actions">
                             <button class="admin-btn admin-btn-view admin-btn-sm edit-type" data-id="{{ $type->violation_type_id }}">
@@ -45,7 +43,7 @@
 
                 <tr>
 
-                    <td colspan="6" class="text-center py-5">
+                    <td colspan="5" class="text-center py-5">
 
                         <i class="bi bi-folder2-open fs-3 text-muted"></i>
 

@@ -568,7 +568,10 @@ class StudentRegistrationFlowTest extends TestCase
 
     private function hitCallback(): \Illuminate\Testing\TestResponse
     {
-        return $this->withSession(['student.idp.state' => 'state-123'])
+        return $this->withSession([
+            'student.idp.state' => 'state-123',
+            'student.idp.state_expires_at' => now()->addMinutes(10)->timestamp,
+        ])
             ->get(route('student.idp.callback', ['code' => 'auth-code-123']));
     }
 

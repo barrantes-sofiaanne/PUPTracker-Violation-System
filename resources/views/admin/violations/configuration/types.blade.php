@@ -53,8 +53,6 @@
 
     <th>Resolution No.</th>
 
-    <th>Severity</th>
-
     <th width="140">Actions</th>
 
 </tr>
@@ -91,12 +89,6 @@
 
 <td>
     {{ $type->resolution_number ?: '-' }}
-</td>
-
-<td>
-    <span class="admin-badge admin-badge-gray">
-        {{ $type->severity_level }}
-    </span>
 </td>
 
 <td>

@@ -15,11 +15,56 @@ use Illuminate\Support\Facades\URL;
 class AppServiceProvider extends ServiceProvider
 {
     /**
+     * The name of the custom user-provider driver used by the Admin and
+     * Security guards (config/auth.php → providers.{admins,security}.driver).
+     */
+    private const STATE_AWARE_PROVIDER = 'state-aware';
+
+    /**
      * Register any application services.
      */
     public function register(): void
     {
-        //
+        $this->registerStateAwareUserProvider();
+    }
+
+    /**
+     * Register the "state-aware" user provider driver.
+     *
+     * WHY THIS IS IN register() AND NOT boot()
+     * ----------------------------------------
+     * `Auth::provider()` only records a creator on the AuthManager; a guard is
+     * built lazily the first time it is resolved, and it throws
+     * "Authentication user provider [state-aware] is not defined." if the
+     * creator is not registered yet.
+     *
+     * Every provider's register() runs BEFORE any provider's boot(), so
+     * registering here guarantees the creator exists before ANY code that could
+     * touch a guard — another provider's boot(), the schedule callbacks, route
+     * or middleware setup, or a console command. Registering in boot() only
+     * worked because nothing resolved a guard before this provider booted; that
+     * is an ordering assumption this method removes.
+     *
+     * Laravel registers Illuminate\Auth\AuthServiceProvider (which binds the
+     * `auth` singleton) before application providers, so `auth` is always
+     * resolvable at this point.
+     *
+     * The driver is registered only when a guard actually asks for it: the
+     * closure defers building the provider until then, and the class itself
+     * (App\Support\Auth\StateAwareUserProvider) still gates remembered-device
+     * restoration on account state.
+     */
+    private function registerStateAwareUserProvider(): void
+    {
+        $this->app['auth']->provider(
+            self::STATE_AWARE_PROVIDER,
+            function ($app, array $config): \App\Support\Auth\StateAwareUserProvider {
+                return new \App\Support\Auth\StateAwareUserProvider(
+                    $app['hash'],
+                    $config['model']
+                );
+            }
+        );
     }
 
     /**

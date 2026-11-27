@@ -26,6 +26,7 @@ use App\Models\StudentSanctionRecord;
 use App\Models\AuditLog;
 use App\Models\EvidenceSecurityEvent;
 use App\Services\EvidenceSecurityService;
+use App\Services\OffenseNumberService;
 
 class ViolationController extends Controller
 {
@@ -146,7 +147,11 @@ $violationHistory = Violation::with([
     'evidence',
 ])
 ->where(function ($query) {
-    $query->whereNull('status')
+    // Admin-recorded violations are always retained in History, regardless
+    // of legacy status formatting. Other recorder types retain the established
+    // pending/confirmed/deleted visibility rules.
+    $query->where('recorder_type', 'admin')
+        ->orWhereNull('status')
         ->orWhereIn('status', [
             Violation::STATUS_PENDING,
             Violation::STATUS_CONFIRMED,
@@ -217,14 +222,28 @@ $violationHistory = Violation::with([
     /**
      * Build the Violation Confirmations dataset.
      *
-     * Body lifted unchanged from the former standalone `confirmations()` action —
-     * same query, filters, ordering and pagination — so the tab behaves exactly
-     * as the old page did.
+     * The queue is the admin REVIEW LIST, so it is ordered by the OLDEST
+     * violation date first (ties broken by the record id). That way the first
+     * confirmation an administrator sees for a student + violation type is the
+     * chronological 1st Offense, never whatever order the database happened to
+     * return.
      *
-     * @return array{violations: \Illuminate\Contracts\Pagination\LengthAwarePaginator, pendingCount: int, highlightId: int}
+     * The offense filter is applied with the SAME derived sequence the UI
+     * displays (see OffenseNumberService::offenseNumberSql()), so filtering by
+     * "2nd Offense" can never disagree with the number in the row.
+     *
+     * Filters: search, from, to, offense, category, violation_type. The queue
+     * only ever contains pending rows, so a status filter is not applicable.
+     *
+     * @return array{violations: \Illuminate\Contracts\Pagination\LengthAwarePaginator, pendingCount: int, highlightId: int, offenseFilter: string}
      */
     protected function buildConfirmationsPayload(Request $request): array
     {
+        $offenseFilter = strtolower(trim((string) $request->input('offense', '')));
+        if (! in_array($offenseFilter, OffenseNumberService::OFFENSE_FILTERS, true)) {
+            $offenseFilter = '';
+        }
+
         $violations = Violation::with([
                 'student.studentInfo.program',
                 'violationType.violationCategory',
@@ -242,7 +261,30 @@ $violationHistory = Violation::with([
             })
             ->when($request->filled('from'), fn ($query) => $query->whereDate('violation_date', '>=', $request->input('from')))
             ->when($request->filled('to'), fn ($query) => $query->whereDate('violation_date', '<=', $request->input('to')))
-            ->latest('violation_date')
+            ->when($request->filled('category'), function ($query) use ($request) {
+                $query->whereHas(
+                    'violationType',
+                    fn ($typeQuery) => $typeQuery->where(
+                        'violation_category_id',
+                        $request->input('category')
+                    )
+                );
+            })
+            ->when($request->filled('violation_type'), function ($query) use ($request) {
+                $query->where('violation_type_id', $request->input('violation_type'));
+            })
+            ->when($offenseFilter !== '', function ($query) use ($offenseFilter) {
+                $expression = app(OffenseNumberService::class)->offenseNumberSql();
+
+                if ($offenseFilter === '4plus') {
+                    $query->whereRaw($expression . ' >= 4');
+                } else {
+                    $query->whereRaw($expression . ' = ?', [(int) $offenseFilter]);
+                }
+            })
+            // Oldest first: the earliest eligible violation is the 1st Offense.
+            ->orderBy('violation_date')
+            ->orderBy('violation_id')
             ->paginate(15, ['*'], 'confirmation_page')
             ->withQueryString();
 
@@ -252,7 +294,7 @@ $violationHistory = Violation::with([
         // so the view can highlight the exact violation.
         $highlightId = $request->integer('pending_id');
 
-        return compact('violations', 'pendingCount', 'highlightId');
+        return compact('violations', 'pendingCount', 'highlightId', 'offenseFilter');
     }
 
     /*
@@ -279,7 +321,7 @@ $violationHistory = Violation::with([
     {
         $params = ['tab' => 'confirmations'];
 
-        foreach (['search', 'from', 'to', 'pending_id'] as $key) {
+        foreach (['search', 'from', 'to', 'offense', 'category', 'violation_type', 'pending_id'] as $key) {
             if ($request->filled($key)) {
                 $params[$key] = $request->input($key);
             }
@@ -304,6 +346,11 @@ $violationHistory = Violation::with([
                 'reviewed_by_admin_id' => $adminId,
                 'reviewed_at' => now(),
             ]);
+
+            // Confirming keeps the row's chronological position. Recompute the
+            // affected student/type sequence (nothing else is touched) so
+            // every module reads the same derived labels.
+            $this->recalculateOffenseSequence($violation);
 
             $this->notifyViolationOutcome($violation, 'confirmed');
 
@@ -333,13 +380,21 @@ $violationHistory = Violation::with([
 
         $adminId = Auth::guard('admin')->id();
 
-        DB::transaction(function () use ($violation, $adminId, $validated): void {
+        // Capture the current sequence BEFORE the row stops counting so any
+        // downstream shift can be reported to the administrator.
+        $beforeSequence = $this->offenseSequenceSnapshot($violation);
+
+        DB::transaction(function () use ($violation, $adminId, $validated, $beforeSequence): void {
             $violation->update([
                 'status' => Violation::STATUS_DENIED,
                 'reviewed_by_admin_id' => $adminId,
                 'reviewed_at' => now(),
                 'review_remarks' => trim($validated['reason']),
             ]);
+
+            // Excluding the denied row shifts later matching pending/confirmed
+            // rows down by one. Recalculate the affected student/type only.
+            $this->recalculateOffenseSequence($violation, $beforeSequence);
 
             $this->notifyViolationOutcome($violation, 'denied');
 
@@ -567,24 +622,43 @@ $individualViolations = Violation::with([
 
     $summary = $allViolations
         ->groupBy(function (Violation $violation) use ($typeIdByName) {
-            $resolvedId = optional($violation->violationType)->violation_type_id;
+            $resolvedType = $violation->resolvedViolationType();
+            $resolvedId = $resolvedType?->violation_type_id;
 
             if ($resolvedId !== null) {
                 return 'type:' . $resolvedId;
             }
 
-$raw = mb_strtolower(trim((string) $violation->violationType?->violation_type));
+            $raw = mb_strtolower(trim((string) (
+                $resolvedType?->violation_type
+                ?? $violation->attributes['violation_type']
+                ?? ''
+            )));
+
             return isset($typeIdByName[$raw])
                 ? 'type:' . $typeIdByName[$raw]
                 : 'raw:' . $raw;
         })
-        ->map(function ($records) {
+        ->map(function ($records) use ($student) {
             $latest = $records->first();
-            $offenseLevel = $this->formatOffenseLevel($records->count());
+            $latestType = $latest->resolvedViolationType();
+
+            // Use the centralized derived sequence for the whole student/type,
+            // not just the confirmed rows loaded on this page. Pending rows
+            // reserve their slot, so a matching pending violation is reflected
+            // in the offense label while the history table stays confirmed-only.
+            $resolvedTypeId = $latestType?->violation_type_id;
+
+            $offenseLevel = $resolvedTypeId !== null
+                ? app(\App\Services\OffenseNumberService::class)->currentOffenseLevel(
+                    (int) $student->user_id,
+                    (int) $resolvedTypeId
+                )
+                : $this->formatOffenseLevel($records->count());
 
             $disciplinarySanction = DisciplinarySanction::where(
                     'violation_type_id',
-                    optional($latest->violationType)->violation_type_id
+                    $latestType?->violation_type_id
                 )
                 ->where('offense_level', $offenseLevel)
                 ->first();
@@ -595,7 +669,7 @@ $raw = mb_strtolower(trim((string) $violation->violationType?->violation_type));
                 )
                 ->where(
                     'violation_type_id',
-                    optional($latest->violationType)->violation_type_id
+                    $latestType?->violation_type_id
                 )
                 ->latest('request_date')
                 ->first();
@@ -606,11 +680,14 @@ $raw = mb_strtolower(trim((string) $violation->violationType?->violation_type));
                 : ($disciplinarySanction ? 'Sanction' : 'Unknown');
 
             return [
-                'category' => optional(optional($latest->violationType)->violationCategory)->category_name,
+                'category' => optional($latestType?->violationCategory)->category_name,
                 // Human-readable type name. The `violation_type` column stores the
                 // TYPE ID, so printing it directly showed numbers like "10"/"24".
-                // The relationship is the source of truth; Security does the same.
-'violation_type' => optional($latest->violationType)->violation_type ?? '-',                'offense_level' => $offenseLevel,
+                // The resolved relationship is the source of truth; Security
+                // does the same.
+                'violation_type' => $latestType?->violation_type
+                    ?? ($latest->attributes['violation_type'] ?? '-'),
+                'offense_level' => $offenseLevel,
                 'status' => $sanctionRequest?->status ?? 'No Request',
                 'violation_status' => $violationStatus,
                 'remarks' => $records->count() > 1
@@ -801,28 +878,17 @@ $violationType = ViolationType::with('violationCategory')
 
         /*
         |--------------------------------------------------------------------------
-        | Count Previous Offenses
-        |--------------------------------------------------------------------------
-        */
-
-$previousCount = Violation::where('user_id', $request->user_id)
-    ->where(
-        'violation_type_id',
-        $violationType->violation_type_id
-    )
-    ->effective()
-    ->count();
-
-        /*
-        |--------------------------------------------------------------------------
         | Determine Current Offense
         |--------------------------------------------------------------------------
+        |
+        | Delegated to the centralized OffenseNumberService so Admin, Security,
+        | and OSS Staff always agree. Pending violations reserve their slot;
+        | denied/deleted ones do not.
         */
 
-        $currentOffenseNumber = $previousCount + 1;
-
-        $offenseLevel = $this->formatOffenseLevel(
-            $currentOffenseNumber
+        $offenseLevel = app(\App\Services\OffenseNumberService::class)->nextOffenseLevel(
+            (int) $request->user_id,
+            (int) $violationType->violation_type_id
         );
 
         /*
@@ -879,32 +945,114 @@ $previousCount = Violation::where('user_id', $request->user_id)
 
     public static function formatOffenseLevelStatic(int $count): string
     {
-        if ($count === 1) {
-            return '1st Offense';
-        }
-
-        if ($count === 2) {
-            return '2nd Offense';
-        }
-
-        if ($count === 3) {
-            return '3rd Offense';
-        }
-
-        $suffix = match (true) {
-            $count % 100 >= 11 && $count % 100 <= 13 => 'th',
-            $count % 10 === 1 => 'st',
-            $count % 10 === 2 => 'nd',
-            $count % 10 === 3 => 'rd',
-            default => 'th',
-        };
-
-        return "{$count}{$suffix} Offense";
+        return app(\App\Services\OffenseNumberService::class)->formatOffenseLevel($count);
     }
 
     private function formatOffenseLevel(int $count): string
     {
         return self::formatOffenseLevelStatic($count);
+    }
+
+    /**
+     * Current offense-number map for the violation's student + type.
+     *
+     * @return array<int, int>  [violation_id => offense_number]
+     */
+    private function offenseSequenceSnapshot(Violation $violation): array
+    {
+        $userId = (int) ($violation->user_id ?? 0);
+        $typeId = (int) ($violation->violation_type_id ?? 0);
+
+        if ($userId <= 0 || $typeId <= 0) {
+            return [];
+        }
+
+        return app(\App\Services\OffenseNumberService::class)
+            ->offenseNumbersFor($userId, $typeId);
+    }
+
+    /**
+     * Recalculate the offense labels of the affected student + violation type
+     * after an administrator decision.
+     *
+     * Offense numbers are derived (see OffenseNumberService), so this does not
+     * write a snapshot — it forces the current sequence to be recomputed for
+     * this student/type only, which is what every module then reads.
+     *
+     * When an already-confirmed violation's offense level would move and it
+     * already has a disciplinary sanction record, that record is NOT rewritten.
+     * Its history is preserved and the shift is written to the audit trail so
+     * an administrator can review the completed decision.
+     *
+     * @param  array<int, int>  $beforeSequence
+     * @return array<int, int>
+     */
+    private function recalculateOffenseSequence(
+        Violation $violation,
+        array $beforeSequence = []
+    ): array {
+        $userId = (int) ($violation->user_id ?? 0);
+        $typeId = (int) ($violation->violation_type_id ?? 0);
+
+        if ($userId <= 0 || $typeId <= 0) {
+            return [];
+        }
+
+        $service = app(\App\Services\OffenseNumberService::class);
+        $afterSequence = $service->offenseNumbersFor($userId, $typeId);
+
+        if ($beforeSequence !== []) {
+            $this->flagShiftedSanctions($beforeSequence, $afterSequence, $service);
+        }
+
+        return $afterSequence;
+    }
+
+    /**
+     * Flag confirmed violations whose derived offense level changed while a
+     * sanction record already exists. The sanction itself is left intact.
+     *
+     * @param  array<int, int>  $before
+     * @param  array<int, int>  $after
+     */
+    private function flagShiftedSanctions(
+        array $before,
+        array $after,
+        \App\Services\OffenseNumberService $service
+    ): void {
+        foreach ($after as $violationId => $newPosition) {
+            $oldPosition = $before[$violationId] ?? null;
+
+            if ($oldPosition === null || $oldPosition === $newPosition) {
+                continue;
+            }
+
+            $hasSanctionRecord = StudentSanctionRecord::query()
+                ->where('violation_id', $violationId)
+                ->exists();
+
+            if (! $hasSanctionRecord) {
+                continue;
+            }
+
+            try {
+                AuditLog::create([
+                    'actor_type' => 'admin',
+                    'actor_id' => Auth::guard('admin')->id(),
+                    'action' => 'Offense Level Recalculated',
+                    'module' => 'Violations',
+                    'description' => sprintf(
+                        'Violation #%d offense level changed from %s to %s after an administrator decision. The existing sanction record was preserved for administrator review.',
+                        (int) $violationId,
+                        $service->formatOffenseLevel((int) $oldPosition),
+                        $service->formatOffenseLevel((int) $newPosition)
+                    ),
+                ]);
+            } catch (\Throwable $e) {
+                // Never let accountability logging break the decision.
+                report($e);
+            }
+        }
     }
 
     /*
@@ -938,6 +1086,11 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
     DB::beginTransaction();
 
     try {
+            $student = User::findOrFail((int) $validated['user_id']);
+
+            // Serialize simultaneous recordings for the same student so two
+            // requests cannot derive the same offense position.
+            app(\App\Services\OffenseNumberService::class)->lockStudent((int) $student->user_id);
 
             /*
             |--------------------------------------------------------------------------
@@ -945,7 +1098,7 @@ public function store(\App\Http\Requests\StoreViolationRequest $request): JsonRe
             |--------------------------------------------------------------------------
             */
 
-$student = User::findOrFail((int) $validated['user_id']);
+
 
 $exists = Violation::where('user_id', $student->user_id)
     ->where('violation_type_id', $violationType->violation_type_id)
@@ -1176,7 +1329,11 @@ return \App\Support\Responses::unexpectedError();
         'recorder.adminInfo'
     ])
 ->where(function ($query) {
-    $query->whereNull('status')
+    // Admin-recorded violations are always retained in History, regardless
+    // of legacy status formatting. Other recorder types retain the established
+    // pending/confirmed/deleted visibility rules.
+    $query->where('recorder_type', 'admin')
+        ->orWhereNull('status')
         ->orWhereIn('status', [
             Violation::STATUS_PENDING,
             Violation::STATUS_CONFIRMED,

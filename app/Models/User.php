@@ -183,6 +183,41 @@ protected $fillable = [
         return (int) $this->status_id === self::activeStatusId();
     }
 
+    /**
+     * Is this account a STUDENT account?
+     *
+     * `users_tbl` is the student identity table, but a legacy row can still
+     * carry a non-student role. Student-only admin actions (IDP link/unlink)
+     * must therefore re-check the role rather than assume the table implies it.
+     *
+     * Matches the student-role semantics used by the IDP login flow: the
+     * `roles_name` is compared as whole, normalized tokens; when no role record
+     * exists, the established student role id (2) is used as the fallback.
+     */
+    public function isStudentAccount(): bool
+    {
+        try {
+            $role = $this->role;
+
+            if ($role === null) {
+                return (int) $this->roles_id === 2;
+            }
+
+            $tokens = preg_split(
+                '/[\s,|]+/',
+                strtolower(trim((string) $role->roles_name)),
+                -1,
+                PREG_SPLIT_NO_EMPTY
+            ) ?: [];
+
+            return in_array('student', $tokens, true);
+        } catch (\Throwable) {
+            // Fail closed: an unverifiable role must never be treated as a
+            // student account for a privileged action.
+            return false;
+        }
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Relationships

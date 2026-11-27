@@ -16,11 +16,13 @@ use App\Models\StudentInfo;
 use App\Models\StudentStatus;
 use App\Models\User;
 use App\Models\Year;
+use App\Support\Storage\EvidenceDisk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
@@ -293,6 +295,12 @@ class StudentController extends Controller
             ->orderBy('roles_name')
             ->get();
 
+        // Programs that offer the Ladderized track, resolved through the SAME
+        // rules used by student registration and by the Add/Edit Student
+        // server-side validation.
+        $ladderizedProgramIds = app(\App\Support\Student\LadderizedPrograms::class)
+            ->programIds();
+
         return view(
             'admin.students.index',
             compact(
@@ -305,7 +313,8 @@ class StudentController extends Controller
                 'sections',
                 'genders',
                 'statuses',
-                'adminRoles'
+                'adminRoles',
+                'ladderizedProgramIds'
             )
         );
     }
@@ -319,8 +328,19 @@ class StudentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            // Student number is OPTIONAL, exactly like the student
+            // registration/profile workflows: a student account can exist
+            // before the number is assigned, and identity is always user_id.
+            // When a number IS provided it must still be unique.
             'student_number' =>
-                'required|string|max:50|unique:users_tbl,student_number',
+                [
+                    'nullable',
+                    'string',
+                    // users_tbl.student_number is VARCHAR(15) — the validation
+                    // limit must not accept values the column cannot store.
+                    'max:15',
+                    Rule::unique('users_tbl', 'student_number'),
+                ],
 
             'first_name' =>
                 'required|string|max:100',
@@ -335,13 +355,13 @@ class StudentController extends Controller
                 'nullable|string|max:20',
 
             'program_id' =>
-                'nullable|exists:program_tbl,program_id',
+                'required|exists:program_tbl,program_id',
 
             'section_id' =>
                 'required|exists:section_tbl,section_id',
 
             'year_id' =>
-                'nullable|exists:year_tbl,year_id',
+                'required|exists:year_tbl,year_id',
 
             'gender_id' =>
                 'required|exists:gender_tbl,gender_id',
@@ -353,10 +373,21 @@ class StudentController extends Controller
                 'nullable|in:0,1',
         ]);
 
+        // Blank input normalises to NULL (never an empty string or a fabricated
+        // placeholder number).
+        $studentNumber = $this->nullableTrim($validated['student_number'] ?? null);
+        $ladderized = app(\App\Support\Student\LadderizedPrograms::class)
+            ->resolveForProgram(
+                (int) $validated['program_id'],
+                $validated['ladderized'] ?? null
+            );
+
         $student = null;
 
         DB::transaction(function () use (
             $validated,
+            $studentNumber,
+            $ladderized,
             &$student
         ): void {
 
@@ -375,7 +406,7 @@ class StudentController extends Controller
 
             $student = User::create([
                 'student_number' =>
-                    $validated['student_number'],
+                    $studentNumber,
 
                 'first_name' =>
                     trim((string) $validated['first_name']),
@@ -420,7 +451,7 @@ class StudentController extends Controller
                     $studentStatusId,
 
                 'ladderized' =>
-                    (int) ($validated['ladderized'] ?? 0),
+                    $ladderized,
             ]);
         });
 
@@ -862,7 +893,7 @@ class StudentController extends Controller
                 'First Name',
 
             'middlename' =>
-                'Middle Name',
+                'Middle Initials',
 
             'lastname' =>
                 'Last Name',
@@ -1142,7 +1173,7 @@ class StudentController extends Controller
                 'First Name',
 
             'middlename' =>
-                'Middle Name',
+                'Middle Initials',
 
             'lastname' =>
                 'Last Name',
@@ -1712,27 +1743,26 @@ class StudentController extends Controller
         string $student_number
     ) {
 
-        $student = User::query()
-            ->with([
-                'studentInfo.program',
-                'studentInfo.year',
-                'studentInfo.section',
-                'studentInfo.studentStatus',
-                'gender',
-                'status',
-                'violations' => function ($query) {
-                    $query
-                        ->notDenied()
-                        ->with(
-                            'violationType.violationCategory'
-                        );
-                },
-            ])
-            ->where(
-                'student_number',
-                $student_number
-            )
-            ->firstOrFail();
+        // Accept the internal account id as well as the student number, so a
+        // student whose number has not been assigned yet can still be opened.
+        // Identity remains users_tbl.user_id.
+        $student = $this->findStudentForEditOrFail($student_number);
+
+        $student->load([
+            'studentInfo.program',
+            'studentInfo.year',
+            'studentInfo.section',
+            'studentInfo.studentStatus',
+            'gender',
+            'status',
+            'violations' => function ($query) {
+                $query
+                    ->notDenied()
+                    ->with(
+                        'violationType.violationCategory'
+                    );
+            },
+        ]);
 
         return view(
             'admin.students.show',
@@ -1744,13 +1774,8 @@ class StudentController extends Controller
         string $student_number
     ) {
 
-        $student = User::query()
-            ->with('studentInfo')
-            ->where(
-                'student_number',
-                $student_number
-            )
-            ->firstOrFail();
+        $student = $this->findStudentForEditOrFail($student_number)
+            ->load('studentInfo');
 
         $programs =
             Program::orderBy('program_name')->get();
@@ -1781,6 +1806,65 @@ class StudentController extends Controller
     }
 
     /**
+     * Resolve the student targeted by the edit form.
+     *
+     * The modal posts the internal account id, while legacy links may still be
+     * addressed by student number. `user_id` wins when it matches so a student
+     * without a student number remains editable; otherwise the number is used.
+     */
+    private function findStudentForEditOrFail(string $identifier): User
+    {
+        $identifier = trim($identifier);
+
+        if ($identifier === '') {
+            abort(404);
+        }
+
+        if (ctype_digit($identifier)) {
+            $student = User::query()->where('user_id', (int) $identifier)->first();
+
+            if ($student !== null) {
+                return $student;
+            }
+        }
+
+        return User::query()
+            ->where('student_number', $identifier)
+            ->firstOrFail();
+    }
+
+    /**
+     * Resolve a STUDENT account by its immutable user_id for the IDP
+     * link/unlink endpoints.
+     *
+     * A non-student row is reported as 404 so these student-scoped endpoints
+     * can never modify an administrator/Security/OSS Staff account.
+     */
+    private function findStudentAccountOrFail(int $userId): User
+    {
+        $student = User::query()->findOrFail($userId);
+
+        if (! $student->isStudentAccount()) {
+            abort(404);
+        }
+
+        return $student;
+    }
+
+    /**
+     * Human-readable label for audit/notification text. Falls back to the
+     * account id when the student number has not been assigned yet.
+     */
+    private function studentAccountLabel(User $student): string
+    {
+        $number = trim((string) ($student->student_number ?? ''));
+
+        return $number !== ''
+            ? $number
+            : 'Student #' . $student->user_id;
+    }
+
+    /**
      * Update normal student information.
      *
      * Year level can be manually changed from the normal Edit Student form.
@@ -1790,11 +1874,21 @@ public function update(
     int $user_id
 ) {
 
-    $student = User::query()
-        ->where('user_id', $user_id)
-        ->firstOrFail();
+        $student = $this->findStudentForEditOrFail($student_number);
 
         $request->validate([
+            'student_number' =>
+                [
+                    'nullable',
+                    'string',
+                    // Matches the VARCHAR(15) column (see store()).
+                    'max:15',
+                    // Uniqueness is enforced against the canonical account
+                    // table, ignoring this student's own row.
+                    Rule::unique('users_tbl', 'student_number')
+                        ->ignore($student->user_id, 'user_id'),
+                ],
+
             'program_id' =>
                 'nullable|exists:program_tbl,program_id',
 
@@ -1842,14 +1936,6 @@ public function update(
                 ]
                 : [];
 
-        $student->update([
-            'gender_id' =>
-                $request->input('gender_id'),
-
-            'status_id' =>
-                $request->input('status_id'),
-        ]);
-
         $studentStatusId =
             $this->resolveStudentStatusIdFromUserStatusId(
                 (int) $request->input('status_id')
@@ -1863,37 +1949,102 @@ public function update(
             ]);
         }
 
-        $studentInfo =
-            $student->studentInfo()
-                ->firstOrNew([
-                    'user_id' =>
-                        $student->getKey()
-                ]);
+        // Ladderized value for this save.
+        //
+        // • A program that does not offer the track always stores 0.
+        // • When the request carries an explicit choice (the modal radios), the
+        //   server validates it again against the same program rules.
+        // • When the field is absent (e.g. the simple edit form), the stored
+        //   value is preserved instead of being silently reset.
+        $ladderizedPrograms = app(\App\Support\Student\LadderizedPrograms::class);
+        $programId = (int) $request->input('program_id');
+        $ladderizedValue = $ladderizedPrograms->supportsProgramId($programId)
+            ? ($request->has('ladderized')
+                ? (int) $request->input('ladderized')
+                : (int) ($studentInfoBefore['ladderized'] ?? 0))
+            : 0;
 
-        $studentInfo->fill([
-            'user_id' =>
-                $student->getKey(),
+        // Empty input normalises to NULL so the optional student number keeps a
+        // single representation. When the field is absent entirely (older
+        // callers), the existing value is preserved rather than wiped.
+        $newStudentNumber = $request->has('student_number')
+            ? trim((string) $request->input('student_number', ''))
+            : trim((string) $student->student_number);
 
-            'program_id' =>
-                $request->input('program_id'),
+        $newStudentNumber = $newStudentNumber === '' ? null : $newStudentNumber;
 
-            'year_id' =>
-                $request->input('year_id'),
+        $previousStudentNumber = trim((string) $student->student_number);
 
-            'section_id' =>
-                $request->input('section_id'),
+        $studentBefore = [
+            'student_number' => $previousStudentNumber,
+            'gender_id' => (string) $student->gender_id,
+            'status_id' => (string) $student->status_id,
+        ];
 
-            'student_status_id' =>
-                $studentStatusId,
+        $studentInfo = DB::transaction(function () use (
+            $student,
+            $request,
+            $studentStatusId,
+            $newStudentNumber,
+            $previousStudentNumber,
+            $ladderizedValue
+        ): StudentInfo {
+            $student->update([
+                'student_number' =>
+                    $newStudentNumber,
 
-            'ladderized' =>
-                (int) (
-                    $request->input('ladderized')
-                    ?? 0
-                ),
-        ]);
+                'gender_id' =>
+                    $request->input('gender_id'),
 
-        $studentInfo->save();
+                'status_id' =>
+                    $request->input('status_id'),
+            ]);
+
+            // Refresh ONLY this account's denormalized display snapshots.
+            // Violation/sanction/proof/notification ownership stays anchored
+            // to user_id; the number is display data.
+            if ($previousStudentNumber !== (string) $newStudentNumber) {
+                app(\App\Services\StudentProfileSyncService::class)
+                    ->synchronizeStudentNumber(
+                        $student,
+                        $newStudentNumber,
+                        $previousStudentNumber
+                    );
+            }
+
+            $studentInfo =
+                $student->studentInfo()
+                    ->firstOrNew([
+                        'user_id' =>
+                            $student->getKey()
+                    ]);
+
+            $studentInfo->fill([
+                'user_id' =>
+                    $student->getKey(),
+
+                'program_id' =>
+                    $request->input('program_id'),
+
+                'year_id' =>
+                    $request->input('year_id'),
+
+                'section_id' =>
+                    $request->input('section_id'),
+
+                'student_status_id' =>
+                    $studentStatusId,
+
+                // The SAME ladderized rules as registration/Add Student: a
+                // program that does not offer the track always stores 0.
+                'ladderized' =>
+                    $ladderizedValue,
+            ]);
+
+            $studentInfo->save();
+
+            return $studentInfo;
+        });
 
         $this->logUserManagementAction(
             'student',
@@ -1904,7 +2055,8 @@ public function update(
                 $studentInfoBefore,
                 $student,
                 $studentInfo,
-                $request
+                $request,
+                $studentBefore
             )
         );
 
@@ -1923,12 +2075,16 @@ public function update(
         array $infoBefore,
         User $student,
         StudentInfo $studentInfo,
-        Request $request
+        Request $request,
+        array $studentBefore = []
     ): array {
 
         $changes = [];
 
         $studentFieldMap = [
+            'student_number' =>
+                'Student Number',
+
             'gender_id' =>
                 'Gender',
 
@@ -1940,10 +2096,11 @@ public function update(
             $studentFieldMap as $key => $label
         ) {
 
-            $from =
-                (string) $student->getOriginal(
-                    $key
-                );
+            $from = (string) (
+                array_key_exists($key, $studentBefore)
+                    ? $studentBefore[$key]
+                    : $student->getOriginal($key)
+            );
 
             $to =
                 (string) $student->{$key};
@@ -2029,15 +2186,9 @@ public function update(
 
     public function linkIdpAccount(
         Request $request,
-        string $student_number
+        int $user_id
     ) {
-
-        $student = User::query()
-            ->where(
-                'student_number',
-                $student_number
-            )
-            ->firstOrFail();
+        $student = $this->findStudentAccountOrFail($user_id);
 
         $validated = $request->validate([
             'idp_subject' =>
@@ -2078,7 +2229,7 @@ public function update(
             throw ValidationException::withMessages([
                 'idp_subject' =>
                     'This IDP Account ID is already linked to student '
-                    . $existing->student_number
+                    . $this->studentAccountLabel($existing)
                     . '.',
             ]);
         }
@@ -2151,7 +2302,7 @@ public function update(
                 ],
 
             displayLabel:
-                $student->student_number,
+                $this->studentAccountLabel($student),
         );
 
         app(
@@ -2171,7 +2322,7 @@ public function update(
 
             'description' =>
                 'Linked IDP Account ID to student '
-                . $student->student_number
+                . $this->studentAccountLabel($student)
                 . ' by '
                 . $adminEmail
                 . '.',
@@ -2186,15 +2337,9 @@ public function update(
 
     public function unlinkIdpAccount(
         Request $request,
-        string $student_number
+        int $user_id
     ) {
-
-        $student = User::query()
-            ->where(
-                'student_number',
-                $student_number
-            )
-            ->firstOrFail();
+        $student = $this->findStudentAccountOrFail($user_id);
 
         $admin =
             Auth::guard('admin')->user();
@@ -2255,7 +2400,7 @@ public function update(
                 ],
 
             displayLabel:
-                $student->student_number,
+                $this->studentAccountLabel($student),
         );
 
         app(
@@ -2275,7 +2420,7 @@ public function update(
 
             'description' =>
                 'Unlinked IDP Account from student '
-                . $student->student_number
+                . $this->studentAccountLabel($student)
                 . ' by '
                 . $adminEmail
                 . '.',
@@ -2310,20 +2455,121 @@ public function destroy(int $user_id)
         $studentName = $student->email ?: 'Student Account #' . $user_id;
     }
 
-    $studentNumber = $student->student_number ?: '— (not provided)';
-
+    $studentNumberRaw = trim((string) ($student->student_number ?? ''));
+    $studentNumber = $studentNumberRaw !== '' ? $studentNumberRaw : '— (not provided)';
     $program = $student->studentInfo?->program?->program_name ?? '—';
-
     $section = $student->studentInfo?->section?->section_name ?? '—';
-
-    $studentId = $student->user_id;
+    $studentId = (int) $student->user_id;
     $studentEmail = $student->email;
 
-    if ($student->studentInfo) {
-        $student->studentInfo->delete();
-    }
+    // Delete the student and every dependent disciplinary row atomically.
+    // Legacy violations may have user_id=NULL, so match those by student_number too.
+    $cleanup = DB::transaction(function () use ($studentId, $studentNumberRaw): array {
+        $violationQuery = DB::table('violation_tbl')->where(function ($query) use ($studentId, $studentNumberRaw) {
+            $query->where('user_id', $studentId);
+            if ($studentNumberRaw !== '') {
+                $query->orWhere(function ($legacy) use ($studentNumberRaw) {
+                    $legacy->whereNull('user_id')->where('student_number', $studentNumberRaw);
+                });
+            }
+        });
+        $violationIds = $violationQuery->pluck('violation_id')->map(fn ($id) => (int) $id)->all();
 
-    $student->delete();
+        $evidencePaths = [];
+        $evidenceIds = [];
+        if (Schema::hasTable('violation_evidence_tbl') && $violationIds !== []) {
+            $evidenceRows = DB::table('violation_evidence_tbl')
+                ->whereIn('violation_id', $violationIds)
+                ->get(['evidence_id', 'disk_path']);
+            $evidenceIds = $evidenceRows->pluck('evidence_id')->map(fn ($id) => (int) $id)->all();
+            $evidencePaths = $evidenceRows->pluck('disk_path')->filter()->values()->all();
+        }
+
+        $sanctionRows = collect();
+        $sanctionRecordIds = [];
+        $proofPaths = [];
+        if (Schema::hasTable('student_sanction_records_tbl')) {
+            $sanctionRows = DB::table('student_sanction_records_tbl')
+                ->where('student_number', $studentNumberRaw)
+                ->get();
+            $sanctionRecordIds = $sanctionRows->pluck('record_id')->map(fn ($id) => (int) $id)->all();
+            if (Schema::hasColumn('student_sanction_records_tbl', 'proof_path')) {
+                $proofPaths = $sanctionRows->pluck('proof_path')->filter()->values()->all();
+            }
+        }
+
+        if (Schema::hasTable('sanction_proofs_tbl')) {
+            $proofQuery = DB::table('sanction_proofs_tbl');
+            $hasProofMatch = false;
+            if ($sanctionRecordIds !== []) {
+                $proofQuery->whereIn('record_id', $sanctionRecordIds);
+                $hasProofMatch = true;
+            }
+            if (Schema::hasColumn('sanction_proofs_tbl', 'student_number') && $studentNumberRaw !== '') {
+                $proofQuery->when($hasProofMatch,
+                    fn ($query) => $query->orWhere('student_number', $studentNumberRaw),
+                    fn ($query) => $query->where('student_number', $studentNumberRaw)
+                );
+                $hasProofMatch = true;
+            }
+            if ($hasProofMatch) {
+                $proofPaths = array_merge($proofPaths, $proofQuery->pluck('disk_path')->filter()->values()->all());
+                $proofQuery->delete();
+            }
+        }
+
+        // Remove evidence-related audit events before their evidence/violation rows.
+        if (Schema::hasTable('evidence_security_events_tbl') && ($violationIds !== [] || $evidenceIds !== [])) {
+            DB::table('evidence_security_events_tbl')->where(function ($query) use ($violationIds, $evidenceIds) {
+                if ($violationIds !== []) {
+                    $query->whereIn('violation_id', $violationIds);
+                }
+                if ($evidenceIds !== []) {
+                    $query->orWhereIn('evidence_id', $evidenceIds);
+                }
+            })->delete();
+        }
+
+        if (Schema::hasTable('violation_evidence_tbl') && $violationIds !== []) {
+            DB::table('violation_evidence_tbl')->whereIn('violation_id', $violationIds)->delete();
+        }
+
+        if (Schema::hasTable('student_sanction_records_tbl') && $sanctionRecordIds !== []) {
+            DB::table('student_sanction_records_tbl')->whereIn('record_id', $sanctionRecordIds)->delete();
+        }
+
+        // Explicitly delete the violation rows (including legacy rows); dependent
+        // edit histories and correction requests cascade through their FKs.
+        if ($violationIds !== []) {
+            DB::table('violation_tbl')->whereIn('violation_id', $violationIds)->delete();
+        }
+
+        $lockedStudent = User::query()->where('user_id', $studentId)->lockForUpdate()->firstOrFail();
+        if ($lockedStudent->studentInfo) {
+            $lockedStudent->studentInfo->delete();
+        }
+        $lockedStudent->delete();
+
+        return [
+            'file_paths' => array_values(array_unique(array_merge($evidencePaths, $proofPaths))),
+            'violations_deleted' => count($violationIds),
+            'sanctions_deleted' => count($sanctionRecordIds),
+        ];
+    });
+
+    // Remove private evidence/proof objects after the database commit. A storage
+    // outage must not roll back or partially undo the account deletion.
+    foreach ($cleanup['file_paths'] as $path) {
+        try {
+            EvidenceDisk::disk()->delete($path);
+        } catch (\Throwable $exception) {
+            Log::warning('Student deletion left a private evidence/proof object for later cleanup.', [
+                'user_id' => $studentId,
+                'path' => $path,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
 
     $this->logUserManagementAction(
         'student',
@@ -2331,32 +2577,18 @@ public function destroy(int $user_id)
         $studentId,
         $studentEmail,
         [
-            [
-                'field' => 'Student Number',
-                'from' => $studentNumber,
-                'to' => '— (deleted)',
-            ],
-            [
-                'field' => 'Name',
-                'from' => $studentName,
-                'to' => '— (deleted)',
-            ],
-            [
-                'field' => 'Program',
-                'from' => $program,
-                'to' => '— (deleted)',
-            ],
-            [
-                'field' => 'Section',
-                'from' => $section,
-                'to' => '— (deleted)',
-            ],
+            ['field' => 'Student Number', 'from' => $studentNumber, 'to' => '— (deleted)'],
+            ['field' => 'Name', 'from' => $studentName, 'to' => '— (deleted)'],
+            ['field' => 'Program', 'from' => $program, 'to' => '— (deleted)'],
+            ['field' => 'Section', 'from' => $section, 'to' => '— (deleted)'],
+            ['field' => 'Violations deleted', 'from' => (string) $cleanup['violations_deleted'], 'to' => '0 remaining'],
+            ['field' => 'Sanction records deleted', 'from' => (string) $cleanup['sanctions_deleted'], 'to' => '0 remaining'],
         ]
     );
 
     return redirect()
         ->route('admin.students', ['tab' => 'students'])
-        ->with('success', 'Student deleted successfully.');
+        ->with('success', 'Student and associated violation/sanction records deleted successfully.');
 }
 
     /*
@@ -2458,6 +2690,13 @@ private function importStudentRow(array $row): int
     {
         // Student number is optional. Only check duplicates when supplied.
         $studentNumber = $this->nullableTrim($row['student_number'] ?? null);
+
+    // users_tbl.student_number is VARCHAR(15). A longer value cannot be
+    // stored (MySQL would reject/truncate it), so the row is skipped
+    // exactly like any other invalid row instead of failing the import.
+    if ($studentNumber !== null && mb_strlen($studentNumber) > 15) {
+        return 0;
+    }
 
         if (
             $studentNumber !== null &&

@@ -101,51 +101,23 @@
         </div>
     </div>
 
-    <!-- Resolution + Severity -->
-    <div class="row g-3">
+    <!-- Resolution Number -->
+    <div class="mb-3">
 
-        <div class="col-md-8">
+        <label
+            for="resolution_number"
+            class="form-label">
 
-            <label
-                for="resolution_number"
-                class="form-label">
+            Resolution Number
 
-                Resolution Number
+        </label>
 
-            </label>
-
-            <input
-                type="text"
-                class="form-control"
-                id="resolution_number"
-                name="resolution_number"
-                placeholder="Example: Board Resolution No. 2024-001">
-
-        </div>
-
-        <div class="col-md-4">
-
-            <label
-                for="severity_level"
-                class="form-label">
-
-                Severity Level
-
-            </label>
-
-            <select
-                class="form-select"
-                id="severity_level"
-                name="severity_level"
-                required>
-
-                <option value="1">Level 1</option>
-                <option value="2">Level 2</option>
-                <option value="3">Level 3</option>
-
-            </select>
-
-        </div>
+        <input
+            type="text"
+            class="form-control"
+            id="resolution_number"
+            name="resolution_number"
+            placeholder="Example: Board Resolution No. 2024-001">
 
     </div>
 

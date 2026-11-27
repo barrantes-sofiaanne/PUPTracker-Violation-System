@@ -82,19 +82,72 @@ public function storeViolationType(Request $request)
         'violation_type' => 'required|string|max:255',
         'resolution_number' => 'nullable|string|max:100',
         'violation_description' => 'nullable|string',
-        'severity_level' => 'nullable|string|max:100',
     ]);
 
-    ViolationType::create([
+    $type = ViolationType::create([
         'violation_category_id' => $request->violation_category_id,
         'violation_type' => $request->violation_type,
         'resolution_number' => $request->resolution_number,
         'violation_description' => $request->violation_description,
-        'severity_level' => $request->severity_level,
+        // Server-side publication timestamp in Philippine Standard Time.
+        'date_published' => now('Asia/Manila'),
     ]);
+
+    $this->auditViolationType($request, 'Created', $type, []);
 
     return back()->with('success', 'Violation type added successfully.');
 }
+
+    /**
+     * Append-only violation-type audit entry through the existing service.
+     *
+     * @param  array<string, mixed>  $before
+     */
+    private function auditViolationType(
+        Request $request,
+        string $action,
+        ViolationType $type,
+        array $before = []
+    ): void {
+        $after = [
+            'violation_category_id' => $type->violation_category_id,
+            'violation_type' => $type->violation_type,
+            'violation_description' => $type->violation_description,
+            'resolution_number' => $type->resolution_number,
+        ];
+
+        $parts = [];
+
+        foreach ($after as $field => $value) {
+            $old = $before[$field] ?? null;
+
+            if ($action === 'Updated' && (string) $old === (string) $value) {
+                continue;
+            }
+
+            $parts[] = sprintf('%s from "%s" to "%s"', $field, (string) $old, (string) $value);
+        }
+
+        $audit = app(\App\Services\AuditLogService::class)->audit([
+            'action' => $action,
+            'module' => 'Violation Types',
+            'description' => sprintf(
+                '%s violation type #%d "%s" (module: Violation Types, actor role: %s).%s',
+                $action,
+                (int) $type->violation_type_id,
+                (string) $type->violation_type,
+                (string) (auth('admin')->check() ? 'admin' : 'system'),
+                $parts === [] ? ' No field values changed.' : ' Changes: ' . implode('; ', $parts) . '.'
+            ),
+        ], $request);
+
+        if ($audit === null) {
+            \Illuminate\Support\Facades\Log::warning(
+                'Violation type audit entry could not be written.',
+                ['action' => $action, 'violation_type_id' => $type->violation_type_id]
+            );
+        }
+    }
 
 public function updateViolationType(Request $request, int $id)
 {
@@ -103,18 +156,28 @@ public function updateViolationType(Request $request, int $id)
         'violation_type' => 'required|string|max:255',
         'resolution_number' => 'nullable|string|max:100',
         'violation_description' => 'nullable|string',
-        'severity_level' => 'nullable|string|max:100',
     ]);
 
     $type = ViolationType::findOrFail($id);
 
+    $before = $type->only([
+        'violation_category_id',
+        'violation_type',
+        'resolution_number',
+        'violation_description',
+        'date_published',
+    ]);
+
+    // `date_published` is never part of the update payload, so the original
+    // publication timestamp is preserved.
     $type->update([
         'violation_category_id' => $request->violation_category_id,
         'violation_type' => $request->violation_type,
         'resolution_number' => $request->resolution_number,
         'violation_description' => $request->violation_description,
-        'severity_level' => $request->severity_level,
     ]);
+
+    $this->auditViolationType($request, 'Updated', $type->fresh(), $before);
 
     return back()->with('success', 'Violation type updated successfully.');
 }

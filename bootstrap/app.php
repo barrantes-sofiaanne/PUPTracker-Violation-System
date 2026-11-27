@@ -32,9 +32,30 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(3600)
             ->onOneServer()
             ->appendOutputTo(storage_path('logs/backup-scheduler.log'));
+
+        // Housekeeping: drop EXPIRED MFA trusted-device rows only. Expiration is
+        // already enforced during authentication (MfaTrustedDevice::scopeActive),
+        // so this is hygiene, not a security control. It never touches a row
+        // whose expires_at is still in the future.
+        $schedule->call(function (): void {
+            app(\App\Support\MfaTrustedDeviceService::class)->purgeExpired();
+        })
+            ->name('purge-expired-mfa-trusted-devices')
+            ->dailyAt('04:00')
+            ->timezone('Asia/Manila')
+            ->withoutOverlapping(60)
+            ->onOneServer();
     })
  ->withMiddleware(function (Middleware $middleware) {
-    $middleware->trustProxies(at: '*');
+    // Trusted proxies are configured in config/trustedproxy.php (`proxies`,
+    // env TRUSTED_PROXIES), which Laravel's global TrustProxies middleware reads
+    // per request. It is deliberately NOT set here: the middleware callback runs
+    // before the config repository exists, and a bootstrap-time hardcode would
+    // remove the ability to tighten the list per deployment.
+    //
+    // Default '*' = trust the CALLING IP only, which resolves the client IP from
+    // the right-most X-Forwarded-For hop (the address the edge proxy observed),
+    // so a client cannot change it by prefixing forged addresses.
 
     $middleware->append([
         \App\Http\Middleware\ForceHttps::class,
@@ -44,8 +65,31 @@ return Application::configure(basePath: dirname(__DIR__))
     // Enforce backup-code acknowledgement inside the web stack, after sessions start.
     $middleware->web(append: [\App\Http\Middleware\RequireBackupCodesAcknowledgement::class]);
 
+    // MODULE-AWARE guest redirection.
+    //
+    // A single universal `student.login` target sent an unauthenticated
+    // Administrator — and Security / OSS Staff — to the STUDENT login page, so a
+    // genuinely expired session looked like the wrong portal had been opened.
+    // Each module now returns to its OWN login page.
+    //
+    // OSS Staff authenticate as ADMIN accounts through the SHARED Security + OSS
+    // Staff portal (`security.login`), so `/oss-staff/...` returns there too.
+    // Routes outside a module prefix (the shared TOTP and announcement-attachment
+    // groups) keep the previous `student.login` default, so their behaviour is
+    // unchanged.
     $middleware->redirectGuestsTo(function (Request $request) {
-        return route('student.login');
+        $loginRoutes = [
+            'admin' => 'admin.login',
+            'security' => 'security.login',
+            'oss-staff' => 'security.login',
+            'student' => 'student.login',
+        ];
+
+        $loginRoute = $loginRoutes[$request->segment(1)] ?? 'student.login';
+
+        return \Illuminate\Support\Facades\Route::has($loginRoute)
+            ? route($loginRoute)
+            : route('student.login');
     });
 
     $middleware->alias([
@@ -56,6 +100,9 @@ return Application::configure(basePath: dirname(__DIR__))
         'security.operational' => \App\Http\Middleware\EnsureSecurityOperationalAccess::class,
         // PART 3/4/5 — 15-minute inactivity expiry, enforced server-side.
         'oss.staff' => \App\Http\Middleware\EnsureOssStaffAccess::class,
+        // Admin-module authorisation: refuses OSS Staff (who share the admin
+        // guard) while leaving every other Administrator untouched.
+        'admin.module' => \App\Http\Middleware\AdminMiddleware::class,
         'session.inactivity' => \App\Http\Middleware\EnforceInactivityTimeout::class,
     ]);
 

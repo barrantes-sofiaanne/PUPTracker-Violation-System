@@ -217,18 +217,12 @@ class ViolationRecordingService
             return null;
         }
 
-$previousCount = Violation::where(function ($query) use ($userId) {
-        $query->where('user_id', $userId)
-            ->orWhere(function ($legacy) use ($userId) {
-                $legacy->whereNull('user_id')->whereIn('student_number', \App\Models\User::where('user_id', $userId)->select('student_number'));
-            });
-    })
-        ->where('violation_type_id', $violationType->violation_type_id)
-        ->effective()
-        ->count();
-
-        $currentOffenseNumber = $previousCount + 1;
-        $offenseLevel = $this->formatOffenseLevel($currentOffenseNumber);
+        // One centralized calculation: pending reservations count, denied and
+        // deleted rows do not, and identity is always user_id.
+        $offenseLevel = app(OffenseNumberService::class)->nextOffenseLevel(
+            $userId,
+            (int) $violationType->violation_type_id
+        );
 
         $sanction = DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
             ->where('offense_level', $offenseLevel)
@@ -245,30 +239,12 @@ $previousCount = Violation::where(function ($query) use ($userId) {
 
     /**
      * "1st Offense", "2nd Offense", ... for an offense count.
+     *
+     * Delegates to the single centralized formatter so every module agrees.
      */
     public function formatOffenseLevel(int $count): string
     {
-        if ($count === 1) {
-            return '1st Offense';
-        }
-
-        if ($count === 2) {
-            return '2nd Offense';
-        }
-
-        if ($count === 3) {
-            return '3rd Offense';
-        }
-
-        $suffix = match (true) {
-            $count % 100 >= 11 && $count % 100 <= 13 => 'th',
-            $count % 10 === 1 => 'st',
-            $count % 10 === 2 => 'nd',
-            $count % 10 === 3 => 'rd',
-            default => 'th',
-        };
-
-        return "{$count}{$suffix} Offense";
+        return app(OffenseNumberService::class)->formatOffenseLevel($count);
     }
 
     /** Current Philippine Standard Time (Asia/Manila). */
@@ -377,7 +353,11 @@ $previousCount = Violation::where(function ($query) use ($userId) {
             ->get();
 
         return $violations
-            ->groupBy('student_number')
+            // One row per student account. Grouping by the optional student
+            // number would merge every student whose number is NULL/empty.
+            ->groupBy(fn (Violation $violation) => $violation->user_id
+                ? 'user:' . $violation->user_id
+                : 'number:' . $violation->student_number)
             ->map(function ($studentViolations) {
                 $firstViolation = $studentViolations->first();
                 $student = $firstViolation?->student;

@@ -20,6 +20,7 @@
             <div class="modal-body admin-modal-body">
                 <div class="mb-2"><strong>Student Number:</strong> <span id="confirmModalStudent">-</span></div>
                 <div class="mb-2"><strong>Violation:</strong> <span id="confirmModalViolation">-</span></div>
+                <div class="mb-2"><strong>Offense:</strong> <span id="confirmModalOffense">-</span></div>
                 <div class="mb-2"><strong>Date:</strong> <span id="confirmModalDate">-</span></div>
                 <div class="mb-2"><strong>Recorded By:</strong> <span id="confirmModalRecordedBy">-</span></div>
                 <div class="mb-3">

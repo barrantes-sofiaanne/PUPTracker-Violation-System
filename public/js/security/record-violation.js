@@ -232,6 +232,28 @@ document.addEventListener("DOMContentLoaded", function () {
     const currentStudentNumber = () =>
         document.getElementById("selectedStudentNumber").value || "";
 
+    /**
+     * Display-only student label.
+     *
+     * The ACCOUNT id (user_id) is the student identity; name fields and the
+     * student number are optional profile data. A missing name must therefore
+     * never render as "undefined, undefined" nor block selection.
+     */
+    const studentDisplayName = (student) => {
+        const last = String(student?.last_name ?? "").trim();
+        const first = String(student?.first_name ?? "").trim();
+
+        if (last === "" && first === "") {
+            return "Name unavailable";
+        }
+
+        if (last === "") {
+            return first;
+        }
+
+        return first === "" ? last : `${last}, ${first}`;
+    };
+
     // ---------------------------------------------------------------
     // Privacy face-blur protection
     // Uses the same MediaPipe face-blur module as Admin and OSS Staff.
@@ -1466,9 +1488,58 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ------------------------------------------------------------------
+    // Required form fields
+    // ------------------------------------------------------------------
+    // Elements the student-selection step WRITES to. They are required: if one
+    // is missing, the Blade partial and this script have drifted apart and the
+    // form can no longer populate (or submit) the student correctly.
+    const STUDENT_SELECTION_FIELDS = [
+        "selectedStudentId",
+        "selectedStudentNumber",
+        "studentNumber",
+        "studentName",
+        "studentProgram",
+        "studentYear",
+        "studentSection",
+        "noStudentSelected",
+        "selectedStudentInfo",
+    ];
+
+    /**
+     * Report (once per interaction) any required field the rendered form is
+     * missing.
+     *
+     * This is deliberately LOUD rather than silent: a missing field means the
+     * form is genuinely broken, so the console names every absent id instead of
+     * letting an opaque "Cannot set properties of null" surface somewhere else.
+     */
+    const reportMissingSelectionFields = () => {
+        const missing = STUDENT_SELECTION_FIELDS.filter(
+            (id) => !document.getElementById(id),
+        );
+
+        if (missing.length > 0) {
+            console.error(
+                "[record-violation] Cannot select a student: the violation form is missing required field(s) " +
+                    missing.map((id) => `#${id}`).join(", ") +
+                    ". The Security Blade partial and this script are out of sync.",
+            );
+        }
+
+        return missing;
+    };
+
+    // ------------------------------------------------------------------
     // Reset
     // ------------------------------------------------------------------
     const resetModal = () => {
+        // The modal opens before any student is selected, so this is the first
+        // place a markup/script mismatch would surface. Stop here rather than
+        // half-resetting a form that cannot work.
+        if (reportMissingSelectionFields().length > 0) {
+            return;
+        }
+
         stopCamera();
         document.getElementById("violationForm").reset();
         document.getElementById("selectedStudentNumber").value = "";
@@ -1726,12 +1797,18 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        // Stop BEFORE half-populating the form if the markup is incomplete.
+        if (reportMissingSelectionFields().length > 0) {
+            return;
+        }
+
         document.getElementById("selectedStudentId").value = student.user_id;
         document.getElementById("selectedStudentNumber").value =
             student.student_number || "";
-        document.getElementById("studentNumber").value = student.student_number;
+        document.getElementById("studentNumber").value =
+            student.student_number || "";
         document.getElementById("studentName").value =
-            `${student.last_name}, ${student.first_name}`;
+            studentDisplayName(student);
         document.getElementById("studentProgram").value =
             student.program?.program_name ?? "-";
         document.getElementById("studentYear").value =
@@ -1745,7 +1822,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .classList.remove("d-none");
 
         resultBox.innerHTML = "";
-        searchBox.value = `${student.student_number || "No student number"} - ${student.last_name}, ${student.first_name}`;
+        searchBox.value = `${student.student_number || "No student number"} - ${studentDisplayName(student)}`;
         updateLiveWatermark();
     };
 
@@ -1793,7 +1870,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             ? ' <span class="admin-badge" style="background:#fdecec;color:#8a1c1c;">Inactive account — cannot record</span>'
                             : "";
 
-                        item.innerHTML = `<strong>${student.student_number || "No student number"}</strong>${badge}<br>${student.last_name}, ${student.first_name}`;
+                        item.innerHTML = `<strong>${student.student_number || "No student number"}</strong>${badge}<br>${studentDisplayName(student)}`;
                         item.addEventListener("click", function () {
                             selectStudent(student);
                         });
@@ -1909,6 +1986,11 @@ document.addEventListener("DOMContentLoaded", function () {
     // Submit
     // ------------------------------------------------------------------
     saveBtn.addEventListener("click", function () {
+        // Ignore a second click while the first request is still in flight.
+        if (saveBtn.disabled) {
+            return;
+        }
+
         const studentNumber =
             document.getElementById("selectedStudentId").value;
         const violationTypeId = document.getElementById("violationType").value;
@@ -1972,6 +2054,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         saveBtn.disabled = true;
 
+        // Show the processing state immediately (no artificial delay) and
+        // keep it until the request settles.
+        const originalSaveLabel = saveBtn.innerHTML;
+        saveBtn.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Recording Violation...';
+
         fetch(window.ViolationRoutes.store, {
             method: "POST",
             headers: {
@@ -2008,6 +2096,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 showAlert("error", "Submit failed", error.message);
             })
             .finally(() => {
+                // Restore on success AND on validation/server failure so the
+                // officer can correct the form and retry.
+                saveBtn.innerHTML = originalSaveLabel;
                 saveBtn.disabled = false;
             });
     });

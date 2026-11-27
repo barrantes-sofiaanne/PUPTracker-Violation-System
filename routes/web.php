@@ -352,7 +352,7 @@ Route::get('/violations/evidence/{evidence:access_key}', [StudentRecordControlle
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:admin', 'session.inactivity'])
+Route::middleware(['auth:admin', 'admin.module', 'session.inactivity'])
     ->prefix('admin')
     ->group(function () {
 
@@ -448,10 +448,15 @@ Route::delete('/students/{user_id}', [StudentController::class, 'destroy'])
         Route::get('/students/{student_number}', [StudentController::class, 'show'])
             ->name('admin.students.show');
 
-        Route::post('/students/{student_number}/link-idp', [StudentController::class, 'linkIdpAccount'])
+        // IDP management is keyed by the immutable account id, so a student
+        // whose student_number has not been assigned can still be linked or
+        // unlinked. The controller re-verifies the account is a STUDENT.
+        Route::post('/students/{user_id}/link-idp', [StudentController::class, 'linkIdpAccount'])
+            ->whereNumber('user_id')
             ->name('admin.students.link-idp');
 
-        Route::post('/students/{student_number}/unlink-idp', [StudentController::class, 'unlinkIdpAccount'])
+        Route::post('/students/{user_id}/unlink-idp', [StudentController::class, 'unlinkIdpAccount'])
+            ->whereNumber('user_id')
             ->name('admin.students.unlink-idp');
 
         Route::post('/users/admins', [StudentController::class, 'storeAdmin'])
@@ -564,33 +569,6 @@ Route::get(
             '/violations/student/{student_number}',
             [ViolationController::class, 'show']
         )->name('admin.violations.studentHistory');
-
-       
-/*
-|--------------------------------------------------------------------------
-| Bulk Violation Import
-|--------------------------------------------------------------------------
-*/
-
-Route::get('/violations/bulk-import', [
-    \App\Http\Controllers\Admin\BulkViolationImportController::class,
-    'show'
-])->name('admin.violations.bulk-import');
-
-Route::get('/violations/bulk-import/template', [
-    \App\Http\Controllers\Admin\BulkViolationImportController::class,
-    'template'
-])->name('admin.violations.bulk-import.template');
-
-Route::post('/violations/bulk-import/preview', [
-    \App\Http\Controllers\Admin\BulkViolationImportController::class,
-    'preview'
-])->name('admin.violations.bulk-import.preview');
-
-Route::post('/violations/bulk-import/commit', [
-    \App\Http\Controllers\Admin\BulkViolationImportController::class,
-    'commit'
-])->name('admin.violations.bulk-import.commit');
 
 
 /*
@@ -948,7 +926,11 @@ Route::middleware(['auth:security,admin', 'security.operational', 'session.inact
         Route::get('/violations/submitted', [App\Http\Controllers\Security\StudentViolationController::class, 'submitted'])
             ->name('security.violations.submitted');
 
-        Route::get('/violations/student/{student_number}', [App\Http\Controllers\Security\StudentViolationController::class, 'show'])
+        // The student record is addressed by the internal account id (the key
+        // Admin uses). A student number is optional display data and may be
+        // NULL, so it must never be the route key.
+        Route::get('/violations/student/{user_id}', [App\Http\Controllers\Security\StudentViolationController::class, 'show'])
+            ->whereNumber('user_id')
             ->name('security.violations.show');
 
         Route::post('/violations/store', [App\Http\Controllers\Security\StudentViolationController::class, 'store'])
@@ -1050,7 +1032,9 @@ Route::middleware(['auth:admin', 'oss.staff', 'session.inactivity'])
         Route::get('/violations/submitted', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'submitted'])
             ->name('violations.submitted');
 
-        Route::get('/violations/student/{student_number}', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'show'])
+        // Addressed by the internal account id, matching Admin and Security.
+        Route::get('/violations/student/{user_id}', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'show'])
+            ->whereNumber('user_id')
             ->name('violations.show');
 
         Route::post('/violations/store', [App\Http\Controllers\OssStaff\StudentViolationController::class, 'store'])

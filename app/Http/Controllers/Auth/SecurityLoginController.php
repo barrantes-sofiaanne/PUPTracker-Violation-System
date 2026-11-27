@@ -27,38 +27,62 @@ use App\Http\Middleware\EnforceInactivityTimeout;
  *   OSS Staff          -> `admin`    guard -> OSS Staff module
  *
  * OSS Staff is an ADMIN account, so it MUST run the existing Administrator
- * authentication + MFA (there is deliberately no separate OSS Staff MFA). This
- * controller therefore looks the submitted email up in BOTH credential stores
- * and hands the request to the matching module's real flow; the destination is
- * then decided from the account's ROLE (see MfaController), so an OSS Staff
- * member lands in the OSS Staff module and never in the Security module.
+ * authentication + MFA (there is deliberately no separate OSS Staff MFA). After
+ * the challenge passes, MfaController routes on the account's ROLE, so an OSS
+ * Staff member lands in the OSS Staff module and never in the Security module.
+ *
+ * STRICT MODULE SEPARATION
+ * ------------------------
+ * The page has TWO modes, selected with `?portal=oss` and carried through the
+ * form as a hidden `portal` field:
+ *
+ *   portal=security (default) -> accepts SECURITY accounts only
+ *   portal=oss                -> accepts OSS STAFF accounts only
+ *
+ * The mode is enforced SERVER-SIDE before any session is created: an OSS Staff
+ * account submitting to the Security portal is rejected exactly like a wrong
+ * password, and a Security account (or a plain Administrator) submitting to the
+ * OSS Staff portal is rejected the same way. Hiding a link is never the control.
  *
  * The routes, route names and the `security` guard are unchanged — only the
- * visible branding of this page and the set of accounts it accepts are.
+ * visible branding of this page and the set of accounts each mode accepts are.
  */
 class SecurityLoginController extends Controller
 {
     /**
-     * The module key used for the login-attempt limiter and its config.
+     * Module key, kept for audit/log wording only.
      *
-     * A lockout is scoped to this module, so the SHARED portal has its own
-     * budget: a locked-out Security officer (or OSS Staff member) cannot block
-     * the Administrator login, and vice versa.
+     * The login-attempt counter itself is GLOBAL (one budget per client), so it
+     * is no longer scoped by module — see LoginAttemptLimiter.
      */
     public const LOGIN_MODULE = 'security';
 
-    /**
-     * The module key used for OSS Staff credential verification.
-     *
-     * The lockout ledger is scoped to the module, so an existing Administrator
-     * lockout must not lock the shared portal for everyone — only the OTHER
-     * account trying that email is affected.
-     */
-    private const ADMIN_MODULE = 'admin';
+    /** The Security Personnel mode of the shared page (the default). */
+    public const PORTAL_SECURITY = 'security';
+
+    /** The OSS Staff mode of the shared page (`?portal=oss`). */
+    public const PORTAL_OSS = 'oss';
 
     public function showLoginForm()
     {
         return view('auth.security-login');
+    }
+
+    /**
+     * Which mode of the shared page this request is for.
+     *
+     * Reads the submitted `portal` field first, then the query string, and
+     * FAILS CLOSED to the Security portal: an absent/unrecognised mode can never
+     * admit an OSS Staff account, because the Security portal accepts only
+     * Security accounts.
+     */
+    private function resolvePortal(Request $request): string
+    {
+        $portal = $request->input('portal', $request->query('portal'));
+
+        return $portal === self::PORTAL_OSS
+            ? self::PORTAL_OSS
+            : self::PORTAL_SECURITY;
     }
 
     public function login(
@@ -72,16 +96,19 @@ class SecurityLoginController extends Controller
             'password' => 'required',
         ]);
 
-        // Failed credential attempts are bounded per account using the SAME
-        // shared rule as the Administrator module. The limiter keys on the
-        // module name, so a Security lockout can never block the Administrator
-        // login (and vice versa). See AdminLoginController for the rationale.
+        $portal = $this->resolvePortal($request);
+
+        // Failed credential attempts are bounded per CLIENT using the SAME
+        // shared rule as every other login page. The limiter keys on the client
+        // IP only, so switching between the Admin, Security and OSS Staff login
+        // pages cannot reset the budget.
         //
-        // A locked shared portal is reported before any credential lookup, so a
+        // A locked client is reported before any credential lookup, so a
         // locked-out user learns nothing about whether an account exists.
-        if (LoginAttemptLimiter::isLocked(self::LOGIN_MODULE, $request)) {
+        if (LoginAttemptLimiter::isLocked($request)) {
             Log::warning('Security login blocked: too many failed attempts', [
-                'retry_after_seconds' => LoginAttemptLimiter::secondsRemaining(self::LOGIN_MODULE, $request),
+                'portal' => $portal,
+                'retry_after_seconds' => LoginAttemptLimiter::secondsRemaining($request),
             ]);
 
             AuditLog::create([
@@ -89,31 +116,30 @@ class SecurityLoginController extends Controller
                 'actor_id' => null,
                 'action' => 'Login Blocked',
                 'module' => 'Authentication',
-                'description' => 'Security login blocked after ' . LoginAttemptLimiter::policy(self::LOGIN_MODULE)['max'] . ' failed attempts.',
+                'description' => 'Security login blocked after ' . LoginAttemptLimiter::policy()['max'] . ' failed attempts.',
                 'created_at' => now(),
             ]);
 
             return back()
                 ->withErrors([
-                    'login' => LoginAttemptLimiter::lockedMessage(self::LOGIN_MODULE, $request),
+                    'login' => LoginAttemptLimiter::lockedMessage($request),
                 ])
                 ->withInput();
         }
 
-        // The submitted email decides WHICH credential store is authoritative
-        // for this attempt. Security accounts and OSS Staff accounts are
-        // different people in different tables, so an email is never matched in
-        // both: a Security row wins, otherwise the Administrators are consulted.
-        $security = Security::where('email', $request->email)->first();
-
-       return $security !== null
-    ? $this->loginSecurityAccount($request, $mfaService, $trustedDeviceService, $security)
-    : $this->loginOssStaffAccount($request, $mfaService, $trustedDeviceService);
+        return $portal === self::PORTAL_OSS
+            ? $this->loginOssStaffAccount($request, $mfaService, $trustedDeviceService)
+            : $this->loginSecurityAccount($request, $mfaService, $trustedDeviceService);
     }
 
     public function logout(Request $request)
     {
         Auth::guard('security')->logout();
+
+        // NOTE: the MFA trusted-device record is deliberately NOT deleted here.
+        // Logging out ends the authenticated session; it must not discard a
+        // still-valid remembered verification, whose 12-hour window is measured
+        // from the original verification (never from this logout).
 
         $request->session()->invalidate();
 
@@ -125,24 +151,26 @@ class SecurityLoginController extends Controller
     /**
      * Verify a SECURITY account and start the Security MFA challenge.
      *
-     * Behaviour is unchanged from before the portal became shared, except that
-     * it returns early so the OSS Staff branch can run for other emails.
+     * SECURITY PORTAL ONLY: an email that is not a Security account is rejected
+     * identically to a wrong password, so an OSS Staff member or a plain
+     * Administrator cannot enter the Security module through this page.
      */
    private function loginSecurityAccount(
     Request $request,
     MfaService $mfaService,
-    MfaTrustedDeviceService $trustedDeviceService,
-    Security $security
+    MfaTrustedDeviceService $trustedDeviceService
 )
     {
-        if (! Hash::check($request->password, $security->password)) {
-            LoginAttemptLimiter::recordFailure(self::LOGIN_MODULE, $request);
+        $security = Security::where('email', $request->email)->first();
+
+        if (! $security instanceof Security || ! Hash::check($request->password, $security->password)) {
+            LoginAttemptLimiter::recordFailure($request);
 
             return $this->invalidCredentials($request);
         }
 
         // A SUCCESSFUL credential check clears the failed-attempt counter.
-        LoginAttemptLimiter::clear(self::LOGIN_MODULE, $request);
+        LoginAttemptLimiter::clear($request);
         if (
             (bool) config('auth.features.remember_device', false)
             && $trustedDeviceService->isTrusted('security', (int) $security->getKey())
@@ -260,22 +288,18 @@ EnforceInactivityTimeout::startFreshActivityWindow($request);
         // Every rejection answers identically, so this portal cannot be used to
         // discover which emails belong to administrators.
         if (! $admin instanceof Admin || ! $admin->isOssStaff()) {
-            $this->recordSharedPortalFailure($request);
+            LoginAttemptLimiter::recordFailure($request);
 
             return $this->invalidCredentials($request);
         }
 
         if (! Hash::check($request->password, $admin->password)) {
-            $this->recordSharedPortalFailure($request);
+            LoginAttemptLimiter::recordFailure($request);
 
             return $this->invalidCredentials($request);
         }
 
-        LoginAttemptLimiter::clear(self::LOGIN_MODULE, $request);
-        // These ARE this admin's real credentials, so clear the Administrator
-        // module's counter too — a stale lockout armed for the Administrator
-        // login must not survive a successful sign-in here.
-        LoginAttemptLimiter::clear(self::ADMIN_MODULE, $request);
+        LoginAttemptLimiter::clear($request);
 
                Log::info('Shared portal: OSS Staff credentials verified', ['admin_id' => $admin->id]);
 
@@ -302,37 +326,16 @@ EnforceInactivityTimeout::startFreshActivityWindow($request);
     }
 
     /**
-     * Record an OSS Staff credential failure in BOTH ledgers.
+     * The generic credential failure.
      *
-     * An OSS Staff account's credentials ARE Administrator credentials, so a
-     * failed attempt here is a failed Administrator attempt too. Counting it in
-     * both places keeps the two ledgers symmetric with the success path (which
-     * clears both) and stops this portal from silently DOUBLING the guesses an
-     * attacker gets against an OSS Staff account.
-     *
-     * A rejected non-OSS-Staff request (e.g. a regular Administrator trying this
-     * portal) is counted only against the shared portal, so the Administrator
-     * login is never locked out by an attempt that could not have succeeded
-     * there.
-     */
-    private function recordSharedPortalFailure(Request $request): void
-    {
-        LoginAttemptLimiter::recordFailure(self::LOGIN_MODULE, $request);
-
-        if (Admin::where('email', $request->email)->first()?->isOssStaff()) {
-            LoginAttemptLimiter::recordFailure(self::ADMIN_MODULE, $request);
-        }
-    }
-
-    /**
-     * The generic credential failure, shared by BOTH account types so a probe
-     * cannot distinguish "no such account" from "wrong password".
+     * Identical for every rejection so a probe cannot distinguish "no such
+     * account", "wrong password" or "wrong module" from one another.
      */
     private function invalidCredentials(Request $request)
     {
         return back()
             ->withErrors([
-                'login' => LoginAttemptLimiter::failureMessage(self::LOGIN_MODULE, $request),
+                'login' => LoginAttemptLimiter::failureMessage($request),
             ])
             ->withInput();
     }

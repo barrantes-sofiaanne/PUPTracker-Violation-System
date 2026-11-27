@@ -329,14 +329,14 @@ background: #800000;
     <div id="managementTableContainer" class="card portal-card">
         <div class="card-body p-0">
             @forelse($students as $student)
-            <a href="{{ route('security.violations.show', $student->student_number) }}" class="text-decoration-none text-dark">
+            <a href="{{ route('security.violations.show', $student->user_id) }}" class="text-decoration-none text-dark">
                 <div class="student-card">
                     <div class="violation-badge">
                         {{ $student->violations_count }}
                     </div>
                     <div class="student-info">
                         <div class="student-name">
-                            {{ $student->student_number }} - {{ $student->last_name }}, {{ $student->first_name }}
+                            {{ $student->student_number ?: 'No student number' }} - {{ $student->formal_name ?: 'Name unavailable' }}
                         </div>
                         <div class="student-meta">
                             <i class="bi bi-building"></i> {{ optional(optional($student->studentInfo)->program)->program_name ?? 'N/A' }}

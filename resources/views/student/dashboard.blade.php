@@ -196,7 +196,7 @@
                             <div class="col">
                                 <div class="mb-2">
                                     <h6 class="fw-bold mb-1">
-                                        {{ $violation->violationType->violation_type ?? 'Unknown Violation' }}
+                                        {{ $violation->violation_type_display }}
                                     </h6>
                                     <small class="text-muted">
                                         <i class="bi bi-calendar"></i>
@@ -210,7 +210,7 @@
                             <div class="col-auto">
                                 <div class="mb-2">
                                     <span class="portal-badge gold">
-                                        {{ $violation->offense_level ?? 'Unknown' }}
+                                        {{ $violation->offense_level ?: '—' }}
                                     </span>
                                 </div>
                                 <span class="portal-badge muted">

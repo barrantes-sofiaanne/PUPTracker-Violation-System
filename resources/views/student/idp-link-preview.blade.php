@@ -84,7 +84,7 @@
                         <span class="fw-semibold">{{ $profile['first_name'] ?? '—' }} <i class="bi bi-lock-fill text-muted small" title="Read-only"></i></span>
                     </div>
                     <div class="col-12 d-flex justify-content-between align-items-center">
-                        <span class="text-muted">Middle Name</span>
+                        <span class="text-muted">Middle Initials</span>
                         <span class="fw-semibold">{{ $profile['middle_name'] ?: '—' }} <i class="bi bi-lock-fill text-muted small" title="Read-only"></i></span>
                     </div>
                     <div class="col-12 d-flex justify-content-between align-items-center">

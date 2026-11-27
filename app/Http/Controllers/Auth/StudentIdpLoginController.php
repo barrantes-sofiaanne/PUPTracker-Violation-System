@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use App\Http\Middleware\EnforceInactivityTimeout;
+use App\Support\MfaService;
 
 class StudentIdpLoginController extends Controller
 {
@@ -43,6 +43,10 @@ class StudentIdpLoginController extends Controller
 
         $state = Str::random(40);
         $request->session()->put('student.idp.state', $state);
+        $request->session()->put(
+            'student.idp.state_expires_at',
+            now()->addMinutes(10)->timestamp
+        );
 
         $authorizeUrl = $baseUrl . '/auth/authorize';
 
@@ -59,8 +63,8 @@ class StudentIdpLoginController extends Controller
      *
      * Exchanges the authorization code for a token (POST /auth/token, JSON body),
      * fetches the user profile (GET /me, Bearer), maps the IdP identity to a
-     * users_tbl record, verifies the local account, and authenticates with the
-     * Laravel "student" guard.
+     * users_tbl record, verifies the local account, and stages MFA before the
+     * Laravel "student" guard is authenticated.
      */
     public function callback(Request $request)
     {
@@ -70,19 +74,37 @@ class StudentIdpLoginController extends Controller
         ]);
 
         $expectedState = $request->session()->pull('student.idp.state');
+        $expectedStateExpiresAt = $request->session()->pull('student.idp.state_expires_at');
 
-        // Validate state when the IdP echoes it back. The IdP login SPA does not
-        // always preserve state, so validation is skipped when state is absent.
+        // Some PUP IDP callback responses omit the OAuth `state` parameter.
+        // Keep the locally-created state and expiry checks so the browser's
+        // Laravel session must still be present and the login attempt must be
+        // fresh. If the provider DOES return state, require an exact match.
+        // When state is omitted by the provider, log the condition and continue
+        // (same compatibility behavior used by the Admin IDP callback).
+        $hasReturnedState = $request->filled('state');
+
         if (
-            is_string($expectedState)
-            && $expectedState !== ''
-            && $request->filled('state')
-            && ! hash_equals($expectedState, (string) $request->string('state'))
+            ! is_string($expectedState)
+            || $expectedState === ''
+            || ! is_numeric($expectedStateExpiresAt)
+            || (int) $expectedStateExpiresAt < now()->timestamp
+            || (
+                $hasReturnedState
+                && ! hash_equals($expectedState, (string) $validated['state'])
+            )
         ) {
             return redirect()->route('student.login')
                 ->withErrors([
                     'login' => 'The IDP login session expired. Please try again.',
                 ]);
+        }
+
+        if (! $hasReturnedState) {
+            Log::warning('Student IDP callback did not include OAuth state; proceeding with the active server-side login session.', [
+                'session_has_expected_state' => true,
+                'state_expired' => false,
+            ]);
         }
 
         $clientId = (string) config('services.idp.client_id');
@@ -191,6 +213,13 @@ class StudentIdpLoginController extends Controller
                         'login' => 'This IDP account is not linked to the local student account.',
                     ]);
             }
+
+            // The IDP is authoritative for the identity fields. Refresh them
+            // even when the local account is not currently active: profile
+            // synchronization must not depend on account access or on the
+            // existence of violations/sanctions. The status gate below still
+            // decides whether the account may sign in.
+            $this->syncIdentityFromIdp($user, $profile);
 
             // PUPTracker ACCOUNT STATUS gate.
             //
@@ -350,29 +379,14 @@ class StudentIdpLoginController extends Controller
     /**
      * Program names that offer a Ladderized track (BSOA / BSIT by default).
      *
-     * Read from the SAME config key the Admin student screens and the graduating
-     * report filter use, so the three can never disagree about which programs
-     * qualify. An institution can change the list via
-     * GRADUATION_REVIEW_LADDERIZED_PROGRAMS without touching any code.
+     * Delegates to App\Support\Student\LadderizedPrograms so the Student
+     * registration flow and Admin User Management can never disagree.
      *
      * @return array<int, string> upper-cased program names
      */
     protected function ladderizedProgramCodes(): array
     {
-        $configured = (array) config(
-            'graduation_review.graduating.ladderized_programs',
-            ['BSOA', 'BSIT']
-        );
-
-        $codes = array_map(
-            static fn ($name): string => strtoupper(trim((string) $name)),
-            $configured
-        );
-
-        return array_values(array_filter(
-            $codes,
-            static fn (string $name): bool => $name !== ''
-        ));
+        return app(\App\Support\Student\LadderizedPrograms::class)->codes();
     }
 
     /**
@@ -385,19 +399,8 @@ class StudentIdpLoginController extends Controller
      */
     protected function programSupportsLadderized(?string $programName): bool
     {
-        $name = strtoupper(trim((string) $programName));
-
-        if ($name === '') {
-            return false;
-        }
-
-        foreach ($this->ladderizedProgramCodes() as $code) {
-            if ($name === $code || str_contains($name, $code)) {
-                return true;
-            }
-        }
-
-        return false;
+        return app(\App\Support\Student\LadderizedPrograms::class)
+            ->supports($programName);
     }
 
     /**
@@ -411,11 +414,8 @@ class StudentIdpLoginController extends Controller
      */
     protected function resolveLadderizedSelection(int $programId, $requested): int
     {
-        $programName = Program::query()->whereKey($programId)->value('program_name');
-
-        return $this->programSupportsLadderized($programName)
-            ? (int) ($requested ?? 0)
-            : 0;
+        return app(\App\Support\Student\LadderizedPrograms::class)
+            ->resolveForProgram($programId, $requested);
     }
 
     /**
@@ -450,6 +450,8 @@ class StudentIdpLoginController extends Controller
             ]);
         }
 
+        $idpEmail = strtolower(trim((string) ($profile['email'] ?? '')));
+
         // Idempotency: an IDP subject already linked to a student always signs in
         // to that same local account; it must never create or select another one.
         $alreadyLinked = User::query()->where('idp_subject', $idpSubject)->first();
@@ -459,12 +461,17 @@ class StudentIdpLoginController extends Controller
                     'login' => 'This PUPTracker student account is not eligible to sign in.',
                 ]);
             }
+
+            // Keep the canonical profile current even when the account was
+            // already linked (re-submitted registration / corrected details).
+            $this->persistIdpBinding($alreadyLinked, $idpSubject, $idpEmail, $profile);
+            $this->touchLastLogin($alreadyLinked);
+
             return $this->completeRegistrationFor($request, $alreadyLinked);
         }
 
         $mode = (string) $request->input('match_mode');
         $nameMatches = $this->findStudentsByIdpName($profile);
-        $idpEmail = strtolower(trim((string) ($profile['email'] ?? '')));
 
         if ($mode === 'single') {
             // Re-check the unique name match on the server; never trust a posted user_id.
@@ -474,12 +481,24 @@ class StudentIdpLoginController extends Controller
                 ]);
             }
             $student = $nameMatches->first();
-            $request->validate([
+            $selectedProgramName = Program::query()
+                ->whereKey((int) $request->input('program_id'))
+                ->value('program_name');
+            $ladderizedRules = $this->programSupportsLadderized($selectedProgramName)
+                ? ['required', 'in:0,1']
+                : ['nullable', 'in:0,1'];
+
+            $validated = $request->validate([
+                'student_number' => ['required', 'string', 'max:15'],
+                'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
+                'year_id' => ['required', 'integer', 'exists:year_tbl,year_id'],
+                'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
+                'ladderized' => $ladderizedRules,
                 'privacy_acknowledged' => ['accepted'],
             ], [
                 'privacy_acknowledged.accepted' => 'Please acknowledge the PUPTracker Privacy Statement to continue.',
             ]);
-            return $this->bindExistingStudent($request, $student, $idpSubject, $idpEmail, $profile);
+            return $this->bindExistingStudent($request, $student, $idpSubject, $idpEmail, $profile, $validated);
         }
 
         if ($mode === 'duplicate') {
@@ -489,7 +508,7 @@ class StudentIdpLoginController extends Controller
                 ]);
             }
             $validated = $request->validate([
-                'student_number' => ['required', 'string', 'max:50'],
+                'student_number' => ['required', 'string', 'max:15'],
                 'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
                 'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
                 'confirm_record' => ['accepted'],
@@ -521,12 +540,16 @@ class StudentIdpLoginController extends Controller
 
         // No existing student with this full name: allow first-time registration.
         $validated = $request->validate([
-            'student_number' => ['required', 'string', 'max:50'],
+            'student_number' => ['required', 'string', 'max:15'],
             'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
             'year_id' => ['required', 'integer', 'exists:year_tbl,year_id'],
             'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
             'gender_id' => ['required', 'integer', 'exists:gender_tbl,gender_id'],
             'privacy_acknowledged' => ['accepted'],
+            // The ladderized answer is optional in the browser (the field is
+            // hidden until an eligible program is chosen). Only the two allowed
+            // values are accepted; anything else is rejected outright.
+            'ladderized' => ['nullable', 'in:0,1'],
         ]);
 
         if (User::query()->where('student_number', trim($validated['student_number']))->exists()) {
@@ -535,8 +558,16 @@ class StudentIdpLoginController extends Controller
             ]);
         }
 
+        // The server decides whether the chosen program supports the ladderized
+        // track. A forged "ladderized=1" for an ineligible program is discarded
+        // here, never persisted. Missing/omitted values default to 0.
+        $ladderized = $this->resolveLadderizedSelection(
+            (int) $validated['program_id'],
+            $validated['ladderized'] ?? null
+        );
+
         try {
-            $student = DB::transaction(function () use ($validated, $profile, $idpSubject, $idpEmail) {
+            $student = DB::transaction(function () use ($validated, $profile, $idpSubject, $idpEmail, $ladderized) {
                 $student = User::create([
                     'idp_subject' => $idpSubject,
                     'idp_email' => $idpEmail ?: null,
@@ -558,7 +589,7 @@ class StudentIdpLoginController extends Controller
                     (int) $validated['program_id'],
                     (int) $validated['year_id'],
                     (int) $validated['section_id'],
-                    0
+                    $ladderized
                 );
                 return $student;
             });
@@ -576,10 +607,10 @@ class StudentIdpLoginController extends Controller
     }
 
     /** Bind the verified IDP identity to one existing, unlinked student record. */
-    protected function bindExistingStudent(Request $request, User $candidate, string $idpSubject, string $email, array $profile): RedirectResponse
+    protected function bindExistingStudent(Request $request, User $candidate, string $idpSubject, string $email, array $profile, array $academicData = []): RedirectResponse
     {
         try {
-            $student = DB::transaction(function () use ($candidate, $idpSubject, $email, $profile) {
+            $student = DB::transaction(function () use ($candidate, $idpSubject, $email, $profile, $academicData) {
                 $student = User::query()->whereKey($candidate->user_id)->lockForUpdate()->firstOrFail();
                 if (! $this->userIsStudent($student) || ! $student->isActiveAccount()) {
                     throw new \RuntimeException('The selected student account is not eligible for linking.');
@@ -590,6 +621,60 @@ class StudentIdpLoginController extends Controller
                 if (User::query()->where('idp_subject', $idpSubject)->where('user_id', '!=', $student->user_id)->exists()) {
                     throw new \RuntimeException('This IDP identity is already linked to another student record.');
                 }
+                if ($academicData !== []) {
+                    $studentNumber = trim((string) $academicData['student_number']);
+                    $duplicateNumber = User::query()
+                        ->where('student_number', $studentNumber)
+                        ->where('user_id', '!=', $student->user_id)
+                        ->exists();
+
+                    if ($duplicateNumber) {
+                        throw new \RuntimeException('The submitted student number is already assigned to another account.');
+                    }
+
+                    $previousStudentNumber = trim((string) $student->student_number);
+                    $student->student_number = $studentNumber;
+                    $student->saveOrFail();
+
+                    // Backfill legacy violation rows to the immutable local user_id.
+                    if (Schema::hasTable('violation_tbl') && Schema::hasColumn('violation_tbl', 'user_id')) {
+                        DB::table('violation_tbl')
+                            ->whereNull('user_id')
+                            ->where('student_number', $previousStudentNumber)
+                            ->update(['user_id' => $student->user_id]);
+                    }
+
+                    // Keep the current student number synchronized as a
+                    // display snapshot. Ownership remains anchored to user_id;
+                    // only THIS account's records are touched.
+                    app(\App\Services\StudentProfileSyncService::class)
+                        ->synchronizeStudentNumber(
+                            $student,
+                            $studentNumber,
+                            $previousStudentNumber
+                        );
+
+                    $ladderized = $this->resolveLadderizedSelection(
+                        (int) $academicData['program_id'],
+                        $academicData['ladderized'] ?? null
+                    );
+
+                    $studentInfoData = [
+                        'program_id' => (int) $academicData['program_id'],
+                        'year_id' => (int) $academicData['year_id'],
+                        'section_id' => (int) $academicData['section_id'],
+                    ];
+
+                    if (Schema::hasColumn('student_info_tbl', 'ladderized')) {
+                        $studentInfoData['ladderized'] = $ladderized;
+                    }
+
+                    $student->studentInfo()->updateOrCreate(
+                        ['user_id' => $student->user_id],
+                        $studentInfoData
+                    );
+                }
+
                 $this->persistIdpBinding($student, $idpSubject, $email, $profile);
                 $student->refresh();
                 if ((string) $student->idp_subject !== $idpSubject) {
@@ -652,14 +737,15 @@ class StudentIdpLoginController extends Controller
             'student.idp.pending_year_id',
         ]);
 
-Auth::guard('student')->login($student);
-$request->session()->regenerate();
+        // Student IDP is the authentication provider; do not start local MFA.
+        Auth::guard('student')->login($student, false);
+        $request->session()->regenerate();
 
-EnforceInactivityTimeout::startFreshActivityWindow($request);
+        // Show the privacy and terms modal after every successful login.
         $request->session()->put('show_privacy_consent_modal', true);
 
-        return redirect()->route('student.dashboard')
-            ->with('success', 'Your existing student record has been linked successfully. You may now access PUPTracker.');
+        return redirect()->route('student.dashboard');
+
     }
 
     /**
@@ -936,6 +1022,11 @@ EnforceInactivityTimeout::startFreshActivityWindow($request);
         }
 
         $user->forceFill($changes)->saveOrFail();
+
+        // Refresh the IDP-owned identity fields on EVERY successful binding /
+        // login so Admin, Security, OSS Staff and the Student module read the
+        // latest canonical profile through the User relationship.
+        $this->syncIdentityFromIdp($user, $profile);
     }
 
     /**

@@ -22,7 +22,6 @@
     <link rel="stylesheet" href="{{ asset('css/portal.css') }}">
     <link rel="stylesheet" href="{{ asset('css/module-dashboard-ui.css') }}">
     <link rel="stylesheet" href="{{ asset('css/user-menu.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/security-ui-fixes.css') }}">
     <link rel="stylesheet" href="{{ asset('css/inactivity-timeout.css') }}">
 
     @stack('styles')

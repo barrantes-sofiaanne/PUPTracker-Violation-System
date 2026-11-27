@@ -131,7 +131,7 @@
                                 <div class="row g-2">
                                     <div class="col-md-4">
                                         <label class="admin-filter-label">Program</label>
-                                        <select name="filter_program_id" class="form-select">
+                                        <select name="filter_program_id" class="form-select" data-ladderized-programs='@json($ladderizedProgramIds ?? [])'>
                                             <option value="">All Programs</option>
                                             @foreach($programs as $program)
                                                 <option value="{{ $program->program_id }}" {{ (string) request('filter_program_id') === (string) $program->program_id ? 'selected' : '' }}>
@@ -184,7 +184,7 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="col-md-2 {{ in_array(strtoupper(optional($programs->firstWhere('program_id', request('filter_program_id')))->program_name ?? ''), ['BSIT','BSOA'], true) ? '' : 'd-none' }}" id="filterLadderizedWrap">
+                                    <div class="col-md-2 {{ in_array((int) request('filter_program_id'), $ladderizedProgramIds ?? [], true) ? '' : 'd-none' }}" id="filterLadderizedWrap">
                                         <label class="admin-filter-label">Ladderized</label>
                                         <select name="filter_ladderized" class="form-select">
                                             <option value="">All</option>
@@ -212,7 +212,7 @@
                                     <th>Student Number</th>
                                     <th>Last Name</th>
                                     <th>First Name</th>
-                                    <th>Middle Name</th>
+                                    <th>Middle Initials</th>
                                     <th>Email</th>
                                     <th>Program</th>
                                     <th>Year</th>
@@ -257,10 +257,19 @@
                                         <td class="text-end user-action-cell">
 <div class="user-action-group">
 
+    <a
+        href="{{ route('admin.students.show', $student->user_id) }}"
+        class="admin-btn admin-btn-neutral admin-btn-sm user-action-btn"
+        title="Open the student record to manage the PUP IDP link."
+    >
+        <i class="bi bi-person-badge me-1"></i>
+        IDP
+    </a>
+
     <button
-        <button
-    class="admin-btn admin-btn-view admin-btn-sm user-action-btn editStudentBtn"
-    data-id="{{ $student->user_id }}"
+        class="admin-btn admin-btn-view admin-btn-sm user-action-btn editStudentBtn"
+        data-id="{{ $student->user_id }}"
+        data-number="{{ $student->student_number }}"
         data-first="{{ $student->first_name }}"
         data-middle="{{ $student->middle_name }}"
         data-last="{{ $student->last_name }}"
@@ -278,13 +287,14 @@
     </button>
 
 <button
+    type="button"
     class="admin-btn admin-btn-danger admin-btn-sm user-action-btn deleteStudentBtn"
-    data-id="{{ $student->user_id }}"
-    data-name="{{ $student->first_name }} {{ $student->last_name }}"
+    data-user-id="{{ $student->user_id }}"
+    data-name="{{ trim($student->first_name . ' ' . $student->last_name) }}"
 >
-        <i class="bi bi-trash me-1"></i>
-        Delete
-    </button>
+    <i class="bi bi-trash me-1"></i>
+    Delete
+</button>
 
 </div>
                                         </td>
@@ -557,7 +567,10 @@
             @csrf
             <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="createStudentModalLabel">Create Student Account</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
             <div class="modal-body admin-modal-body"><div class="row g-3">
-                <div class="col-md-6"><label class="form-label">Student Number <span class="required-asterisk">*</span></label><input name="student_number" class="form-control" required value="{{ old('student_number') }}"></div>
+                <div class="col-md-6">
+                    <label class="form-label">Student Number <span class="text-muted small fw-normal">(optional)</span></label>
+                    <input name="student_number" class="form-control" maxlength="15" placeholder="Leave blank if not yet assigned" value="{{ old('student_number') }}">
+                </div>
                 <div class="col-md-6"><label class="form-label">Gender <span class="required-asterisk">*</span></label><select name="gender_id" class="form-select" required>@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
 
                 {{-- Identity fields.
@@ -566,11 +579,21 @@
                      Only EMAIL is exclusively IDP-provided, so it is not an input
                      here at all. --}}
                 <div class="col-md-6"><label class="form-label">First Name <span class="required-asterisk">*</span></label><input name="first_name" class="form-control" required value="{{ old('first_name') }}"></div>
-                <div class="col-md-6"><label class="form-label">Middle Name</label><input name="middle_name" class="form-control" value="{{ old('middle_name') }}"></div>
+                <div class="col-md-6"><label class="form-label">Middle Initials</label><input name="middle_name" class="form-control" value="{{ old('middle_name') }}"></div>
                 <div class="col-md-6"><label class="form-label">Last Name <span class="required-asterisk">*</span></label><input name="last_name" class="form-control" required value="{{ old('last_name') }}"></div>
                 <div class="col-md-6"><label class="form-label">Name Suffix</label><input name="name_suffix" class="form-control" placeholder="e.g. Jr., III" value="{{ old('name_suffix') }}"></div>
 
-                <div class="col-md-6"><label class="form-label">Program <span class="required-asterisk">*</span></label><select name="program_id" class="form-select" required onchange="toggleLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
+                <div class="col-md-6">
+                    <label class="form-label">Program <span class="required-asterisk">*</span></label>
+                    <select
+                        name="program_id"
+                        class="form-select"
+                        required
+                        data-ladderized-programs='@json($ladderizedProgramIds ?? [])'
+                        onchange="toggleLadderizedField(this)">
+                        @foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach
+                    </select>
+                </div>
                 <div class="col-md-3"><label class="form-label">Year <span class="required-asterisk">*</span></label><select name="year_id" class="form-select" required>@foreach($years as $year)<option value="{{ $year->year_id }}">{{ $year->year }}</option>@endforeach</select></div>
                 <div class="col-md-3"><label class="form-label">Section <span class="required-asterisk">*</span></label><select name="section_id" class="form-select" required>@foreach($sections as $section)<option value="{{ $section->section_id }}">{{ $section->section_name }}</option>@endforeach</select></div>
                 <div class="col-md-6"><label class="form-label">Status <span class="required-asterisk">*</span></label><select name="status_id" class="form-select" required>@foreach($statuses as $status)<option value="{{ $status->status_id }}">{{ $status->status_name }}</option>@endforeach</select></div>
@@ -588,7 +611,7 @@
                 <div class="col-12">
                     <div class="alert alert-info small mb-0 py-2">
                         <i class="bi bi-info-circle me-1"></i>
-                        The student's <strong>email</strong> is provided by the PUP IDP and is stored when the student links their PUP IDP account. Authentication and passwords are also managed by the PUP Identity Provider (IDP) — no local password is required. The name and enrollment details above are stored on the student's PUPTracker record.
+                        The student's <strong>email</strong> is provided  by the PUP IDP and is stored when the student links their PUP IDP account.
                     </div>
                 </div>
             </div></div>
@@ -605,7 +628,7 @@
             <div class="modal-body admin-modal-body"><div class="row g-3">
                 <div class="col-12"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" class="form-control" required></div>
-                <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" class="form-control"></div>
+                <div class="col-md-4"><label class="form-label">Middle Initials</label><input name="middlename" class="form-control"></div>
                 <div class="col-md-4"><label class="form-label">Last Name <span class="required-asterisk">*</span></label><input name="lastname" class="form-control" required></div>
                 <div class="col-md-4"><label class="form-label">Suffix</label><input name="name_suffix" class="form-control" maxlength="20" placeholder="e.g. Jr., Sr., III"></div>
                 <div class="col-md-6">
@@ -671,7 +694,7 @@
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label">Middle Name</label>
+                            <label class="form-label">Middle Initials</label>
                             <input name="middlename" class="form-control">
                         </div>
 
@@ -724,13 +747,13 @@
     <form id="editStudentForm" method="POST">@csrf @method('PUT')
         <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="editStudentModalLabel">Edit Student</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
         <div class="modal-body admin-modal-body"><div class="row g-3">
-            <div class="col-md-6"><label class="form-label">Student Number</label><input id="student_number" class="form-control" readonly></div>
+            <div class="col-md-6"><label class="form-label">Student Number</label><input id="student_number" name="student_number" class="form-control" maxlength="15" placeholder="Optional"></div>
             <div class="col-md-4"><label class="form-label">First Name</label><input type="text" id="first_name" class="form-control" readonly></div>
-            <div class="col-md-4"><label class="form-label">Middle Name</label><input type="text" id="middle_name" class="form-control" readonly></div>
+            <div class="col-md-4"><label class="form-label">Middle Initials</label><input type="text" id="middle_name" class="form-control" readonly></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input type="text" id="last_name" class="form-control" readonly></div>
             <div class="col-md-4"><label class="form-label">Name Suffix</label><input type="text" id="name_suffix" class="form-control" placeholder="—" readonly></div>
             <div class="col-md-4"><label class="form-label">Email</label><input type="email" id="email" class="form-control" readonly></div>
-            <div class="col-md-4"><label class="form-label">Program</label><select name="program_id" id="program_id" class="form-select" onchange="toggleEditLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
+            <div class="col-md-4"><label class="form-label">Program</label><select name="program_id" id="program_id" class="form-select" data-ladderized-programs='@json($ladderizedProgramIds ?? [])' onchange="toggleEditLadderizedField(this)">@foreach($programs as $program)<option value="{{ $program->program_id }}">{{ $program->program_name }}</option>@endforeach</select></div>
 <div class="col-md-6">
     <label for="year_id" class="form-label">Year</label>
     <select name="year_id" id="year_id" class="form-select" required>
@@ -779,7 +802,7 @@
         <div class="modal-body"><div class="row g-3">
             <div class="col-12"><label class="form-label">Email</label><input name="email" id="admin_email" type="email" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="admin_firstname" class="form-control" required></div>
-            <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" id="admin_middlename" class="form-control"></div>
+            <div class="col-md-4"><label class="form-label">Middle Initials</label><input name="middlename" id="admin_middlename" class="form-control"></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" id="admin_lastname" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">Suffix</label><input name="name_suffix" id="admin_name_suffix" class="form-control" maxlength="20" placeholder="e.g. Jr., Sr., III"></div>
             <div class="col-md-6">
@@ -810,7 +833,7 @@
         <div class="modal-body admin-modal-body"><div class="row g-3">
             <div class="col-12"><label class="form-label">Email</label><input name="email" id="security_email" type="email" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">First Name</label><input name="firstname" id="security_firstname" class="form-control" required></div>
-            <div class="col-md-4"><label class="form-label">Middle Name</label><input name="middlename" id="security_middlename" class="form-control"></div>
+            <div class="col-md-4"><label class="form-label">Middle Initials</label><input name="middlename" id="security_middlename" class="form-control"></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input name="lastname" id="security_lastname" class="form-control" required></div>
             <div class="col-md-4"><label class="form-label">Suffix</label><input name="name_suffix" id="security_name_suffix" class="form-control" maxlength="20" placeholder="e.g. Jr., Sr., III"></div>
             <div class="col-md-6"><label class="form-label">Position</label><input name="position" id="security_position" class="form-control" value="Security Personnel" readonly tabindex="-1"></div>
@@ -889,7 +912,7 @@
     
 document.querySelectorAll('.editStudentBtn').forEach(function (button) {
     button.addEventListener('click', function () {
-        document.getElementById('student_number').value = this.dataset.id;
+        document.getElementById('student_number').value = this.dataset.number || '';
         document.getElementById('first_name').value = this.dataset.first;
         document.getElementById('middle_name').value = this.dataset.middle;
         document.getElementById('last_name').value = this.dataset.last;
@@ -918,17 +941,50 @@ document.getElementById('editStudentForm').action =
     });
 });
 
-// Show the Ladderized radio group only for BSOA / BSIT programs (create modal).
+// Ladderized program ids come from the SAME server-side rules that validate
+// the submission (App\Support\Student\LadderizedPrograms), so the UI can never
+// offer the option for a program the server would reject.
+function ladderizedProgramIds(selectEl) {
+    if (!selectEl) {
+        return [];
+    }
+
+    try {
+        const parsed = JSON.parse(selectEl.dataset.ladderizedPrograms || '[]');
+        return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+// Show the Ladderized radio group only for programs that offer the track
+// (create modal).
 function toggleLadderizedField(selectEl) {
     const wrap = document.getElementById('createLadderizedWrap');
     if (!wrap || !selectEl) {
         return;
     }
-    const label = (selectEl.selectedOptions[0] || {}).textContent || '';
-    const isLadderizable = /BSOA|BSIT/i.test(label);
+
+    const wasHidden = wrap.classList.contains('d-none');
+    const isLadderizable = ladderizedProgramIds(selectEl).includes(String(selectEl.value));
+
     wrap.classList.toggle('d-none', !isLadderizable);
-    if (isLadderizable) {
-        document.getElementById('createLadderizedNo').checked = true;
+
+    const yes = document.getElementById('createLadderizedYes');
+    const no = document.getElementById('createLadderizedNo');
+
+    if (!isLadderizable) {
+        // A non-ladderized program always stores 0.
+        if (no) {
+            no.checked = true;
+        }
+        return;
+    }
+
+    // Only the FIRST reveal picks a default; a choice the administrator has
+    // already made is never overwritten.
+    if (wasHidden && yes && no && !yes.checked && !no.checked) {
+        no.checked = true;
     }
 }
 
@@ -938,12 +994,19 @@ function toggleEditLadderizedField(selectEl) {
     if (!wrap || !selectEl) {
         return;
     }
-    const label = (selectEl.selectedOptions[0] || {}).textContent || '';
-    const isLadderizable = /BSOA|BSIT/i.test(label);
+
+    const isLadderizable = ladderizedProgramIds(selectEl).includes(String(selectEl.value));
     wrap.classList.toggle('d-none', !isLadderizable);
+
+    if (!isLadderizable) {
+        const no = document.getElementById('editLadderizedNo');
+        if (no) {
+            no.checked = true;
+        }
+    }
 }
 
-// Show the Ladderized filter only when the selected program is BSIT/BSOA.
+// Show the Ladderized filter only when the selected program offers the track.
 (function initLadderizedFilterToggle() {
     const programSelect = document.querySelector('select[name="filter_program_id"]');
     const ladderizedWrap = document.getElementById('filterLadderizedWrap');
@@ -952,8 +1015,7 @@ function toggleEditLadderizedField(selectEl) {
     }
 
     function updateLadderizedFilterVisibility() {
-        const label = (programSelect.selectedOptions[0] || {}).textContent || '';
-        const isLadderizable = /BSOA|BSIT/i.test(label);
+        const isLadderizable = ladderizedProgramIds(programSelect).includes(String(programSelect.value));
         ladderizedWrap.classList.toggle('d-none', !isLadderizable);
         if (!isLadderizable) {
             const select = ladderizedWrap.querySelector('select[name="filter_ladderized"]');
@@ -965,16 +1027,37 @@ function toggleEditLadderizedField(selectEl) {
     updateLadderizedFilterVisibility();
 })();
 
+// Reflect the initially-selected program when the Create Student modal opens.
+(function initCreateLadderizedState() {
+    const createProgram = document.querySelector('#createStudentModal select[name="program_id"]');
+    if (createProgram) {
+        toggleLadderizedField(createProgram);
+    }
+})();
+
 document.querySelectorAll('.deleteStudentBtn').forEach(function (button) {
     button.addEventListener('click', function () {
-        document.getElementById('studentDeleteName').textContent = this.dataset.name;
 
-        const deleteUrlTemplate = @json(route('admin.students.destroy', ['user_id' => '__USER_ID__']));
+        const userId = this.dataset.userId;
 
-        document.getElementById('deleteStudentForm').action =
-            deleteUrlTemplate.replace('__USER_ID__', encodeURIComponent(this.dataset.id));
+        if (!userId || !/^\d+$/.test(userId)) {
+            console.error('Invalid student user_id:', userId);
 
-        new bootstrap.Modal(document.getElementById('deleteStudentModal')).show();
+            alert('Unable to identify this student account. Please refresh the page and try again.');
+            return;
+        }
+
+        const deleteForm = document.getElementById('deleteStudentForm');
+
+        document.getElementById('studentDeleteName').textContent =
+            this.dataset.name || 'Selected Student';
+
+        deleteForm.action =
+            "{{ url('/admin/students') }}/" + encodeURIComponent(userId);
+
+        new bootstrap.Modal(
+            document.getElementById('deleteStudentModal')
+        ).show();
     });
 });
 
@@ -1038,8 +1121,8 @@ const importTemplateBaseUrl = "{{ route('admin.users.import.template') }}";
 const importAccountsModal = document.getElementById('importAccountsModal');
 const importGuides = {
     student_create_activate: {
-        columns: ['student_number', 'email', 'first_name', 'middle_name', 'last_name', 'name_suffix', 'program', 'year', 'section', 'gender', 'ladderized'],
-        help: 'Use the downloaded Excel template dropdowns for program, year, section, gender, and ladderized. Student number, section, and gender may be left blank temporarily. Email, first name, last name, program, and year are required.',
+        columns: ['student_number', 'first_name', 'middle_name', 'last_name', 'name_suffix', 'program', 'year', 'section', 'gender', 'ladderized'],
+        help: 'Use the downloaded Excel template dropdowns for program, year, section, gender, and ladderized. Student number, section, and gender may be left blank temporarily. Do not enter an email; the verified email is supplied by the PUP IDP when the student links their account. Provide the student name so the IDP can match the imported record.',
     },
     student_deactivate_students: {
         columns: ['student_number'],

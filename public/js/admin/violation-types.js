@@ -76,8 +76,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 result.violation_description || "";
             document.getElementById("resolution_number").value =
                 result.resolution_number || "";
-            document.getElementById("severity_level").value =
-                result.severity_level || "1";
             document.getElementById("violationTypeModalLabel").textContent =
                 "Edit Violation Type";
 
@@ -186,8 +184,6 @@ async function saveViolationType() {
 
         violation_description: document.getElementById("violation_description")
             .value,
-
-        severity_level: document.getElementById("severity_level").value,
     };
 
     let url = window.ViolationRoutes.typeStore;

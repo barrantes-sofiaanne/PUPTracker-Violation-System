@@ -336,7 +336,7 @@ background: #800000;
                     </div>
                     <div class="student-info">
                         <div class="student-name">
-                            {{ $student->student_number }} - {{ $student->last_name }}, {{ $student->first_name }}
+                            {{ $student->student_number ?: 'No student number' }} - {{ $student->formal_name ?: 'Name unavailable' }}
                         </div>
                         <div class="student-meta">
                             <i class="bi bi-building"></i> {{ optional(optional($student->studentInfo)->program)->program_name ?? 'N/A' }}

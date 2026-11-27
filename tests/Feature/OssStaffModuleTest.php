@@ -384,17 +384,277 @@ class OssStaffModuleTest extends TestCase
     }
 
     // ==================================================================
+    // user_id-based student management + profile combinations
+    // ==================================================================
+
+    /**
+     * The listing renders students whose student number is NULL/empty and links
+     * each one to the record by ACCOUNT ID.
+     */
+    public function test_oss_staff_student_listing_works_without_a_student_number(): void
+    {
+        $ossStaff = $this->createAdmin('oss@example.com', 'OSS Staff');
+
+        $withNumber = $this->createStudent('2024-0001');
+        $nullNumber = $this->createStudent(null);
+        $emptyNumber = $this->createStudent('');
+
+        foreach ([$withNumber, $nullNumber, $emptyNumber] as $student) {
+            $this->createOssViolation($ossStaff, $student, Violation::STATUS_CONFIRMED, 'Listed record.');
+        }
+
+        $html = $this->actingAs($ossStaff, 'admin')
+            ->get(route('oss-staff.violations.students'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('2024-0001', $html);
+        $this->assertStringContainsString('No student number', $html);
+
+        foreach ([$withNumber, $nullNumber, $emptyNumber] as $student) {
+            $this->assertStringContainsString(
+                route('oss-staff.violations.show', $student->user_id),
+                $html,
+                'Every student card must link to the record by account id.'
+            );
+        }
+    }
+
+    /** The detail page resolves a student by account id (number may be NULL). */
+    public function test_oss_staff_student_record_resolves_by_account_id_without_a_student_number(): void
+    {
+        $ossStaff = $this->createAdmin('oss@example.com', 'OSS Staff');
+        $student = $this->createStudent(null, firstName: null, lastName: null);
+
+        $this->createOssViolation($ossStaff, $student, Violation::STATUS_CONFIRMED, 'Numberless record.');
+
+        $html = $this->actingAs($ossStaff, 'admin')
+            ->get(route('oss-staff.violations.show', $student->user_id))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Numberless record.', $html);
+        $this->assertStringContainsString('No student number', $html);
+        $this->assertStringContainsString('Name unavailable', $html);
+    }
+
+    /** Two students with NULL numbers never share a record/history. */
+    public function test_oss_staff_student_records_do_not_mix_for_null_student_numbers(): void
+    {
+        $ossStaff = $this->createAdmin('oss@example.com', 'OSS Staff');
+        $first = $this->createStudent(null);
+        $second = $this->createStudent(null);
+
+        $this->createOssViolation($ossStaff, $first, Violation::STATUS_CONFIRMED, 'Alpha only');
+        $this->createOssViolation($ossStaff, $second, Violation::STATUS_CONFIRMED, 'Beta only');
+
+        $html = $this->actingAs($ossStaff, 'admin')
+            ->get(route('oss-staff.violations.show', $first->user_id))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Alpha only', $html);
+        $this->assertStringNotContainsString('Beta only', $html);
+    }
+
+    /** Counts are per account id, not per student number. */
+    public function test_oss_staff_student_record_counts_violations_by_account_id(): void
+    {
+        $ossStaff = $this->createAdmin('oss@example.com', 'OSS Staff');
+        $student = $this->createStudent('2024-0001');
+        $other = $this->createStudent('2024-0002');
+
+        $this->createOssViolation($ossStaff, $student, Violation::STATUS_CONFIRMED, 'One.');
+        $this->createOssViolation($ossStaff, $student, Violation::STATUS_CONFIRMED, 'Two.');
+        $this->createOssViolation($ossStaff, $student, Violation::STATUS_PENDING, 'Pending.');
+        $this->createOssViolation($ossStaff, $other, Violation::STATUS_CONFIRMED, 'Someone else.');
+
+        $html = $this->actingAs($ossStaff, 'admin')
+            ->get(route('oss-staff.violations.show', $student->user_id))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('<div class="stat-mini-value">2</div>', $html);
+        $this->assertStringNotContainsString('Someone else.', $html);
+    }
+
+    /** A student without records still has a working, zero-count page. */
+    public function test_oss_staff_student_record_loads_when_there_are_no_violations(): void
+    {
+        $ossStaff = $this->createAdmin('oss@example.com', 'OSS Staff');
+        $student = $this->createStudent('2024-0001');
+
+        $html = $this->actingAs($ossStaff, 'admin')
+            ->get(route('oss-staff.violations.show', $student->user_id))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('<div class="stat-mini-value">0</div>', $html);
+    }
+
+    /** An unknown account id is a 404. */
+    public function test_oss_staff_student_record_returns_404_for_an_unknown_account_id(): void
+    {
+        $ossStaff = $this->createAdmin('oss@example.com', 'OSS Staff');
+
+        $this->actingAs($ossStaff, 'admin')
+            ->get(route('oss-staff.violations.show', 99999))
+            ->assertNotFound();
+    }
+
+    /** The detail route no longer accepts a student number as its key. */
+    public function test_oss_staff_student_record_is_not_addressable_by_student_number(): void
+    {
+        $ossStaff = $this->createAdmin('oss@example.com', 'OSS Staff');
+        $this->createStudent('2024-0001');
+
+        $this->actingAs($ossStaff, 'admin')
+            ->get('/oss-staff/violations/student/2024-0001')
+            ->assertNotFound();
+    }
+
+    /**
+     * Profile combinations A–G record successfully through the account id, keep
+     * the pending admin-review workflow, and never modify the student row.
+     */
+    public function test_oss_staff_recording_works_for_incomplete_student_profiles(): void
+    {
+        $ossStaff = $this->createAdmin('oss@example.com', 'OSS Staff');
+
+        $profiles = [
+            'A: complete' => ['student_number' => '2024-0001', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz'],
+            'B: null number' => ['student_number' => null, 'first_name' => 'Juan', 'last_name' => 'Dela Cruz'],
+            'C: empty number' => ['student_number' => '', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz'],
+            'D: first name only' => ['student_number' => null, 'first_name' => 'Juan', 'last_name' => null],
+            'E: last name only' => ['student_number' => null, 'first_name' => null, 'last_name' => 'Dela Cruz'],
+            'F: incomplete name' => ['student_number' => null, 'first_name' => 'J', 'last_name' => ''],
+            'G: no name at all' => ['student_number' => null, 'first_name' => null, 'last_name' => null],
+        ];
+
+        foreach ($profiles as $label => $attributes) {
+            $student = User::create(array_merge([
+                'email' => 'profile-' . uniqid() . '@example.com',
+                'roles_id' => DB::table('roles_tbl')->where('roles_name', 'Student')->value('roles_id'),
+                'status_id' => DB::table('status_tbl')->where('status_name', 'Active')->value('status_id'),
+            ], $attributes));
+
+            $this->actingAs($ossStaff, 'admin')
+                ->postJson(route('oss-staff.violations.store'), [
+                    'user_id' => $student->user_id,
+                    'violation_type_id' => 1,
+                    'violation_date' => now()->toDateString(),
+                    'description' => 'Profile case: ' . $label,
+                ])
+                ->assertOk()
+                ->assertJson(['success' => true]);
+
+            $violation = Violation::where('description', 'Profile case: ' . $label)->firstOrFail();
+
+            $this->assertSame((int) $student->user_id, (int) $violation->user_id, "Wrong account for {$label}");
+            $this->assertSame($attributes['student_number'], $violation->student_number, "Number not preserved for {$label}");
+            $this->assertSame('admin', $violation->recorder_type);
+            $this->assertSame($ossStaff->id, (int) $violation->recorder_id);
+            $this->assertSame(Violation::STATUS_PENDING, $violation->status);
+
+            $fresh = $student->fresh();
+            $this->assertSame($attributes['student_number'], $fresh->student_number);
+            $this->assertSame($attributes['first_name'], $fresh->first_name);
+            $this->assertSame($attributes['last_name'], $fresh->last_name);
+        }
+    }
+
+    /** Negative validation still rejects incomplete submissions. */
+    public function test_oss_staff_store_rejects_empty_account_and_missing_required_fields(): void
+    {
+        $ossStaff = $this->createAdmin('oss@example.com', 'OSS Staff');
+        $student = $this->createStudent('2024-0001');
+
+        $base = [
+            'violation_type_id' => 1,
+            'violation_date' => now()->toDateString(),
+            'description' => 'Negative case.',
+        ];
+
+        // Empty user_id.
+        $this->actingAs($ossStaff, 'admin')
+            ->postJson(route('oss-staff.violations.store'), $base)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('user_id');
+
+        // Nonexistent user_id.
+        $this->actingAs($ossStaff, 'admin')
+            ->postJson(route('oss-staff.violations.store'), array_merge($base, ['user_id' => 99999]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('user_id');
+
+        foreach ([
+            'violation_type_id' => null,
+            'violation_date' => null,
+            'description' => '',
+        ] as $field => $value) {
+            $this->actingAs($ossStaff, 'admin')
+                ->postJson(route('oss-staff.violations.store'), array_merge($base, [
+                    'user_id' => $student->user_id,
+                    $field => $value,
+                ]))
+                ->assertStatus(422)
+                ->assertJsonValidationErrors($field);
+        }
+
+        $this->assertSame(0, Violation::count());
+    }
+
+    /** An inactive student account is still refused. */
+    public function test_oss_staff_store_rejects_an_inactive_student_account(): void
+    {
+        $ossStaff = $this->createAdmin('oss@example.com', 'OSS Staff');
+        $student = $this->createStudent('2024-0001');
+        $student->update([
+            'status_id' => DB::table('status_tbl')->where('status_name', 'Inactive')->value('status_id'),
+        ]);
+
+        $this->actingAs($ossStaff, 'admin')
+            ->postJson(route('oss-staff.violations.store'), [
+                'user_id' => $student->user_id,
+                'violation_type_id' => 1,
+                'violation_date' => now()->toDateString(),
+                'description' => 'Inactive account.',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('user_id');
+
+        $this->assertSame(0, Violation::count());
+    }
+
+    /** Search returns the account id and degrades gracefully without a number. */
+    public function test_oss_staff_search_returns_the_internal_user_id_without_a_student_number(): void
+    {
+        $ossStaff = $this->createAdmin('oss@example.com', 'OSS Staff');
+        $student = $this->createStudent(null);
+
+        $payload = $this->actingAs($ossStaff, 'admin')
+            ->getJson(route('oss-staff.search.student', ['search' => 'Dela']))
+            ->assertOk()
+            ->json();
+
+        $this->assertNotEmpty($payload);
+        $this->assertSame((int) $student->user_id, (int) $payload[0]['user_id']);
+        $this->assertNull($payload[0]['student_number']);
+        $this->assertSame('Dela Cruz, Juan', $payload[0]['display_name']);
+    }
+
+    // ==================================================================
     // Violation recording records an ADMIN actor
     // ==================================================================
 
     public function test_oss_staff_records_a_violation_as_an_admin_actor(): void
     {
         $ossStaff = $this->createAdmin('oss@example.com', 'OSS Staff');
-        $this->createStudent('2024-0001');
+        $student = $this->createStudent('2024-0001');
 
         $response = $this->actingAs($ossStaff, 'admin')
             ->postJson(route('oss-staff.violations.store'), [
-                'student_number' => '2024-0001',
+                'user_id' => $student->user_id,
                 'violation_type_id' => 1,
                 'violation_date' => now()->toDateString(),
                 'description' => 'Recorded by OSS Staff.',
@@ -402,7 +662,7 @@ class OssStaffModuleTest extends TestCase
 
         $response->assertOk()->assertJson(['success' => true]);
 
-        $violation = Violation::where('student_number', '2024-0001')->firstOrFail();
+        $violation = Violation::where('user_id', $student->user_id)->firstOrFail();
 
         // The actor is the OSS Staff ADMIN account...
         $this->assertSame('admin', $violation->recorder_type);
@@ -578,12 +838,12 @@ class OssStaffModuleTest extends TestCase
         return $admin->fresh();
     }
 
-    private function createStudent(string $studentNumber): User
+    private function createStudent(?string $studentNumber = '2024-0001', ?string $firstName = 'Juan', ?string $lastName = 'Dela Cruz'): User
     {
         $student = User::create([
             'student_number' => $studentNumber,
-            'first_name' => 'Juan',
-            'last_name' => 'Dela Cruz',
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'roles_id' => DB::table('roles_tbl')->where('roles_name', 'Student')->value('roles_id'),
             'status_id' => DB::table('status_tbl')->where('status_name', 'Active')->value('status_id'),
         ]);
@@ -595,6 +855,30 @@ class OssStaffModuleTest extends TestCase
         ]);
 
         return $student;
+    }
+
+    /**
+     * A violation recorded by the given OSS Staff account and linked to the
+     * student's ACCOUNT id (the identity key).
+     */
+    private function createOssViolation(
+        Admin $ossStaff,
+        User $student,
+        string $status = Violation::STATUS_CONFIRMED,
+        string $description = 'Test violation.'
+    ): Violation {
+        return Violation::create([
+            'user_id' => $student->user_id,
+            'student_number' => $student->student_number,
+            'violation_type_id' => 1,
+            'violation_type' => 1,
+            'violation_date' => now(),
+            'description' => $description,
+            'recorder_type' => 'admin',
+            'recorder_id' => $ossStaff->id,
+            'recorder_name' => 'Oss Staff',
+            'status' => $status,
+        ]);
     }
 
     private function seedReferenceData(): void
@@ -668,6 +952,15 @@ class OssStaffModuleTest extends TestCase
                 $table->string('remember_token', 100)->nullable();
                 $table->boolean('mfa_totp_enabled')->default(false);
             },
+            // Required when this suite renders a Security page (the Security
+            // navbar resolves the officer's name through this table).
+            'security_info_tbl' => function (Blueprint $table): void {
+                $table->increments('id');
+                $table->unsignedBigInteger('security_id')->nullable();
+                $table->string('firstname')->nullable();
+                $table->string('middlename')->nullable();
+                $table->string('lastname')->nullable();
+            },
             'users_tbl' => function (Blueprint $table): void {
                 $table->increments('user_id');
                 $table->string('student_number')->nullable();
@@ -723,10 +1016,18 @@ class OssStaffModuleTest extends TestCase
             },
             'violation_tbl' => function (Blueprint $table): void {
                 $table->increments('violation_id');
+                // The student is identified by the internal account id; the
+                // student number is optional (a student may not have one).
+                $table->unsignedInteger('user_id')->nullable();
                 $table->string('student_number')->nullable();
+                $table->unsignedInteger('violation_type_id')->nullable();
                 $table->string('violation_type')->nullable();
                 $table->dateTime('violation_date')->nullable();
                 $table->text('description')->nullable();
+                $table->boolean('identity_verified')->default(false);
+                $table->timestamp('identity_verified_at')->nullable();
+                $table->string('identity_verified_by_type', 30)->nullable();
+                $table->integer('identity_verified_by_id')->nullable();
                 $table->unsignedInteger('recorder_id')->nullable();
                 $table->string('recorder_type')->nullable();
                 $table->string('recorder_name')->nullable();

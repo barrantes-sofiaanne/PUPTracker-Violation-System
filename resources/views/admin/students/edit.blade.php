@@ -16,21 +16,21 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <form method="POST" action="{{ route('admin.students.update', $student->student_number) }}" data-submit-guard="Saving...">
+            <form method="POST" action="{{ route('admin.students.update', $student->user_id) }}" data-submit-guard="Saving...">
                 @csrf
                 @method('PUT')
 
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Student Number</label>
-                        <input type="text" class="form-control" value="{{ $student->student_number }}" readonly>
+                        <input type="text" name="student_number" class="form-control" maxlength="15" placeholder="Optional" value="{{ old('student_number', $student->student_number) }}">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">First Name</label>
                         <input type="text" class="form-control" value="{{ $student->first_name ?? '—' }}" readonly>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Middle Name</label>
+                        <label class="form-label">Middle Initials</label>
                         <input type="text" class="form-control" value="{{ $student->middle_name ?? '—' }}" readonly>
                     </div>
                     <div class="col-md-3">

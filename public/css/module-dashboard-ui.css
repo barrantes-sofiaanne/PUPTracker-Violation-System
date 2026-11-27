@@ -1926,7 +1926,8 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
 
 /* Dashboard title left / Philippine time right on desktop. */
 @media (min-width: 768px) {
-    .module-security .dashboard-hero-grid {
+    .module-security .dashboard-hero-grid,
+    .module-oss .dashboard-hero-grid {
         display: grid !important;
         grid-template-columns: minmax(0, 1fr) max-content;
         align-items: center;
@@ -1935,7 +1936,8 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
         flex-wrap: nowrap !important;
     }
 
-    .module-security .dashboard-hero-grid > div:first-child {
+    .module-security .dashboard-hero-grid > div:first-child,
+    .module-oss .dashboard-hero-grid > div:first-child {
         min-width: 0;
     }
 
@@ -1945,7 +1947,8 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
         overflow-wrap: anywhere;
     }
 
-    .module-security .dashboard-time-wrap {
+    .module-security .dashboard-time-wrap,
+    .module-oss .dashboard-time-wrap {
         width: max-content;
         max-width: 100%;
         min-width: 0 !important;
@@ -1953,11 +1956,13 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
         text-align: right;
     }
 
-    .module-security .dashboard-time-label {
+    .module-security .dashboard-time-label,
+    .module-oss .dashboard-time-label {
         color: rgba(255, 255, 255, 0.86) !important;
     }
 
-    .module-security .dashboard-time-value {
+    .module-security .dashboard-time-value,
+    .module-oss .dashboard-time-value {
         color: #fff !important;
         background: rgba(255, 255, 255, 0.14) !important;
         border-color: rgba(255, 255, 255, 0.28) !important;
@@ -2054,20 +2059,23 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
     }
 
     /* On phones, put dashboard time below the title to avoid squeezing it. */
-    .module-security .dashboard-hero-grid {
+    .module-security .dashboard-hero-grid,
+    .module-oss .dashboard-hero-grid {
         display: flex !important;
         flex-direction: column;
         align-items: flex-start;
         gap: 0.9rem;
     }
 
-    .module-security .dashboard-time-wrap {
+    .module-security .dashboard-time-wrap,
+    .module-oss .dashboard-time-wrap {
         width: 100%;
         min-width: 0 !important;
         text-align: left;
     }
 
-    .module-security .dashboard-time-value {
+    .module-security .dashboard-time-value,
+    .module-oss .dashboard-time-value {
         display: inline-flex;
         flex-wrap: wrap;
         max-width: 100%;
@@ -2080,8 +2088,10 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
 }
 
 /* Violations header: prevent invisible title / awkwardly stacked actions.
-   At mobile widths the title is visible first, then action buttons fill width. */
-.module-security #violationsPageHeader .violations-header-row {
+   At mobile widths the title is visible first, then action buttons fill width.
+   OSS Staff shares the markup (same ids) so the same rules apply. */
+.module-security #violationsPageHeader .violations-header-row,
+.module-oss #violationsPageHeader .violations-header-row {
     display: flex !important;
     flex-direction: column;
     align-items: stretch;
@@ -2089,26 +2099,30 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
     min-width: 0;
 }
 
-.module-security #violationsPageHeader .violations-header-text {
+.module-security #violationsPageHeader .violations-header-text,
+.module-oss #violationsPageHeader .violations-header-text {
     display: block;
     flex: 1 1 auto;
     min-width: 0;
 }
 
-.module-security #violationsPageHeader #violationsHeaderTitle {
+.module-security #violationsPageHeader #violationsHeaderTitle,
+.module-oss #violationsPageHeader #violationsHeaderTitle {
     display: block;
     color: #fff !important;
     line-height: 1.15;
     overflow-wrap: anywhere;
 }
 
-.module-security #violationsPageHeader #violationsHeaderSubtitle {
+.module-security #violationsPageHeader #violationsHeaderSubtitle,
+.module-oss #violationsPageHeader #violationsHeaderSubtitle {
     display: block;
     color: rgba(255, 255, 255, 0.92) !important;
     line-height: 1.45;
 }
 
-.module-security #violationsPageHeader .violations-header-actions {
+.module-security #violationsPageHeader .violations-header-actions,
+.module-oss #violationsPageHeader .violations-header-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -2116,32 +2130,38 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
     min-width: 0;
 }
 
-.module-security #violationsPageHeader .violations-header-actions[hidden] {
+.module-security #violationsPageHeader .violations-header-actions[hidden],
+.module-oss #violationsPageHeader .violations-header-actions[hidden] {
     display: none !important;
 }
 
-.module-security #violationsPageHeader .violations-header-actions .btn {
+.module-security #violationsPageHeader .violations-header-actions .btn,
+.module-oss #violationsPageHeader .violations-header-actions .btn {
     max-width: 100%;
     white-space: normal;
 }
 
 @media (min-width: 992px) {
-    .module-security #violationsPageHeader .violations-header-row {
+    .module-security #violationsPageHeader .violations-header-row,
+    .module-oss #violationsPageHeader .violations-header-row {
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
         gap: 1.5rem;
     }
 
-    .module-security #violationsPageHeader .violations-header-actions {
+    .module-security #violationsPageHeader .violations-header-actions,
+    .module-oss #violationsPageHeader .violations-header-actions {
         flex: 0 0 auto;
         flex-wrap: nowrap;
     }
 }
 
 /* Tabs: use two equal-width tabs on mobile and wrap their labels cleanly.
-   This prevents the Submitted Violations label from being cut off. */
-.module-security #securityViolationsTabs {
+   This prevents the Submitted Violations label from being cut off.
+   OSS Staff's tab root has its own id; the rules are otherwise identical. */
+.module-security #securityViolationsTabs,
+.module-oss #ossStaffViolationsTabs {
     display: flex;
     flex-wrap: nowrap;
     width: 100%;
@@ -2151,12 +2171,14 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
     border-bottom: 1px solid #ded6d5;
 }
 
-.module-security #securityViolationsTabs .nav-item {
+.module-security #securityViolationsTabs .nav-item,
+.module-oss #ossStaffViolationsTabs .nav-item {
     flex: 1 1 0;
     min-width: 0;
 }
 
-.module-security #securityViolationsTabs .nav-link {
+.module-security #securityViolationsTabs .nav-link,
+.module-oss #ossStaffViolationsTabs .nav-link {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2174,19 +2196,22 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
     font-size: 0.92rem;
 }
 
-.module-security #securityViolationsTabs .nav-link.active {
+.module-security #securityViolationsTabs .nav-link.active,
+.module-oss #ossStaffViolationsTabs .nav-link.active {
     color: #7a0f1e !important;
     background: rgba(255, 223, 0, 0.33) !important;
     border-color: rgba(128, 0, 0, 0.18) !important;
 }
 
-.module-security #securityViolationsTabs .nav-link i {
+.module-security #securityViolationsTabs .nav-link i,
+.module-oss #ossStaffViolationsTabs .nav-link i {
     flex: 0 0 auto;
     color: currentColor;
 }
 
 @media (max-width: 380px) {
-    .module-security #securityViolationsTabs .nav-link {
+    .module-security #securityViolationsTabs .nav-link,
+    .module-oss #ossStaffViolationsTabs .nav-link {
         font-size: 0.78rem;
         padding: 0.6rem 0.35rem;
     }
@@ -2280,9 +2305,91 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
     }
 }
 
+/* The OSS Staff Student Record list uses the SAME card markup as Security, so
+   it gets the same stacked layout on phones (no horizontal overflow). */
+@media (max-width: 767.98px) {
+    .module-oss #managementTableContainer {
+        width: 100%;
+        min-width: 0;
+        overflow: visible;
+    }
+
+    .module-oss #managementTableContainer .student-card {
+        display: grid !important;
+        grid-template-columns: 40px minmax(0, 1fr);
+        align-items: start;
+        column-gap: 0.7rem;
+        row-gap: 0.55rem;
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        padding: 0.95rem 0.85rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .module-oss #managementTableContainer .student-card > .violation-badge {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+        flex: none;
+        align-self: start;
+        font-size: 1.05rem;
+    }
+
+    .module-oss #managementTableContainer .student-card > .student-info {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .module-oss #managementTableContainer .student-card .student-name {
+        min-width: 0;
+        font-size: 1rem;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+        word-break: normal;
+    }
+
+    .module-oss #managementTableContainer .student-card .student-meta {
+        min-width: 0;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    .module-oss #managementTableContainer .student-card > .text-end {
+        grid-column: 2;
+        grid-row: 2;
+        width: 100%;
+        min-width: 0;
+        text-align: left !important;
+        justify-self: stretch;
+    }
+
+    .module-oss #managementTableContainer .student-card > .text-end .portal-badge {
+        display: inline-flex;
+        align-items: center;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-align: left;
+    }
+
+    .module-oss #managementTableContainer .student-card > .text-end > div {
+        font-size: 0.78rem !important;
+        line-height: 1.4;
+        margin-top: 0.35rem !important;
+        overflow-wrap: anywhere;
+    }
+}
+
 /* Filters/forms: one column on phones, with controls constrained to viewport. */
 @media (max-width: 767.98px) {
-    .module-security .filter-grid {
+    .module-security .filter-grid,
+    .module-oss .filter-grid {
         display: grid !important;
         grid-template-columns: minmax(0, 1fr) !important;
         gap: 0.75rem;
@@ -2293,7 +2400,12 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
     .module-security .search-container,
     .module-security .search-container .card,
     .module-security .search-container .card-body,
-    .module-security .filter-grid .input-group {
+    .module-security .filter-grid .input-group,
+    .module-oss .filter-grid > *,
+    .module-oss .search-container,
+    .module-oss .search-container .card,
+    .module-oss .search-container .card-body,
+    .module-oss .filter-grid .input-group {
         width: 100%;
         min-width: 0;
         max-width: 100%;
@@ -2301,7 +2413,10 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
 
     .module-security .filter-grid .form-control,
     .module-security .filter-grid .form-select,
-    .module-security .filter-grid .btn {
+    .module-security .filter-grid .btn,
+    .module-oss .filter-grid .form-control,
+    .module-oss .filter-grid .form-select,
+    .module-oss .filter-grid .btn {
         width: 100%;
         min-width: 0;
         max-width: 100%;
@@ -2310,7 +2425,9 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
 
 /* Tables scroll inside their own wrapper, not across the whole page. */
 .module-security .portal-main .table-responsive,
-.module-security .portal-main .portal-table-wrap {
+.module-security .portal-main .portal-table-wrap,
+.module-oss .portal-main .table-responsive,
+.module-oss .portal-main .portal-table-wrap {
     display: block;
     width: 100%;
     max-width: 100%;
@@ -2321,32 +2438,44 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
 }
 
 .module-security .portal-main .table-responsive > table,
-.module-security .portal-main .portal-table-wrap > table {
+.module-security .portal-main .portal-table-wrap > table,
+.module-oss .portal-main .table-responsive > table,
+.module-oss .portal-main .portal-table-wrap > table {
     min-width: 680px;
     width: 100%;
 }
 
 .module-security .portal-main .table-responsive th,
-.module-security .portal-main .table-responsive td {
+.module-security .portal-main .table-responsive td,
+.module-oss .portal-main .table-responsive th,
+.module-oss .portal-main .table-responsive td {
     white-space: nowrap;
 }
 
 /* Shared width, text wrapping, modal, and spacing safeguards across Security. */
 .module-security,
 .module-security .portal-main,
-.module-security .portal-main > .container-fluid {
+.module-security .portal-main > .container-fluid,
+.module-oss,
+.module-oss .portal-main,
+.module-oss .portal-main > .container-fluid {
     min-width: 0;
     max-width: 100%;
 }
 
-.module-security .portal-main {
+.module-security .portal-main,
+.module-oss .portal-main {
     overflow-x: clip;
 }
 
 .module-security img,
 .module-security video,
 .module-security canvas,
-.module-security iframe {
+.module-security iframe,
+.module-oss img,
+.module-oss video,
+.module-oss canvas,
+.module-oss iframe {
     max-width: 100%;
 }
 
@@ -2355,7 +2484,13 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
 .module-security h3,
 .module-security h4,
 .module-security p,
-.module-security .card-title {
+.module-security .card-title,
+.module-oss h1,
+.module-oss h2,
+.module-oss h3,
+.module-oss h4,
+.module-oss p,
+.module-oss .card-title {
     overflow-wrap: anywhere;
 }
 
@@ -2367,11 +2502,13 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
 }
 
 @media (max-width: 767.98px) {
-    .module-security .portal-main > .container-fluid {
+    .module-security .portal-main > .container-fluid,
+    .module-oss .portal-main > .container-fluid {
         padding: 0.55rem !important;
     }
 
-    .module-security .portal-main > .container-fluid > .container-fluid.py-4 {
+    .module-security .portal-main > .container-fluid > .container-fluid.py-4,
+    .module-oss .portal-main > .container-fluid > .container-fluid.py-4 {
         padding: 0.25rem !important;
     }
 
@@ -2389,41 +2526,50 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
         line-height: 1.45;
     }
 
-    .module-security .portal-main .row {
+    .module-security .portal-main .row,
+    .module-oss .portal-main .row {
         --bs-gutter-x: 0.75rem;
         row-gap: 0.25rem;
     }
 
     .module-security .portal-main .card-body,
     .module-security .portal-main .card-header,
-    .module-security .portal-main .card-footer {
+    .module-security .portal-main .card-footer,
+    .module-oss .portal-main .card-body,
+    .module-oss .portal-main .card-header,
+    .module-oss .portal-main .card-footer {
         padding-left: 0.8rem;
         padding-right: 0.8rem;
     }
 
-    .module-security .portal-main .modal-dialog {
+    .module-security .portal-main .modal-dialog,
+    .module-oss .portal-main .modal-dialog {
         width: auto;
         max-width: calc(100% - 1rem);
         margin: 0.5rem auto;
     }
 
-    .module-security .portal-main .modal-content {
+    .module-security .portal-main .modal-content,
+    .module-oss .portal-main .modal-content {
         max-height: calc(100dvh - 1rem);
         overflow: hidden;
     }
 
-    .module-security .portal-main .modal-body {
+    .module-security .portal-main .modal-body,
+    .module-oss .portal-main .modal-body {
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
     }
 
-    .module-security .portal-main .modal-footer {
+    .module-security .portal-main .modal-footer,
+    .module-oss .portal-main .modal-footer {
         display: flex;
         flex-wrap: wrap;
         gap: 0.5rem;
     }
 
-    .module-security .portal-main .modal-footer > * {
+    .module-security .portal-main .modal-footer > *,
+    .module-oss .portal-main .modal-footer > * {
         margin: 0;
     }
 }
@@ -2441,29 +2587,35 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
         font-size: 1.5rem;
     }
 
-    .module-security .dashboard-time-label {
+    .module-security .dashboard-time-label,
+    .module-oss .dashboard-time-label {
         font-size: 0.68rem;
     }
 
-    .module-security .dashboard-time-value {
+    .module-security .dashboard-time-value,
+    .module-oss .dashboard-time-value {
         font-size: 0.82rem;
         gap: 0.35rem;
     }
 
-    .module-security #violationsPageHeader .violations-header-actions {
+    .module-security #violationsPageHeader .violations-header-actions,
+    .module-oss #violationsPageHeader .violations-header-actions {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
         width: 100%;
     }
 
-    .module-security #violationsPageHeader .violations-header-actions .btn {
+    .module-security #violationsPageHeader .violations-header-actions .btn,
+    .module-oss #violationsPageHeader .violations-header-actions .btn {
         width: 100%;
         min-height: 44px;
         white-space: normal;
     }
 
     .module-security .portal-main .table th,
-    .module-security .portal-main .table td {
+    .module-security .portal-main .table td,
+    .module-oss .portal-main .table th,
+    .module-oss .portal-main .table td {
         font-size: 0.8rem;
         padding: 0.65rem 0.55rem;
     }
@@ -2710,5 +2862,196 @@ body.student-module .portal-main .container-fluid.student-page.is-leaving {
 
     .module-security #managementTableContainer .student-card .student-meta {
         font-size: 0.82rem !important;
+    }
+}
+
+/* ==================================================================
+   Responsive record tables — Security + OSS Staff
+   ==================================================================
+   Opt-in (`pt-responsive-table` on the `.table-responsive` wrapper).
+   Desktop keeps the normal table. On phones each row becomes a stacked
+   card: the header is hidden and every cell prints its own label from
+   `data-label`, so no record loses information and nothing has to be
+   read by scrolling the page sideways.
+
+   The same markup + the same records drive both presentations; there is
+   no mobile-only data source.
+   ================================================================== */
+@media (max-width: 767.98px) {
+    .module-security .portal-main .table-responsive.pt-responsive-table,
+    .module-oss .portal-main .table-responsive.pt-responsive-table {
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        padding: 0.25rem 0.35rem 0.6rem;
+    }
+
+    .module-security .portal-main .table-responsive.pt-responsive-table > table,
+    .module-oss .portal-main .table-responsive.pt-responsive-table > table {
+        min-width: 0 !important;
+        width: 100% !important;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .module-security .portal-main .table-responsive.pt-responsive-table > table > thead,
+    .module-oss .portal-main .table-responsive.pt-responsive-table > table > thead {
+        display: none;
+    }
+
+    .module-security .portal-main .table-responsive.pt-responsive-table > table > tbody,
+    .module-oss .portal-main .table-responsive.pt-responsive-table > table > tbody {
+        display: block;
+        width: 100%;
+    }
+
+    .module-security .portal-main .table-responsive.pt-responsive-table > table > tbody > tr,
+    .module-oss .portal-main .table-responsive.pt-responsive-table > table > tbody > tr {
+        display: block;
+        width: 100%;
+        margin: 0 0 0.7rem;
+        padding: 0.35rem 0.85rem;
+        background: #fffdfb;
+        border: 1px solid var(--pt-line, #ece6e4);
+        border-left: 4px solid var(--pt-accent, #800b2e);
+        border-radius: 0.85rem;
+        box-shadow: 0 6px 16px rgba(44, 23, 32, 0.07);
+    }
+
+    .module-security .portal-main .table-responsive.pt-responsive-table > table > tbody > tr > td,
+    .module-oss .portal-main .table-responsive.pt-responsive-table > table > tbody > tr > td {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.3rem 0.75rem;
+        width: 100%;
+        max-width: 100%;
+        padding: 0.5rem 0;
+        border: 0;
+        white-space: normal !important;
+        text-align: left;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .module-security
+        .portal-main
+        .table-responsive.pt-responsive-table
+        > table
+        > tbody
+        > tr
+        > td
+        + td,
+    .module-oss
+        .portal-main
+        .table-responsive.pt-responsive-table
+        > table
+        > tbody
+        > tr
+        > td
+        + td {
+        border-top: 1px dashed var(--pt-line, #ece6e4);
+    }
+
+    /* The label column. */
+    .module-security
+        .portal-main
+        .table-responsive.pt-responsive-table
+        > table
+        > tbody
+        > tr
+        > td[data-label]::before,
+    .module-oss
+        .portal-main
+        .table-responsive.pt-responsive-table
+        > table
+        > tbody
+        > tr
+        > td[data-label]::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--pt-muted, #77717a);
+    }
+
+    .module-security
+        .portal-main
+        .table-responsive.pt-responsive-table
+        > table
+        > tbody
+        > tr
+        > td
+        > *,
+    .module-oss
+        .portal-main
+        .table-responsive.pt-responsive-table
+        > table
+        > tbody
+        > tr
+        > td
+        > * {
+        max-width: 100%;
+    }
+
+    /* Actions stay reachable and never overflow the card. */
+    .module-security
+        .portal-main
+        .table-responsive.pt-responsive-table
+        > table
+        > tbody
+        > tr
+        > td.pt-cell-actions,
+    .module-oss
+        .portal-main
+        .table-responsive.pt-responsive-table
+        > table
+        > tbody
+        > tr
+        > td.pt-cell-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .module-security
+        .portal-main
+        .table-responsive.pt-responsive-table
+        > table
+        > tbody
+        > tr
+        > td.pt-cell-actions
+        .btn,
+    .module-oss
+        .portal-main
+        .table-responsive.pt-responsive-table
+        > table
+        > tbody
+        > tr
+        > td.pt-cell-actions
+        .btn {
+        white-space: normal;
+        max-width: 100%;
+    }
+
+    /* The empty-state row is one full-width cell: keep it centered and clear. */
+    .module-security
+        .portal-main
+        .table-responsive.pt-responsive-table
+        > table
+        > tbody
+        > tr
+        > td[colspan],
+    .module-oss
+        .portal-main
+        .table-responsive.pt-responsive-table
+        > table
+        > tbody
+        > tr
+        > td[colspan] {
+        display: block;
+        text-align: center;
     }
 }

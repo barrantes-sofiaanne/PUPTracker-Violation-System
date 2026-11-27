@@ -174,11 +174,11 @@ class StudentStatusAndViolationGuardTest extends TestCase
             ->postJson(route('admin.violations.store'), $this->violationPayload());
 
         $response->assertStatus(422);
-        $response->assertJsonValidationErrors('student_number');
+        $response->assertJsonValidationErrors('user_id');
 
         $this->assertStringContainsString(
             'inactive',
-            (string) $response->json('errors.student_number.0')
+            (string) $response->json('errors.user_id.0')
         );
 
         // No record was created.
@@ -196,7 +196,7 @@ class StudentStatusAndViolationGuardTest extends TestCase
             ->postJson(route('security.violations.store'), $this->violationPayload());
 
         $response->assertStatus(422);
-        $response->assertJsonValidationErrors('student_number');
+        $response->assertJsonValidationErrors('user_id');
         $this->assertSame(0, Violation::count());
     }
 
@@ -667,7 +667,7 @@ class StudentStatusAndViolationGuardTest extends TestCase
         // The underlying data is untouched — only the display changed.
         $this->assertDatabaseHas('violation_tbl', [
             'student_number' => '2024-0001',
-            'violation_type' => 1,
+            'violation_type_id' => 1,
         ]);
     }
 
@@ -864,11 +864,18 @@ class StudentStatusAndViolationGuardTest extends TestCase
 
     private function violationPayload(array $overrides = []): array
     {
+        $studentNumber = $overrides['student_number'] ?? '2024-0001';
+
         return array_merge([
+            // Violations are addressed by the student account; the student
+            // number is optional display data.
+            'user_id' => User::where('student_number', $studentNumber)->value('user_id'),
             'student_number' => '2024-0001',
             'violation_type_id' => 1,
             'violation_date' => now()->format('Y-m-d H:i:s'),
             'description' => 'Caught using a phone.',
+            // Required by the Admin controller; ignored by Security/OSS Staff.
+            'identity_confirmed' => true,
         ], $overrides);
     }
 
@@ -895,8 +902,12 @@ class StudentStatusAndViolationGuardTest extends TestCase
 
     private function hitCallback(): \Illuminate\Testing\TestResponse
     {
-        return $this->withSession(['student.idp.state' => 'state-123'])
-            ->get(route('student.idp.callback', ['code' => 'auth-code-123']));
+        return $this->withSession([
+            'student.idp.state' => 'state-123',
+            // The callback now requires a fresh server-side state expiry; a
+            // state without one is rejected as an expired login session.
+            'student.idp.state_expires_at' => now()->addMinutes(10)->timestamp,
+        ])->get(route('student.idp.callback', ['code' => 'auth-code-123']));
     }
 
     private function createAdmin(): Admin
@@ -973,8 +984,9 @@ class StudentStatusAndViolationGuardTest extends TestCase
     private function createViolation(string $studentNumber, string $status = 'pending'): Violation
     {
         return Violation::create([
+            'user_id' => User::where('student_number', $studentNumber)->value('user_id'),
             'student_number' => $studentNumber,
-            'violation_type' => 1,
+            'violation_type_id' => 1,
             'violation_date' => now(),
             'description' => 'Caught cheating.',
             'recorder_type' => 'admin',
@@ -1116,7 +1128,11 @@ class StudentStatusAndViolationGuardTest extends TestCase
             },
             'violation_tbl' => function (Blueprint $table): void {
                 $table->increments('violation_id');
+                // The student is identified by the internal account id; the
+                // student number is optional display data.
+                $table->unsignedInteger('user_id')->nullable();
                 $table->string('student_number')->nullable();
+                $table->unsignedInteger('violation_type_id')->nullable();
                 $table->string('violation_type')->nullable();
                 $table->dateTime('violation_date')->nullable();
                 $table->text('description')->nullable();
@@ -1132,6 +1148,7 @@ class StudentStatusAndViolationGuardTest extends TestCase
             'violation_evidence_tbl' => function (Blueprint $table): void {
                 $table->increments('evidence_id');
                 $table->string('evidence_code')->nullable();
+                $table->string('access_key', 64)->nullable();
                 $table->string('capture_session_id')->nullable();
                 $table->unsignedBigInteger('violation_id')->nullable();
                 $table->string('disk_path')->nullable();

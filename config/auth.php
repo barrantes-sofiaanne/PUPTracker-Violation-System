@@ -25,19 +25,12 @@ return [
     | Feature switches — auth/security controls
     |--------------------------------------------------------------------------
     |
-    | These two controls are DISABLED for now.
-    |
-    | The implementation is left fully intact underneath so the features can be
-    | re-enabled by flipping a single flag — no code has to be restored. Both
-    | default to false, and the env variables let a deployment turn them back
-    | on without a code change.
-    |
     |  remember_device
     |      The "Remember this device for 12 hours" checkbox on the MFA screen.
-    |      While disabled the checkbox is not rendered AND the backend refuses to
-    |      honour a remember request, so a crafted POST cannot create a
-    |      persistent credential. The recaller cookie lifetime
-    |      (auth.guards.*.remember) is left configured for when it is re-enabled.
+    |      ENABLED by default. While disabled the checkbox is not rendered AND
+    |      the backend refuses to honour a remember request, so a crafted POST
+    |      cannot create a persistent credential. The recaller cookie lifetime
+    |      (auth.guards.*.remember) is left configured either way.
     |
     |  inactivity_timeout
     |      The 15-minute inactivity expiry (EnforceInactivityTimeout). While
@@ -49,7 +42,7 @@ return [
     */
 
 'features' => [
-    'remember_device' => (bool) env('AUTH_REMEMBER_DEVICE_ENABLED', false),
+    'remember_device' => (bool) env('AUTH_REMEMBER_DEVICE_ENABLED', true),
     'inactivity_timeout' => (bool) env('AUTH_INACTIVITY_TIMEOUT_ENABLED', true),
 ],
 
@@ -101,14 +94,19 @@ return [
     | Login Attempt Lockout
     |--------------------------------------------------------------------------
     |
-    | The maximum number of FAILED credential attempts allowed per module before
-    | that module's login is temporarily blocked, and how long the block lasts.
+    | The maximum number of FAILED credential attempts allowed for ONE CLIENT
+    | before every login page is temporarily blocked, and how long the block
+    | lasts.
     |
     | Enforced by App\Support\Auth\LoginAttemptLimiter, which is shared by the
-    | Administrator and Security login controllers so the rule cannot drift
-    | between them. The limiter keys on the SUBMITTED email plus the client IP,
-    | so a failure against one module never blocks another, and rotating IPs
-    | cannot buy extra guesses against a known account.
+    | Administrator, Security/OSS Staff and Student login controllers.
+    |
+    | THE COUNTER IS GLOBAL AND CLIENT-SCOPED. It is keyed on the normalized
+    | client IP only — never on the submitted email, the login module or any
+    | user-supplied header. Changing the email (or its capitalization) or moving
+    | between the Admin, Security, OSS Staff and Student login pages therefore
+    | cannot reset it, which is what stops "three attempts" from becoming
+    | unlimited attempts.
     |
     | Counters live in the application cache (server-side), so refreshing the
     | login page cannot reset them, and they are unaffected by session lifetime
@@ -118,22 +116,10 @@ return [
 
     'login_attempts' => [
 
-        // Applied to any module without its own entry below.
+        // The ONE budget that applies to every login page and account type.
         'default' => [
             'max' => (int) env('LOGIN_MAX_ATTEMPTS', 3),
             'lockout_seconds' => (int) env('LOGIN_LOCKOUT_SECONDS', 900),
-        ],
-
-        // Per-module overrides. Add a key named after the module to give that
-        // module its own budget without touching the others.
-        'admin' => [
-            'max' => (int) env('ADMIN_LOGIN_MAX_ATTEMPTS', env('LOGIN_MAX_ATTEMPTS', 3)),
-            'lockout_seconds' => (int) env('ADMIN_LOGIN_LOCKOUT_SECONDS', env('LOGIN_LOCKOUT_SECONDS', 900)),
-        ],
-
-        'security' => [
-            'max' => (int) env('SECURITY_LOGIN_MAX_ATTEMPTS', env('LOGIN_MAX_ATTEMPTS', 3)),
-            'lockout_seconds' => (int) env('SECURITY_LOGIN_LOCKOUT_SECONDS', env('LOGIN_LOCKOUT_SECONDS', 900)),
         ],
 
     ],
@@ -162,12 +148,12 @@ return [
     ],
 
     'admins' => [
-        'driver' => 'eloquent',
+        'driver' => 'state-aware',
         'model' => App\Models\Admin::class,
     ],
 
     'security' => [
-        'driver' => 'eloquent',
+        'driver' => 'state-aware',
         'model' => App\Models\Security::class,
     ],
 

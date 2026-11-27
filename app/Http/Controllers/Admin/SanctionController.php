@@ -9,6 +9,7 @@ use App\Models\Notification;
 use App\Models\SanctionProof;
 use App\Models\SanctionRequest;
 use App\Models\StudentSanctionRecord;
+use App\Models\User;
 use App\Models\Violation;
 use App\Models\ViolationType;
 use Carbon\Carbon;
@@ -106,11 +107,18 @@ class SanctionController extends Controller
             ->withQueryString();
 
         $requests->getCollection()->transform(function (SanctionRequest $request) {
-$offenseCount = Violation::where('student_number', $request->student_number)
-    ->where('violation_type_id', $request->violation_type_id)
-    ->effective()
-    ->count();
-            $offenseLevel = $this->formatOffenseLevel($offenseCount);
+            // Identity is users_tbl.user_id; the request's student number is
+            // display data and resolves to the canonical account.
+            $studentId = (int) (User::query()
+                ->where('student_number', $request->student_number)
+                ->value('user_id') ?? 0);
+
+            $offenseLevel = $studentId > 0
+                ? app(\App\Services\OffenseNumberService::class)->currentOffenseLevel(
+                    $studentId,
+                    (int) $request->violation_type_id
+                )
+                : '';
 
 $latestViolation = Violation::where('student_number', $request->student_number)
     ->where('violation_type_id', $request->violation_type_id)
@@ -144,10 +152,13 @@ $latestViolation = Violation::where('student_number', $request->student_number)
             ->latest('violation_date')
             ->first();
 
-        $offenseCount = Violation::where('student_number', $sanctionRequest->student_number)
-->where('violation_type_id', $sanctionRequest->violation_type_id)            ->effective()
-            ->count();
-        $offenseLevel = $this->formatOffenseLevel($offenseCount);
+        $studentId = (int) ($sanctionRequest->student?->user_id ?? 0);
+        $offenseLevel = $studentId > 0
+            ? app(\App\Services\OffenseNumberService::class)->currentOffenseLevel(
+                $studentId,
+                (int) $sanctionRequest->violation_type_id
+            )
+            : '';
         $assignedSanction = DisciplinarySanction::where('violation_type_id', $sanctionRequest->violation_type_id)
             ->where('offense_level', $offenseLevel)
             ->first()
@@ -255,11 +266,11 @@ if (! $student->isActiveAccount()) {
                 ]);
             }
 
-            $offenseCount = Violation::where('student_number', $student->student_number)
-->where('violation_type_id', $violationType->violation_type_id)                ->effective()
-                ->count();
-
-            $offenseLevel = $this->formatOffenseLevel($offenseCount);
+            $offenseLevel = app(\App\Services\OffenseNumberService::class)
+                ->currentOffenseLevel(
+                    (int) $student->user_id,
+                    (int) $violationType->violation_type_id
+                );
 
             $assignedSanction = DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
                 ->where('offense_level', $offenseLevel)
@@ -786,12 +797,16 @@ private function isServiceSanctionText(string $sanction): bool
      */
     private function resolveAssignedSanction(string $studentNumber, int $violationTypeId): ?DisciplinarySanction
     {
-$offenseCount = Violation::where('student_number', $studentNumber)
-    ->where('violation_type_id', $violationTypeId)
-    ->effective()
-    ->count();
+        $studentId = (int) (User::query()
+            ->where('student_number', $studentNumber)
+            ->value('user_id') ?? 0);
 
-        $offenseLevel = $this->formatOffenseLevel($offenseCount);
+        $offenseLevel = $studentId > 0
+            ? app(\App\Services\OffenseNumberService::class)->currentOffenseLevel(
+                $studentId,
+                $violationTypeId
+            )
+            : '';
 
         return DisciplinarySanction::where('violation_type_id', $violationTypeId)
             ->where('offense_level', $offenseLevel)
@@ -852,16 +867,6 @@ $offenseCount = Violation::where('student_number', $studentNumber)
             'month' => $deadline->addMonths($amount)->endOfDay(),
             'year' => $deadline->addYears($amount)->endOfDay(),
             default => null,
-        };
-    }
-
-    private function formatOffenseLevel(int $offenseCount): string
-    {
-        return match ($offenseCount) {
-            1 => '1st Offense',
-            2 => '2nd Offense',
-            3 => '3rd Offense',
-            default => $offenseCount . 'th Offense',
         };
     }
 

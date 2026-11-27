@@ -10,32 +10,34 @@ use Illuminate\Support\Facades\Cache;
  *
  * WHY THIS CLASS EXISTS
  * ---------------------
- * The Administrator and Security modules must apply the SAME rule. Keeping the
- * counter, the threshold and the message formatting in one place means the two
- * login controllers cannot drift apart, and any future module only has to call
- * this class instead of re-implementing the logic.
+ * Every login page (Administrator, Security, OSS Staff and Student) must apply
+ * the SAME rule. Keeping the counter, the threshold and the message formatting
+ * in one place means the pages cannot drift apart, and any future module only
+ * has to call this class instead of re-implementing the logic.
  *
- * PER-MODULE ISOLATION (a hard requirement)
- * -----------------------------------------
- * The cache key includes the MODULE name as well as the submitted email and
- * client IP, so:
- *   - a lockout on the Administrator login never blocks the Security login
- *     (separate key namespaces), and
- *   - a lockout on one account never blocks another account.
+ * GLOBAL, CLIENT-SCOPED COUNTER (a hard requirement)
+ * --------------------------------------------------
+ * The counter is keyed ONLY on the client, never on the submitted account or the
+ * login module:
+ *   - changing the email / student number cannot reset the counter,
+ *   - changing the capitalization of an email cannot reset it,
+ *   - switching between the Admin, Security, OSS Staff and Student login pages
+ *     cannot reset it.
  *
- * WHY THE SUBMITTED EMAIL, NOT THE RESOLVED ACCOUNT
- * -------------------------------------------------
- * Keying on the resolved account would mean an unknown email never increments a
- * counter (free guessing against non-existent accounts), and the differing
- * responses would leak whether an account exists. Keying on the submitted value
- * plus the IP counts every failed attempt and answers identically either way.
+ * WHY THE CLIENT IP, NOT THE EMAIL OR THE USER AGENT
+ * --------------------------------------------------
+ * The IP is the only client attribute an attacker cannot rotate per request.
+ * A submitted email is attacker-chosen, so keying on it (as an earlier revision
+ * did) let a caller start a fresh budget simply by typing a different address.
+ * A User-Agent string or a custom header is equally attacker-controlled, and a
+ * browser cookie can be discarded; keying on any of them would re-open the same
+ * bypass. Laravel resolves `$request->ip()` through the configured trusted-proxy
+ * list, so a spoofable forwarding header is never trusted here.
  *
  * WHY THE CACHE, NOT THE SESSION
  * ------------------------------
- * The brief requires that refreshing the login page must NOT reset the counter.
- * A session-backed counter is trivially reset by discarding the session cookie,
- * and a brand-new visitor gets a fresh session anyway. The application cache is
- * server-side and survives both.
+ * Refreshing the login page (or dropping the session cookie) must NOT reset the
+ * counter. The application cache is server-side and survives both.
  *
  * WHY THE EXPIRY IS STORED EXPLICITLY
  * -----------------------------------
@@ -50,21 +52,25 @@ use Illuminate\Support\Facades\Cache;
 class LoginAttemptLimiter
 {
     /** Cache-key prefix, versioned so a change in key shape cannot collide. */
-    private const PREFIX = 'login-attempts:v1';
+    private const PREFIX = 'login-attempts:v2';
 
     /**
-     * Resolve the configured budget for a module, falling back to the default
-     * when the module has no entry of its own.
+     * Resolve the configured budget.
+     *
+     * The counter is global, so there is exactly ONE policy: the `default`
+     * entry. A per-module threshold would mean the same client could be blocked
+     * on one login page but not another, which is the bypass this class exists
+     * to prevent. Per-module entries in config are therefore intentionally not
+     * consulted here.
      *
      * @return array{max:int,lockout_seconds:int}
      */
-    public static function policy(string $module): array
+    public static function policy(): array
     {
-        $default = (array) config('auth.login_attempts.default', []);
-        $configured = (array) config('auth.login_attempts.' . $module, []);
+        $configured = (array) config('auth.login_attempts.default', []);
 
-        $max = (int) ($configured['max'] ?? $default['max'] ?? 3);
-        $lockout = (int) ($configured['lockout_seconds'] ?? $default['lockout_seconds'] ?? 900);
+        $max = (int) ($configured['max'] ?? 3);
+        $lockout = (int) ($configured['lockout_seconds'] ?? 900);
 
         // Fail closed on nonsense configuration: a threshold below 1 would block
         // every login immediately, and a zero lockout would never lock at all.
@@ -75,15 +81,38 @@ class LoginAttemptLimiter
     }
 
     /**
-     * Cache key for one account within one module.
+     * The normalized client identifier the counter is keyed on.
      *
-     * The module is part of the key, which is what keeps the modules isolated.
+     * The IP is resolved by Laravel through the configured trusted-proxy list
+     * (`config('app.trusted_proxies')`), so this class never reads a forwarded
+     * header itself:
+     *   - with the default "trust the calling IP" mode the value is the
+     *     RIGHT-MOST X-Forwarded-For hop (the address the edge proxy observed),
+     *     so a client cannot change it by prefixing forged addresses;
+     *   - with an explicit proxy list, a request from any other peer ignores the
+     *     header entirely and resolves to the socket address.
      */
-    public static function key(string $module, Request $request): string
+    public static function clientIdentifier(Request $request): string
     {
-        $submitted = strtolower(trim((string) $request->input('email')));
+        $ip = trim((string) $request->ip());
 
-        return self::PREFIX . ':' . $module . ':' . sha1($submitted . '|' . (string) $request->ip());
+        if (filter_var($ip, FILTER_VALIDATE_IP) !== false) {
+            return $ip;
+        }
+
+        // Defensive: an absent or malformed value must not collapse every client
+        // into one shared bucket, and must never be keyed on unvalidated input.
+        $peer = trim((string) $request->server('REMOTE_ADDR', ''));
+
+        return filter_var($peer, FILTER_VALIDATE_IP) !== false ? $peer : 'unknown';
+    }
+
+    /**
+     * Cache key for one client.
+     */
+    public static function key(Request $request): string
+    {
+        return self::PREFIX . ':' . sha1(self::clientIdentifier($request));
     }
 
     /**
@@ -94,9 +123,9 @@ class LoginAttemptLimiter
      *
      * @return array{attempts:int,expires_at:int}|null
      */
-    private static function entry(string $module, Request $request): ?array
+    private static function entry(Request $request): ?array
     {
-        $value = Cache::get(self::key($module, $request));
+        $value = Cache::get(self::key($request));
 
         if (! is_array($value) || ! isset($value['attempts'])) {
             return null;
@@ -115,31 +144,31 @@ class LoginAttemptLimiter
     }
 
     /**
-     * Number of failed attempts RECORDED so far.
+     * Number of failed attempts RECORDED so far by this client.
      */
-    public static function attempts(string $module, Request $request): int
+    public static function attempts(Request $request): int
     {
-        $entry = self::entry($module, $request);
+        $entry = self::entry($request);
 
         return $entry === null ? 0 : $entry['attempts'];
     }
 
     /**
-     * Is this module/account currently blocked?
+     * Is this client currently blocked?
      */
-    public static function isLocked(string $module, Request $request): bool
+    public static function isLocked(Request $request): bool
     {
-        return self::attempts($module, $request) >= self::policy($module)['max'];
+        return self::attempts($request) >= self::policy()['max'];
     }
 
     /**
      * Remaining attempts before the block engages (never negative).
      */
-    public static function remaining(string $module, Request $request): int
+    public static function remaining(Request $request): int
     {
-        $policy = self::policy($module);
+        $policy = self::policy();
 
-        return max(0, $policy['max'] - self::attempts($module, $request));
+        return max(0, $policy['max'] - self::attempts($request));
     }
 
     /**
@@ -149,13 +178,13 @@ class LoginAttemptLimiter
      * most recent failure. Continuing to guess therefore cannot shorten the
      * block, and a user who stops trying is released after the configured wait.
      */
-    public static function recordFailure(string $module, Request $request): int
+    public static function recordFailure(Request $request): int
     {
-        $policy = self::policy($module);
-        $attempts = self::attempts($module, $request) + 1;
+        $policy = self::policy();
+        $attempts = self::attempts($request) + 1;
 
         Cache::put(
-            self::key($module, $request),
+            self::key($request),
             [
                 'attempts' => $attempts,
                 'expires_at' => now()->getTimestamp() + $policy['lockout_seconds'],
@@ -167,21 +196,24 @@ class LoginAttemptLimiter
     }
 
     /**
-     * Clear the counter for this module/account. Called on a SUCCESSFUL
-     * credential check, so "3 attempts" always means three FAILURES and never
-     * three lifetime logins.
+     * Clear the counter for this client. Called on a SUCCESSFUL credential
+     * check, so "3 attempts" always means three FAILURES and never three
+     * lifetime logins.
+     *
+     * Only a successful authentication clears the counter: a different email,
+     * a different module or a refreshed page never does.
      */
-    public static function clear(string $module, Request $request): void
+    public static function clear(Request $request): void
     {
-        Cache::forget(self::key($module, $request));
+        Cache::forget(self::key($request));
     }
 
     /**
      * Seconds until the block lifts, or 0 when nothing is recorded.
      */
-    public static function secondsRemaining(string $module, Request $request): int
+    public static function secondsRemaining(Request $request): int
     {
-        $entry = self::entry($module, $request);
+        $entry = self::entry($request);
 
         if ($entry === null) {
             return 0;
@@ -212,16 +244,16 @@ class LoginAttemptLimiter
     }
 
     /**
-     * The user-facing message for a currently-blocked module.
+     * The user-facing message for a currently-blocked client.
      *
-     * Names the module so the user can tell WHICH login is blocked, which matters
-     * because a lockout is deliberately scoped to one module.
+     * Deliberately module-neutral: the block applies to every login page, and
+     * naming a module would suggest (wrongly) that switching pages helps.
      */
-    public static function lockedMessage(string $module, Request $request): string
+    public static function lockedMessage(Request $request): string
     {
-        $wait = self::secondsRemaining($module, $request);
+        $wait = self::secondsRemaining($request);
 
-        return 'Too many failed login attempts for this module. '
+        return 'Too many failed login attempts. '
             . 'Login has been temporarily blocked. Please try again in '
             . self::humaniseSeconds($wait) . '.';
     }
@@ -232,13 +264,13 @@ class LoginAttemptLimiter
      * message instead, so a caller cannot report "0 remaining" and still let the
      * user through.
      */
-    public static function failureMessage(string $module, Request $request): string
+    public static function failureMessage(Request $request): string
     {
-        if (self::isLocked($module, $request)) {
-            return self::lockedMessage($module, $request);
+        if (self::isLocked($request)) {
+            return self::lockedMessage($request);
         }
 
-        $remaining = self::remaining($module, $request);
+        $remaining = self::remaining($request);
 
         return 'Invalid email or password. ' . $remaining . ' attempt(s) remaining.';
     }

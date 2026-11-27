@@ -558,6 +558,7 @@ background: #ffffff;
             <form id="violationForm">
                 @csrf
 
+                <input type="hidden" id="selectedStudentId" name="user_id">
                 <input type="hidden" id="selectedStudentNumber" name="student_number">
 
                 <div class="modal-body">

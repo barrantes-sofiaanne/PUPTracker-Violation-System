@@ -290,9 +290,10 @@ private function violationCorrectionRequestUrl(int $targetId): ?string
         }
 
         if (strtolower((string) $violation->status) === Violation::STATUS_CONFIRMED
+            && $violation->user_id !== null
             && Route::has('oss-staff.violations.show')) {
             return route('oss-staff.violations.show', [
-                'student_number' => $violation->student_number,
+                'user_id' => $violation->user_id,
                 'highlight_violation' => $violation->violation_id,
             ]);
         }

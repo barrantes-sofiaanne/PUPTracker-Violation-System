@@ -34,6 +34,14 @@ final class PortalLoginRedirect
     public const ADMIN_PORTAL = 'admin.login';
 
     /**
+     * Query parameters that select the OSS Staff mode of the shared portal.
+     *
+     * The shared page still serves BOTH account types, so an OSS Staff member
+     * must be returned to the page already branded for them.
+     */
+    public const OSS_PORTAL_PARAMETERS = ['portal' => 'oss'];
+
+    /**
      * The login route for an arbitrary admin-guard account.
      *
      * Fails CLOSED: an account whose role cannot be resolved is treated as a
@@ -60,5 +68,28 @@ final class PortalLoginRedirect
         }
 
         return $guard === 'security' ? self::SHARED_PORTAL : 'student.login';
+    }
+
+    /**
+     * Query parameters that belong WITH the route from {@see self::forAdmin()}.
+     *
+     * Only the OSS Staff mode of the shared portal needs any; every other
+     * destination keeps its plain URL.
+     */
+    public static function parametersForAdmin(?Admin $admin): array
+    {
+        return $admin instanceof Admin && $admin->isOssStaff()
+            ? self::OSS_PORTAL_PARAMETERS
+            : [];
+    }
+
+    /**
+     * Query parameters for a guard + account pair (see {@see self::forGuard()}).
+     */
+    public static function parametersForGuard(string $guard, ?Authenticatable $user = null): array
+    {
+        return $guard === 'admin'
+            ? self::parametersForAdmin($user instanceof Admin ? $user : null)
+            : [];
     }
 }

@@ -40,6 +40,14 @@
 
             @csrf
 
+            {{-- The server enforces which account type this page accepts.
+                 Security mode (default) rejects OSS Staff accounts, and OSS
+                 mode rejects Security accounts, so a crafted POST cannot
+                 cross modules. --}}
+            <input type="hidden"
+                   name="portal"
+                   value="{{ request()->query('portal') === 'oss' ? 'oss' : 'security' }}">
+
             @if($errors->has('login'))
                 <div class="ap-alert" role="alert">
                     <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>

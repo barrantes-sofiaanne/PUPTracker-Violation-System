@@ -105,7 +105,7 @@ class AdminImprovementsTest extends TestCase
 
         // A missing first_name / last_name is rejected SERVER-SIDE — the
         // asterisks in the form reflect real validation, not just styling.
-        foreach (['first_name', 'last_name', 'student_number'] as $required) {
+        foreach (['first_name', 'last_name'] as $required) {
             $payload = $base + ['first_name' => 'Ana', 'last_name' => 'Reyes'];
             $payload['student_number'] = '2026-9010';
             unset($payload[$required]);
@@ -114,6 +114,323 @@ class AdminImprovementsTest extends TestCase
                 ->from(route('admin.students'))
                 ->post(route('admin.students.store'), $payload)
                 ->assertSessionHasErrors($required);
+        }
+    }
+
+    /**
+     * Student number is OPTIONAL (matching the student registration workflow
+     * and the user_id identity model). Blank is stored as NULL.
+     */
+    public function test_student_number_is_optional_and_stored_as_null(): void
+    {
+        $admin = $this->createAdmin();
+
+        $payload = [
+            'first_name' => 'No',
+            'middle_name' => '',
+            'last_name' => 'Number',
+            'program_id' => $this->programId(),
+            'year_id' => $this->yearId(),
+            'section_id' => $this->sectionId(),
+            'gender_id' => $this->genderId(),
+            'status_id' => $this->statusId(),
+        ];
+
+        // Omitted entirely.
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.students.store'), $payload)
+            ->assertSessionHasNoErrors();
+
+        $student = User::where('first_name', 'No')->where('last_name', 'Number')->first();
+        $this->assertNotNull($student);
+        $this->assertNull($student->student_number);
+        $this->assertNotNull($student->user_id);
+
+        // Blank / whitespace is also NULL, never an empty string.
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.students.store'), array_merge($payload, [
+                'student_number' => '   ',
+                'first_name' => 'Blank',
+                'last_name' => 'Number',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $blank = User::where('first_name', 'Blank')->where('last_name', 'Number')->first();
+        $this->assertNotNull($blank);
+        $this->assertNull($blank->student_number);
+    }
+
+    /**
+     * The Add Student form reuses the student registration ladderized rules:
+     * an eligible program stores the chosen value, and a non-eligible program
+     * always stores 0 even if the request is forged.
+     */
+    public function test_create_student_applies_the_registration_ladderized_rules(): void
+    {
+        $admin = $this->createAdmin();
+
+        $base = [
+            'first_name' => 'Ladder',
+            'last_name' => 'Student',
+            'year_id' => $this->yearId(),
+            'section_id' => $this->sectionId(),
+            'gender_id' => $this->genderId(),
+            'status_id' => $this->statusId(),
+        ];
+
+        // BSIT (configured ladderized program) + explicit "Yes" → 1.
+        $bsitId = $this->programId();
+
+        $this->actingAs($admin, 'admin')->post(route('admin.students.store'), $base + [
+            'student_number' => '2026-9301',
+            'program_id' => $bsitId,
+            'ladderized' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $ladderizedStudent = User::where('student_number', '2026-9301')->firstOrFail();
+        $this->assertSame(1, (int) $ladderizedStudent->studentInfo->ladderized);
+
+        // A non-ladderized program ignores a forged "Yes" → 0.
+        $bscsId = (int) DB::table('program_tbl')->insertGetId([
+            'program_name' => 'BSCS',
+            'degree_type' => 'Bachelor',
+        ]);
+
+        $this->actingAs($admin, 'admin')->post(route('admin.students.store'), $base + [
+            'student_number' => '2026-9302',
+            'program_id' => $bscsId,
+            'ladderized' => '1', // forged
+        ])->assertSessionHasNoErrors();
+
+        $forgedStudent = User::where('student_number', '2026-9302')->firstOrFail();
+        $this->assertSame(0, (int) $forgedStudent->studentInfo->ladderized);
+
+        // An unanswered field defaults to 0, never NULL.
+        $this->actingAs($admin, 'admin')->post(route('admin.students.store'), $base + [
+            'student_number' => '2026-9303',
+            'program_id' => $bsitId,
+        ])->assertSessionHasNoErrors();
+
+        $unanswered = User::where('student_number', '2026-9303')->firstOrFail();
+        $this->assertSame(0, (int) $unanswered->studentInfo->ladderized);
+    }
+
+    public function test_super_admin_uses_the_same_ladderized_rules(): void
+    {
+        $super = $this->createAdmin(true);
+        $bsitId = $this->programId();
+
+        $this->actingAs($super, 'admin')->post(route('admin.students.store'), [
+            'student_number' => '2026-9310',
+            'first_name' => 'Super',
+            'last_name' => 'Ladder',
+            'program_id' => $bsitId,
+            'year_id' => $this->yearId(),
+            'section_id' => $this->sectionId(),
+            'gender_id' => $this->genderId(),
+            'status_id' => $this->statusId(),
+            'ladderized' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $student = User::where('student_number', '2026-9310')->firstOrFail();
+        $this->assertSame(1, (int) $student->studentInfo->ladderized);
+    }
+
+    /**
+     * Editing a student keeps the ladderized flag when the field is absent
+     * (the standalone edit form has no ladderized input) instead of resetting it.
+     */
+    public function test_editing_without_the_ladderized_field_preserves_the_flag(): void
+    {
+        $admin = $this->createAdmin();
+        $bsitId = $this->programId();
+        $yearId = $this->yearId();
+        $sectionId = $this->sectionId();
+        $genderId = $this->genderId();
+        $statusId = $this->statusId();
+
+        $this->actingAs($admin, 'admin')->post(route('admin.students.store'), [
+            'student_number' => '2026-9320',
+            'first_name' => 'Keep',
+            'last_name' => 'Ladder',
+            'program_id' => $bsitId,
+            'year_id' => $yearId,
+            'section_id' => $sectionId,
+            'gender_id' => $genderId,
+            'status_id' => $statusId,
+            'ladderized' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $student = User::where('student_number', '2026-9320')->firstOrFail();
+        $this->assertSame(1, (int) $student->studentInfo->ladderized);
+
+        $this->actingAs($admin, 'admin')->put(route('admin.students.update', $student->user_id), [
+            'student_number' => '2026-9320',
+            'program_id' => $bsitId,
+            'year_id' => $yearId,
+            'section_id' => $sectionId,
+            'gender_id' => $genderId,
+            'status_id' => $statusId,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(1, (int) $student->fresh()->studentInfo->ladderized);
+    }
+
+    /**
+     * Student number length must match users_tbl.student_number (VARCHAR(15)).
+     */
+    public function test_student_number_length_is_aligned_with_the_column(): void
+    {
+        $admin = $this->createAdmin();
+
+        $payload = [
+            'first_name' => 'Length',
+            'last_name' => 'Check',
+            'program_id' => $this->programId(),
+            'year_id' => $this->yearId(),
+            'section_id' => $this->sectionId(),
+            'gender_id' => $this->genderId(),
+            'status_id' => $this->statusId(),
+        ];
+
+        // 16 characters cannot be stored in VARCHAR(15) → rejected up front.
+        $this->actingAs($admin, 'admin')
+            ->from(route('admin.students'))
+            ->post(route('admin.students.store'), $payload + [
+                'student_number' => '1234567890123456',
+            ])
+            ->assertSessionHasErrors('student_number');
+
+        $this->assertNull(User::where('first_name', 'Length')->first());
+
+        // Exactly 15 characters is accepted and stored unchanged.
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.students.store'), $payload + [
+                'student_number' => '123456789012345',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('users_tbl', [
+            'student_number' => '123456789012345',
+            'first_name' => 'Length',
+        ]);
+    }
+
+    public function test_update_rejects_a_student_number_longer_than_the_column(): void
+    {
+        $admin = $this->createAdmin();
+        $this->createStudentRow('2026-9401');
+        $student = User::where('student_number', '2026-9401')->firstOrFail();
+
+        $this->actingAs($admin, 'admin')
+            ->from(route('admin.students'))
+            ->put(route('admin.students.update', $student->user_id), [
+                'student_number' => '1234567890123456',
+                'program_id' => $this->programId(),
+                'year_id' => $this->yearId(),
+                'section_id' => $this->sectionId(),
+                'gender_id' => $this->genderId(),
+                'status_id' => $this->statusId(),
+            ])
+            ->assertSessionHasErrors('student_number');
+
+        $this->assertSame('2026-9401', $student->fresh()->student_number);
+    }
+
+    public function test_bulk_import_skips_a_student_number_longer_than_the_column(): void
+    {
+        $controller = app(\App\Http\Controllers\Admin\StudentController::class);
+        $method = new \ReflectionMethod($controller, 'importStudentRow');
+        $method->setAccessible(true);
+
+        $tooLong = $method->invoke($controller, [
+            'student_number' => str_repeat('9', 16),
+            'first_name' => 'Too',
+            'last_name' => 'Long',
+        ]);
+
+        $this->assertSame(0, $tooLong, 'A 16-character student number must be skipped, not imported.');
+        $this->assertDatabaseMissing('users_tbl', ['first_name' => 'Too', 'last_name' => 'Long']);
+
+        // Exactly 15 characters imports normally.
+        $ok = $method->invoke($controller, [
+            'student_number' => str_repeat('8', 15),
+            'first_name' => 'Fits',
+            'last_name' => 'Fine',
+        ]);
+
+        $this->assertSame(1, $ok);
+        $this->assertDatabaseHas('users_tbl', [
+            'student_number' => str_repeat('8', 15),
+            'first_name' => 'Fits',
+        ]);
+    }
+
+    /**
+     * The IDP page is addressed by user_id, so it must open (and offer the
+     * link action) for a student whose number has not been assigned yet.
+     */
+    public function test_admin_can_open_the_idp_page_for_a_student_without_a_student_number(): void
+    {
+        $admin = $this->createAdmin();
+
+        $student = User::create([
+            'student_number' => null,
+            'first_name' => 'No',
+            'last_name' => 'Number',
+            'email' => 'no.number@example.com',
+            'password_hash' => 'x',
+            'roles_id' => 2,
+            'status_id' => 1,
+        ]);
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.students.show', $student->user_id))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('PUP IDP Account Linking', $html);
+        $this->assertStringContainsString(
+            route('admin.students.link-idp', $student->user_id),
+            $html,
+            'The link form must target the account id, not a student number.'
+        );
+    }
+
+    /**
+     * A supplied number must still be unique, and both the Admin and the
+     * Super Admin get the same validation result.
+     */
+    public function test_duplicate_student_number_is_still_rejected_for_admin_and_super_admin(): void
+    {
+        $admin = $this->createAdmin();
+        $super = $this->createAdmin(true);
+
+        $this->actingAs($admin, 'admin')->post(route('admin.students.store'), [
+            'student_number' => '2026-9200',
+            'first_name' => 'First',
+            'last_name' => 'Owner',
+            'program_id' => $this->programId(),
+            'year_id' => $this->yearId(),
+            'section_id' => $this->sectionId(),
+            'gender_id' => $this->genderId(),
+            'status_id' => $this->statusId(),
+        ])->assertSessionHasNoErrors();
+
+        foreach ([$admin, $super] as $actor) {
+            $this->actingAs($actor, 'admin')
+                ->from(route('admin.students'))
+                ->post(route('admin.students.store'), [
+                    'student_number' => '2026-9200',
+                    'first_name' => 'Second',
+                    'last_name' => 'Owner',
+                    'program_id' => $this->programId(),
+                    'year_id' => $this->yearId(),
+                    'section_id' => $this->sectionId(),
+                    'gender_id' => $this->genderId(),
+                    'status_id' => $this->statusId(),
+                ])
+                ->assertSessionHasErrors('student_number');
         }
     }
 
@@ -174,10 +491,9 @@ class AdminImprovementsTest extends TestCase
         $this->assertStringNotContainsString('Name and email are managed by the PUP IDP', $html);
 
         // Required fields carry the asterisk; optional ones do not.
-        // 8 required: Student Number, Gender, First Name, Last Name,
-        // Program, Year, Section, Status.
-        $this->assertSame(8, substr_count($modal, 'required-asterisk'));
-        $this->assertStringContainsString('Student Number <span class="required-asterisk">', $modal);
+        // 7 required: Gender, First Name, Last Name, Program, Year, Section,
+        // Status. Student Number is OPTIONAL (Task 4), as is Middle Initials.
+        $this->assertSame(7, substr_count($modal, 'required-asterisk'));
         $this->assertStringContainsString('First Name <span class="required-asterisk">', $modal);
         $this->assertStringContainsString('Last Name <span class="required-asterisk">', $modal);
         $this->assertStringContainsString('Gender <span class="required-asterisk">', $modal);
@@ -187,8 +503,16 @@ class AdminImprovementsTest extends TestCase
         $this->assertStringContainsString('Status <span class="required-asterisk">', $modal);
 
         // The genuinely optional fields must NOT carry one.
-        $this->assertStringNotContainsString('Middle Name <span class="required-asterisk">', $modal);
+        $this->assertStringNotContainsString('Student Number <span class="required-asterisk">', $modal);
+        $this->assertStringNotContainsString('Middle Initials <span class="required-asterisk">', $modal);
         $this->assertStringNotContainsString('Name Suffix <span class="required-asterisk">', $modal);
+
+        // ...and the Student Number input must not be HTML-`required`.
+        $this->assertDoesNotMatchRegularExpression(
+            '/name="student_number"[^>]*\brequired\b/',
+            $modal,
+            'Student Number must be optional in the Create Student form.'
+        );
     }
 
     // ==================================================================
@@ -289,7 +613,9 @@ class AdminImprovementsTest extends TestCase
         // The row stores the numeric ID in the `violation_type` column, exactly
         // as the app writes it.
         DB::table('violation_tbl')->insert([
+            'user_id' => $this->userIdFor('2026-8201'),
             'student_number' => '2026-8201',
+            'violation_type_id' => $typeId,
             'violation_type' => (string) $typeId,
             'violation_date' => now(),
             'description' => 'No ID presented.',
@@ -335,7 +661,9 @@ class AdminImprovementsTest extends TestCase
         // the name (legacy). They must collapse into ONE summary row.
         DB::table('violation_tbl')->insert([
             [
+                'user_id' => $this->userIdFor('2026-8301'),
                 'student_number' => '2026-8301',
+                'violation_type_id' => $typeId,
                 'violation_type' => (string) $typeId,
                 'violation_date' => now()->subDay(),
                 'description' => 'First instance.',
@@ -344,7 +672,9 @@ class AdminImprovementsTest extends TestCase
                 'status' => Violation::STATUS_CONFIRMED,
             ],
             [
+                'user_id' => $this->userIdFor('2026-8301'),
                 'student_number' => '2026-8301',
+                'violation_type_id' => null,
                 'violation_type' => 'Improper Uniform',
                 'violation_date' => now(),
                 'description' => 'Second instance.',
@@ -549,10 +879,21 @@ class AdminImprovementsTest extends TestCase
         ]);
     }
 
+    private function userIdFor(string $number): ?int
+    {
+        $userId = DB::table('users_tbl')
+            ->where('student_number', $number)
+            ->value('user_id');
+
+        return $userId !== null ? (int) $userId : null;
+    }
+
     private function createViolation(string $number, $date, int $typeId, string $status): void
     {
         DB::table('violation_tbl')->insert([
+            'user_id' => $this->userIdFor($number),
             'student_number' => $number,
+            'violation_type_id' => $typeId,
             'violation_type' => (string) $typeId,
             'violation_date' => $date,
             'description' => 'Test violation.',
@@ -681,7 +1022,11 @@ class AdminImprovementsTest extends TestCase
             },
             'violation_tbl' => function (Blueprint $t): void {
                 $t->increments('violation_id');
+                // Stable student identity (Task 8) — violations are linked by
+                // user_id; student_number is display data only.
+                $t->unsignedInteger('user_id')->nullable();
                 $t->string('student_number')->nullable();
+                $t->unsignedInteger('violation_type_id')->nullable();
                 $t->string('violation_type')->nullable();
                 $t->dateTime('violation_date')->nullable();
                 $t->text('description')->nullable();

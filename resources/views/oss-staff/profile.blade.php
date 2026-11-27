@@ -18,19 +18,27 @@
      */
     $ossStaffInfo = $admin->adminInfo ?? null;
 
-    $ossStaffFirstName = $ossStaffInfo->firstname ?? '';
-    $ossStaffMiddleName = $ossStaffInfo->middlename ?? '';
-    $ossStaffLastName = $ossStaffInfo->lastname ?? '';
+    $ossStaffFirstName = $ossStaffInfo?->firstname ?? '';
+    $ossStaffMiddleName = $ossStaffInfo?->middlename ?? '';
+    $ossStaffLastName = $ossStaffInfo?->lastname ?? '';
+    $ossStaffSuffix = $ossStaffInfo?->name_suffix ?? '';
 
-    $ossStaffFullName = trim($ossStaffFirstName . ' ' . $ossStaffMiddleName . ' ' . $ossStaffLastName)
+    $ossStaffFullName = trim(implode(' ', array_filter([
+        $ossStaffFirstName,
+        $ossStaffMiddleName,
+        $ossStaffLastName,
+        $ossStaffSuffix,
+    ], fn ($part) => trim((string) $part) !== '')))
         ?: ($admin->email ?? 'OSS Staff');
 
-    // The assigned position/designation is optional legacy data; the role name
-    // is the authoritative label for this module.
-    $ossStaffPosition = $ossStaffInfo->Position
-        ?? $ossStaffInfo->position
-        ?? $ossStaffInfo->designation
-        ?? 'OSS Staff';
+    // POSITION comes from the controller, which resolves it from the account's
+    // ASSIGNED ROLE ("OSS Staff") rather than the legacy free-text
+    // `admin_info_tbl.Position` column that still held "Admin".
+    $ossStaffPosition = $position ?? ($roleName ?? 'OSS Staff');
+
+    // The hero badge is part of the page's existing design, so it keeps the
+    // module label ($roleName) even though the Role information CARD was removed.
+    $ossStaffRole = $roleName ?? 'OSS Staff';
 @endphp
 
 <div class="container-fluid py-4">
@@ -51,7 +59,7 @@
                 <div class="profile-hero-badges">
                     <span class="profile-hero-badge">
                         <i class="bi bi-person-badge" aria-hidden="true"></i>
-                        OSS Staff
+                        {{ $ossStaffRole }}
                     </span>
                 </div>
             </div>

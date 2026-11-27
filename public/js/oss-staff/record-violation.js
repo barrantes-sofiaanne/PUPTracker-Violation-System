@@ -232,6 +232,28 @@ document.addEventListener("DOMContentLoaded", function () {
     const currentStudentNumber = () =>
         document.getElementById("selectedStudentNumber").value || "";
 
+    /**
+     * Display-only student label.
+     *
+     * The ACCOUNT id (user_id) is the student identity; name fields and the
+     * student number are optional profile data. A missing name must therefore
+     * never render as "undefined, undefined" nor block selection.
+     */
+    const studentDisplayName = (student) => {
+        const last = String(student?.last_name ?? "").trim();
+        const first = String(student?.first_name ?? "").trim();
+
+        if (last === "" && first === "") {
+            return "Name unavailable";
+        }
+
+        if (last === "") {
+            return first;
+        }
+
+        return first === "" ? last : `${last}, ${first}`;
+    };
+
     // ---------------------------------------------------------------
     // Privacy face-blur protection
     // Uses the same MediaPipe face-blur module as Security.
@@ -1751,9 +1773,10 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("selectedStudentId").value = student.user_id;
         document.getElementById("selectedStudentNumber").value =
             student.student_number || "";
-        document.getElementById("studentNumber").value = student.student_number;
+        document.getElementById("studentNumber").value =
+            student.student_number || "";
         document.getElementById("studentName").value =
-            `${student.last_name}, ${student.first_name}`;
+            studentDisplayName(student);
         document.getElementById("studentProgram").value =
             student.program?.program_name ?? "-";
         document.getElementById("studentYear").value =
@@ -1767,7 +1790,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .classList.remove("d-none");
 
         resultBox.innerHTML = "";
-        searchBox.value = `${student.student_number || "No student number"} - ${student.last_name}, ${student.first_name}`;
+        searchBox.value = `${student.student_number || "No student number"} - ${studentDisplayName(student)}`;
         updateLiveWatermark();
     };
 
@@ -1815,7 +1838,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             ? ' <span class="admin-badge" style="background:#fdecec;color:#8a1c1c;">Inactive account — cannot record</span>'
                             : "";
 
-                        item.innerHTML = `<strong>${student.student_number || "No student number"}</strong>${badge}<br>${student.last_name}, ${student.first_name}`;
+                        item.innerHTML = `<strong>${student.student_number || "No student number"}</strong>${badge}<br>${studentDisplayName(student)}`;
                         item.addEventListener("click", function () {
                             selectStudent(student);
                         });
@@ -1931,6 +1954,11 @@ document.addEventListener("DOMContentLoaded", function () {
     // Submit
     // ------------------------------------------------------------------
     saveBtn.addEventListener("click", function () {
+        // Ignore a second click while the first request is still in flight.
+        if (saveBtn.disabled) {
+            return;
+        }
+
         const studentNumber =
             document.getElementById("selectedStudentId").value;
         const violationTypeId = document.getElementById("violationType").value;
@@ -1994,6 +2022,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         saveBtn.disabled = true;
 
+        // Show the processing state immediately (no artificial delay) and
+        // keep it until the request settles.
+        const originalSaveLabel = saveBtn.innerHTML;
+        saveBtn.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Recording Violation...';
+
         fetch(window.ViolationRoutes.store, {
             method: "POST",
             headers: {
@@ -2030,6 +2064,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 showAlert("error", "Submit failed", error.message);
             })
             .finally(() => {
+                // Restore on success AND on validation/server failure so the
+                // officer can correct the form and retry.
+                saveBtn.innerHTML = originalSaveLabel;
                 saveBtn.disabled = false;
             });
     });
