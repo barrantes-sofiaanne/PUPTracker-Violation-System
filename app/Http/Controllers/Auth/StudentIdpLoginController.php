@@ -489,7 +489,7 @@ class StudentIdpLoginController extends Controller
                 : ['nullable', 'in:0,1'];
 
             $validated = $request->validate([
-                'student_number' => ['required', 'string', 'max:50'],
+                'student_number' => ['required', 'string', 'max:15'],
                 'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
                 'year_id' => ['required', 'integer', 'exists:year_tbl,year_id'],
                 'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
@@ -508,7 +508,7 @@ class StudentIdpLoginController extends Controller
                 ]);
             }
             $validated = $request->validate([
-                'student_number' => ['required', 'string', 'max:50'],
+                'student_number' => ['required', 'string', 'max:15'],
                 'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
                 'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],
                 'confirm_record' => ['accepted'],
@@ -540,7 +540,7 @@ class StudentIdpLoginController extends Controller
 
         // No existing student with this full name: allow first-time registration.
         $validated = $request->validate([
-            'student_number' => ['required', 'string', 'max:50'],
+            'student_number' => ['required', 'string', 'max:15'],
             'program_id' => ['required', 'integer', 'exists:program_tbl,program_id'],
             'year_id' => ['required', 'integer', 'exists:year_tbl,year_id'],
             'section_id' => ['required', 'integer', 'exists:section_tbl,section_id'],

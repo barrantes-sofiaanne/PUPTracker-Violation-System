@@ -204,6 +204,14 @@ public function getOffenseLevelAttribute(): string
     $violationId = (int) ($this->violation_id ?? 0);
     $violationTypeId = (int) ($this->violation_type_id ?? 0);
 
+    // Legacy rows may carry the type only in the raw `violation_type` column
+    // (numeric id or type name). Resolve it the same way the centralized
+    // service does, so the displayed number matches the confirmation-queue
+    // filter (whose SQL expression resolves the same bucket).
+    if ($violationTypeId <= 0) {
+        $violationTypeId = (int) ($this->resolvedViolationType()?->violation_type_id ?? 0);
+    }
+
     if ($userId <= 0 || $violationId <= 0 || $violationTypeId <= 0) {
         return '';
     }

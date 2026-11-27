@@ -336,7 +336,9 @@ class StudentController extends Controller
                 [
                     'nullable',
                     'string',
-                    'max:50',
+                    // users_tbl.student_number is VARCHAR(15) — the validation
+                    // limit must not accept values the column cannot store.
+                    'max:15',
                     Rule::unique('users_tbl', 'student_number'),
                 ],
 
@@ -1832,6 +1834,37 @@ class StudentController extends Controller
     }
 
     /**
+     * Resolve a STUDENT account by its immutable user_id for the IDP
+     * link/unlink endpoints.
+     *
+     * A non-student row is reported as 404 so these student-scoped endpoints
+     * can never modify an administrator/Security/OSS Staff account.
+     */
+    private function findStudentAccountOrFail(int $userId): User
+    {
+        $student = User::query()->findOrFail($userId);
+
+        if (! $student->isStudentAccount()) {
+            abort(404);
+        }
+
+        return $student;
+    }
+
+    /**
+     * Human-readable label for audit/notification text. Falls back to the
+     * account id when the student number has not been assigned yet.
+     */
+    private function studentAccountLabel(User $student): string
+    {
+        $number = trim((string) ($student->student_number ?? ''));
+
+        return $number !== ''
+            ? $number
+            : 'Student #' . $student->user_id;
+    }
+
+    /**
      * Update normal student information.
      *
      * Year level can be manually changed from the normal Edit Student form.
@@ -1848,7 +1881,8 @@ class StudentController extends Controller
                 [
                     'nullable',
                     'string',
-                    'max:50',
+                    // Matches the VARCHAR(15) column (see store()).
+                    'max:15',
                     // Uniqueness is enforced against the canonical account
                     // table, ignoring this student's own row.
                     Rule::unique('users_tbl', 'student_number')
@@ -2152,15 +2186,9 @@ class StudentController extends Controller
 
     public function linkIdpAccount(
         Request $request,
-        string $student_number
+        int $user_id
     ) {
-
-        $student = User::query()
-            ->where(
-                'student_number',
-                $student_number
-            )
-            ->firstOrFail();
+        $student = $this->findStudentAccountOrFail($user_id);
 
         $validated = $request->validate([
             'idp_subject' =>
@@ -2201,7 +2229,7 @@ class StudentController extends Controller
             throw ValidationException::withMessages([
                 'idp_subject' =>
                     'This IDP Account ID is already linked to student '
-                    . $existing->student_number
+                    . $this->studentAccountLabel($existing)
                     . '.',
             ]);
         }
@@ -2274,7 +2302,7 @@ class StudentController extends Controller
                 ],
 
             displayLabel:
-                $student->student_number,
+                $this->studentAccountLabel($student),
         );
 
         app(
@@ -2294,7 +2322,7 @@ class StudentController extends Controller
 
             'description' =>
                 'Linked IDP Account ID to student '
-                . $student->student_number
+                . $this->studentAccountLabel($student)
                 . ' by '
                 . $adminEmail
                 . '.',
@@ -2309,15 +2337,9 @@ class StudentController extends Controller
 
     public function unlinkIdpAccount(
         Request $request,
-        string $student_number
+        int $user_id
     ) {
-
-        $student = User::query()
-            ->where(
-                'student_number',
-                $student_number
-            )
-            ->firstOrFail();
+        $student = $this->findStudentAccountOrFail($user_id);
 
         $admin =
             Auth::guard('admin')->user();
@@ -2378,7 +2400,7 @@ class StudentController extends Controller
                 ],
 
             displayLabel:
-                $student->student_number,
+                $this->studentAccountLabel($student),
         );
 
         app(
@@ -2398,7 +2420,7 @@ class StudentController extends Controller
 
             'description' =>
                 'Unlinked IDP Account from student '
-                . $student->student_number
+                . $this->studentAccountLabel($student)
                 . ' by '
                 . $adminEmail
                 . '.',
@@ -2668,6 +2690,13 @@ private function importStudentRow(array $row): int
     {
         // Student number is optional. Only check duplicates when supplied.
         $studentNumber = $this->nullableTrim($row['student_number'] ?? null);
+
+    // users_tbl.student_number is VARCHAR(15). A longer value cannot be
+    // stored (MySQL would reject/truncate it), so the row is skipped
+    // exactly like any other invalid row instead of failing the import.
+    if ($studentNumber !== null && mb_strlen($studentNumber) > 15) {
+        return 0;
+    }
 
         if (
             $studentNumber !== null &&

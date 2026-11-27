@@ -277,6 +277,127 @@ class AdminImprovementsTest extends TestCase
     }
 
     /**
+     * Student number length must match users_tbl.student_number (VARCHAR(15)).
+     */
+    public function test_student_number_length_is_aligned_with_the_column(): void
+    {
+        $admin = $this->createAdmin();
+
+        $payload = [
+            'first_name' => 'Length',
+            'last_name' => 'Check',
+            'program_id' => $this->programId(),
+            'year_id' => $this->yearId(),
+            'section_id' => $this->sectionId(),
+            'gender_id' => $this->genderId(),
+            'status_id' => $this->statusId(),
+        ];
+
+        // 16 characters cannot be stored in VARCHAR(15) → rejected up front.
+        $this->actingAs($admin, 'admin')
+            ->from(route('admin.students'))
+            ->post(route('admin.students.store'), $payload + [
+                'student_number' => '1234567890123456',
+            ])
+            ->assertSessionHasErrors('student_number');
+
+        $this->assertNull(User::where('first_name', 'Length')->first());
+
+        // Exactly 15 characters is accepted and stored unchanged.
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.students.store'), $payload + [
+                'student_number' => '123456789012345',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('users_tbl', [
+            'student_number' => '123456789012345',
+            'first_name' => 'Length',
+        ]);
+    }
+
+    public function test_update_rejects_a_student_number_longer_than_the_column(): void
+    {
+        $admin = $this->createAdmin();
+        $this->createStudentRow('2026-9401');
+        $student = User::where('student_number', '2026-9401')->firstOrFail();
+
+        $this->actingAs($admin, 'admin')
+            ->from(route('admin.students'))
+            ->put(route('admin.students.update', $student->user_id), [
+                'student_number' => '1234567890123456',
+                'program_id' => $this->programId(),
+                'year_id' => $this->yearId(),
+                'section_id' => $this->sectionId(),
+                'gender_id' => $this->genderId(),
+                'status_id' => $this->statusId(),
+            ])
+            ->assertSessionHasErrors('student_number');
+
+        $this->assertSame('2026-9401', $student->fresh()->student_number);
+    }
+
+    public function test_bulk_import_skips_a_student_number_longer_than_the_column(): void
+    {
+        $controller = app(\App\Http\Controllers\Admin\StudentController::class);
+        $method = new \ReflectionMethod($controller, 'importStudentRow');
+        $method->setAccessible(true);
+
+        $tooLong = $method->invoke($controller, [
+            'student_number' => str_repeat('9', 16),
+            'first_name' => 'Too',
+            'last_name' => 'Long',
+        ]);
+
+        $this->assertSame(0, $tooLong, 'A 16-character student number must be skipped, not imported.');
+        $this->assertDatabaseMissing('users_tbl', ['first_name' => 'Too', 'last_name' => 'Long']);
+
+        // Exactly 15 characters imports normally.
+        $ok = $method->invoke($controller, [
+            'student_number' => str_repeat('8', 15),
+            'first_name' => 'Fits',
+            'last_name' => 'Fine',
+        ]);
+
+        $this->assertSame(1, $ok);
+        $this->assertDatabaseHas('users_tbl', [
+            'student_number' => str_repeat('8', 15),
+            'first_name' => 'Fits',
+        ]);
+    }
+
+    /**
+     * The IDP page is addressed by user_id, so it must open (and offer the
+     * link action) for a student whose number has not been assigned yet.
+     */
+    public function test_admin_can_open_the_idp_page_for_a_student_without_a_student_number(): void
+    {
+        $admin = $this->createAdmin();
+
+        $student = User::create([
+            'student_number' => null,
+            'first_name' => 'No',
+            'last_name' => 'Number',
+            'email' => 'no.number@example.com',
+            'password_hash' => 'x',
+            'roles_id' => 2,
+            'status_id' => 1,
+        ]);
+
+        $html = $this->actingAs($admin, 'admin')
+            ->get(route('admin.students.show', $student->user_id))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('PUP IDP Account Linking', $html);
+        $this->assertStringContainsString(
+            route('admin.students.link-idp', $student->user_id),
+            $html,
+            'The link form must target the account id, not a student number.'
+        );
+    }
+
+    /**
      * A supplied number must still be unique, and both the Admin and the
      * Super Admin get the same validation result.
      */

@@ -23,7 +23,7 @@
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Student Number</label>
-                        <input type="text" name="student_number" class="form-control" maxlength="50" placeholder="Optional" value="{{ old('student_number', $student->student_number) }}">
+                        <input type="text" name="student_number" class="form-control" maxlength="15" placeholder="Optional" value="{{ old('student_number', $student->student_number) }}">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">First Name</label>

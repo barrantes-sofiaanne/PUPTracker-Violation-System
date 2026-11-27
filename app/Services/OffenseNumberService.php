@@ -48,10 +48,24 @@ class OffenseNumberService
      * Correlated SQL expression that yields the SAME 1-based offense number
      * the PHP accessor derives, for use in WHERE / ORDER BY / SELECT clauses.
      *
-     * Mirrors eligibleViolations(): identical counted statuses, identical
-     * `user_id` + `violation_type_id` partition, and identical ordering
-     * (`violation_date`, then `violation_id` as the stable tie-breaker). A NULL
-     * violation date sorts first, exactly like the Eloquent ordering.
+     * It mirrors eligibleViolations() exactly:
+     *
+     *  • identity      — same `user_id` (never the student number);
+     *  • type bucket   — the row's violation TYPE is resolved the same way the
+     *                    PHP service resolves it: the FK `violation_type_id`
+     *                    when present, otherwise the legacy raw
+     *                    `violation_type` value (a numeric id, or a type NAME
+     *                    matched case-insensitively against violation_type_tbl);
+     *  • eligibility   — pending / confirmed / NULL status only;
+     *  • ordering      — violation_date, then violation_id, NULL dates first.
+     *
+     * The expression is SCHEMA-AWARE, like the PHP service: a deployment whose
+     * violation_tbl has no raw `violation_type` column never references it.
+     *
+     * A row that cannot be resolved to a violation type is EXCLUDED (reports 0)
+     * instead of being grouped with unrelated records, matching the PHP service
+     * which never returns such a row for any type. A row that carries BOTH a
+     * type id and a raw value is counted once, through the id.
      *
      * Only a plain table identifier is accepted; anything else falls back to
      * `violation_tbl`, so the expression can never carry injected SQL.
@@ -65,18 +79,79 @@ class OffenseNumberService
         $statuses = "'" . implode("', '", self::COUNTED_STATUSES) . "'";
         $earliest = "'1000-01-01 00:00:00'";
 
-        $position = '(SELECT COUNT(*) FROM violation_tbl AS offense_peer'
+        $hasTypeIdColumn = Schema::hasColumn('violation_tbl', 'violation_type_id');
+        $hasRawTypeColumn = Schema::hasColumn('violation_tbl', 'violation_type');
+
+        if (! $hasTypeIdColumn && ! $hasRawTypeColumn) {
+            // No usable type column: never group unrelated violations.
+            return '0';
+        }
+
+        if ($hasTypeIdColumn && ! $hasRawTypeColumn) {
+            // Modern schema: the FK is the only type source.
+            $resolvedTypeId = "{$alias}.violation_type_id";
+            $sameBucket = "(offense_peer.violation_type_id IS NOT NULL"
+                . " AND offense_peer.violation_type_id = ({$resolvedTypeId}))";
+        } else {
+            // FK (when it exists) → numeric legacy value → legacy name lookup.
+            $resolvedTypeId = "CASE";
+            if ($hasTypeIdColumn) {
+                $resolvedTypeId .= " WHEN {$alias}.violation_type_id IS NOT NULL THEN {$alias}.violation_type_id";
+            }
+            $resolvedTypeId .= " WHEN {$alias}.violation_type IS NULL THEN NULL"
+                // Portable "is a plain integer" check: casting to a number and
+                // back to text must reproduce the original value. A name such
+                // as "Improper Uniform" or "05" fails this test.
+                . " WHEN CAST({$alias}.violation_type AS CHAR)"
+                . " = CAST(CAST({$alias}.violation_type AS SIGNED) AS CHAR)"
+                . " THEN CAST({$alias}.violation_type AS SIGNED)"
+                . " ELSE (SELECT offense_type_lookup.violation_type_id"
+                . " FROM violation_type_tbl AS offense_type_lookup"
+                . " WHERE LOWER(TRIM(offense_type_lookup.violation_type))"
+                . " = LOWER(TRIM({$alias}.violation_type))"
+                . " LIMIT 1) END";
+
+            // Canonical TYPE NAME for that resolved id (used to match legacy
+            // rows that stored the name rather than the id).
+            $resolvedTypeName = "(SELECT offense_type_name.violation_type"
+                . " FROM violation_type_tbl AS offense_type_name"
+                . " WHERE offense_type_name.violation_type_id = ({$resolvedTypeId})"
+                . " LIMIT 1)";
+
+            $peerHasIdClause = $hasTypeIdColumn
+                ? "(offense_peer.violation_type_id IS NOT NULL"
+                    . " AND offense_peer.violation_type_id = ({$resolvedTypeId})) OR "
+                : '';
+
+            // Legacy peer rows: no FK id, but their raw value carries the id
+            // as text or the type name.
+            $peerLegacyClause = $hasTypeIdColumn
+                ? 'offense_peer.violation_type_id IS NULL'
+                : '1 = 1';
+
+            $sameBucket = '('
+                . $peerHasIdClause
+                . '(' . $peerLegacyClause . ')'
+                . " AND ({$resolvedTypeId}) IS NOT NULL"
+                . " AND (offense_peer.violation_type = CAST(({$resolvedTypeId}) AS CHAR)"
+                . " OR LOWER(TRIM(offense_peer.violation_type)) = LOWER(TRIM({$resolvedTypeName})))"
+                . ')';
+        }
+
+        $position = "(SELECT COUNT(*) FROM violation_tbl AS offense_peer"
             . " WHERE offense_peer.user_id = {$alias}.user_id"
-            . " AND offense_peer.violation_type_id = {$alias}.violation_type_id"
+            . " AND {$sameBucket}"
             . " AND (offense_peer.status IS NULL OR LOWER(TRIM(offense_peer.status)) IN ({$statuses}))"
             . " AND (COALESCE(offense_peer.violation_date, {$earliest}) < COALESCE({$alias}.violation_date, {$earliest})"
             . " OR (COALESCE(offense_peer.violation_date, {$earliest}) = COALESCE({$alias}.violation_date, {$earliest})"
             . " AND offense_peer.violation_id <= {$alias}.violation_id)))";
 
-        // A row that does not itself occupy a slot (denied / deleted / any
-        // other status) reports 0, exactly like the PHP accessor returns ''.
-        return "CASE WHEN {$alias}.status IS NULL"
-            . " OR LOWER(TRIM({$alias}.status)) IN ({$statuses})"
+        // A row that does not occupy a slot (denied / deleted / other status), or
+        // that cannot be resolved to a violation type, reports 0 — exactly like
+        // the PHP accessor returns '' for it.
+        return "CASE WHEN ({$alias}.status IS NULL"
+            . " OR LOWER(TRIM({$alias}.status)) IN ({$statuses}))"
+            . " AND ({$resolvedTypeId}) IS NOT NULL"
             . " THEN {$position} ELSE 0 END";
     }
 

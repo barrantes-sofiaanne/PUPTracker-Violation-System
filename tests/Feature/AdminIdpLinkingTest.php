@@ -158,7 +158,7 @@ class AdminIdpLinkingTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
-        $this->post(route('admin.students.link-idp', $student->student_number), [
+        $this->post(route('admin.students.link-idp', $student->user_id), [
             'idp_subject' => 'ABC123',
             'idp_email' => 'student@student.pup.edu.ph',
         ])->assertRedirect();
@@ -175,6 +175,147 @@ class AdminIdpLinkingTest extends TestCase
             'actor_id' => $admin->id,
             'action' => 'Link IDP Account',
             'module' => 'Students',
+        ]);
+    }
+
+    // ------------------------------------------------------------------
+    // 3b. IDP management works for a student WITHOUT a Student Number
+    // ------------------------------------------------------------------
+
+    public function test_admin_can_link_and_unlink_a_student_without_a_student_number(): void
+    {
+        $admin = $this->createAdmin();
+
+        // No student number at all — identity is the account id.
+        $student = $this->createStudent(['student_number' => null]);
+
+        $this->actingAs($admin, 'admin');
+
+        $this->post(route('admin.students.link-idp', $student->user_id), [
+            'idp_subject' => 'NO-NUMBER-1',
+            'idp_email' => 'nonumber@student.pup.edu.ph',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('users_tbl', [
+            'user_id' => $student->user_id,
+            'student_number' => null,
+            'idp_subject' => 'NO-NUMBER-1',
+        ]);
+
+        // The audit text falls back to the account id rather than a blank name.
+        $this->assertTrue(
+            DB::table('audit_logs')
+                ->where('action', 'Link IDP Account')
+                ->where('description', 'like', '%Student #' . $student->user_id . '%')
+                ->exists(),
+            'The audit entry must identify an account that has no student number.'
+        );
+
+        $this->post(route('admin.students.unlink-idp', $student->user_id))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('users_tbl', [
+            'user_id' => $student->user_id,
+            'student_number' => null,
+            'idp_subject' => null,
+        ]);
+    }
+
+    public function test_student_number_route_parameter_is_no_longer_accepted(): void
+    {
+        $admin = $this->createAdmin();
+        $student = $this->createStudent(['student_number' => '2026-99999']);
+
+        $this->actingAs($admin, 'admin');
+
+        // The route is numeric-only, so a student-number string cannot resolve.
+        $this->post('/admin/students/2026-99999/link-idp', [
+            'idp_subject' => 'ABC999',
+        ])->assertNotFound();
+
+        $this->assertNull($student->fresh()->idp_subject);
+    }
+
+    // ------------------------------------------------------------------
+    // 3c. Non-student accounts cannot be modified through these endpoints
+    // ------------------------------------------------------------------
+
+    public function test_idp_endpoints_reject_a_non_student_user_row(): void
+    {
+        $admin = $this->createAdmin();
+
+        // A users_tbl row whose role is NOT Student (e.g. a legacy admin).
+        $nonStudent = $this->createStudent([
+            'student_number' => '2026-88888',
+            'email' => 'legacy-admin@example.com',
+            'roles_id' => 1,
+            'idp_subject' => 'EXISTING',
+        ]);
+
+        $this->actingAs($admin, 'admin');
+
+        $this->post(route('admin.students.link-idp', $nonStudent->user_id), [
+            'idp_subject' => 'HIJACK',
+        ])->assertNotFound();
+
+        $this->post(route('admin.students.unlink-idp', $nonStudent->user_id))
+            ->assertNotFound();
+
+        // Untouched in both directions.
+        $this->assertSame('EXISTING', $nonStudent->fresh()->idp_subject);
+    }
+
+    public function test_missing_user_id_returns_not_found(): void
+    {
+        $admin = $this->createAdmin();
+
+        $this->actingAs($admin, 'admin')
+            ->post(route('admin.students.link-idp', 999999), ['idp_subject' => 'ABC'])
+            ->assertNotFound();
+    }
+
+    // ------------------------------------------------------------------
+    // 3d. Superadmin keeps the same behavior
+    // ------------------------------------------------------------------
+
+    public function test_super_admin_can_link_a_student_without_a_student_number(): void
+    {
+        $super = Admin::create([
+            'username' => 'super.admin',
+            'email' => 'super.admin@example.com',
+            'password' => Hash::make('password'),
+            'role_id' => 4,
+        ]);
+
+        $student = $this->createStudent(['student_number' => null]);
+
+        $this->actingAs($super, 'admin')
+            ->post(route('admin.students.link-idp', $student->user_id), [
+                'idp_subject' => 'SUPER-LINK',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('users_tbl', [
+            'user_id' => $student->user_id,
+            'idp_subject' => 'SUPER-LINK',
+        ]);
+    }
+
+    public function test_registration_rejects_a_student_number_longer_than_the_column(): void
+    {
+        // No matching local name → the first-time registration path runs, so
+        // the student_number rule is what gets exercised.
+        $this->withSession($this->pendingProfileSession())
+            ->post(route('student.idp.link.post'), $this->registrationPayload([
+                'match_mode' => 'new',
+                'student_number' => str_repeat('7', 16),
+            ]))
+            ->assertSessionHasErrors('student_number');
+
+        $this->assertDatabaseMissing('users_tbl', [
+            'student_number' => str_repeat('7', 16),
         ]);
     }
 
@@ -197,7 +338,7 @@ class AdminIdpLinkingTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
-        $response = $this->post(route('admin.students.link-idp', $other->student_number), [
+        $response = $this->post(route('admin.students.link-idp', $other->user_id), [
             'idp_subject' => 'ABC123',
         ]);
 
@@ -216,7 +357,7 @@ class AdminIdpLinkingTest extends TestCase
 
         // Link via admin
         $this->actingAs($admin, 'admin');
-        $this->post(route('admin.students.link-idp', $student->student_number), [
+        $this->post(route('admin.students.link-idp', $student->user_id), [
             'idp_subject' => 'user-linked',
             'idp_email' => 'student.idp@example.com',
         ])->assertRedirect();
@@ -284,7 +425,7 @@ class AdminIdpLinkingTest extends TestCase
 
         $this->actingAs($admin, 'admin');
 
-        $this->post(route('admin.students.unlink-idp', $student->student_number))
+        $this->post(route('admin.students.unlink-idp', $student->user_id))
             ->assertRedirect();
 
         $this->assertDatabaseHas('users_tbl', [
@@ -312,7 +453,7 @@ class AdminIdpLinkingTest extends TestCase
         // student can never submit an IDP Account ID.
         $this->actingAs($student, 'student');
 
-        $response = $this->post(route('admin.students.link-idp', $student->student_number), [
+        $response = $this->post(route('admin.students.link-idp', $student->user_id), [
             'idp_subject' => 'ABC123',
         ]);
         $response->assertRedirect();
@@ -855,7 +996,9 @@ class AdminIdpLinkingTest extends TestCase
         if (! Schema::hasTable('users_tbl')) {
             Schema::create('users_tbl', function (Blueprint $table): void {
                 $table->id('user_id');
-                $table->string('student_number')->unique();
+                // Matches the live schema: the student number is OPTIONAL
+                // (nullable) but unique when present.
+                $table->string('student_number', 15)->nullable()->unique();
                 $table->string('first_name')->nullable();
                 $table->string('middle_name')->nullable();
                 $table->string('last_name')->nullable();

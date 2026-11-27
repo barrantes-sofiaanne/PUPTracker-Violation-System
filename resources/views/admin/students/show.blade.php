@@ -103,7 +103,7 @@
                         <strong>{{ optional($student->idp_connected_at)->format('M d, Y h:i A') ?: '—' }}</strong>
                     </div>
                 </div>
-                <form action="{{ route('admin.students.unlink-idp', $student->student_number) }}" method="POST"
+                <form action="{{ route('admin.students.unlink-idp', $student->user_id) }}" method="POST"
                       data-confirm="Unlink this student from their PUP IDP account? This will require re-linking before IDP login works again."
                       data-confirm-title="Unlink PUP IDP?"
                       data-confirm-confirm-label="Unlink">
@@ -118,7 +118,7 @@
                     with <strong>Continue with PUP IDP</strong>. The IDP Account ID must be unique — it cannot be
                     linked to more than one student.
                 </p>
-                <form action="{{ route('admin.students.link-idp', $student->student_number) }}" method="POST" class="row g-3">
+                <form action="{{ route('admin.students.link-idp', $student->user_id) }}" method="POST" class="row g-3">
                     @csrf
                     <div class="col-md-5">
                         <label class="form-label">IDP Account ID <span class="text-danger">*</span></label>

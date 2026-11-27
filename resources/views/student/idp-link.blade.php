@@ -50,7 +50,7 @@
                 <div class="ap-grid-2">
                     <div class="ap-field-group">
                         <label class="ap-label" for="matched_student_number">Student number <span class="ap-req">*</span></label>
-                        <div class="ap-field"><input id="matched_student_number" name="student_number" value="{{ old('student_number', $matchedStudent->student_number) }}" required maxlength="50" autocomplete="off"></div>
+                        <div class="ap-field"><input id="matched_student_number" name="student_number" value="{{ old('student_number', $matchedStudent->student_number) }}" required maxlength="15" autocomplete="off"></div>
                     </div>
                     <div class="ap-field-group">
                         <label class="ap-label" for="matched_program_id">Program <span class="ap-req">*</span></label>
@@ -102,7 +102,7 @@
             @csrf
             <input type="hidden" name="match_mode" value="duplicate">
             <div class="ap-grid-2">
-                <div class="ap-field-group"><label class="ap-label" for="student_number">Student number <span class="ap-req">*</span></label><div class="ap-field"><input id="student_number" name="student_number" value="{{ old('student_number') }}" required maxlength="50" autocomplete="off"></div></div>
+                <div class="ap-field-group"><label class="ap-label" for="student_number">Student number <span class="ap-req">*</span></label><div class="ap-field"><input id="student_number" name="student_number" value="{{ old('student_number') }}" required maxlength="15" autocomplete="off"></div></div>
                 <div class="ap-field-group"><label class="ap-label" for="program_id">Program <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="program_id" name="program_id" required><option value="">Select program</option>@foreach($programs as $program)<option value="{{ $program->program_id }}" @selected((string)old('program_id') === (string)$program->program_id)>{{ $program->program_name }}</option>@endforeach</select></div></div>
                 <div class="ap-field-group"><label class="ap-label" for="section_id">Section <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="section_id" name="section_id" required><option value="">Select section</option>@foreach($sections as $section)<option value="{{ $section->section_id }}" @selected((string)old('section_id') === (string)$section->section_id)>{{ $section->section_name }}</option>@endforeach</select></div></div>
             </div>
@@ -128,7 +128,7 @@
             @csrf
             <input type="hidden" name="match_mode" value="new">
             <div class="ap-grid-2">
-                <div class="ap-field-group"><label class="ap-label" for="student_number">Student number <span class="ap-req">*</span></label><div class="ap-field"><input id="student_number" name="student_number" value="{{ old('student_number') }}" required maxlength="50" autocomplete="off"></div></div>
+                <div class="ap-field-group"><label class="ap-label" for="student_number">Student number <span class="ap-req">*</span></label><div class="ap-field"><input id="student_number" name="student_number" value="{{ old('student_number') }}" required maxlength="15" autocomplete="off"></div></div>
                 <div class="ap-field-group"><label class="ap-label" for="gender_id">Gender <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="gender_id" name="gender_id" required><option value="">Select gender</option>@foreach($genders as $gender)<option value="{{ $gender->gender_id }}" @selected((string)old('gender_id') === (string)$gender->gender_id)>{{ $gender->gender_name }}</option>@endforeach</select></div></div>
                 <div class="ap-field-group"><label class="ap-label" for="program_id">Program <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="program_id" name="program_id" required data-ladderized-programs='@json($ladderizedProgramIds)' onchange="syncLadderizedVisibility()"><option value="">Select program</option>@foreach($programs as $program)<option value="{{ $program->program_id }}" @selected((string)old('program_id') === (string)$program->program_id)>{{ $program->program_name }}</option>@endforeach</select></div></div>
                 <div class="ap-field-group"><label class="ap-label" for="year_id">Year level <span class="ap-req">*</span></label><div class="ap-field ap-field--select"><select id="year_id" name="year_id" required><option value="">Select year</option>@foreach($years as $year)<option value="{{ $year->year_id }}" @selected((string)old('year_id') === (string)$year->year_id)>{{ $year->year }}</option>@endforeach</select></div></div>

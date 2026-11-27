@@ -447,10 +447,15 @@ Route::delete('/students/{user_id}', [StudentController::class, 'destroy'])
         Route::get('/students/{student_number}', [StudentController::class, 'show'])
             ->name('admin.students.show');
 
-        Route::post('/students/{student_number}/link-idp', [StudentController::class, 'linkIdpAccount'])
+        // IDP management is keyed by the immutable account id, so a student
+        // whose student_number has not been assigned can still be linked or
+        // unlinked. The controller re-verifies the account is a STUDENT.
+        Route::post('/students/{user_id}/link-idp', [StudentController::class, 'linkIdpAccount'])
+            ->whereNumber('user_id')
             ->name('admin.students.link-idp');
 
-        Route::post('/students/{student_number}/unlink-idp', [StudentController::class, 'unlinkIdpAccount'])
+        Route::post('/students/{user_id}/unlink-idp', [StudentController::class, 'unlinkIdpAccount'])
+            ->whereNumber('user_id')
             ->name('admin.students.unlink-idp');
 
         Route::post('/users/admins', [StudentController::class, 'storeAdmin'])

@@ -257,6 +257,15 @@
                                         <td class="text-end user-action-cell">
 <div class="user-action-group">
 
+    <a
+        href="{{ route('admin.students.show', $student->user_id) }}"
+        class="admin-btn admin-btn-neutral admin-btn-sm user-action-btn"
+        title="Open the student record to manage the PUP IDP link."
+    >
+        <i class="bi bi-person-badge me-1"></i>
+        IDP
+    </a>
+
     <button
         class="admin-btn admin-btn-view admin-btn-sm user-action-btn editStudentBtn"
         data-id="{{ $student->user_id }}"
@@ -560,7 +569,7 @@
             <div class="modal-body admin-modal-body"><div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label">Student Number <span class="text-muted small fw-normal">(optional)</span></label>
-                    <input name="student_number" class="form-control" maxlength="50" placeholder="Leave blank if not yet assigned" value="{{ old('student_number') }}">
+                    <input name="student_number" class="form-control" maxlength="15" placeholder="Leave blank if not yet assigned" value="{{ old('student_number') }}">
                     <div class="form-text">Leave blank to create the account now; the number can be added later without detaching any records.</div>
                 </div>
                 <div class="col-md-6"><label class="form-label">Gender <span class="required-asterisk">*</span></label><select name="gender_id" class="form-select" required>@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
@@ -739,7 +748,7 @@
     <form id="editStudentForm" method="POST">@csrf @method('PUT')
         <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="editStudentModalLabel">Edit Student</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
         <div class="modal-body admin-modal-body"><div class="row g-3">
-            <div class="col-md-6"><label class="form-label">Student Number</label><input id="student_number" name="student_number" class="form-control" maxlength="50" placeholder="Optional"></div>
+            <div class="col-md-6"><label class="form-label">Student Number</label><input id="student_number" name="student_number" class="form-control" maxlength="15" placeholder="Optional"></div>
             <div class="col-md-4"><label class="form-label">First Name</label><input type="text" id="first_name" class="form-control" readonly></div>
             <div class="col-md-4"><label class="form-label">Middle Initials</label><input type="text" id="middle_name" class="form-control" readonly></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input type="text" id="last_name" class="form-control" readonly></div>
@@ -1111,7 +1120,7 @@ const importAccountsModal = document.getElementById('importAccountsModal');
 const importGuides = {
     student_create_activate: {
         columns: ['student_number', 'first_name', 'middle_name', 'last_name', 'name_suffix', 'program', 'year', 'section', 'gender', 'ladderized'],
-        help: 'Use the downloaded Excel template dropdowns for program, year, section, gender, and ladderized. Student number, section, and gender may be left blank temporarily. Do not enter an email; the verified email is supplied by the PUP IDP when the student links their account. Provide the student name so the IDP can match the imported record.',
+        help: 'Use the downloaded Excel template dropdowns for program, year, section, gender, and ladderized. Student number, section, and gender may be left blank temporarily. A student number may be up to 15 characters. Do not enter an email; the verified email is supplied by the PUP IDP when the student links their account. Provide the student name so the IDP can match the imported record.',
     },
     student_deactivate_students: {
         columns: ['student_number'],
