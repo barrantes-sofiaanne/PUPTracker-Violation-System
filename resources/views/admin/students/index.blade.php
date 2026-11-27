@@ -933,7 +933,10 @@ document.getElementById('section_id').value = this.dataset.section;
             toggleEditLadderizedField(document.getElementById('program_id'));
         }
 
-        document.getElementById('editStudentForm').action = "{{ url('/admin/students') }}/" + this.dataset.id;
+        const updateUrlTemplate = @json(route('admin.students.update', ['user_id' => '__USER_ID__']));
+
+document.getElementById('editStudentForm').action =
+    updateUrlTemplate.replace('__USER_ID__', encodeURIComponent(this.dataset.id));
         new bootstrap.Modal(document.getElementById('editStudentModal')).show();
     });
 });

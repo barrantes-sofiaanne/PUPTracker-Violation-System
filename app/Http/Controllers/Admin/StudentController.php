@@ -1869,10 +1869,10 @@ class StudentController extends Controller
      *
      * Year level can be manually changed from the normal Edit Student form.
      */
-    public function update(
-        Request $request,
-        string $student_number
-    ) {
+public function update(
+    Request $request,
+    int $user_id
+) {
 
         $student = $this->findStudentForEditOrFail($student_number);
 
