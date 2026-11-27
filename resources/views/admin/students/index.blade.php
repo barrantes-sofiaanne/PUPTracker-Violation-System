@@ -570,7 +570,6 @@
                 <div class="col-md-6">
                     <label class="form-label">Student Number <span class="text-muted small fw-normal">(optional)</span></label>
                     <input name="student_number" class="form-control" maxlength="15" placeholder="Leave blank if not yet assigned" value="{{ old('student_number') }}">
-                    <div class="form-text">Leave blank to create the account now; the number can be added later without detaching any records.</div>
                 </div>
                 <div class="col-md-6"><label class="form-label">Gender <span class="required-asterisk">*</span></label><select name="gender_id" class="form-select" required>@foreach($genders as $gender)<option value="{{ $gender->gender_id }}">{{ $gender->gender_name }}</option>@endforeach</select></div>
 
@@ -612,7 +611,7 @@
                 <div class="col-12">
                     <div class="alert alert-info small mb-0 py-2">
                         <i class="bi bi-info-circle me-1"></i>
-                        The student's <strong>email</strong> is provided by the PUP IDP and is stored when the student links their PUP IDP account. Authentication and passwords are also managed by the PUP Identity Provider (IDP) — no local password is required. The name and enrollment details above are stored on the student's PUPTracker record.
+                        The student's <strong>email</strong> is provided  by the PUP IDP and is stored when the student links their PUP IDP account.
                     </div>
                 </div>
             </div></div>
@@ -1120,7 +1119,7 @@ const importAccountsModal = document.getElementById('importAccountsModal');
 const importGuides = {
     student_create_activate: {
         columns: ['student_number', 'first_name', 'middle_name', 'last_name', 'name_suffix', 'program', 'year', 'section', 'gender', 'ladderized'],
-        help: 'Use the downloaded Excel template dropdowns for program, year, section, gender, and ladderized. Student number, section, and gender may be left blank temporarily. A student number may be up to 15 characters. Do not enter an email; the verified email is supplied by the PUP IDP when the student links their account. Provide the student name so the IDP can match the imported record.',
+        help: 'Use the downloaded Excel template dropdowns for program, year, section, gender, and ladderized. Student number, section, and gender may be left blank temporarily. Do not enter an email; the verified email is supplied by the PUP IDP when the student links their account. Provide the student name so the IDP can match the imported record.',
     },
     student_deactivate_students: {
         columns: ['student_number'],
