@@ -285,7 +285,7 @@
                                     </td>
                                     <td>
                                         <span class="portal-badge danger">
-                                            {{ $violation->offense_level }}
+                                            {{ $violation->offense_level ?: '—' }}
                                         </span>
                                     </td>
                                     <td>

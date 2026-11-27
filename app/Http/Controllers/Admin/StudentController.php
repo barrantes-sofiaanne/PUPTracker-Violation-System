@@ -1746,13 +1746,8 @@ class StudentController extends Controller
         string $student_number
     ) {
 
-        $student = User::query()
-            ->with('studentInfo')
-            ->where(
-                'student_number',
-                $student_number
-            )
-            ->firstOrFail();
+        $student = $this->findStudentForEditOrFail($student_number)
+            ->load('studentInfo');
 
         $programs =
             Program::orderBy('program_name')->get();
@@ -1783,6 +1778,34 @@ class StudentController extends Controller
     }
 
     /**
+     * Resolve the student targeted by the edit form.
+     *
+     * The modal posts the internal account id, while legacy links may still be
+     * addressed by student number. `user_id` wins when it matches so a student
+     * without a student number remains editable; otherwise the number is used.
+     */
+    private function findStudentForEditOrFail(string $identifier): User
+    {
+        $identifier = trim($identifier);
+
+        if ($identifier === '') {
+            abort(404);
+        }
+
+        if (ctype_digit($identifier)) {
+            $student = User::query()->where('user_id', (int) $identifier)->first();
+
+            if ($student !== null) {
+                return $student;
+            }
+        }
+
+        return User::query()
+            ->where('student_number', $identifier)
+            ->firstOrFail();
+    }
+
+    /**
      * Update normal student information.
      *
      * Year level can be manually changed from the normal Edit Student form.
@@ -1792,14 +1815,20 @@ class StudentController extends Controller
         string $student_number
     ) {
 
-        $student = User::query()
-            ->where(
-                'student_number',
-                $student_number
-            )
-            ->firstOrFail();
+        $student = $this->findStudentForEditOrFail($student_number);
 
         $request->validate([
+            'student_number' =>
+                [
+                    'nullable',
+                    'string',
+                    'max:50',
+                    // Uniqueness is enforced against the canonical account
+                    // table, ignoring this student's own row.
+                    Rule::unique('users_tbl', 'student_number')
+                        ->ignore($student->user_id, 'user_id'),
+                ],
+
             'program_id' =>
                 'nullable|exists:program_tbl,program_id',
 
@@ -1847,14 +1876,6 @@ class StudentController extends Controller
                 ]
                 : [];
 
-        $student->update([
-            'gender_id' =>
-                $request->input('gender_id'),
-
-            'status_id' =>
-                $request->input('status_id'),
-        ]);
-
         $studentStatusId =
             $this->resolveStudentStatusIdFromUserStatusId(
                 (int) $request->input('status_id')
@@ -1868,37 +1889,87 @@ class StudentController extends Controller
             ]);
         }
 
-        $studentInfo =
-            $student->studentInfo()
-                ->firstOrNew([
-                    'user_id' =>
-                        $student->getKey()
-                ]);
+        // Empty input normalises to NULL so the optional student number keeps a
+        // single representation. When the field is absent entirely (older
+        // callers), the existing value is preserved rather than wiped.
+        $newStudentNumber = $request->has('student_number')
+            ? trim((string) $request->input('student_number', ''))
+            : trim((string) $student->student_number);
 
-        $studentInfo->fill([
-            'user_id' =>
-                $student->getKey(),
+        $newStudentNumber = $newStudentNumber === '' ? null : $newStudentNumber;
 
-            'program_id' =>
-                $request->input('program_id'),
+        $previousStudentNumber = trim((string) $student->student_number);
 
-            'year_id' =>
-                $request->input('year_id'),
+        $studentBefore = [
+            'student_number' => $previousStudentNumber,
+            'gender_id' => (string) $student->gender_id,
+            'status_id' => (string) $student->status_id,
+        ];
 
-            'section_id' =>
-                $request->input('section_id'),
+        $studentInfo = DB::transaction(function () use (
+            $student,
+            $request,
+            $studentStatusId,
+            $newStudentNumber,
+            $previousStudentNumber
+        ): StudentInfo {
+            $student->update([
+                'student_number' =>
+                    $newStudentNumber,
 
-            'student_status_id' =>
-                $studentStatusId,
+                'gender_id' =>
+                    $request->input('gender_id'),
 
-            'ladderized' =>
-                (int) (
-                    $request->input('ladderized')
-                    ?? 0
-                ),
-        ]);
+                'status_id' =>
+                    $request->input('status_id'),
+            ]);
 
-        $studentInfo->save();
+            // Refresh ONLY this account's denormalized display snapshots.
+            // Violation/sanction/proof/notification ownership stays anchored
+            // to user_id; the number is display data.
+            if ($previousStudentNumber !== (string) $newStudentNumber) {
+                app(\App\Services\StudentProfileSyncService::class)
+                    ->synchronizeStudentNumber(
+                        $student,
+                        $newStudentNumber,
+                        $previousStudentNumber
+                    );
+            }
+
+            $studentInfo =
+                $student->studentInfo()
+                    ->firstOrNew([
+                        'user_id' =>
+                            $student->getKey()
+                    ]);
+
+            $studentInfo->fill([
+                'user_id' =>
+                    $student->getKey(),
+
+                'program_id' =>
+                    $request->input('program_id'),
+
+                'year_id' =>
+                    $request->input('year_id'),
+
+                'section_id' =>
+                    $request->input('section_id'),
+
+                'student_status_id' =>
+                    $studentStatusId,
+
+                'ladderized' =>
+                    (int) (
+                        $request->input('ladderized')
+                        ?? 0
+                    ),
+            ]);
+
+            $studentInfo->save();
+
+            return $studentInfo;
+        });
 
         $this->logUserManagementAction(
             'student',
@@ -1909,7 +1980,8 @@ class StudentController extends Controller
                 $studentInfoBefore,
                 $student,
                 $studentInfo,
-                $request
+                $request,
+                $studentBefore
             )
         );
 
@@ -1928,12 +2000,16 @@ class StudentController extends Controller
         array $infoBefore,
         User $student,
         StudentInfo $studentInfo,
-        Request $request
+        Request $request,
+        array $studentBefore = []
     ): array {
 
         $changes = [];
 
         $studentFieldMap = [
+            'student_number' =>
+                'Student Number',
+
             'gender_id' =>
                 'Gender',
 
@@ -1945,10 +2021,11 @@ class StudentController extends Controller
             $studentFieldMap as $key => $label
         ) {
 
-            $from =
-                (string) $student->getOriginal(
-                    $key
-                );
+            $from = (string) (
+                array_key_exists($key, $studentBefore)
+                    ? $studentBefore[$key]
+                    : $student->getOriginal($key)
+            );
 
             $to =
                 (string) $student->{$key};

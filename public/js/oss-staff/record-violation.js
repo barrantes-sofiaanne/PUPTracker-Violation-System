@@ -1954,6 +1954,11 @@ document.addEventListener("DOMContentLoaded", function () {
     // Submit
     // ------------------------------------------------------------------
     saveBtn.addEventListener("click", function () {
+        // Ignore a second click while the first request is still in flight.
+        if (saveBtn.disabled) {
+            return;
+        }
+
         const studentNumber =
             document.getElementById("selectedStudentId").value;
         const violationTypeId = document.getElementById("violationType").value;
@@ -2017,6 +2022,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         saveBtn.disabled = true;
 
+        // Show the processing state immediately (no artificial delay) and
+        // keep it until the request settles.
+        const originalSaveLabel = saveBtn.innerHTML;
+        saveBtn.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Recording Violation...';
+
         fetch(window.ViolationRoutes.store, {
             method: "POST",
             headers: {
@@ -2053,6 +2064,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 showAlert("error", "Submit failed", error.message);
             })
             .finally(() => {
+                // Restore on success AND on validation/server failure so the
+                // officer can correct the form and retry.
+                saveBtn.innerHTML = originalSaveLabel;
                 saveBtn.disabled = false;
             });
     });

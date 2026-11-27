@@ -144,7 +144,7 @@
                             </td>
 
                             <td>
-                                {{ optional($type->created_at)->format('F d, Y') ?? '-' }}
+                                {{ optional($type->date_published)->format('F d, Y g:i A') ?? '-' }}
                             </td>
 
                             <td>

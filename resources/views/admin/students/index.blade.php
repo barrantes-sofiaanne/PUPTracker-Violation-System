@@ -260,6 +260,7 @@
     <button
         class="admin-btn admin-btn-view admin-btn-sm user-action-btn editStudentBtn"
         data-id="{{ $student->user_id }}"
+        data-number="{{ $student->student_number }}"
         data-first="{{ $student->first_name }}"
         data-middle="{{ $student->middle_name }}"
         data-last="{{ $student->last_name }}"
@@ -724,7 +725,7 @@
     <form id="editStudentForm" method="POST">@csrf @method('PUT')
         <div class="modal-header admin-modal-header"><h5 class="modal-title admin-modal-title" id="editStudentModalLabel">Edit Student</h5><button type="button" class="btn-close admin-modal-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
         <div class="modal-body admin-modal-body"><div class="row g-3">
-            <div class="col-md-6"><label class="form-label">Student Number</label><input id="student_number" class="form-control" readonly></div>
+            <div class="col-md-6"><label class="form-label">Student Number</label><input id="student_number" name="student_number" class="form-control" maxlength="50" placeholder="Optional"></div>
             <div class="col-md-4"><label class="form-label">First Name</label><input type="text" id="first_name" class="form-control" readonly></div>
             <div class="col-md-4"><label class="form-label">Middle Name</label><input type="text" id="middle_name" class="form-control" readonly></div>
             <div class="col-md-4"><label class="form-label">Last Name</label><input type="text" id="last_name" class="form-control" readonly></div>
@@ -889,7 +890,7 @@
     
 document.querySelectorAll('.editStudentBtn').forEach(function (button) {
     button.addEventListener('click', function () {
-        document.getElementById('student_number').value = this.dataset.id;
+        document.getElementById('student_number').value = this.dataset.number || '';
         document.getElementById('first_name').value = this.dataset.first;
         document.getElementById('middle_name').value = this.dataset.middle;
         document.getElementById('last_name').value = this.dataset.last;

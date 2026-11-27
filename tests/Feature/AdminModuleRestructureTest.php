@@ -1592,7 +1592,10 @@ class AdminModuleRestructureTest extends TestCase
             },
             'violation_tbl' => function (Blueprint $t): void {
                 $t->increments('violation_id');
+                // Task 8: violations are linked by the account id.
+                $t->unsignedInteger('user_id')->nullable();
                 $t->string('student_number')->nullable();
+                $t->unsignedBigInteger('violation_type_id')->nullable();
                 $t->unsignedBigInteger('violation_type')->nullable();
                 $t->dateTime('violation_date')->nullable();
                 $t->text('description')->nullable();

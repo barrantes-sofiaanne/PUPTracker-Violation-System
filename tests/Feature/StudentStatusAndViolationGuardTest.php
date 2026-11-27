@@ -902,8 +902,12 @@ class StudentStatusAndViolationGuardTest extends TestCase
 
     private function hitCallback(): \Illuminate\Testing\TestResponse
     {
-        return $this->withSession(['student.idp.state' => 'state-123'])
-            ->get(route('student.idp.callback', ['code' => 'auth-code-123']));
+        return $this->withSession([
+            'student.idp.state' => 'state-123',
+            // The callback now requires a fresh server-side state expiry; a
+            // state without one is rejected as an expired login session.
+            'student.idp.state_expires_at' => now()->addMinutes(10)->timestamp,
+        ])->get(route('student.idp.callback', ['code' => 'auth-code-123']));
     }
 
     private function createAdmin(): Admin

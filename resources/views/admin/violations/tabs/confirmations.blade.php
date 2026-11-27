@@ -55,6 +55,7 @@
                         <th>Date</th>
                         <th>Student</th>
                         <th>Violation</th>
+                        <th>Offense</th>
                         <th>Remarks</th>
                         <th>Recorded By</th>
                         <th class="text-end">Action</th>
@@ -92,6 +93,7 @@
                                 </div>
                             </td>
                             <td>{{ optional($violation->violationType)->violation_type ?? $violation->violation_type_display }}</td>
+                            <td>{{ $violation->offense_level ?: '—' }}</td>
                             <td style="max-width:260px; white-space:normal;">{{ $violation->description ?: '-' }}</td>
                             <td>{{ $violation->recorded_by_display }}</td>
                             <td class="text-end">
@@ -113,7 +115,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
+                            <td colspan="8" class="text-center py-5 text-muted">
                                 <i class="bi bi-check2-circle fs-2 d-block mb-2"></i>
                                 No violations awaiting confirmation.
                             </td>

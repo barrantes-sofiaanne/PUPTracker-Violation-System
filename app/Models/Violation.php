@@ -39,6 +39,9 @@ class Violation extends Model
         'user_id',
         'student_number',
         'violation_type_id',
+        // Legacy column: historical callers store the type id or name here.
+        // Kept mass-assignable so those records still resolve their type.
+        'violation_type',
         'violation_date',
         'description',
         'recorder_id',
@@ -192,37 +195,27 @@ public function getViolationTypeDisplayAttribute(): string
 
 public function getOffenseLevelAttribute(): string
 {
+    // A stored label, when a legacy schema provides one, still wins.
     if (!empty($this->attributes['offense_level'])) {
         return (string) $this->attributes['offense_level'];
     }
 
-    if (empty($this->user_id) && empty($this->student_number) || empty($this->violation_id)) {
+    $userId = (int) ($this->user_id ?? 0);
+    $violationId = (int) ($this->violation_id ?? 0);
+    $violationTypeId = (int) ($this->violation_type_id ?? 0);
+
+    if ($userId <= 0 || $violationId <= 0 || $violationTypeId <= 0) {
         return '';
     }
 
-    if (empty($this->violation_type_id)) {
+    // Denied / deleted rows remain in the history but never occupy a slot.
+    $service = app(\App\Services\OffenseNumberService::class);
+
+    if (! $service->statusCountsTowardOffense($this->status)) {
         return '';
     }
 
-    $countQuery = self::query()->where('violation_type_id', $this->violation_type_id);
-
-    if (!empty($this->user_id)) {
-        $countQuery->where(function ($query) {
-            $query->where('user_id', $this->user_id)
-                ->orWhere(function ($legacy) {
-                    $legacy->whereNull('user_id')->where('student_number', $this->student_number);
-                });
-        });
-    } else {
-        $countQuery->where('student_number', $this->student_number);
-    }
-
-    $count = $countQuery
-        ->where('violation_id', '<=', $this->violation_id)
-        ->effective()
-        ->count();
-
-    return $this->formatOffenseLevel((int) $count);
+    return $service->offenseLevelFor($userId, $violationId, $violationTypeId);
 }
 
     public function getRecordedByDisplayAttribute(): string
@@ -320,44 +313,30 @@ public function recordingSecurity(): BelongsTo
 
 public function resolvedViolationType(): ?ViolationType
 {
-    if ($this->relationLoaded('violationType')) {
+    if ($this->relationLoaded('violationType') && $this->violationType !== null) {
         return $this->violationType;
     }
 
-    if (!$this->violation_type_id) {
+    if (!empty($this->violation_type_id)) {
+        return ViolationType::with('violationCategory')
+            ->find($this->violation_type_id);
+    }
+
+    // Backward compatibility for legacy rows that stored the type NAME (or a
+    // numeric id) in the raw `violation_type` column instead of the FK.
+    $raw = trim((string) ($this->attributes['violation_type'] ?? ''));
+
+    if ($raw === '') {
         return null;
     }
 
+    if (ctype_digit($raw)) {
+        return ViolationType::with('violationCategory')->find((int) $raw);
+    }
+
     return ViolationType::with('violationCategory')
-        ->find($this->violation_type_id);
+        ->whereRaw('LOWER(TRIM(violation_type)) = ?', [mb_strtolower($raw)])
+        ->first();
 }
 
-    private function formatOffenseLevel(int $count): string
-    {
-        if ($count <= 0) {
-            return '';
-        }
-
-        if ($count === 1) {
-            return '1st Offense';
-        }
-
-        if ($count === 2) {
-            return '2nd Offense';
-        }
-
-        if ($count === 3) {
-            return '3rd Offense';
-        }
-
-        $suffix = match (true) {
-            $count % 100 >= 11 && $count % 100 <= 13 => 'th',
-            $count % 10 === 1 => 'st',
-            $count % 10 === 2 => 'nd',
-            $count % 10 === 3 => 'rd',
-            default => 'th',
-        };
-
-        return $count . $suffix . ' Offense';
-    }
 }

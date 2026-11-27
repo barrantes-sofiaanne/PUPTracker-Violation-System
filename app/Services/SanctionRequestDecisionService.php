@@ -64,16 +64,18 @@ class SanctionRequestDecisionService
             }
 
             if ($student && $violationType) {
-                $latestViolation = Violation::where('student_number', $student->student_number)
-->where('violation_type_id', $violationType->violation_type_id)                    ->effective()
+                $latestViolation = Violation::where('user_id', $student->user_id)
+                    ->where('violation_type_id', $violationType->violation_type_id)
+                    ->effective()
                     ->latest('violation_date')
+                    ->orderByDesc('violation_id')
                     ->first();
 
-                $offenseCount = Violation::where('student_number', $student->student_number)
-->where('violation_type_id', $violationType->violation_type_id)                    ->effective()
-                    ->count();
-
-                $offenseLevel = $this->formatOffenseLevel($offenseCount);
+                $offenseLevel = app(OffenseNumberService::class)
+                    ->currentOffenseLevel(
+                        (int) $student->user_id,
+                        (int) $violationType->violation_type_id
+                    );
 
                 $assignedSanction = DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
                     ->where('offense_level', $offenseLevel)
@@ -161,11 +163,6 @@ class SanctionRequestDecisionService
 
     public function formatOffenseLevel(int $offenseCount): string
     {
-        return match ($offenseCount) {
-            1 => '1st Offense',
-            2 => '2nd Offense',
-            3 => '3rd Offense',
-            default => $offenseCount . 'th Offense',
-        };
+        return app(OffenseNumberService::class)->formatOffenseLevel($offenseCount);
     }
 }

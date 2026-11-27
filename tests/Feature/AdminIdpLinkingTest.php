@@ -103,7 +103,12 @@ class AdminIdpLinkingTest extends TestCase
 
     private function hitCallback(string $code = 'auth-code-123', ?string $state = null): TestResponse
     {
-        $session = ['student.idp.state' => 'state-123'];
+        // The callback requires a fresh server-side state expiry; a state
+        // without one is (correctly) rejected as an expired login session.
+        $session = [
+            'student.idp.state' => 'state-123',
+            'student.idp.state_expires_at' => now()->addMinutes(10)->timestamp,
+        ];
         $params = ['code' => $code];
         if ($state !== null) {
             $params['state'] = $state;

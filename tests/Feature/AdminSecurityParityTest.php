@@ -217,7 +217,9 @@ class AdminSecurityParityTest extends TestCase
         $this->createStudentRow('2026-7001');
 
         DB::table('violation_tbl')->insert([
+            'user_id' => User::where('student_number', '2026-7001')->value('user_id'),
             'student_number' => '2026-7001',
+            'violation_type_id' => 10,
             'violation_type' => '10',
             'violation_date' => now(),
             'description' => 'No ID presented.',
@@ -865,7 +867,10 @@ class AdminSecurityParityTest extends TestCase
             },
             'violation_tbl' => function (Blueprint $t): void {
                 $t->increments('violation_id');
+                // Task 8: violations are linked by the account id.
+                $t->unsignedInteger('user_id')->nullable();
                 $t->string('student_number')->nullable();
+                $t->unsignedInteger('violation_type_id')->nullable();
                 $t->string('violation_type')->nullable();
                 $t->dateTime('violation_date')->nullable();
                 $t->text('description')->nullable();

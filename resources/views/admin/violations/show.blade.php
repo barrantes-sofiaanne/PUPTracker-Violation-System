@@ -176,7 +176,7 @@
                                 <td>{{ $violation->violation_date ? \Carbon\Carbon::parse($violation->violation_date)->format('M d, Y') : '-' }}</td>
                                 <td>{{ $violation->violation_type_display }}</td>
                                 <td>{{ optional($violation->violationType?->violationCategory)->category_name ?? '-' }}</td>
-                                <td><span class="admin-badge admin-badge-gold">{{ \App\Http\Controllers\Admin\ViolationController::formatOffenseLevelStatic($violation->violations_count ?? 1) }}</span></td>
+                                <td><span class="admin-badge admin-badge-gold">{{ $violation->offense_level ?: '—' }}</span></td>
                                 <td>{{ optional($violation->sanction)->disciplinary_sanction ?? '-' }}</td>
                                 <td>
                                     @php

@@ -20,7 +20,12 @@ protected $fillable = [
     'violation_category_id',
     'resolution_number',
     'violation_description',
+    'date_published',
     'severity_level',
+];
+
+protected $casts = [
+    'date_published' => 'datetime',
 ];
 
 public function violationCategory(): BelongsTo

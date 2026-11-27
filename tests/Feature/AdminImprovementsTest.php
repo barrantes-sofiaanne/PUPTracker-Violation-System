@@ -289,7 +289,9 @@ class AdminImprovementsTest extends TestCase
         // The row stores the numeric ID in the `violation_type` column, exactly
         // as the app writes it.
         DB::table('violation_tbl')->insert([
+            'user_id' => $this->userIdFor('2026-8201'),
             'student_number' => '2026-8201',
+            'violation_type_id' => $typeId,
             'violation_type' => (string) $typeId,
             'violation_date' => now(),
             'description' => 'No ID presented.',
@@ -335,7 +337,9 @@ class AdminImprovementsTest extends TestCase
         // the name (legacy). They must collapse into ONE summary row.
         DB::table('violation_tbl')->insert([
             [
+                'user_id' => $this->userIdFor('2026-8301'),
                 'student_number' => '2026-8301',
+                'violation_type_id' => $typeId,
                 'violation_type' => (string) $typeId,
                 'violation_date' => now()->subDay(),
                 'description' => 'First instance.',
@@ -344,7 +348,9 @@ class AdminImprovementsTest extends TestCase
                 'status' => Violation::STATUS_CONFIRMED,
             ],
             [
+                'user_id' => $this->userIdFor('2026-8301'),
                 'student_number' => '2026-8301',
+                'violation_type_id' => null,
                 'violation_type' => 'Improper Uniform',
                 'violation_date' => now(),
                 'description' => 'Second instance.',
@@ -549,10 +555,21 @@ class AdminImprovementsTest extends TestCase
         ]);
     }
 
+    private function userIdFor(string $number): ?int
+    {
+        $userId = DB::table('users_tbl')
+            ->where('student_number', $number)
+            ->value('user_id');
+
+        return $userId !== null ? (int) $userId : null;
+    }
+
     private function createViolation(string $number, $date, int $typeId, string $status): void
     {
         DB::table('violation_tbl')->insert([
+            'user_id' => $this->userIdFor($number),
             'student_number' => $number,
+            'violation_type_id' => $typeId,
             'violation_type' => (string) $typeId,
             'violation_date' => $date,
             'description' => 'Test violation.',
@@ -681,7 +698,11 @@ class AdminImprovementsTest extends TestCase
             },
             'violation_tbl' => function (Blueprint $t): void {
                 $t->increments('violation_id');
+                // Stable student identity (Task 8) — violations are linked by
+                // user_id; student_number is display data only.
+                $t->unsignedInteger('user_id')->nullable();
                 $t->string('student_number')->nullable();
+                $t->unsignedInteger('violation_type_id')->nullable();
                 $t->string('violation_type')->nullable();
                 $t->dateTime('violation_date')->nullable();
                 $t->text('description')->nullable();

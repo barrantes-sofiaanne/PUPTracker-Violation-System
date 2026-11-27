@@ -417,7 +417,7 @@
                     </div>
                     <div>
                         <span class="badge-severity portal-badge danger">
-                            {{ $violation->offense_level ?: '1st Offense' }}
+                            {{ $violation->offense_level ?: (strtolower((string) $violation->status) === \App\Models\Violation::STATUS_DENIED ? 'Rejected — not counted' : '—') }}
                         </span>
                         <span class="portal-badge muted">
                             {{ $violation->violation_category_display }}

@@ -214,6 +214,13 @@ class StudentIdpLoginController extends Controller
                     ]);
             }
 
+            // The IDP is authoritative for the identity fields. Refresh them
+            // even when the local account is not currently active: profile
+            // synchronization must not depend on account access or on the
+            // existence of violations/sanctions. The status gate below still
+            // decides whether the account may sign in.
+            $this->syncIdentityFromIdp($user, $profile);
+
             // PUPTracker ACCOUNT STATUS gate.
             //
             // Successful IDP authentication proves IDENTITY but does not grant
@@ -487,6 +494,8 @@ class StudentIdpLoginController extends Controller
             ]);
         }
 
+        $idpEmail = strtolower(trim((string) ($profile['email'] ?? '')));
+
         // Idempotency: an IDP subject already linked to a student always signs in
         // to that same local account; it must never create or select another one.
         $alreadyLinked = User::query()->where('idp_subject', $idpSubject)->first();
@@ -496,12 +505,17 @@ class StudentIdpLoginController extends Controller
                     'login' => 'This PUPTracker student account is not eligible to sign in.',
                 ]);
             }
+
+            // Keep the canonical profile current even when the account was
+            // already linked (re-submitted registration / corrected details).
+            $this->persistIdpBinding($alreadyLinked, $idpSubject, $idpEmail, $profile);
+            $this->touchLastLogin($alreadyLinked);
+
             return $this->completeRegistrationFor($request, $alreadyLinked);
         }
 
         $mode = (string) $request->input('match_mode');
         $nameMatches = $this->findStudentsByIdpName($profile);
-        $idpEmail = strtolower(trim((string) ($profile['email'] ?? '')));
 
         if ($mode === 'single') {
             // Re-check the unique name match on the server; never trust a posted user_id.
@@ -674,24 +688,15 @@ class StudentIdpLoginController extends Controller
                             ->update(['user_id' => $student->user_id]);
                     }
 
-                    // Keep the current student number synchronized as a display snapshot.
-                    // Violation ownership remains anchored to user_id / violation_id.
-                    if (Schema::hasTable('violation_tbl') && Schema::hasColumn('violation_tbl', 'student_number')) {
-                        DB::table('violation_tbl')
-                            ->where('user_id', $student->user_id)
-                            ->update(['student_number' => $studentNumber]);
-                    }
-
-                    if (Schema::hasTable('student_sanction_records_tbl')
-                        && Schema::hasColumn('student_sanction_records_tbl', 'student_number')) {
-                        DB::table('student_sanction_records_tbl')
-                            ->whereIn('violation_id', function ($query) use ($student) {
-                                $query->select('violation_id')
-                                    ->from('violation_tbl')
-                                    ->where('user_id', $student->user_id);
-                            })
-                            ->update(['student_number' => $studentNumber]);
-                    }
+                    // Keep the current student number synchronized as a
+                    // display snapshot. Ownership remains anchored to user_id;
+                    // only THIS account's records are touched.
+                    app(\App\Services\StudentProfileSyncService::class)
+                        ->synchronizeStudentNumber(
+                            $student,
+                            $studentNumber,
+                            $previousStudentNumber
+                        );
 
                     $ladderized = $this->resolveLadderizedSelection(
                         (int) $academicData['program_id'],
@@ -1061,6 +1066,11 @@ class StudentIdpLoginController extends Controller
         }
 
         $user->forceFill($changes)->saveOrFail();
+
+        // Refresh the IDP-owned identity fields on EVERY successful binding /
+        // login so Admin, Security, OSS Staff and the Student module read the
+        // latest canonical profile through the User relationship.
+        $this->syncIdentityFromIdp($user, $profile);
     }
 
     /**

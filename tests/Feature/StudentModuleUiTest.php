@@ -259,6 +259,7 @@ class StudentModuleUiTest extends TestCase
         // Exactly how the Admin module persists a violation: recorder_type
         // 'admin' and an immediately-confirmed status.
         Violation::create([
+            'user_id' => $student->user_id,
             'student_number' => '2024-0001',
             'violation_type' => 1,
             'violation_date' => now()->subDay(),
@@ -374,6 +375,7 @@ class StudentModuleUiTest extends TestCase
         $this->createViolationType(1, 'Pending Offence');
 
         Violation::create([
+            'user_id' => $student->user_id,
             'student_number' => '2024-0001',
             'violation_type' => 1,
             'violation_date' => now()->subDay(),
@@ -732,6 +734,9 @@ class StudentModuleUiTest extends TestCase
     private function createViolation(string $studentNumber, int $typeId, $date): Violation
     {
         return Violation::create([
+            // Task 8: violations are identified by the account id; the
+            // student number is display data.
+            'user_id' => User::where('student_number', $studentNumber)->value('user_id'),
             'student_number' => $studentNumber,
             'violation_type' => $typeId,
             'violation_date' => $date,
@@ -845,7 +850,10 @@ class StudentModuleUiTest extends TestCase
             },
             'violation_tbl' => function (Blueprint $table): void {
                 $table->increments('violation_id');
+                // Task 8 identity key (violations are linked by account id).
+                $table->unsignedInteger('user_id')->nullable();
                 $table->string('student_number')->nullable();
+                $table->unsignedInteger('violation_type_id')->nullable();
                 $table->string('violation_type')->nullable();
                 $table->dateTime('violation_date')->nullable();
                 $table->text('description')->nullable();
@@ -873,6 +881,23 @@ class StudentModuleUiTest extends TestCase
                 $table->string('status')->nullable();
                 $table->unsignedInteger('approved_by_admin_id')->nullable();
                 $table->dateTime('approved_at')->nullable();
+            },
+            'violation_correction_requests' => function (Blueprint $table): void {
+                $table->increments('request_id');
+                $table->unsignedBigInteger('violation_id')->nullable();
+                $table->unsignedBigInteger('original_violation_id')->nullable();
+                $table->string('student_number', 50);
+                $table->string('request_type', 20)->default('correction');
+                $table->unsignedBigInteger('requested_violation_type_id')->nullable();
+                $table->dateTime('requested_violation_date')->nullable();
+                $table->text('requested_description')->nullable();
+                $table->text('reason')->nullable();
+                $table->json('deletion_evidence')->nullable();
+                $table->string('status', 20)->default('pending');
+                $table->unsignedBigInteger('reviewed_by_admin_id')->nullable();
+                $table->dateTime('reviewed_at')->nullable();
+                $table->text('review_remarks')->nullable();
+                $table->timestamps();
             },
             'student_sanction_records_tbl' => function (Blueprint $table): void {
                 $table->increments('record_id');

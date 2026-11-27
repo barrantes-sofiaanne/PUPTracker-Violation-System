@@ -155,15 +155,20 @@
     <p class="filters">Filters Applied: {{ $filtersApplied ?? 'None' }}</p>
 
     @php
+        // One block per student ACCOUNT: violations are identified by user_id,
+        // never by the optional student number (which can be NULL/empty).
         $groupedReports = $reports
-            ->groupBy('student_number')
+            ->groupBy(fn ($record) => $record->user_id
+                ? 'user:' . $record->user_id
+                : 'number:' . ($record->student_number ?? ''))
             ->map(function ($studentReports) {
                 $offenseCounter = [];
 
                 return $studentReports
                     ->sortBy('violation_date')
                     ->map(function ($record) use (&$offenseCounter) {
-$key = (string) $record->violation_type_id;                        $offenseCounter[$key] = ($offenseCounter[$key] ?? 0) + 1;
+                        $key = (string) ($record->violation_type_id ?? $record->violation_type);
+                        $offenseCounter[$key] = ($offenseCounter[$key] ?? 0) + 1;
 
                         return [
                             'record' => $record,
@@ -175,26 +180,23 @@ $key = (string) $record->violation_type_id;                        $offenseCount
             });
 
         $toOrdinal = function (int $count): string {
-            if ($count === 1) {
-                return '1st Offense';
-            }
-            if ($count === 2) {
-                return '2nd Offense';
-            }
-            if ($count === 3) {
-                return '3rd Offense';
-            }
-
-            return $count . 'th Offense';
+            return app(\App\Services\OffenseNumberService::class)
+                ->formatOffenseLevel($count);
         };
     @endphp
 
-    @forelse($groupedReports as $studentNumber => $studentRows)
+    @forelse($groupedReports as $studentKey => $studentRows)
         @php
             $firstRow = $studentRows->first()['record'] ?? null;
             $studentName = $firstRow
                 ? trim((string) ($firstRow->student?->formal_name ?? ''))
                 : '-';
+            // Resolve the CURRENT student number through the canonical account;
+            // the stored snapshot is only a fallback. Never print the internal
+            // grouping key.
+            $studentNumber = $firstRow?->student?->student_number
+                ?? $firstRow?->student_number
+                ?? '';
         @endphp
 
         <section class="student-block">
@@ -216,7 +218,11 @@ $key = (string) $record->violation_type_id;                        $offenseCount
                     @foreach($studentRows as $row)
                         @php
                             $record = $row['record'];
-                            $offenseLevel = $toOrdinal((int) $row['offense_count']);
+                            // Prefer the centralized derived offense level; the
+                            // in-report counter is only a legacy fallback for a
+                            // row that cannot be resolved to an account.
+                            $offenseLevel = $record->offense_level
+                                ?: $toOrdinal((int) $row['offense_count']);
                             $status = optional($record->sanction)->disciplinary_sanction ? 'Sanction' : 'Warning';
                         @endphp
                         <tr>

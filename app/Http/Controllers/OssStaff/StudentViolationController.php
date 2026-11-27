@@ -358,6 +358,10 @@ $query->whereIn('status', [
         DB::beginTransaction();
 
         try {
+            // Serialize simultaneous recordings for the same student so two
+            // requests cannot derive the same offense position.
+            app(\App\Services\OffenseNumberService::class)->lockStudent((int) $student->user_id);
+
             $exists = Violation::where('user_id', $student->user_id)
                 ->where(function ($query) use ($violationType) {
                     $query->where(
@@ -500,6 +504,8 @@ $violationType = $original->resolvedViolationType();
         DB::beginTransaction();
 
         try {
+            app(\App\Services\OffenseNumberService::class)->lockStudent((int) $original->user_id);
+
             $ossStaffId = $this->ossStaffId();
             $ossStaffLabel = $this->ossStaffName();
 

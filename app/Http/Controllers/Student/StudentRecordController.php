@@ -299,14 +299,17 @@ foreach ($groupedViolations as $records) {
     // Every Summary row therefore represents at least one confirmed violation.
     $first = $effectiveRecords->first();
     $count = $effectiveRecords->count();
-    $offenseLevel = match ($count) {
-        1 => '1st Offense',
-        2 => '2nd Offense',
-        3 => '3rd Offense',
-        default => $count . 'th Offense'
-    };
-
     $resolvedType = $first->resolvedViolationType();
+
+    // The offense label is derived from the FULL eligible sequence for this
+    // student/type (pending reservations included), while this student-facing
+    // summary still only lists confirmed rows.
+    $offenseLevel = $resolvedType?->violation_type_id
+        ? app(\App\Services\OffenseNumberService::class)->currentOffenseLevel(
+            (int) $user->user_id,
+            (int) $resolvedType->violation_type_id
+        )
+        : app(\App\Services\OffenseNumberService::class)->formatOffenseLevel($count);
 
     $sanction = null;
     if (!empty($resolvedType?->violation_type_id)) {
@@ -479,10 +482,11 @@ public function requestSanction(Request $request)
         ], 422);
     }
 
-$offenseCount = Violation::where('user_id', $user->user_id)
-    ->where('violation_type_id', $violationType->violation_type_id)
-    ->effective()
-    ->count();
+$offenseCount = app(\App\Services\OffenseNumberService::class)
+    ->currentOffenseNumber(
+        (int) $user->user_id,
+        (int) $violationType->violation_type_id
+    );
 
     if ($offenseCount < 1) {
         return response()->json([
@@ -491,12 +495,8 @@ $offenseCount = Violation::where('user_id', $user->user_id)
         ], 422);
     }
 
-    $offenseLevel = match ($offenseCount) {
-        1 => '1st Offense',
-        2 => '2nd Offense',
-        3 => '3rd Offense',
-        default => $offenseCount . 'th Offense',
-    };
+    $offenseLevel = app(\App\Services\OffenseNumberService::class)
+        ->formatOffenseLevel($offenseCount);
 
     $assignedSanction = DisciplinarySanction::where('violation_type_id', $violationType->violation_type_id)
         ->where('offense_level', $offenseLevel)
@@ -684,20 +684,18 @@ public function correctionOptions(Request $request, Violation $violation)
     abort_unless($type->violationCategory !== null, 422, 'The selected violation type has no category.');
 
 
-$effectiveCount = Violation::query()
-    ->where('user_id', $user->user_id)
-    ->where('violation_type_id', $type->violation_type_id)
-    ->where('violation_id', '!=', $violation->violation_id)
-    ->effective()
-    ->count() + 1;
+    // Where this violation would sit if its type were corrected. The row keeps
+    // its real violation date and primary key as the chronological anchor.
+    $projectedOffenseNumber = app(\App\Services\OffenseNumberService::class)
+        ->projectedOffenseNumberFor(
+            (int) $user->user_id,
+            (int) $type->violation_type_id,
+            $violation->violation_date,
+            (int) $violation->violation_id
+        );
 
-
-    $offenseLevel = match ($effectiveCount) {
-        1 => '1st Offense',
-        2 => '2nd Offense',
-        3 => '3rd Offense',
-        default => $effectiveCount . 'th Offense',
-    };
+    $offenseLevel = app(\App\Services\OffenseNumberService::class)
+        ->formatOffenseLevel($projectedOffenseNumber);
 
     $sanction = $type->disciplinarySanctions
         ->firstWhere('offense_level', $offenseLevel)
